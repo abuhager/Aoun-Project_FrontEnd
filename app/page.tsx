@@ -10,14 +10,15 @@ export default function HomePage() {
   const [itemsFromDB, setItemsFromDB] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 🟢 أول ما تفتح الصفحة، بنروح بنجيب الأغراض من الباك إند
+  // رابط الباك إند الأساسي (عشان الصور المحلية)
+  const backendBaseUrl = 'http://localhost:5000';
+
+  // 🟢 جلب البيانات من الباك إند
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        // تأكد إنو الرابط بطابق الـ route اللي عندك بالباك إند
-        const res = await axios.get('http://localhost:5000/api/items');
-        
-        // حسب كيف بتبعت الداتا من الباك إند (ممكن res.data أو res.data.items)
+        const res = await axios.get(`${backendBaseUrl}/api/items`);
+        // نبعت الداتا المباشرة لأن الباك إند ببعت Array
         setItemsFromDB(res.data); 
       } catch (error) {
         console.error('خطأ في جلب الأغراض:', error);
@@ -41,15 +42,22 @@ export default function HomePage() {
               <span className="inline-block px-4 py-1.5 rounded-full bg-[#98f994]/30 text-[#0c7521] text-sm font-bold mb-6">منصة مجتمعية موثوقة</span>
               <h1 className="text-5xl md:text-7xl font-black font-headline leading-tight text-[#006155] mb-6">فائضك..<br/><span className="text-[#006e1c]">عونٌ لغيرك</span></h1>
               <p className="text-lg md:text-xl text-[#40493d] leading-relaxed mb-10 max-w-lg">منصة مجتمعية قائمة على الثقة، تهدف لتسهيل عملية التبرع واستلام المواد الأساسية مجاناً وبكل كرامة.</p>
+              
+              {/* 🟢 تفعيل كبسات الـ Hero وتحويلها لـ Links بنفس الـ CSS */}
               <div className="flex flex-wrap gap-4">
-                <button className="px-10 py-4 rounded-full bg-gradient-to-br from-[#006155] to-[#087c6e] text-white text-lg font-bold shadow-lg shadow-[#006155]/20 hover:shadow-xl transition-all">تبرع الآن</button>
-                <button className="px-10 py-4 rounded-full bg-[#e1e3e4] text-[#005047] text-lg font-bold hover:bg-[#d9dadb] transition-all">تصفح الاحتياجات</button>
+                <Link href="/add-item" className="px-10 py-4 rounded-full bg-gradient-to-br from-[#006155] to-[#087c6e] text-white text-lg font-bold shadow-lg shadow-[#006155]/20 hover:shadow-xl transition-all text-center inline-block">
+                  تبرع الآن
+                </Link>
+                <Link href="/browse" className="px-10 py-4 rounded-full bg-[#e1e3e4] text-[#005047] text-lg font-bold hover:bg-[#d9dadb] transition-all text-center inline-block">
+                  تصفح الاحتياجات
+                </Link>
               </div>
             </div>
             <div className="relative order-1 md:order-2">
               <div className="absolute -top-20 -right-20 w-96 h-96 bg-[#006155]/10 rounded-full blur-3xl"></div>
               <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-[#005a8c]/10 rounded-full blur-3xl"></div>
               <div className="relative rounded-[3rem] overflow-hidden shadow-2xl transform rotate-2">
+                {/* حافظنا على الرابط الاستاتيكي للصورة الكبيرة في الـ Hero بناءً على طلبك */}
                 <img alt="People helping each other" className="w-full h-[500px] object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCw93s688quPK_GYTpPLVuSdOuokxVL_kAEivbgOMp05gcClG9rq12hyXUKaJ6o-vOhIVnNa2iO3Q926aEr96kORDXKkSSDf5d5v2b7l5TUI21FmHiZgUTvjTL9i9bnVEOLon-77Yp0iiQFKoHLR0XH7m-bHSzYURzpNqjGxPGeiYuHUY5r6gyOJxsFw3LUeO3EuWJ4cmgZMlxDEITYj1_ZXiFjdVC0kaqRx16gNtmg2xfy19b0aw1EEhC3M7NMoT3Ot0bQHMTgiXA" />
                 <div className="absolute bottom-6 left-6 right-6 p-6 rounded-2xl flex items-center gap-4 border border-white/20 bg-white/30 backdrop-blur-md">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#006155] to-[#087c6e] flex items-center justify-center text-white">
@@ -65,7 +73,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Features Section */}
+        {/* Features Section (بدون تغيير) */}
         <section className="py-24 bg-[#f3f4f5]">
           <div className="container mx-auto px-6">
             <div className="text-center mb-20">
@@ -132,39 +140,55 @@ export default function HomePage() {
                 <h2 className="text-4xl font-black font-headline text-[#006155] mb-2">أحدث الإضافات</h2>
                 <p className="text-[#40493d]">اكتشف ما تمت إضافته حديثاً في مجتمعك</p>
               </div>
-              <Link className="flex items-center gap-2 text-[#006155] font-bold group" href="#">
+              {/* 🟢 تفعيل رابط عرض الكل ليذهب لصفحة /browse */}
+              <Link className="flex items-center gap-2 text-[#006155] font-bold group" href="/browse">
                 عرض الكل
                 <span className="material-symbols-outlined group-hover:translate-x-[-4px] transition-transform">arrow_back</span>
               </Link>
             </div>
             
-            {/* 🟢 لوجيك الداتا بيز مع الديزاين */}
+            {/* 🟢 لوجيك الداتا بيز المعدل مع الحفاظ الكامل على الديزاين */}
             {loading ? (
               <div className="flex justify-center items-center py-20 w-full">
                 <div className="w-12 h-12 border-4 border-[#006155] border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : itemsFromDB.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                {itemsFromDB.slice(0, 4).map((item: any) => (
-                  <div key={item._id} className="group bg-white border border-[#e1e3e4] rounded-xl overflow-hidden hover:shadow-xl transition-all flex flex-col h-full">
-                    <div className="relative h-56 overflow-hidden bg-gray-100">
-                      <img alt={item.category || 'صورة الغرض'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" src={item.image || 'https://via.placeholder.com/300'} />
-                      <span className="absolute top-4 right-4 px-3 py-1 bg-[#006155] text-white text-xs font-bold rounded-full">
-                        {item.category || 'عام'}
-                      </span>
-                    </div>
-                    <div className="p-6 flex flex-col flex-grow">
-                      <div className="flex items-center gap-2 text-[#40493d] text-sm mb-3">
-                        <span className="material-symbols-outlined text-base">location_on</span>
-                        {item.location || 'عمّان'}
+                {itemsFromDB.slice(0, 4).map((item: any) => {
+                  
+                  // 🟢 حل مشكلة الصورة: التحقق إذا كانت رابط كامل (كلاوديناري) أو مسار محلي
+                  const rawImageUrl = item.imageUrl || item.image; // الأولوية للحقل الجديد
+                  const finalImgSrc = rawImageUrl
+                    ? (rawImageUrl.startsWith('http') ? rawImageUrl : `${backendBaseUrl}/${rawImageUrl}`)
+                    : 'https://via.placeholder.com/300?text=No+Image'; // صورة احتياطية فخمة
+
+                  return (
+                    <div key={item._id} className="group bg-white border border-[#e1e3e4] rounded-xl overflow-hidden hover:shadow-xl transition-all flex flex-col h-full">
+                      <div className="relative h-56 overflow-hidden bg-gray-100">
+                        {/* 🟢 استخدام رابط الصورة المعالج واستخدام item.title للـ alt */}
+                        <img 
+                          alt={item.title || 'صورة الغرض'} 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                          src={finalImgSrc} 
+                        />
+                        <span className="absolute top-4 right-4 px-3 py-1 bg-[#006155] text-white text-xs font-bold rounded-full">
+                          {item.category || 'عام'}
+                        </span>
                       </div>
-                      <h3 className="text-xl font-bold mb-6 flex-grow text-[#191c1d]">{item.name || item.title}</h3>
-                      <Link href={`/items/${item._id}`} className="w-full py-3 rounded-full bg-[#f3f4f5] text-[#006155] font-bold hover:bg-[#006155] hover:text-white transition-colors text-center block">
-                        عرض التفاصيل
-                      </Link>
+                      <div className="p-6 flex flex-col flex-grow">
+                        <div className="flex items-center gap-2 text-[#40493d] text-sm mb-3">
+                          <span className="material-symbols-outlined text-base">location_on</span>
+                          {item.location || 'عمّان'}
+                        </div>
+                        {/* 🟢 استخدام item.title ليتوافق مع التعديل الأخير في الداتا بيز */}
+                        <h3 className="text-lg font-bold mb-6 flex-grow text-[#191c1d] line-clamp-2">{item.title}</h3>
+                        <Link href={`/items/${item._id}`} className="w-full py-3 rounded-full bg-[#f3f4f5] text-[#006155] font-bold hover:bg-[#006155] hover:text-white transition-colors text-center block">
+                          عرض التفاصيل
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="w-full bg-[#f3f4f5] border-2 border-dashed border-[#bfcaba] rounded-2xl p-12 text-center">
@@ -183,15 +207,19 @@ export default function HomePage() {
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
               <h2 className="text-4xl md:text-5xl font-black text-white mb-6 relative z-10">هل لديك غرض لا تستخدمه؟</h2>
               <p className="text-white/90 text-xl mb-10 max-w-2xl mx-auto relative z-10">شارك في العطاء اليوم واجعل من فائضك وسيلة لمساعدة الآخرين. التسجيل مجاني وسريع.</p>
+              
+              {/* 🟢 تفعيل كبسة الـ CTA وتحويلها لـ Link يوجه لـ /add-item وبنفس الـ CSS */}
               <div className="flex flex-wrap justify-center gap-4 relative z-10">
-                <button className="px-12 py-4 rounded-full bg-white text-[#006155] text-lg font-bold shadow-xl hover:scale-105 transition-all">ابدأ التبرع الآن</button>
+                <Link href="/add-item" className="px-12 py-4 rounded-full bg-white text-[#006155] text-lg font-bold shadow-xl hover:scale-105 transition-all text-center inline-block">
+                  ابدأ التبرع الآن
+                </Link>
               </div>
             </div>
           </div>
         </section>
       </main>
 
-      {/* Footer */}
+      {/* Footer (بدون تغيير) */}
       <footer className="w-full rounded-t-[3rem] mt-16 bg-[#003b33] flex flex-col items-center gap-8 py-12 px-6 rtl text-center text-white font-['Cairo'] text-sm leading-relaxed">
         <div className="flex flex-col items-center gap-4">
           <span className="text-3xl font-black text-white font-headline">عون</span>

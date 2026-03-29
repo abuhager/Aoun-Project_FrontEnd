@@ -1,33 +1,70 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function Navbar() {
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsLoggedIn(false);
+    router.push('/login');
+  };
+
   return (
-    <nav className="bg-surface/90 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/20 shadow-sm font-sans">
-      <div className="max-w-screen-2xl mx-auto px-6 py-4 flex justify-between items-center">
-        
-        {/* 1. اللوجو */}
-        <Link href="/" className="text-4xl font-black text-primary brand-font tracking-tight">
+    // 🟢 شلنا flex-row-reverse عشان ياخذ اتجاه الـ RTL الطبيعي
+    <nav className="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-md shadow-sm px-8 py-4 flex justify-between items-center" dir="rtl">
+      
+      <div className="flex items-center gap-4">
+        {/* 🟢 وحدنا لون الشعار ليصير primary */}
+        <Link href="/" className="text-3xl font-bold text-primary font-headline">
           عون
         </Link>
-
-        {/* 2. الروابط بالوسط (مخفية على شاشات الموبايل الصغيرة) */}
-        <div className="hidden md:flex items-center gap-8 font-bold text-sm text-on-surface-variant">
-          <Link href="/" className="hover:text-primary transition-colors">الرئيسية</Link>
-          <Link href="/items" className="hover:text-primary transition-colors">تصفح التبرعات</Link>
-          <Link href="#" className="hover:text-primary transition-colors">كيف تعمل</Link>
-          <Link href="#" className="hover:text-primary transition-colors">طلاب موثوقون</Link>
-        </div>
-
-        {/* 3. أزرار الدخول والتسجيل */}
-        <div className="flex gap-3 items-center">
-          <Link href="/login" className="hidden sm:block px-5 py-2.5 text-primary font-bold hover:bg-primary/10 rounded-full transition-colors text-sm">
-            تسجيل الدخول
-          </Link>
-          <Link href="/register" className="px-5 py-2.5 bg-primary text-on-primary rounded-full font-bold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 text-sm">
-            ابـدأ التـبرع
-          </Link>
-        </div>
-
+      </div>
+      
+      {/* 🟢 شلنا flex-row-reverse من الروابط */}
+      <div className="hidden md:flex items-center gap-8 font-['Tajawal'] text-base font-medium">
+        <Link className="text-on-surface-variant hover:text-primary transition-colors" href="/browse">تصفح التبرعات</Link>
+        <Link className="text-on-surface-variant hover:text-primary transition-colors" href="#">كيف نعمل</Link>
+        <Link className="text-on-surface-variant hover:text-primary transition-colors" href="#">من نحن</Link>
+        <Link className="text-on-surface-variant hover:text-primary transition-colors" href="#">طلاب موثوقون</Link>
+      </div>
+      
+      {/* 🟢 شلنا flex-row-reverse من الأزرار */}
+      <div className="flex items-center gap-4">
+        {isLoggedIn ? (
+          <>
+            <button className="px-6 py-2.5 rounded-full text-primary font-medium hover:bg-primary/10 transition-all active:scale-95 duration-200">
+              لوحة التحكم
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="px-6 py-2.5 rounded-full bg-red-50 text-red-600 font-bold hover:bg-red-100 transition-all active:scale-95 duration-200"
+            >
+              تسجيل الخروج
+            </button>
+          </>
+        ) : (
+          <>
+            {/* 🟢 حلينا مشكلة اللون الأبيض باستخدام التدرج المباشر */}
+            <Link href="/register" className="px-6 py-2.5 rounded-full bg-gradient-to-br from-primary to-primary-container text-white font-bold transition-all active:scale-95 duration-200 shadow-md shadow-primary/20">
+              إنشاء حساب
+            </Link>
+            <Link href="/login" className="px-6 py-2.5 rounded-full text-primary font-medium hover:bg-primary/10 transition-all active:scale-95 duration-200">
+              تسجيل الدخول
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   );

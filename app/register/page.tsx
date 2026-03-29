@@ -4,8 +4,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import axios from 'axios';
+import { useRouter } from 'next/navigation'; // 🟢 1. ضفنا استدعاء الراوتر هون
 
 export default function RegisterPage() {
+  // 🟢 2. تعريف الراوتر عشان نقدر ننقل المستخدم بين الصفحات
+  const router = useRouter();
+
   // 1. تعريف المتغيرات اللي رح تمسك بيانات الفورم
   const [formData, setFormData] = useState({
     name: '',
@@ -38,8 +42,7 @@ export default function RegisterPage() {
     try {
       setLoading(true); // تشغيل زر التحميل
       
-      // 🟢 هون السحر: بنبعت البيانات للباك إند تبعك
-      // (تأكد إنو الرابط والبورت بطابقوا مسار التسجيل عندك بالباك إند)
+      // بنبعت البيانات للباك إند
       const res = await axios.post('http://localhost:5000/api/auth/register', {
         name: formData.name,
         email: formData.email,
@@ -47,13 +50,12 @@ export default function RegisterPage() {
       });
 
       // إذا نجح التسجيل
-      setSuccess('تم إنشاء الحساب بنجاح! مبروك 🎉');
-      setFormData({ name: '', email: '', password: '', confirmPassword: '' }); // تفريغ الفورم
+      setSuccess('تم إنشاء الحساب بنجاح! جاري تحويلك للتفعيل... ⏳');
       
-      // هون مستقبلاً بنقدر نحوله لصفحة تسجيل الدخول تلقائياً
-      // window.location.href = '/login'; 
+      // 🟢 3. التعديل هون: استخدمنا formData.email ونقلناه فوراً لصفحة التحقق
+      router.push(`/verify?email=${formData.email}`);
 
-    }  catch (err) {
+    } catch (err) {
       // فحص ذكي: هل الإيرور جاي من Axios؟
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.msg || 'حدث خطأ أثناء إنشاء الحساب ❌');

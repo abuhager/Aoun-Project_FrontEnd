@@ -1,102 +1,101 @@
-'use client';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function Navbar() {
+  const pathname = usePathname();
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isOpen, setIsOpen] = useState(false); // حالة القائمة في الموبايل
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) setIsLoggedIn(true);
-  }, []);
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    if (token) {
+      setIsLoggedIn(true);
+      try {
+        if (storedUser) setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Error parsing user data");
+      }
+    }
+  }, [pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    // 1. تنظيف الداتا
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    
+    // 2. تحديث الـ State فوراً (عشان الأزرار تختفي باللحظة)
     setIsLoggedIn(false);
-    router.push('/login');
+    setUser(null);
+    
+    // 3. إعادة التوجيه مع ريفريش كامل لتنظيف الـ Memory
+    window.location.href = "/login"; 
   };
-
   return (
-    <nav className="fixed top-0 w-full z-[100] bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 md:px-12 py-2 md:py-3 flex justify-between items-center transition-all" dir="rtl">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between" dir="rtl">
       
-      {/* 1. Logo & Desktop Links */}
-      <div className="flex items-center gap-8">
-        <Link href="/" className="text-xl md:text-2xl font-black text-[#006155] hover:opacity-80 transition-opacity">
-          عون
+      {/* 🏠 اللوجو + رابط التصفح الأساسي */}
+      <div className="flex items-center gap-4 md:gap-10">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="w-10 h-10 bg-[#006155] rounded-xl flex items-center justify-center shadow-lg shadow-[#006155]/20 group-hover:rotate-12 transition-transform">
+            <span className="material-symbols-outlined text-white text-2xl">volunteer_activism</span>
+          </div>
+          <span className="text-xl font-black tracking-tighter text-[#191c1d]">عـون</span>
         </Link>
-        
-        {/* روابط الديسكتوب - صغرت الخط لـ text-xs/sm ليكون أرشق */}
-        <div className="hidden md:flex items-center gap-6 text-[13px] font-bold text-[#40493d]">
-          <Link className="hover:text-[#006155] transition-colors relative group" href="/browse">
-            تصفح التبرعات
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#006155] transition-all group-hover:w-full"></span>
+
+        {/* 🛒 رابط Browse (يظهر دايماً للمسجلين) */}
+        {isLoggedIn && (
+          <Link 
+            href="/browse" 
+            className={`flex items-center gap-1.5 text-sm font-black transition-all ${pathname === "/browse" ? "text-[#006155]" : "text-[#40493d] hover:text-[#006155]"}`}
+          >
+            <span className="material-symbols-outlined text-lg">explore</span>
+            تصفح الأغراض
           </Link>
-          <Link className="hover:text-[#006155] transition-colors relative group" href="/add-item">
-            أضف تبرعاً
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#006155] transition-all group-hover:w-full"></span>
-          </Link>
-        </div>
+        )}
       </div>
 
-      {/* 2. Desktop Actions & Mobile Toggle */}
-      <div className="flex items-center gap-2">
-        
-        {/* الأزرار في الديسكتوب */}
-        <div className="hidden md:flex items-center gap-3">
-          {isLoggedIn ? (
-            <>
-              <Link href="/dashboard" className="px-4 py-1.5 text-[13px] font-bold text-[#006155] hover:bg-[#006155]/5 rounded-full transition-all border border-[#006155]/20">
-                لوحة التحكم
+      {/* 🛠️ الأزرار المختصرة */}
+      <div className="flex items-center gap-3 md:gap-6">
+        {isLoggedIn ? (
+          <>
+            {/* 1. زر تبرع الآن: الأخضر المميز */}
+            {pathname !== "/add-item" && (
+              <Link href="/add-item" className="bg-[#006155] text-white px-5 py-2 rounded-full text-xs md:text-sm font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95">
+                <span className="material-symbols-outlined text-sm">add</span>
+                تبرع الآن
               </Link>
-              <button onClick={handleLogout} className="px-4 py-1.5 text-[13px] bg-red-50 text-red-600 font-bold rounded-full hover:bg-red-100 transition-all">
-                خروج
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="px-4 py-1.5 text-[13px] font-bold text-[#40493d] hover:text-[#006155]">
-                دخول
-              </Link>
-              <Link href="/register" className="px-5 py-1.5 text-[13px] bg-[#006155] text-white font-bold rounded-full shadow-sm hover:shadow-md hover:scale-105 transition-all">
-                إنشاء حساب
-              </Link>
-            </>
-          )}
-        </div>
+            )}
 
-        {/* زر الهامبرغر للموبايل */}
-        <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden p-2 text-[#006155] focus:outline-none"
-        >
-          <span className="material-symbols-outlined text-3xl">
-            {isOpen ? 'close' : 'menu'}
-          </span>
-        </button>
+            {/* 2. زر البروفايل (الداشبورد): هو المدخل الوحيد للوحة التحكم */}
+            <Link 
+              href="/dashboard" 
+              className={`flex items-center gap-2 group px-2 py-1 rounded-xl transition-all ${pathname === "/dashboard" ? "bg-[#006155]/5 ring-1 ring-[#006155]/20" : "hover:bg-gray-50"}`}
+              title="لوحة التحكم والبروفايل"
+            >
+              <div className="w-9 h-9 rounded-full bg-[#006155]/10 flex items-center justify-center overflow-hidden border border-[#006155]/10">
+                 <span className="material-symbols-outlined text-[#006155] text-xl">account_circle</span>
+              </div>
+              <span className="hidden md:block text-xs font-black text-[#191c1d] group-hover:text-[#006155]">
+                {user?.name?.split(' ')[0] || "حسابي"}
+              </span>
+            </Link>
+
+            {/* 3. خروج */}
+            <button onClick={handleLogout} className="text-gray-300 hover:text-red-600 transition-colors p-1" title="خروج">
+              <span className="material-symbols-outlined text-xl">logout</span>
+            </button>
+          </>
+        ) : (
+          <Link href="/login" className="bg-[#006155] text-white px-6 py-2 rounded-full text-sm font-bold shadow-md">
+            تسجيل الدخول
+          </Link>
+        )}
       </div>
-
-      {/* 3. Mobile Menu (Drawer) */}
-      {isOpen && (
-        <div className="absolute top-full left-0 w-full bg-white border-b border-gray-100 p-6 flex flex-col gap-4 md:hidden shadow-xl animate-in slide-in-from-top duration-300">
-          <Link onClick={() => setIsOpen(false)} className="text-lg font-bold text-[#40493d]" href="/browse">تصفح التبرعات</Link>
-          <Link onClick={() => setIsOpen(false)} className="text-lg font-bold text-[#40493d]" href="/add-item">أضف تبرعاً</Link>
-          <hr className="border-gray-50" />
-          {isLoggedIn ? (
-            <>
-              <Link onClick={() => setIsOpen(false)} href="/dashboard" className="text-lg font-bold text-[#006155]">لوحة التحكم</Link>
-              <button onClick={() => {handleLogout(); setIsOpen(false);}} className="text-right text-lg font-bold text-red-600">خروج</button>
-            </>
-          ) : (
-            <>
-              <Link onClick={() => setIsOpen(false)} href="/login" className="text-lg font-bold text-[#40493d]">دخول</Link>
-              <Link onClick={() => setIsOpen(false)} href="/register" className="w-full py-3 bg-[#006155] text-white text-center font-bold rounded-xl">إنشاء حساب</Link>
-            </>
-          )}
-        </div>
-      )}
     </nav>
   );
 }

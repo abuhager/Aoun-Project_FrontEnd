@@ -128,18 +128,9 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="relative flex items-center py-4">
-            <div className="flex-grow border-t border-outline-variant/30"></div>
-            <span className="flex-shrink mx-4 text-on-surface-variant text-sm font-medium">أو عبر</span>
-            <div className="flex-grow border-t border-outline-variant/30"></div>
-          </div>
+          
 
-          <div className="space-y-4">
-            <button className="w-full flex items-center justify-center gap-3 py-4 px-8 bg-surface-container-lowest border border-outline-variant/20 rounded-full hover:bg-surface-container-low transition-all active:scale-[0.98]">
-              <img alt="Google" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0VHhfzL0ePqPYg0s8ZBCMRUDCORxG0SsiV0-uuoM7iHIp6Wl4Y1Pr5HGyN2M2uPeu3e7pmg6DhDy4CkUKmd65weJRCH4_5WRXD7O-MWss0ef1CDfJcFdf514rRxvMKs3s9X5Pg83IZVU00i7Kb6XI67Xl-Wt8C6XSibpu46QTWXpJZ2d4EnuF5JHPyGvfZwemShqLc86gNcOPviURl-15sRITomXIZg9BU6D61EkBwAAIiUXjiowBwOJxlnmig5bSWHoXtN10BEc" />
-              <span className="font-bold text-on-surface">تسجيل الدخول بواسطة Google</span>
-            </button>
-          </div>
+         
 
           <p className="text-center text-on-surface-variant">
             ليس لديك حساب؟{' '}

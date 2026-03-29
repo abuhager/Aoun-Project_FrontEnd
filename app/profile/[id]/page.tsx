@@ -9,7 +9,7 @@ import Link from 'next/link';
 export default function PublicProfilePage() {
   const { id } = useParams();
   const [profileData, setProfileData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('donations'); // التبويب الافتراضي
+  const [activeTab, setActiveTab] = useState('donations'); 
   const [loading, setLoading] = useState(true);
 
   const backendUrl = 'http://localhost:5000';
@@ -29,7 +29,7 @@ export default function PublicProfilePage() {
   }, [id]);
 
   if (loading) return <div className="flex justify-center items-center min-h-screen bg-[#f8f9fa]"><div className="w-10 h-10 border-4 border-[#006155] border-t-transparent rounded-full animate-spin"></div></div>;
-  if (!profileData) return <div className="text-center py-20 bg-[#f8f9fa] min-h-screen"><Navbar /><div className="mt-32 font-bold">🛑 هذا الحساب غير موجود</div></div>;
+  if (!profileData) return <div className="text-center py-20 bg-[#f8f9fa] min-h-screen"><Navbar /><div className="mt-32 font-bold text-red-600">🛑 هذا الحساب غير موجود</div></div>;
 
   const { user, stats, allDonations, completedRequests } = profileData;
 
@@ -39,73 +39,144 @@ export default function PublicProfilePage() {
     return `${backendUrl}/${url}`;
   };
 
+  // حلقة لحساب النجوم بناءً على نقاط الثقة (كل 20 نقطة بنجمة)
+  const renderStars = (score: number) => {
+    const stars = [];
+    const fullStars = Math.floor(score / 20);
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <span 
+          key={i} 
+          className={`material-symbols-outlined text-[16px] ${i <= fullStars ? 'text-yellow-400' : 'text-gray-200'}`}
+          style={{ fontVariationSettings: `'FILL' ${i <= fullStars ? 1 : 0}` }}
+        >
+          star
+        </span>
+      );
+    }
+    return stars;
+  };
+
   return (
     <div className="bg-[#f8f9fa] min-h-screen text-[#191c1d] font-body pb-20" dir="rtl">
       <Navbar />
 
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-5xl mx-auto">
         
-        {/* هيدر البروفايل - نفس التصميم السابق */}
-        <section className="relative mb-16">
-          <div className="h-32 md:h-48 w-full rounded-2xl bg-gradient-to-r from-[#006155] to-[#087c6e] shadow-sm"></div>
-          <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-[#f8f9fa] bg-white overflow-hidden shadow-lg flex items-center justify-center">
-            {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-5xl text-[#006155]">account_circle</span>}
+        {/* هيدر البروفايل الفخم */}
+        <section className="relative mb-20">
+          <div className="h-40 md:h-56 w-full rounded-3xl bg-gradient-to-br from-[#006155] via-[#087c6e] to-[#96f7e9] shadow-md relative overflow-hidden">
+             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+             <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-black/5 rounded-full blur-2xl"></div>
+          </div>
+          
+          <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center">
+            <div className="w-28 h-28 md:w-36 md:h-36 rounded-full border-4 border-[#f8f9fa] bg-white overflow-hidden shadow-xl flex items-center justify-center ring-4 ring-[#006155]/5">
+              {user.avatar ? 
+                <img src={user.avatar} className="w-full h-full object-cover" /> : 
+                <span className="material-symbols-outlined text-6xl md:text-7xl text-[#006155]">account_circle</span>
+              }
+            </div>
           </div>
         </section>
 
-        <section className="text-center mb-10">
-          <h1 className="text-2xl font-black">{user.name}</h1>
-          <p className="text-xs text-gray-500 mt-1">انضم في {new Date(user.createdAt).getFullYear()}</p>
+        {/* معلومات المستخدم + التقييم بالنجوم */}
+        <section className="text-center mb-8 mt-4">
+          <h1 className="text-2xl md:text-3xl font-black flex items-center justify-center gap-2">
+            {user.name}
+            {user.email?.includes('.edu') && (
+              <span className="material-symbols-outlined text-[#006e1c] text-xl" title="طالب موثق">verified</span>
+            )}
+          </h1>
+          
+          {/* ⭐ عرض النجوم + عدد المقيمين */}
+<div className="flex flex-col items-center gap-1 mt-1">
+  <div className="flex gap-0.5">
+    {renderStars(user.trustScore || 85)}
+  </div>
+  <div className="flex items-center gap-1 text-[10px] font-bold">
+    <span className="text-yellow-600">
+      {((user.trustScore || 85) / 20).toFixed(1)} / 5
+    </span>
+    <span className="text-gray-400 font-normal">
+      ({stats.totalRatings || 0} تقييم)
+    </span>
+  </div>
+</div>
+
+          <p className="text-[10px] text-gray-500 mt-2 italic">انضم لعون في {new Date(user.createdAt).getFullYear()}</p>
+          
+          <div className="mt-5 flex justify-center">
+            <a 
+              href={`https://wa.me/${user.phone?.replace(/\D/g, '')}`} 
+              target="_blank" 
+              className="bg-[#25D366] text-white px-8 py-2.5 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-[#20ba5a] transition-all shadow-lg active:scale-95 hover:shadow-[#25D366]/20"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 0C5.383 0 0 5.383 0 12.031c0 2.124.553 4.195 1.604 6.015L.234 23.4l5.495-1.44a11.96 11.96 0 0 0 6.302 1.763c6.648 0 12.031-5.383 12.031-12.031S18.679 0 12.031 0zm3.84 17.387c-.165.465-.96 1.05-1.503 1.155-.544.105-1.042.23-3.21-.67-2.613-1.085-4.282-3.765-4.412-3.938-.13-.173-1.054-1.405-1.054-2.68 0-1.275.66-1.905.897-2.16.237-.255.513-.319.682-.319.17 0 .341.005.49.012.16.007.375-.062.571.393.195.455.665 1.62.723 1.745.058.125.097.27.019.43-.078.16-.117.26-.237.41-.12.15-.25.32-.355.45-.115.14-.24.29-.105.504.135.215.6 1.005 1.3 1.635.905.815 1.69 1.07 1.91 1.19.22.12.35.095.48-.07.13-.165.56-.655.71-.88.15-.225.3-.187.5-.112.2.075 1.26.595 1.475.705.215.11.355.165.405.255.05.09.05.52-.115.985z" /></svg>
+              تواصل عبر واتساب
+            </a>
+          </div>
         </section>
 
-        {/* Bento Stats */}
+        {/* Bento Stats Grid */}
         <section className="grid grid-cols-3 gap-3 md:gap-6 mb-12">
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
-            <span className="text-2xl font-black text-[#006155]">{user.trustScore || 85}</span>
-            <p className="text-[10px] font-bold text-gray-500 uppercase">نقاط الثقة</p>
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center flex flex-col items-center justify-center ring-2 ring-yellow-400/5">
+            <span className="text-2xl md:text-3xl font-black text-[#006155]">{user.trustScore || 85}</span>
+            <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">نقاط الثقة</p>
           </div>
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
-            <span className="text-2xl font-black text-[#006155]">{stats.donationsCount}</span>
-            <p className="text-[10px] font-bold text-gray-500 uppercase">إجمالي العطاء</p>
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center flex flex-col items-center justify-center bg-gradient-to-b from-white to-[#006155]/5">
+            <span className="text-2xl md:text-3xl font-black text-[#006155]">{stats.donationsCount}</span>
+            <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">إجمالي العطاء</p>
           </div>
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
-            <span className="text-2xl font-black text-[#005a8c]">{stats.receivedCount}</span>
-            <p className="text-[10px] font-bold text-gray-500 uppercase">أغراض مستلمة</p>
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center flex flex-col items-center justify-center">
+            <span className="text-2xl md:text-3xl font-black text-[#005a8c]">{stats.receivedCount}</span>
+            <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">أغراض مستلمة</p>
           </div>
         </section>
 
-        {/* 🟢 نظام التبويبات (Tabs) الجديد */}
-        <section>
-          <div className="flex border-b border-gray-200 mb-6 gap-6">
-            <button onClick={() => setActiveTab('donations')} className={`pb-3 font-bold text-sm transition-all ${activeTab === 'donations' ? 'text-[#006155] border-b-2 border-[#006155]' : 'text-gray-400'}`}>سجل التبرعات</button>
-            <button onClick={() => setActiveTab('requests')} className={`pb-3 font-bold text-sm transition-all ${activeTab === 'requests' ? 'text-[#006155] border-b-2 border-[#006155]' : 'text-gray-400'}`}>أغراض استلمها</button>
+        {/* سجل النشاط (Tabs) */}
+        <section className="space-y-6">
+          <div className="flex border-b border-gray-200 gap-8">
+            <button onClick={() => setActiveTab('donations')} className={`pb-4 font-black text-sm transition-all relative ${activeTab === 'donations' ? 'text-[#006155]' : 'text-gray-400'}`}>
+              سجل التبرعات
+              {activeTab === 'donations' && <div className="absolute bottom-0 left-0 w-full h-1 bg-[#006155] rounded-full"></div>}
+            </button>
+            <button onClick={() => setActiveTab('requests')} className={`pb-4 font-black text-sm transition-all relative ${activeTab === 'requests' ? 'text-[#006155]' : 'text-gray-400'}`}>
+              أغراض استلمها
+              {activeTab === 'requests' && <div className="absolute bottom-0 left-0 w-full h-1 bg-[#006155] rounded-full"></div>}
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {(activeTab === 'donations' ? allDonations : completedRequests).map((item: any) => (
-              <Link href={`/items/${item._id}`} key={item._id} className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm flex flex-col group">
-                <div className="relative h-32 overflow-hidden bg-gray-50">
-                  <img src={getImageUrl(item.imageUrl)} className={`w-full h-full object-cover ${item.status === 'تم التسليم' ? 'grayscale opacity-60' : ''}`} />
-                  {/* 🟢 شارة الحالة (ما بيختفي، بتتغير حالته) */}
-                  <div className="absolute top-2 right-2">
-                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold text-white ${
-                      item.status === 'تم التسليم' ? 'bg-gray-500' : 
-                      item.status === 'محجوز' ? 'bg-[#005a8c]' : 'bg-[#006155]'
-                    }`}>
+              <Link href={`/items/${item._id}`} key={item._id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm flex flex-col group hover:shadow-md transition-all">
+                <div className="relative h-40 overflow-hidden bg-gray-50">
+                  <img src={getImageUrl(item.imageUrl)} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${item.status === 'تم التسليم' ? 'grayscale-[0.5] opacity-80' : ''}`} />
+                  <div className="absolute top-3 right-3">
+                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black text-white ${
+                      item.status === 'تم التسليم' ? 'bg-gray-500/80' : 
+                      item.status === 'محجوز' ? 'bg-[#005a8c]/80' : 'bg-[#006155]/80'
+                    } backdrop-blur-md`}>
                       {item.status}
                     </span>
                   </div>
                 </div>
-                <div className="p-3">
-                  <h3 className="text-xs font-bold truncate mb-1">{item.title}</h3>
-                  <span className="text-[9px] text-gray-400 block">{new Date(item.createdAt).toLocaleDateString('ar-EG')}</span>
+                <div className="p-4">
+                  <h3 className="text-sm font-bold truncate mb-1 text-[#191c1d]">{item.title}</h3>
+                  <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                    <span className="material-symbols-outlined text-xs">calendar_today</span>
+                    {new Date(item.createdAt).toLocaleDateString('ar-EG')}
+                  </div>
                 </div>
               </Link>
             ))}
           </div>
 
           {(activeTab === 'donations' ? allDonations : completedRequests).length === 0 && (
-            <div className="py-10 text-center text-gray-400 text-sm italic">لا يوجد سجلات لعرضها حالياً.</div>
+            <div className="py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+               <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">inventory_2</span>
+               <p className="text-gray-400 text-sm font-bold">لا يوجد سجلات لعرضها حالياً.</p>
+            </div>
           )}
         </section>
 

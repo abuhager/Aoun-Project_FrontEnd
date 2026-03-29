@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: ''
   });
@@ -38,6 +39,7 @@ export default function RegisterPage() {
       const res = await axios.post('http://localhost:5000/api/auth/register', {
         name: formData.name,
         email: formData.email,
+        phone: formData.phone,
         password: formData.password,
       });
 
@@ -59,26 +61,47 @@ export default function RegisterPage() {
     <div className="bg-surface text-on-background min-h-screen flex flex-col overflow-x-hidden">
       <main className="flex-grow flex flex-col md:flex-row-reverse">
         
-        {/* القسم الأيسر: الصورة - ضبطت الارتفاع للموبايل والحجم للابتوب */}
+        {/* 🟢 القسم الأيسر: الصورة مع التعتيم والوضوح */}
         <section className="hidden md:flex md:w-1/2 relative overflow-hidden bg-primary items-center justify-center min-h-[300px] md:min-h-full">
           <div className="absolute inset-0 z-0">
-            <Image src="/students-bg.jpg" alt="University students smiling" fill className="object-cover mix-blend-overlay opacity-60" priority />
+            <Image 
+              src="/students-bg.jpg" 
+              alt="University students smiling" 
+              fill 
+              className="object-cover" 
+              priority 
+            />
+            {/* طبقة تعتيم Overlay سوداء لضمان وضوح النص الأبيض */}
+            <div className="absolute inset-0 bg-black/50 z-10"></div>
           </div>
-          <div className="relative z-10 p-6 md:p-12 max-w-lg">
-            <div className="glass-effect p-6 md:p-8 rounded-2xl shadow-2xl border border-white/20">
-              <h2 className="text-2xl md:text-3xl font-bold text-primary mb-4 leading-tight">انضم إلى مجتمع عون</h2>
-              <p className="text-on-surface-variant text-base md:text-lg leading-relaxed mb-6">
+
+          <div className="relative z-20 p-6 md:p-12 max-w-lg w-full">
+            {/* تأثير زجاجي Glassmorphism */}
+            <div className="bg-white/10 backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl border border-white/20">
+              <div className="w-12 h-12 rounded-2xl bg-[#96f7e9]/20 flex items-center justify-center mb-6 border border-[#96f7e9]/30">
+                <span className="material-symbols-outlined text-[#96f7e9] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>hub</span>
+              </div>
+              
+              <h2 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
+                انضم إلى <br /> مجتمع <span className="text-[#96f7e9]">عون</span>
+              </h2>
+              
+              <p className="text-white/90 text-base md:text-lg leading-relaxed mb-8">
                 نحن نبني جسوراً من العطاء بين طلاب الجامعات والمجتمع. سجل اليوم لتكون جزءاً من التغيير الإيجابي.
               </p>
-              <div className="flex items-center gap-4 text-primary">
-                <span className="material-symbols-outlined text-3xl md:text-4xl">verified</span>
-                <span className="font-bold text-lg md:text-xl">شارة الطالب الموثق بانتظارك</span>
+              
+              <div className="flex items-center gap-4 text-white bg-white/10 p-4 rounded-2xl border border-white/10">
+                <span className="material-symbols-outlined text-3xl md:text-4xl text-[#96f7e9]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                <div className="flex flex-col">
+                    <span className="font-bold text-lg">شارة الطالب الموثق</span>
+                    <span className="text-xs text-white/70">استخدم إيميلك الجامعي للحصول عليها</span>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* القسم الأيمن: الفورم - رشقناه للابتوب وزبطناه للموبايل */}
+        {/* القسم الأيمن: فورم التسجيل */}
         <section className="w-full md:w-1/2 flex items-center justify-center p-6 md:p-10 lg:p-16 bg-surface">
           <div className="w-full max-w-md">
             
@@ -88,8 +111,8 @@ export default function RegisterPage() {
               <p className="text-sm text-on-surface-variant mt-1">ابدأ رحلتك في العمل المجتمعي اليوم</p>
             </div>
 
-            {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-xs md:text-sm text-center font-bold">{error}</div>}
-            {success && <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-xs md:text-sm text-center font-bold">{success}</div>}
+            {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-xs md:text-sm text-center font-bold border border-red-200">{error}</div>}
+            {success && <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-xs md:text-sm text-center font-bold border border-green-200">{success}</div>}
 
             <form className="space-y-4 md:space-y-5" onSubmit={handleSubmit}>
               
@@ -97,13 +120,7 @@ export default function RegisterPage() {
                 <label className="block text-xs md:text-sm font-bold text-on-surface-variant mr-1">الاسم الكامل</label>
                 <div className="relative">
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">person</span>
-                  <input 
-                    name="name" 
-                    value={formData.name} 
-                    onChange={handleChange} 
-                    required 
-                    className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm md:text-base" placeholder="أدخل اسمك الثلاثي" type="text" 
-                  />
+                  <input name="name" value={formData.name} onChange={handleChange} required className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm md:text-base" placeholder="أدخل اسمك الثلاثي" type="text" />
                 </div>
               </div>
 
@@ -111,62 +128,38 @@ export default function RegisterPage() {
                 <label className="block text-xs md:text-sm font-bold text-on-surface-variant mr-1">البريد الإلكتروني</label>
                 <div className="relative">
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">mail</span>
-                  <input 
-                    name="email" 
-                    value={formData.email} 
-                    onChange={handleChange} 
-                    required 
-                    className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base" dir="ltr" placeholder="example@university.edu" type="email" 
-                  />
-                </div>
-                <div className="flex items-center gap-2 mt-2 mr-1 px-3 py-2 bg-secondary/10 rounded-lg">
-                  <span className="material-symbols-outlined text-secondary text-xs md:text-sm">info</span>
-                  <p className="text-[10px] md:text-xs font-medium text-secondary">سجل ببريدك الجامعي للحصول على شارة موثق</p>
+                  <input name="email" value={formData.email} onChange={handleChange} required className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base" dir="ltr" placeholder="example@university.edu" type="email" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:gap-5">
+              <div className="space-y-1 md:space-y-2">
+                <label className="block text-xs md:text-sm font-bold text-on-surface-variant mr-1">رقم الواتساب</label>
+                <div className="relative">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">call</span>
+                  <input name="phone" value={formData.phone} onChange={handleChange} required className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base" dir="ltr" placeholder="962790000000" type="tel" />
+                </div>
+                <p className="text-[10px] text-outline-variant mr-1">أدخل الرقم مع رمز الدولة (962...)</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                 <div className="space-y-1 md:space-y-2">
                   <label className="block text-xs md:text-sm font-bold text-on-surface-variant mr-1">كلمة المرور</label>
                   <div className="relative">
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">lock</span>
-                    <input 
-                      name="password" 
-                      value={formData.password} 
-                      onChange={handleChange} 
-                      required minLength={6} 
-                      className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base" dir="ltr" placeholder="••••••••" type="password" 
-                    />
+                    <input name="password" value={formData.password} onChange={handleChange} required minLength={6} className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base" dir="ltr" placeholder="••••••••" type="password" />
                   </div>
                 </div>
                 <div className="space-y-1 md:space-y-2">
-                  <label className="block text-xs md:text-sm font-bold text-on-surface-variant mr-1">تأكيد كلمة المرور</label>
+                  <label className="block text-xs md:text-sm font-bold text-on-surface-variant mr-1">تأكيد المرور</label>
                   <div className="relative">
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">lock_reset</span>
-                    <input 
-                      name="confirmPassword" 
-                      value={formData.confirmPassword} 
-                      onChange={handleChange} 
-                      required minLength={6} 
-                      className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base" dir="ltr" placeholder="••••••••" type="password" 
-                    />
+                    <input name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required minLength={6} className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base" dir="ltr" placeholder="••••••••" type="password" />
                   </div>
                 </div>
               </div>
 
-              <button disabled={loading} type="submit" className="w-full py-3.5 md:py-4 bg-gradient-to-r from-primary to-primary-container text-on-primary rounded-full font-bold text-base md:text-lg shadow-lg hover:scale-[1.02] active:scale-95 transition-all mt-2 disabled:opacity-70">
+              <button disabled={loading} type="submit" className="w-full py-3.5 md:py-4 bg-primary text-on-primary rounded-full font-bold text-base md:text-lg shadow-lg hover:bg-primary/90 transition-all mt-2 disabled:opacity-70 active:scale-95">
                 {loading ? 'جاري الإنشاء...' : 'إنشاء حساب'}
-              </button>
-
-              <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t border-outline-variant/30"></div>
-                <span className="flex-shrink mx-4 text-outline text-[10px] md:text-xs font-medium">أو عبر</span>
-                <div className="flex-grow border-t border-outline-variant/30"></div>
-              </div>
-
-              <button type="button" className="w-full py-3 md:py-4 bg-surface-container-low text-on-surface font-semibold rounded-full border border-outline-variant/20 flex items-center justify-center gap-3 hover:bg-surface-container-highest transition-all text-sm md:text-base">
-                <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path></svg>
-                Google
               </button>
 
               <p className="text-center text-on-surface-variant text-xs md:text-sm mt-4 font-medium">

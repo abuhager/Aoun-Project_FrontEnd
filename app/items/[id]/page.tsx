@@ -14,7 +14,6 @@ export default function ItemDetailsPage() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [actionLoading, setActionLoading] = useState(false);
   
-  // 🟢 ستيت جديدة لمعرفة الـ ID تبع المستخدم الحالي
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const backendUrl = 'http://localhost:5000';
@@ -31,7 +30,6 @@ export default function ItemDetailsPage() {
   };
 
   useEffect(() => {
-    // 🟢 فك التشفير عن التوكن لمعرفة مين اليوزر اللي فاتح الصفحة
     const token = localStorage.getItem('token');
     if (token) {
       try {
@@ -86,10 +84,9 @@ export default function ItemDetailsPage() {
   if (loading) return <div className="flex justify-center items-center min-h-screen bg-[#f8f9fa]"><div className="w-10 h-10 border-4 border-[#006155] border-t-transparent rounded-full animate-spin"></div></div>;
   if (!item) return <div className="text-center py-20 font-bold">🛑 القطعة غير موجودة</div>;
 
-  // 🟢 اللوجيك الذكي لمعرفة علاقة اليوزر الحالي بالقطعة
-  const isDonor = item?.donor?._id === currentUserId; // هل أنا صاحب القطعة؟
-  const isBooker = item?.bookedBy === currentUserId; // هل أنا اللي حجزتها؟
-  const isWaitlisted = item?.waitlist?.some((w: any) => w.user === currentUserId); // هل أنا بالطابور؟
+  const isDonor = item?.donor?._id === currentUserId;
+  const isBooker = item?.bookedBy === currentUserId;
+  const isWaitlisted = item?.waitlist?.some((w: any) => w.user === currentUserId);
 
   return (
     <div className="bg-[#f8f9fa] min-h-screen text-[#191c1d] font-body" dir="rtl">
@@ -125,18 +122,32 @@ export default function ItemDetailsPage() {
               ))}
             </div>
 
-            <div className="bg-white p-4 md:p-5 rounded-2xl flex items-center justify-between border border-[#edeeef] shadow-sm">
+            {/* 🟢 بطاقة المتبرع المحدثة (رابط للبروفايل) */}
+            <Link 
+              href={`/profile/${item.donor?._id}`}
+              className="bg-white p-4 md:p-5 rounded-2xl flex items-center justify-between border border-[#edeeef] shadow-sm hover:bg-gray-50 transition-colors group"
+            >
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-slate-100 overflow-hidden border border-gray-100 flex items-center justify-center">
                   {item.donor?.avatar ? <img src={item.donor.avatar} className="object-cover w-full h-full" /> : <span className="material-symbols-outlined text-gray-400">person</span>}
                 </div>
-                <div><h3 className="font-bold text-sm md:text-base">{item.donor?.name || 'متبرع عون'}</h3><span className="px-2 py-0.5 bg-[#006e1c]/10 text-[#006e1c] text-[8px] md:text-[10px] rounded font-bold uppercase">طالب موثق</span></div>
+                <div>
+                  <h3 className="font-bold text-sm md:text-base group-hover:text-[#006155] transition-colors">{item.donor?.name || 'متبرع عون'}</h3>
+                  {item.donor?.email?.includes('.edu') ? (
+                    <span className="px-2 py-0.5 bg-[#006e1c]/10 text-[#006e1c] text-[8px] md:text-[10px] rounded font-bold uppercase">طالب موثق</span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-gray-100 text-[#40493d] text-[8px] md:text-[10px] rounded font-bold uppercase">مستخدم</span>
+                  )}
+                </div>
               </div>
-              <div className="text-center">
-                <span className="text-lg md:text-xl font-black text-[#006e1c] block">{item.donor?.trustScore || 85}</span>
-                <p className="text-[8px] md:text-[10px] font-bold text-[#40493d]">نقاط الثقة</p>
+              <div className="flex items-center gap-4">
+                <div className="text-center">
+                  <span className="text-lg md:text-xl font-black text-[#006e1c] block">{item.donor?.trustScore || 85}</span>
+                  <p className="text-[8px] md:text-[10px] font-bold text-[#40493d]">نقاط الثقة</p>
+                </div>
+                <span className="material-symbols-outlined text-gray-300 group-hover:text-[#006155] transition-colors">chevron_left</span>
               </div>
-            </div>
+            </Link>
 
             <div className="flex flex-col gap-3 md:gap-4 pt-2">
               {message.text && (
@@ -145,7 +156,6 @@ export default function ItemDetailsPage() {
                 </div>
               )}
               
-              {/* 🟢 عرض الأزرار بناءً على علاقة المستخدم بالقطعة */}
               <div className="flex flex-col gap-3 w-full">
                 {isDonor ? (
                   <div className="w-full py-4 bg-gray-100 text-[#40493d] rounded-full font-bold text-center border border-gray-200 text-sm md:text-base">

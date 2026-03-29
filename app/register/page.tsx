@@ -36,10 +36,10 @@ export default function RegisterPage() {
 
     try {
       setLoading(true);
-      const res = await axios.post('http://localhost:5000/api/auth/register', {
+       await axios.post('http://localhost:5000/api/auth/register', {
         name: formData.name,
         email: formData.email,
-        phone: formData.phone,
+        phone: "962" + formData.phone,
         password: formData.password,
       });
 
@@ -59,10 +59,10 @@ export default function RegisterPage() {
 
   return (
     <div className="bg-surface text-on-background min-h-screen flex flex-col overflow-x-hidden">
-      <main className="flex-grow flex flex-col md:flex-row-reverse">
+      <main className="grow flex flex-col md:flex-row-reverse">
         
         {/* 🟢 القسم الأيسر: الصورة مع التعتيم والوضوح */}
-        <section className="hidden md:flex md:w-1/2 relative overflow-hidden bg-primary items-center justify-center min-h-[300px] md:min-h-full">
+        <section className="hidden md:flex md:w-1/2 relative overflow-hidden bg-primary items-center justify-center min-h-75 md:min-h-full">
           <div className="absolute inset-0 z-0">
             <Image 
               src="/students-bg.jpg" 
@@ -132,14 +132,33 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="space-y-1 md:space-y-2">
-                <label className="block text-xs md:text-sm font-bold text-on-surface-variant mr-1">رقم الواتساب</label>
-                <div className="relative">
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">call</span>
-                  <input name="phone" value={formData.phone} onChange={handleChange} required className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base" dir="ltr" placeholder="962790000000" type="tel" />
-                </div>
-                <p className="text-[10px] text-outline-variant mr-1">أدخل الرقم مع رمز الدولة (962...)</p>
-              </div>
+            <div className="space-y-1.5">
+  <label className="text-xs font-bold text-gray-500 mr-2">رقم الهاتف (للتواصل)</label>
+  <div className="relative group">
+    {/* أيقونة الاتصال */}
+    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl group-focus-within:text-primary transition-colors z-10">call</span>
+
+    {/* مفتاح الأردن الثابت مع العلم */}
+    <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-[#edeeef] pointer-events-none select-none z-10">
+      <span className="text-sm">🇯🇴</span>
+      <span className="text-sm font-black text-on-surface-variant mt-0.5" dir="ltr">+962</span>
+      <div className="w-px h-4 bg-gray-200 ml-1"></div>
+    </div>
+
+    {/* حقل الإدخال */}
+    <input 
+      name="phone" 
+      value={formData.phone} 
+      onChange={handleChange} 
+      required 
+      maxLength={9} // 9 أرقام بس (بدون الصفر)
+      className="w-full pr-12 pl-[105px] py-3 md:py-4 bg-surface-container-highest rounded-xl border-none outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base font-bold tracking-widest placeholder:tracking-normal placeholder:font-normal" 
+      dir="ltr" 
+      placeholder="790000000" 
+      type="tel" 
+    />
+  </div>
+</div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                 <div className="space-y-1 md:space-y-2">

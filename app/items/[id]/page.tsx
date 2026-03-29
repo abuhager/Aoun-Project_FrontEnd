@@ -1,33 +1,61 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
+import Image from 'next/image';
+
+// 1. تعريف الأنواع للتخلص من مشاكل "any"
+interface Donor {
+  _id: string;
+  name: string;
+  avatar?: string;
+  trustScore: number;
+}
+
+interface WaitlistEntry {
+  user: { _id: string } | string;
+}
+
+interface Item {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  condition?: string;
+  status: string;
+  imageUrl: string;
+  location: string;
+  createdAt: string;
+  donor: Donor;
+  bookedBy?: { _id: string } | string;
+  waitlist: WaitlistEntry[];
+}
 
 export default function ItemDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [item, setItem] = useState<any>(null);
+  const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [actionLoading, setActionLoading] = useState(false);
-  
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const backendUrl = 'http://localhost:5000';
 
-  const fetchItem = async () => {
+  // 2. استخدام useCallback لحل مشكلة exhaustive-deps
+  const fetchItem = useCallback(async () => {
     try {
       const res = await axios.get(`${backendUrl}/api/items/${id}`);
       setItem(res.data);
-    } catch (err) {
+    } catch {
       console.error("خطأ في جلب البيانات");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -35,19 +63,13 @@ export default function ItemDetailsPage() {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setCurrentUserId(payload.user.id);
-      } catch (e) {
+      } catch {
         console.error("خطأ في قراءة التوكن");
       }
     }
     
     if (id) fetchItem();
-  }, [id]);
-
-  const getImageUrl = (url: string) => {
-    if (!url) return 'https://via.placeholder.com/600?text=No+Image';
-    if (url.startsWith('http')) return url;
-    return `${backendUrl}/${url}`;
-  };
+  }, [id, fetchItem]);
 
   const handleRequestItem = async () => {
     const token = localStorage.getItem('token');
@@ -58,155 +80,179 @@ export default function ItemDetailsPage() {
       const res = await axios.put(`${backendUrl}/api/items/book/${id}`, {}, { headers: { 'x-auth-token': token } });
       setMessage({ type: 'success', text: res.data.msg });
       fetchItem(); 
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.response?.data?.msg || "حدث خطأ أثناء الطلب" });
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setMessage({ type: 'error', text: err.response?.data?.msg || "حدث خطأ أثناء الطلب" });
+      } else {
+        setMessage({ type: 'error', text: "حدث خطأ غير متوقع" });
+      }
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleCancelBooking = async () => {
-    if (!confirm('هل أنت متأكد أنك تريد إلغاء طلبك لهذا الغرض؟')) return;
-    const token = localStorage.getItem('token');
+  const handleCancelAction = async () => {
+    const isBooker = (typeof item?.bookedBy === 'object' ? item.bookedBy?._id : item?.bookedBy) === currentUserId;
+    const confirmText = isBooker 
+      ? 'هل أنت متأكد أنك تريد إلغاء حجزك لهذه القطعة؟' 
+      : 'هل أنت متأكد أنك تريد الانسحاب من قائمة الانتظار؟';
+      
+    if (!confirm(confirmText)) return;
     
+    const token = localStorage.getItem('token');
     try {
       setActionLoading(true);
       const res = await axios.put(`${backendUrl}/api/items/cancel/${id}`, {}, { headers: { 'x-auth-token': token } });
       setMessage({ type: 'success', text: res.data.msg });
       fetchItem(); 
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.response?.data?.msg || "حدث خطأ أثناء الإلغاء" });
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setMessage({ type: 'error', text: err.response?.data?.msg || "حدث خطأ أثناء العملية" });
+      } else {
+        setMessage({ type: 'error', text: "حدث خطأ غير متوقع" });
+      }
     } finally {
       setActionLoading(false);
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center min-h-screen bg-[#f8f9fa]"><div className="w-10 h-10 border-4 border-[#006155] border-t-transparent rounded-full animate-spin"></div></div>;
+  if (loading) return (
+    <div className="flex justify-center items-center min-h-screen bg-surface">
+      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+  
   if (!item) return <div className="text-center py-20 font-bold">🛑 القطعة غير موجودة</div>;
 
-  const isDonor = item?.donor?._id === currentUserId;
-  const isBooker = item?.bookedBy === currentUserId;
-  const isWaitlisted = item?.waitlist?.some((w: any) => w.user === currentUserId);
+  const isDonor = item.donor?._id === currentUserId;
+  const isBooker = (typeof item.bookedBy === 'object' ? item.bookedBy?._id : item.bookedBy) === currentUserId;
+  const isWaitlisted = item.waitlist?.some((w) => (typeof w.user === 'object' ? w.user._id : w.user) === currentUserId);
 
   return (
-    <div className="bg-[#f8f9fa] min-h-screen text-[#191c1d] font-body" dir="rtl">
+    <div className="bg-surface min-h-screen text-[#191c1d] font-body pb-20" dir="rtl">
       <Navbar />
-      <main className="pt-20 md:pt-24 pb-16 px-4 md:px-8 max-w-5xl mx-auto">
-        <nav className="mb-4 md:mb-6 flex items-center gap-2 text-[#40493d] text-xs md:text-sm font-medium">
-          <Link className="hover:text-[#006155]" href="/browse">التبرعات</Link>
-          <span className="material-symbols-outlined text-[10px] md:text-xs">chevron_left</span>
-          <span className="text-[#191c1d] truncate max-w-[150px] md:max-w-xs">{item.title}</span>
+      <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-5xl mx-auto">
+        
+        {/* Breadcrumbs مع تحسين الكلاسات */}
+        <nav className="mb-6 flex items-center gap-2 text-on-surface-variant text-xs md:text-sm font-medium">
+          <Link className="hover:text-primary transition-colors" href="/browse">تصفح التبرعات</Link>
+          <span className="material-symbols-outlined text-[10px] md:text-xs text-gray-400">chevron_left</span>
+          <span className="text-[#191c1d] font-bold truncate max-w-37.5 md:max-w-xs">{item.title}</span>
         </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 items-start">
-          <div className="order-2 lg:order-1 flex flex-col gap-4 md:gap-6">
-            <div className="relative rounded-2xl md:rounded-3xl overflow-hidden bg-white aspect-video md:aspect-square border border-[#edeeef] shadow-sm">
-              <img src={getImageUrl(item.imageUrl || item.image)} className="w-full h-full object-cover" alt={item.title} />
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-start">
+          
+          {/* Image Section مع استخدام Next/Image */}
+          <div className="flex flex-col gap-4">
+          <div className="relative rounded-3xl overflow-hidden bg-white aspect-square border border-[#edeeef] shadow-sm group">
+  {item.imageUrl ? (
+    <Image 
+      src={item.imageUrl.startsWith('http') ? item.imageUrl : `${backendUrl}/${item.imageUrl}`} 
+      alt={item.title} 
+      fill 
+      className="object-cover group-hover:scale-105 transition-transform duration-500"
+      unoptimized 
+    />
+  ) : (
+    <div className="w-full h-full flex items-center justify-center bg-gray-50">
+      <span className="material-symbols-outlined text-6xl text-gray-200">image</span>
+    </div>
+  )}
+</div>
           </div>
 
-          <div className="order-1 lg:order-2 flex flex-col gap-5 md:gap-6">
-            <div className="space-y-2 md:space-y-3">
-              <span className="px-3 py-1 rounded-md bg-[#97f3e2]/30 text-[#00201b] text-[10px] md:text-xs font-bold inline-block border border-[#97f3e2]">{item.category}</span>
-              <h1 className="text-2xl md:text-4xl font-black text-[#006155] font-headline leading-tight">{item.title}</h1>
-              <p className="text-sm md:text-base text-[#40493d] leading-relaxed">{item.description}</p>
+          {/* Details Section */}
+          <div className="flex flex-col gap-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                 <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold border border-gray-200">{item.category}</span>
+                 {item.condition && <span className="px-3 py-1 rounded-lg bg-primary/5 text-primary text-[10px] font-bold border border-primary/10">{item.condition}</span>}
+              </div>
+              <h1 className="text-3xl md:text-4xl font-black text-[#191c1d] font-headline leading-tight">{item.title}</h1>
+              <p className="text-sm md:text-base text-on-surface-variant leading-relaxed bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">{item.description}</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 md:gap-4">
-              {[{ label: 'الحالة', val: item.condition || 'مستعمل ممتاز', ic: 'check_circle' }, { label: 'المدينة', val: item.location || 'عمان', ic: 'location_on' }, { label: 'القسم', val: item.category, ic: 'category' }].map((s, i) => (
-                <div key={i} className="bg-white p-3 md:p-4 rounded-xl border-b-2 border-[#006155] shadow-sm border border-[#edeeef] text-center">
-                  <span className="material-symbols-outlined text-[#006155] text-lg md:text-xl mb-1">{s.ic}</span>
-                  <p className="text-[9px] md:text-[10px] text-[#40493d] mb-0.5">{s.label}</p>
-                  <p className="font-bold text-xs md:text-sm truncate">{s.val}</p>
+            {/* Waitlist Info */}
+            {item.status === 'محجوز' && item.waitlist?.length > 0 && (
+              <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-100 rounded-xl">
+                 <span className="material-symbols-outlined text-orange-600 text-lg">groups</span>
+                 <p className="text-xs font-bold text-orange-700">هناك {item.waitlist.length} طلاب في قائمة الانتظار لهذا الغرض.</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-3">
+              {[{ label: 'الموقع', val: item.location, ic: 'distance' }, { label: 'التاريخ', val: new Date(item.createdAt).toLocaleDateString('ar-EG'), ic: 'event' }, { label: 'الموثوقية', val: item.donor?.trustScore + '%', ic: 'verified_user' }].map((s, i) => (
+                <div key={i} className="bg-white p-3 rounded-2xl border border-gray-100 text-center shadow-sm">
+                  <span className="material-symbols-outlined text-primary text-xl mb-1">{s.ic}</span>
+                  <p className="text-[9px] text-gray-400 font-bold mb-0.5">{s.label}</p>
+                  <p className="font-black text-[11px] truncate text-primary">{s.val}</p>
                 </div>
               ))}
             </div>
 
-            {/* 🟢 بطاقة المتبرع المحدثة (رابط للبروفايل) */}
-            <Link 
-              href={`/profile/${item.donor?._id}`}
-              className="bg-white p-4 md:p-5 rounded-2xl flex items-center justify-between border border-[#edeeef] shadow-sm hover:bg-gray-50 transition-colors group"
-            >
+            {/* Donor Card */}
+            <Link href={`/profile/${item.donor?._id}`} className="bg-white p-4 rounded-2xl flex items-center justify-between border border-gray-100 shadow-sm hover:ring-2 ring-primary/10 transition-all group">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-slate-100 overflow-hidden border border-gray-100 flex items-center justify-center">
-                  {item.donor?.avatar ? <img src={item.donor.avatar} className="object-cover w-full h-full" /> : <span className="material-symbols-outlined text-gray-400">person</span>}
+                <div className="h-12 w-12 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden relative">
+                  {item.donor?.avatar ? (
+                    <Image src={item.donor.avatar} alt={item.donor.name} fill className="object-cover" />
+                  ) : (
+                    <span className="material-symbols-outlined text-gray-300 text-3xl">account_circle</span>
+                  )}
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm md:text-base group-hover:text-[#006155] transition-colors">{item.donor?.name || 'متبرع عون'}</h3>
-                  {item.donor?.email?.includes('.edu') ? (
-                    <span className="px-2 py-0.5 bg-[#006e1c]/10 text-[#006e1c] text-[8px] md:text-[10px] rounded font-bold uppercase">طالب موثق</span>
-                  ) : (
-                    <span className="px-2 py-0.5 bg-gray-100 text-[#40493d] text-[8px] md:text-[10px] rounded font-bold uppercase">مستخدم</span>
+                  <h3 className="font-black text-sm group-hover:text-primary transition-colors">{item.donor?.name}</h3>
+                  {/* 🟢 الشارة الذكية بناءً على تقييم الثقة */}
+                  {(item.donor?.trustScore ?? 0) >= 90 && (
+                    <div className="flex items-center gap-1 mt-1 bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full w-max border border-blue-100">
+                      <span className="material-symbols-outlined text-[12px]">verified</span>
+                      <span className="text-[9px] font-black tracking-wide">عضو موثوق</span>
+                    </div>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <span className="text-lg md:text-xl font-black text-[#006e1c] block">{item.donor?.trustScore || 85}</span>
-                  <p className="text-[8px] md:text-[10px] font-bold text-[#40493d]">نقاط الثقة</p>
-                </div>
-                <span className="material-symbols-outlined text-gray-300 group-hover:text-[#006155] transition-colors">chevron_left</span>
-              </div>
+              <span className="material-symbols-outlined text-gray-300 group-hover:-translate-x-1 transition-transform">chevron_left</span>
             </Link>
 
-            <div className="flex flex-col gap-3 md:gap-4 pt-2">
+            {/* Action Buttons */}
+            <div className="space-y-4 mt-2">
               {message.text && (
-                <div className={`p-3 md:p-4 rounded-xl text-center text-xs md:text-sm font-bold border ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : message.text.includes('الانتظار') ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                <div className={`p-4 rounded-2xl text-center text-xs font-bold border animate-pulse ${
+                  message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'
+                }`}>
                   {message.text}
                 </div>
               )}
-              
-              <div className="flex flex-col gap-3 w-full">
+
+              <div className="flex flex-col gap-3">
                 {isDonor ? (
-                  <div className="w-full py-4 bg-gray-100 text-[#40493d] rounded-full font-bold text-center border border-gray-200 text-sm md:text-base">
-                    هذا التبرع خاص بك 🎁
+                  <div className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-bold text-center border-2 border-dashed border-gray-200 text-sm">
+                    هذا الغرض معروض من قبلك 🎁
                   </div>
                 ) : item.status === 'تم التسليم' ? (
-                  <button disabled className="w-full bg-gray-400 text-white text-sm md:text-base py-3 md:py-4 rounded-full font-bold cursor-not-allowed">
-                    تم التسليم
-                  </button>
+                  <div className="w-full py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold text-center border border-gray-200 text-sm flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">task_alt</span> تم تسليم هذا التبرع
+                  </div>
                 ) : isBooker ? (
-                  <button 
-                    disabled={actionLoading}
-                    onClick={handleCancelBooking} 
-                    className="w-full bg-red-50 text-red-600 border border-red-200 text-sm md:text-base py-3 md:py-4 rounded-full font-bold hover:bg-red-100 transition-all active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-lg">cancel</span> إلغاء حجز القطعة
+                  <button onClick={handleCancelAction} disabled={actionLoading} className="w-full bg-red-50 text-red-600 border border-red-200 py-4 rounded-2xl font-black text-sm hover:bg-red-100 transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">cancel</span> إلغاء الحجز الحالي
                   </button>
                 ) : isWaitlisted ? (
-                  <button 
-                    disabled={actionLoading}
-                    onClick={handleCancelBooking} 
-                    className="w-full bg-orange-50 text-orange-600 border border-orange-200 text-sm md:text-base py-3 md:py-4 rounded-full font-bold hover:bg-orange-100 transition-all active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-lg">person_remove</span> الانسحاب من الطابور
+                  <button onClick={handleCancelAction} disabled={actionLoading} className="w-full bg-orange-50 text-orange-600 border border-orange-200 py-4 rounded-2xl font-black text-sm hover:bg-orange-100 transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">person_remove</span> الانسحاب من الانتظار
                   </button>
                 ) : item.status === 'متاح' ? (
-                  <button 
-                    disabled={actionLoading} 
-                    onClick={handleRequestItem} 
-                    className="w-full bg-[#006155] hover:bg-[#087c6e] text-white text-sm md:text-base py-3 md:py-4 rounded-full font-bold shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
-                  >
-                    {actionLoading ? 'جاري المعالجة...' : <><span className="material-symbols-outlined text-lg">volunteer_activism</span> اطلب هذه القطعة</>}
+                  <button onClick={handleRequestItem} disabled={actionLoading} className="w-full bg-primary text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 hover:bg-[#004d44] transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">shopping_cart_checkout</span>
+                    {actionLoading ? 'جاري الحجز...' : 'احجز هذه القطعة الآن'}
                   </button>
                 ) : item.status === 'محجوز' ? (
-                  <button 
-                    disabled={actionLoading} 
-                    onClick={handleRequestItem} 
-                    className="w-full bg-[#005a8c] hover:bg-[#004a75] text-white text-sm md:text-base py-3 md:py-4 rounded-full font-bold shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
-                  >
-                    {actionLoading ? 'جاري المعالجة...' : <><span className="material-symbols-outlined text-lg">hourglass_empty</span> الانضمام لطابور الانتظار</>}
+                  <button onClick={handleRequestItem} disabled={actionLoading} className="w-full bg-[#005a8c] text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-[#005a8c]/20 hover:bg-[#004a75] transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">notification_add</span>
+                    {actionLoading ? 'جاري الإضافة...' : 'انضم لقائمة الانتظار'}
                   </button>
                 ) : null}
               </div>
-
-              <p className="text-[10px] md:text-xs text-center text-gray-500 italic mt-2">
-                {isDonor ? 'هذا الغرض معروض للطلاب في المنصة.' :
-                 isBooker ? 'يرجى التنسيق مع المتبرع للاستلام.' :
-                 isWaitlisted ? 'سنقوم بإبلاغك في حال إلغاء الحجز لتتمكن من استلام القطعة.' :
-                 item.status === 'متاح' ? 'سيصلك رمز استلام لتأكيد العملية عند اللقاء.' : 
-                 item.status === 'محجوز' ? 'القطعة محجوزة، لكن يمكنك الانضمام للطابور في حال أُلغي الحجز.' : ''}
-              </p>
             </div>
           </div>
         </div>

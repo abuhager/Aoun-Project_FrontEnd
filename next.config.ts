@@ -1,18 +1,38 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // 🟢 إضافة تصريح للصور الخارجية
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
+        hostname: 'res.cloudinary.com', // 🟢 إضافة كلاوديناري هنا
       },
-      // ضفتلك هاد كمان عشان لما نربط Cloudinary ما يضرب إيرور
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '5000',
+      },
+      {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '5000',
+      },
       {
         protocol: 'https',
-        hostname: 'res.cloudinary.com',
-      }
+        hostname: '*.googleusercontent.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+      },
     ],
   },
 };

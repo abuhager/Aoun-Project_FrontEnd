@@ -1,15 +1,43 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
+import Image from 'next/image';
+
+// 1. تعريف الأنواع (Interfaces) للتخلص من any
+interface ProfileItem {
+  _id: string;
+  title: string;
+  imageUrl: string;
+  status: string;
+  createdAt: string;
+}
+
+interface ProfileData {
+  user: {
+    name: string;
+    avatar?: string;
+    email: string;
+    trustScore: number;
+    phone: string;
+    createdAt: string;
+  };
+  stats: {
+    donationsCount: number;
+    receivedCount: number;
+    totalRatings: number;
+  };
+  allDonations: ProfileItem[];
+  completedRequests: ProfileItem[];
+}
 
 export default function PublicProfilePage() {
   const { id } = useParams();
-  const [profileData, setProfileData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('donations'); 
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [activeTab, setActiveTab] = useState<'donations' | 'requests'>('donations'); 
   const [loading, setLoading] = useState(true);
 
   const backendUrl = 'http://localhost:5000';
@@ -19,7 +47,7 @@ export default function PublicProfilePage() {
       try {
         const res = await axios.get(`${backendUrl}/api/auth/profile/${id}`);
         setProfileData(res.data);
-      } catch (err) {
+      } catch {
         console.error("خطأ في جلب البروفايل");
       } finally {
         setLoading(false);
@@ -28,8 +56,18 @@ export default function PublicProfilePage() {
     if (id) fetchProfile();
   }, [id]);
 
-  if (loading) return <div className="flex justify-center items-center min-h-screen bg-[#f8f9fa]"><div className="w-10 h-10 border-4 border-[#006155] border-t-transparent rounded-full animate-spin"></div></div>;
-  if (!profileData) return <div className="text-center py-20 bg-[#f8f9fa] min-h-screen"><Navbar /><div className="mt-32 font-bold text-red-600">🛑 هذا الحساب غير موجود</div></div>;
+  if (loading) return (
+    <div className="flex justify-center items-center min-h-screen bg-surface">
+      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+  
+  if (!profileData) return (
+    <div className="text-center py-20 bg-surface min-h-screen">
+      <Navbar />
+      <div className="mt-32 font-bold text-red-600">🛑 هذا الحساب غير موجود</div>
+    </div>
+  );
 
   const { user, stats, allDonations, completedRequests } = profileData;
 
@@ -39,7 +77,6 @@ export default function PublicProfilePage() {
     return `${backendUrl}/${url}`;
   };
 
-  // حلقة لحساب النجوم بناءً على نقاط الثقة (كل 20 نقطة بنجمة)
   const renderStars = (score: number) => {
     const stars = [];
     const fullStars = Math.floor(score / 20);
@@ -58,51 +95,61 @@ export default function PublicProfilePage() {
   };
 
   return (
-    <div className="bg-[#f8f9fa] min-h-screen text-[#191c1d] font-body pb-20" dir="rtl">
+    <div className="bg-surface min-h-screen text-[#191c1d] font-body pb-20" dir="rtl">
       <Navbar />
 
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-5xl mx-auto">
         
-        {/* هيدر البروفايل الفخم */}
+        {/* هيدر البروفايل */}
         <section className="relative mb-20">
-          <div className="h-40 md:h-56 w-full rounded-3xl bg-gradient-to-br from-[#006155] via-[#087c6e] to-[#96f7e9] shadow-md relative overflow-hidden">
+          <div className="h-40 md:h-56 w-full rounded-3xl bg-linear-to-br from-primary via-primary-container to-[#96f7e9] shadow-md relative overflow-hidden">
              <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
              <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-black/5 rounded-full blur-2xl"></div>
           </div>
           
           <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center">
-            <div className="w-28 h-28 md:w-36 md:h-36 rounded-full border-4 border-[#f8f9fa] bg-white overflow-hidden shadow-xl flex items-center justify-center ring-4 ring-[#006155]/5">
-              {user.avatar ? 
-                <img src={user.avatar} className="w-full h-full object-cover" /> : 
-                <span className="material-symbols-outlined text-6xl md:text-7xl text-[#006155]">account_circle</span>
-              }
+            <div className="w-28 h-28 md:w-36 md:h-36 rounded-full border-4 border-surface bg-white overflow-hidden shadow-xl flex items-center justify-center ring-4 ring-primary/5 relative">
+              {user.avatar ? (
+                <Image src={user.avatar} alt={user.name} fill className="object-cover" />
+              ) : (
+                <span className="material-symbols-outlined text-6xl md:text-7xl text-primary">account_circle</span>
+              )}
             </div>
           </div>
         </section>
 
-        {/* معلومات المستخدم + التقييم بالنجوم */}
+        {/* معلومات المستخدم */}
         <section className="text-center mb-8 mt-4">
           <h1 className="text-2xl md:text-3xl font-black flex items-center justify-center gap-2">
             {user.name}
             {user.email?.includes('.edu') && (
-              <span className="material-symbols-outlined text-[#006e1c] text-xl" title="طالب موثق">verified</span>
+              <span className="material-symbols-outlined text-secondary text-xl" title="طالب جامعي">school</span>
             )}
           </h1>
+
+          {/* 🟢 شارة العضو الموثوق تظهر تحت الاسم مباشرة إذا كان التقييم >= 90 */}
+          {(user.trustScore ?? 0) >= 90 && (
+            <div className="flex justify-center mt-2 mb-1">
+              <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full text-[10px] font-bold border border-blue-100 shadow-sm">
+                <span className="material-symbols-outlined text-[14px]">verified</span>
+                عضو موثوق
+              </span>
+            </div>
+          )}
           
-          {/* ⭐ عرض النجوم + عدد المقيمين */}
-<div className="flex flex-col items-center gap-1 mt-1">
-  <div className="flex gap-0.5">
-    {renderStars(user.trustScore || 85)}
-  </div>
-  <div className="flex items-center gap-1 text-[10px] font-bold">
-    <span className="text-yellow-600">
-      {((user.trustScore || 85) / 20).toFixed(1)} / 5
-    </span>
-    <span className="text-gray-400 font-normal">
-      ({stats.totalRatings || 0} تقييم)
-    </span>
-  </div>
-</div>
+          <div className="flex flex-col items-center gap-1 mt-1">
+            <div className="flex gap-0.5">
+              {renderStars(user.trustScore || 85)}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] font-bold">
+              <span className="text-yellow-600">
+                {((user.trustScore || 85) / 20).toFixed(1)} / 5
+              </span>
+              <span className="text-gray-400 font-normal">
+                ({stats.totalRatings || 0} تقييم)
+              </span>
+            </div>
+          </div>
 
           <p className="text-[10px] text-gray-500 mt-2 italic">انضم لعون في {new Date(user.createdAt).getFullYear()}</p>
           
@@ -121,11 +168,11 @@ export default function PublicProfilePage() {
         {/* Bento Stats Grid */}
         <section className="grid grid-cols-3 gap-3 md:gap-6 mb-12">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center flex flex-col items-center justify-center ring-2 ring-yellow-400/5">
-            <span className="text-2xl md:text-3xl font-black text-[#006155]">{user.trustScore || 85}</span>
+            <span className="text-2xl md:text-3xl font-black text-primary">{user.trustScore || 85}</span>
             <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">نقاط الثقة</p>
           </div>
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center flex flex-col items-center justify-center bg-gradient-to-b from-white to-[#006155]/5">
-            <span className="text-2xl md:text-3xl font-black text-[#006155]">{stats.donationsCount}</span>
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center flex flex-col items-center justify-center bg-linear-to-b from-white to-primary/5">
+            <span className="text-2xl md:text-3xl font-black text-primary">{stats.donationsCount}</span>
             <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">إجمالي العطاء</p>
           </div>
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center flex flex-col items-center justify-center">
@@ -134,28 +181,33 @@ export default function PublicProfilePage() {
           </div>
         </section>
 
-        {/* سجل النشاط (Tabs) */}
+        {/* سجل النشاط */}
         <section className="space-y-6">
           <div className="flex border-b border-gray-200 gap-8">
-            <button onClick={() => setActiveTab('donations')} className={`pb-4 font-black text-sm transition-all relative ${activeTab === 'donations' ? 'text-[#006155]' : 'text-gray-400'}`}>
+            <button onClick={() => setActiveTab('donations')} className={`pb-4 font-black text-sm transition-all relative ${activeTab === 'donations' ? 'text-primary' : 'text-gray-400'}`}>
               سجل التبرعات
-              {activeTab === 'donations' && <div className="absolute bottom-0 left-0 w-full h-1 bg-[#006155] rounded-full"></div>}
+              {activeTab === 'donations' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
             </button>
-            <button onClick={() => setActiveTab('requests')} className={`pb-4 font-black text-sm transition-all relative ${activeTab === 'requests' ? 'text-[#006155]' : 'text-gray-400'}`}>
+            <button onClick={() => setActiveTab('requests')} className={`pb-4 font-black text-sm transition-all relative ${activeTab === 'requests' ? 'text-primary' : 'text-gray-400'}`}>
               أغراض استلمها
-              {activeTab === 'requests' && <div className="absolute bottom-0 left-0 w-full h-1 bg-[#006155] rounded-full"></div>}
+              {activeTab === 'requests' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
             </button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {(activeTab === 'donations' ? allDonations : completedRequests).map((item: any) => (
+            {(activeTab === 'donations' ? allDonations : completedRequests).map((item) => (
               <Link href={`/items/${item._id}`} key={item._id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm flex flex-col group hover:shadow-md transition-all">
                 <div className="relative h-40 overflow-hidden bg-gray-50">
-                  <img src={getImageUrl(item.imageUrl)} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${item.status === 'تم التسليم' ? 'grayscale-[0.5] opacity-80' : ''}`} />
+                  <Image 
+                    src={getImageUrl(item.imageUrl)} 
+                    alt={item.title} 
+                    fill 
+                    className={`object-cover group-hover:scale-110 transition-transform duration-500 ${item.status === 'تم التسليم' ? 'grayscale-[0.5] opacity-80' : ''}`} 
+                  />
                   <div className="absolute top-3 right-3">
                     <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black text-white ${
                       item.status === 'تم التسليم' ? 'bg-gray-500/80' : 
-                      item.status === 'محجوز' ? 'bg-[#005a8c]/80' : 'bg-[#006155]/80'
+                      item.status === 'محجوز' ? 'bg-[#005a8c]/80' : 'bg-primary/80'
                     } backdrop-blur-md`}>
                       {item.status}
                     </span>

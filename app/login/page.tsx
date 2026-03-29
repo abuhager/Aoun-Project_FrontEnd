@@ -33,7 +33,7 @@ export default function LoginPage() {
       });
 
       localStorage.setItem('token', res.data.token);
-      router.push('/'); // النقل للصفحة الرئيسية بعد النجاح
+      router.push('/browse'); // النقل للصفحة الرئيسية بعد النجاح
 
     } catch (err) {
       // 🟢 الإصلاح الأول: فحص نوع الخطأ بشكل آمن بدل استخدام any
@@ -55,7 +55,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex-grow flex flex-row-reverse overflow-hidden min-h-screen bg-background" dir="rtl">
+    <main className=" grow flex flex-row-reverse overflow-hidden min-h-screen bg-background" dir="rtl">
       {/* القسم الأيمن: نموذج تسجيل الدخول */}
       <section className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 lg:p-24 bg-surface z-10 relative">
         <div className="w-full max-w-md space-y-10">
@@ -122,7 +122,7 @@ export default function LoginPage() {
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full py-4 px-8 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all text-lg disabled:opacity-70 flex justify-center items-center"
+              className="w-full py-4 px-8 bg-linear-to-br from-primary to-primary-container text-white font-bold rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all text-lg disabled:opacity-70 flex justify-center items-center"
             >
               {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
             </button>

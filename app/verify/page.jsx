@@ -3,44 +3,37 @@ import { useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 
-// 1. غيرنا اسم الـ Function الأصلي وفصلناه عشان نغلفه تحت
 function VerifyContent() {
     const [otp, setOtp] = useState(['', '', '', '']);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     
-    // تعريف نوع الـ ref عشان TypeScript ما يزعل
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const inputRefs = useRef([]);
     const router = useRouter();
     const searchParams = useSearchParams();
     
-    // بنسحب الإيميل من الرابط عشان نبعته للباك إند
     const email = searchParams.get('email'); 
 
-    // دالة للتعامل مع كتابة الأرقام وانتقال الماوس التلقائي
-    const handleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (index, e) => {
         const value = e.target.value;
-        if (isNaN(Number(value))) return; // بنسمح بس بالأرقام
+        if (isNaN(value)) return;
 
         const newOtp = [...otp];
-        newOtp[index] = value.substring(value.length - 1); // بناخذ آخر رقم انكتب بس
+        newOtp[index] = value.substring(value.length - 1);
         setOtp(newOtp);
 
-        // إذا كتب رقم، انقل الماوس للمربع اللي بعده
         if (value && index < 3 && inputRefs.current[index + 1]) {
             inputRefs.current[index + 1]?.focus();
         }
     };
 
-    // دالة للتعامل مع زر المسح (Backspace) عشان يرجع الماوس لورا
-    const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = (index, e) => {
         if (e.key === 'Backspace' && !otp[index] && index > 0 && inputRefs.current[index - 1]) {
             inputRefs.current[index - 1]?.focus();
         }
     };
 
-    // دالة إرسال الكود للباك إند
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const otpCode = otp.join('');
         
@@ -53,16 +46,14 @@ function VerifyContent() {
             setLoading(true);
             setError('');
             
-            // نبعت الريكويست للباك إند
             const res = await axios.post('https://aoun-project-backend.onrender.com/api/auth/verify-email', {
                 email,
                 otp: otpCode
             });
 
-            // إذا نجح التحقق، بنوديه لصفحة تسجيل الدخول مع رسالة نجاح
             router.push('/login?verified=true');
             
-        } catch (err: any) {
+        } catch (err) {
             setError(err.response?.data?.msg || 'حدث خطأ أثناء التحقق من الرمز ❌');
         } finally {
             setLoading(false);
@@ -118,10 +109,8 @@ function VerifyContent() {
     );
 }
 
-// 2. هذا هو الـ Component الرئيسي اللي بصدره Next.js
 export default function VerifyEmailPage() {
     return (
-        // تم تغليف المحتوى بـ Suspense وحل المشكلة
         <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
                 <div className="text-xl font-bold text-teal-600 animate-pulse">جاري التحميل... ⏳</div>

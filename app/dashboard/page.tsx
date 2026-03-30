@@ -56,7 +56,7 @@ export default function DashboardPage() {
   const [rating, setRating] = useState(0);
   const [ratingLoading, setRatingLoading] = useState(false);
 
-  const backendBaseUrl = "http://localhost:5000";
+  const backendBaseUrl = "https://aoun-project-backend.onrender.com";
 
   const fetchData = useCallback(async () => {
     try {

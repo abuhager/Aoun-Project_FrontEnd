@@ -43,7 +43,7 @@ export default function BrowsePage() {
   let isMounted = true; // لمنع تحديث الـ State إذا اليوزر طلع من الصفحة
   const fetchItems = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/items');
+      const res = await axios.get('https://aoun-project-backend.onrender.com/api/items');
       if (isMounted) {
         setItems(res.data);
         setFilteredItems(res.data);

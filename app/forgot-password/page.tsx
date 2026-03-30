@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
     setError('');
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/forgot-password', { email });
+      const res = await axios.post('https://aoun-project-backend.onrender.com/api/auth/forgot-password', { email });
       setMessage(res.data.msg);
     } catch (err: unknown) { // 🟢 تغيير any إلى unknown
       // 🟢 التحقق من نوع الخطأ بشكل آمن

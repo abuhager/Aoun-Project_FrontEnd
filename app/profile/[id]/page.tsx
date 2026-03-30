@@ -40,7 +40,7 @@ export default function PublicProfilePage() {
   const [activeTab, setActiveTab] = useState<'donations' | 'requests'>('donations'); 
   const [loading, setLoading] = useState(true);
 
-  const backendUrl = 'http://localhost:5000';
+  const backendUrl = 'https://aoun-project-backend.onrender.com';
 
   useEffect(() => {
     const fetchProfile = async () => {

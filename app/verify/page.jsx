@@ -52,7 +52,7 @@ export default function VerifyEmail() {
             setError('');
             
             // نبعت الريكويست للباك إند (تأكد من رابط الـ API تبعك)
-           const res = await axios.post('http://localhost:5000/api/auth/verify-email', {
+           const res = await axios.post('https://aoun-project-backend.onrender.com/api/auth/verify-email', {
     email,
     otp: otpCode
 });

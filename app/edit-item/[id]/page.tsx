@@ -24,7 +24,7 @@ export default function EditItemPage() {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
 
-  const backendUrl = 'http://localhost:5000';
+  const backendUrl = 'https://aoun-project-backend.onrender.com';
 
   useEffect(() => {
     const fetchItem = async () => {

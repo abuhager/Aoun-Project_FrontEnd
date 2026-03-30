@@ -49,7 +49,7 @@ export default function ItemDetailsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const backendUrl = 'http://localhost:5000';
+  const backendUrl = 'https://aoun-project-backend.onrender.com';
 
   // 2. استخدام useCallback لجلب البيانات بكفاءة
   const fetchItem = useCallback(async (isMounted: boolean = true) => {

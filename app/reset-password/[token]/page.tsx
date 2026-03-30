@@ -39,7 +39,7 @@ export default function ResetPasswordPage() {
     try {
       // استدعاء API الباك إند المحدث
       const res = await axios.put(
-        `http://localhost:5000/api/auth/reset-password/${token}`,
+        `https://aoun-project-backend.onrender.com/api/auth/reset-password/${token}`,
         { password }
       );
 

@@ -60,7 +60,7 @@ export default function AddItemPage() {
     data.append('image', image);
 
     try {
-      await axios.post('http://localhost:5000/api/items', data, {
+      await axios.post('https://aoun-project-backend.onrender.com/api/items', data, {
         headers: {
           'x-auth-token': token,
           'Content-Type': 'multipart/form-data'

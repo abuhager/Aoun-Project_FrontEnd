@@ -20,7 +20,7 @@ interface Item {
 export default function HomePage() {
   const [itemsFromDB, setItemsFromDB] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
-  const backendBaseUrl = "http://localhost:5000";
+  const backendBaseUrl = "https://aoun-project-backend.onrender.com";
 
   useEffect(() => {
     const fetchItems = async () => {

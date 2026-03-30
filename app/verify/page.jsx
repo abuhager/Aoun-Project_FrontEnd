@@ -1,14 +1,16 @@
 "use client";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 
-export default function VerifyEmail() {
+// 1. غيرنا اسم الـ Function الأصلي وفصلناه عشان نغلفه تحت
+function VerifyContent() {
     const [otp, setOtp] = useState(['', '', '', '']);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     
-    const inputRefs = useRef([]);
+    // تعريف نوع الـ ref عشان TypeScript ما يزعل
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const router = useRouter();
     const searchParams = useSearchParams();
     
@@ -16,9 +18,9 @@ export default function VerifyEmail() {
     const email = searchParams.get('email'); 
 
     // دالة للتعامل مع كتابة الأرقام وانتقال الماوس التلقائي
-    const handleChange = (index, e) => {
+    const handleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
-        if (isNaN(value)) return; // بنسمح بس بالأرقام
+        if (isNaN(Number(value))) return; // بنسمح بس بالأرقام
 
         const newOtp = [...otp];
         newOtp[index] = value.substring(value.length - 1); // بناخذ آخر رقم انكتب بس
@@ -26,19 +28,19 @@ export default function VerifyEmail() {
 
         // إذا كتب رقم، انقل الماوس للمربع اللي بعده
         if (value && index < 3 && inputRefs.current[index + 1]) {
-            inputRefs.current[index + 1].focus();
+            inputRefs.current[index + 1]?.focus();
         }
     };
 
     // دالة للتعامل مع زر المسح (Backspace) عشان يرجع الماوس لورا
-    const handleKeyDown = (index, e) => {
+    const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Backspace' && !otp[index] && index > 0 && inputRefs.current[index - 1]) {
-            inputRefs.current[index - 1].focus();
+            inputRefs.current[index - 1]?.focus();
         }
     };
 
     // دالة إرسال الكود للباك إند
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const otpCode = otp.join('');
         
@@ -51,16 +53,16 @@ export default function VerifyEmail() {
             setLoading(true);
             setError('');
             
-            // نبعت الريكويست للباك إند (تأكد من رابط الـ API تبعك)
-           const res = await axios.post('https://aoun-project-backend.onrender.com/api/auth/verify-email', {
-    email,
-    otp: otpCode
-});
+            // نبعت الريكويست للباك إند
+            const res = await axios.post('https://aoun-project-backend.onrender.com/api/auth/verify-email', {
+                email,
+                otp: otpCode
+            });
 
             // إذا نجح التحقق، بنوديه لصفحة تسجيل الدخول مع رسالة نجاح
             router.push('/login?verified=true');
             
-        } catch (err) {
+        } catch (err: any) {
             setError(err.response?.data?.msg || 'حدث خطأ أثناء التحقق من الرمز ❌');
         } finally {
             setLoading(false);
@@ -91,7 +93,7 @@ export default function VerifyEmail() {
                         {otp.map((digit, index) => (
                             <input
                                 key={index}
-                                ref={(el) => (inputRefs.current[index] = el)}
+                                ref={(el) => { inputRefs.current[index] = el; }}
                                 type="text"
                                 inputMode="numeric"
                                 maxLength={1}
@@ -113,5 +115,19 @@ export default function VerifyEmail() {
                 </form>
             </div>
         </div>
+    );
+}
+
+// 2. هذا هو الـ Component الرئيسي اللي بصدره Next.js
+export default function VerifyEmailPage() {
+    return (
+        // تم تغليف المحتوى بـ Suspense وحل المشكلة
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
+                <div className="text-xl font-bold text-teal-600 animate-pulse">جاري التحميل... ⏳</div>
+            </div>
+        }>
+            <VerifyContent />
+        </Suspense>
     );
 }

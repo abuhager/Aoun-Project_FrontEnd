@@ -80,6 +80,20 @@ export default function DashboardPage() {
     fetchData();
   }, [fetchData]);
 
+  // 🟢 التعديل الجديد: إظهار مودال التقييم إجبارياً إذا كان هناك غرض مستلم ولم يقيم
+  useEffect(() => {
+    if (data.myRequests && data.myRequests.length > 0) {
+      const pendingRatingItem = data.myRequests.find(
+        (item) => item.status === "تم التسليم" && !item.isRated
+      );
+
+      if (pendingRatingItem) {
+        setSelectedItem(pendingRatingItem);
+        setShowRatingModal(true);
+      }
+    }
+  }, [data.myRequests]);
+
   const handleReport = async (userId: string, itemTitle: string) => {
     const reason = prompt(
       `لماذا تود التبليغ عن هذا المستخدم بخصوص "${itemTitle}"؟`,
@@ -114,7 +128,7 @@ export default function DashboardPage() {
       alert(res.data.msg);
       setShowRatingModal(false);
       setRating(0);
-      fetchData();
+      fetchData(); // تحديث البيانات لإزالة المودال الإجباري
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         alert(err.response?.data?.msg || "حدث خطأ أثناء التقييم ❌");
@@ -250,7 +264,6 @@ export default function DashboardPage() {
               ></div>
             </div>
             <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-[10px] font-bold">
-              {/* 🟢 تعديل النص من أسبوعي إلى شهري */}
               {(data.user?.quota ?? 3) > 0
                 ? `متاح لك حجز ${data.user?.quota ?? 3} أغراض إضافية هذا الشهر`
                 : "لقد استنفدت حصتك لهذا الشهر ⚠️"}
@@ -481,11 +494,14 @@ export default function DashboardPage() {
         </section>
       </main>
 
-      {/* مودال التقييم */}
+      {/* مودال التقييم الإجباري */}
       {showRatingModal && selectedItem && (
         <div className="fixed inset-0 z-110 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
-            <div className="flex justify-center gap-2 mb-6">
+            {/* 🟢 رسالة تحفيزية */}
+            <p className="text-sm text-primary font-bold mb-2">العطاء بيكمل بكلمة شكر 💚</p>
+            
+            <div className="flex justify-center gap-2 mb-6 mt-4">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
@@ -503,11 +519,9 @@ export default function DashboardPage() {
                 </button>
               ))}
             </div>
-            <h3 className="text-xl font-bold mb-6 text-[#191c1d]">
-              قيم تجربتك مع{" "}
-              {activeTab === "requests"
-                ? selectedItem.donor?.name
-                : selectedItem.bookedBy?.name}
+            <h3 className="text-lg font-bold mb-6 text-[#191c1d]">
+              قيم تجربتك مع المتبرع{" "}
+              <span className="text-primary">{activeTab === "requests" ? selectedItem.donor?.name : selectedItem.bookedBy?.name}</span>
             </h3>
             <div className="flex flex-col gap-3">
               <button
@@ -517,15 +531,7 @@ export default function DashboardPage() {
               >
                 {ratingLoading ? "جاري الحفظ..." : "إرسال التقييم"}
               </button>
-              <button
-                onClick={() => {
-                  setShowRatingModal(false);
-                  setRating(0);
-                }}
-                className="w-full text-on-surface-variant font-bold py-2 text-sm"
-              >
-                إلغاء
-              </button>
+              {/* 🟢 تم إزالة زر الإلغاء ليكون التقييم إجبارياً */}
             </div>
           </div>
         </div>

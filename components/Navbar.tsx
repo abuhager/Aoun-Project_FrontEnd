@@ -15,6 +15,9 @@ export default function Navbar() {
   
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
+  
+  // 🟢 حالة للتحكم بفتح وإغلاق القائمة على الموبايل
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // مزامنة البيانات عند تغيير المسار
   useEffect(() => {
@@ -40,25 +43,21 @@ export default function Navbar() {
     }
   }, [pathname, isLoggedIn, user?.name]);
 
-  // 🟢 دالة تسجيل الخروج المحدثة
+  // دالة تسجيل الخروج المحدثة
   const handleLogout = () => {
-    // 1. مسح التوكن والبيانات من localStorage
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-
-    // 2. مسح التoكن من Cookies لتعطيل الـ Middleware فوراً
     Cookies.remove("token");
-
-    // 3. تحديث الـ State المحلية
     setIsLoggedIn(false);
     setUser(null);
-
-    // 4. التوجيه لصفحة تسجيل الدخول
+    setIsMobileMenuOpen(false); // 🟢 إغلاق القائمة عند الخروج
     router.push("/login");
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-100 bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between" dir="rtl">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between transition-all" dir="rtl">
+      
+      {/* 🟢 القسم الأيمن: اللوجو ورابط التصفح (للدسكتوب) */}
       <div className="flex items-center gap-4 md:gap-10">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
@@ -70,7 +69,7 @@ export default function Navbar() {
         {isLoggedIn && (
           <Link 
             href="/browse" 
-            className={`flex items-center gap-1.5 text-sm font-black transition-all ${pathname === "/browse" ? "text-primary" : "text-on-surface-variant hover:text-primary"}`}
+            className={`hidden md:flex items-center gap-1.5 text-sm font-black transition-all ${pathname === "/browse" ? "text-primary" : "text-on-surface-variant hover:text-primary"}`}
           >
             <span className="material-symbols-outlined text-lg">explore</span>
             تصفح الأغراض
@@ -78,7 +77,8 @@ export default function Navbar() {
         )}
       </div>
 
-      <div className="flex items-center gap-3 md:gap-6">
+      {/* 🟢 القسم الأيسر للشاشات الكبيرة (Desktop) */}
+      <div className="hidden md:flex items-center gap-3 md:gap-6">
         {isLoggedIn ? (
           <>
             {pathname !== "/add-item" && (
@@ -96,7 +96,7 @@ export default function Navbar() {
               <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-primary/10">
                  <span className="material-symbols-outlined text-primary text-xl">account_circle</span>
               </div>
-              <span className="hidden md:block text-xs font-black text-[#191c1d] group-hover:text-primary">
+              <span className="text-xs font-black text-[#191c1d] group-hover:text-primary">
                 {user?.name?.split(' ')[0] || "حسابي"}
               </span>
             </Link>
@@ -111,6 +111,44 @@ export default function Navbar() {
           </Link>
         )}
       </div>
+
+      {/* 🟢 زر القائمة للموبايل (Hamburger Icon) */}
+      <button 
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+        className="md:hidden flex items-center justify-center text-[#191c1d] hover:text-primary transition-colors p-1"
+      >
+        <span className="material-symbols-outlined text-3xl">
+          {isMobileMenuOpen ? "close" : "menu"}
+        </span>
+      </button>
+
+      {/* 🟢 القائمة المنسدلة للموبايل (Mobile Dropdown) */}
+      <div className={`absolute top-full left-0 right-0 bg-white border-b border-[#edeeef] shadow-lg md:hidden transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen ? "max-h-96 opacity-100 py-4" : "max-h-0 opacity-0 py-0"}`}>
+        {isLoggedIn ? (
+          <div className="flex flex-col gap-2 px-6 font-bold text-sm">
+            <Link href="/browse" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-2 p-3 rounded-xl transition-colors ${pathname === "/browse" ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50"}`}>
+              <span className="material-symbols-outlined text-lg">explore</span> تصفح الأغراض
+            </Link>
+            <Link href="/add-item" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-2 p-3 rounded-xl transition-colors ${pathname === "/add-item" ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50"}`}>
+              <span className="material-symbols-outlined text-lg">add_box</span> تبرع الآن
+            </Link>
+            <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-2 p-3 rounded-xl transition-colors ${pathname === "/dashboard" ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50"}`}>
+              <span className="material-symbols-outlined text-lg">account_circle</span> حسابي ({user?.name?.split(' ')[0]})
+            </Link>
+            <div className="h-px w-full bg-gray-100 my-1"></div>
+            <button onClick={handleLogout} className="flex items-center gap-2 p-3 rounded-xl text-red-500 hover:bg-red-50 text-right transition-colors">
+              <span className="material-symbols-outlined text-lg">logout</span> تسجيل الخروج
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 px-6 font-bold">
+            <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="bg-primary text-white px-4 py-3 rounded-xl text-center shadow-md">
+              تسجيل الدخول
+            </Link>
+          </div>
+        )}
+      </div>
+
     </nav>
   );
 }

@@ -1,4 +1,5 @@
 'use client';
+import Cookies from 'js-cookie';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -32,11 +33,17 @@ export default function LoginPage() {
         password: formData.password,
       });
 
-      localStorage.setItem('token', res.data.token);
+      // 🟢 التعديل الاحترافي: حفظ التوكن في مكانين
+      // 1. في localStorage للتعامل مع الطلبات من جهة الـ Client
+      localStorage.setItem('token', res.data.token); 
+      
+      // 2. في Cookies لكي يتمكن الـ Middleware من قراءته وحماية الروابط
+      // expires: 7 تعني أن التوكن سيبقى فعالاً لمدة 7 أيام
+      Cookies.set('token', res.data.token, { expires: 7, secure: true, sameSite: 'strict' });
+
       router.push('/browse'); // النقل للصفحة الرئيسية بعد النجاح
 
     } catch (err) {
-      // 🟢 الإصلاح الأول: فحص نوع الخطأ بشكل آمن بدل استخدام any
       if (axios.isAxiosError(err)) {
         if (err.response?.data?.needsVerification) {
           setError('حسابك غير مفعل! جاري تحويلك لصفحة التفعيل... ⏳');
@@ -53,7 +60,7 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
+  
   return (
     <main className=" grow flex flex-row-reverse overflow-hidden min-h-screen bg-background" dir="rtl">
       {/* القسم الأيمن: نموذج تسجيل الدخول */}
@@ -99,7 +106,7 @@ export default function LoginPage() {
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center px-2">
                   <label className="text-sm font-bold text-on-surface-variant">كلمة المرور</label>
-                  <a className="text-sm font-bold text-primary hover:text-primary-container transition-colors" href="#">نسيت كلمة المرور؟</a>
+                  <a className="text-sm font-bold text-primary hover:text-primary-container transition-colors" href="/forgot-password">نسيت كلمة المرور؟</a>
                 </div>
                 <div className="relative group">
                   <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors">

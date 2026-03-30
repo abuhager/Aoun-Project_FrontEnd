@@ -31,13 +31,17 @@ export default function AddItemPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImage(file);
-      setPreview(URL.createObjectURL(file));
+ const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+      alert("حجم الصورة كبير جداً، الحد الأقصى 5 ميجا");
+      return;
     }
-  };
+    setImage(file);
+    setPreview(URL.createObjectURL(file));
+  }
+};
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

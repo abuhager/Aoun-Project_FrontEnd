@@ -7,7 +7,7 @@ import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
 
-// 1. تعريف الأنواع للتخلص من مشاكل "any"
+// 1. تعريف الأنواع
 interface Donor {
   _id: string;
   name: string;
@@ -34,6 +34,12 @@ interface Item {
   waitlist: WaitlistEntry[];
 }
 
+// 🟢 دالة مساعدة (Helper) لتوحيد استخراج الـ ID
+const getUserId = (userField: any): string | null => {
+  if (!userField) return null;
+  return typeof userField === 'object' ? userField._id : userField;
+};
+
 export default function ItemDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -45,19 +51,21 @@ export default function ItemDetailsPage() {
 
   const backendUrl = 'http://localhost:5000';
 
-  // 2. استخدام useCallback لحل مشكلة exhaustive-deps
-  const fetchItem = useCallback(async () => {
+  // 2. استخدام useCallback لجلب البيانات بكفاءة
+  const fetchItem = useCallback(async (isMounted: boolean = true) => {
     try {
       const res = await axios.get(`${backendUrl}/api/items/${id}`);
-      setItem(res.data);
+      if (isMounted) setItem(res.data);
     } catch {
       console.error("خطأ في جلب البيانات");
     } finally {
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
+    let isMounted = true; // 🟢 لمنع Memory Leak
+    
     const token = localStorage.getItem('token');
     if (token) {
       try {
@@ -68,8 +76,15 @@ export default function ItemDetailsPage() {
       }
     }
     
-    if (id) fetchItem();
+    if (id) fetchItem(isMounted);
+
+    return () => { isMounted = false; }; // 🟢 تنظيف عند مغادرة الصفحة
   }, [id, fetchItem]);
+
+  // 🟢 استخراج الحالات المنطقية بشكل نظيف وموحد
+  const isDonor = getUserId(item?.donor) === currentUserId;
+  const isBooker = getUserId(item?.bookedBy) === currentUserId;
+  const isWaitlisted = item?.waitlist?.some((w) => getUserId(w.user) === currentUserId);
 
   const handleRequestItem = async () => {
     const token = localStorage.getItem('token');
@@ -92,7 +107,7 @@ export default function ItemDetailsPage() {
   };
 
   const handleCancelAction = async () => {
-    const isBooker = (typeof item?.bookedBy === 'object' ? item.bookedBy?._id : item?.bookedBy) === currentUserId;
+    // 🟢 استخدام المتغير المنطقي الموحد
     const confirmText = isBooker 
       ? 'هل أنت متأكد أنك تريد إلغاء حجزك لهذه القطعة؟' 
       : 'هل أنت متأكد أنك تريد الانسحاب من قائمة الانتظار؟';
@@ -124,16 +139,11 @@ export default function ItemDetailsPage() {
   
   if (!item) return <div className="text-center py-20 font-bold">🛑 القطعة غير موجودة</div>;
 
-  const isDonor = item.donor?._id === currentUserId;
-  const isBooker = (typeof item.bookedBy === 'object' ? item.bookedBy?._id : item.bookedBy) === currentUserId;
-  const isWaitlisted = item.waitlist?.some((w) => (typeof w.user === 'object' ? w.user._id : w.user) === currentUserId);
-
   return (
     <div className="bg-surface min-h-screen text-[#191c1d] font-body pb-20" dir="rtl">
       <Navbar />
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-5xl mx-auto">
         
-        {/* Breadcrumbs مع تحسين الكلاسات */}
         <nav className="mb-6 flex items-center gap-2 text-on-surface-variant text-xs md:text-sm font-medium">
           <Link className="hover:text-primary transition-colors" href="/browse">تصفح التبرعات</Link>
           <span className="material-symbols-outlined text-[10px] md:text-xs text-gray-400">chevron_left</span>
@@ -142,26 +152,24 @@ export default function ItemDetailsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-start">
           
-          {/* Image Section مع استخدام Next/Image */}
           <div className="flex flex-col gap-4">
-          <div className="relative rounded-3xl overflow-hidden bg-white aspect-square border border-[#edeeef] shadow-sm group">
-  {item.imageUrl ? (
-    <Image 
-      src={item.imageUrl.startsWith('http') ? item.imageUrl : `${backendUrl}/${item.imageUrl}`} 
-      alt={item.title} 
-      fill 
-      className="object-cover group-hover:scale-105 transition-transform duration-500"
-      unoptimized 
-    />
-  ) : (
-    <div className="w-full h-full flex items-center justify-center bg-gray-50">
-      <span className="material-symbols-outlined text-6xl text-gray-200">image</span>
-    </div>
-  )}
-</div>
+            <div className="relative rounded-3xl overflow-hidden bg-white aspect-square border border-[#edeeef] shadow-sm group">
+              {item.imageUrl ? (
+                <Image 
+                  src={item.imageUrl.startsWith('http') ? item.imageUrl : `${backendUrl}/${item.imageUrl}`} 
+                  alt={item.title} 
+                  fill 
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  unoptimized 
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                  <span className="material-symbols-outlined text-6xl text-gray-200">image</span>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Details Section */}
           <div className="flex flex-col gap-6">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -172,7 +180,6 @@ export default function ItemDetailsPage() {
               <p className="text-sm md:text-base text-on-surface-variant leading-relaxed bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">{item.description}</p>
             </div>
 
-            {/* Waitlist Info */}
             {item.status === 'محجوز' && item.waitlist?.length > 0 && (
               <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-100 rounded-xl">
                  <span className="material-symbols-outlined text-orange-600 text-lg">groups</span>
@@ -190,7 +197,6 @@ export default function ItemDetailsPage() {
               ))}
             </div>
 
-            {/* Donor Card */}
             <Link href={`/profile/${item.donor?._id}`} className="bg-white p-4 rounded-2xl flex items-center justify-between border border-gray-100 shadow-sm hover:ring-2 ring-primary/10 transition-all group">
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden relative">
@@ -202,7 +208,6 @@ export default function ItemDetailsPage() {
                 </div>
                 <div>
                   <h3 className="font-black text-sm group-hover:text-primary transition-colors">{item.donor?.name}</h3>
-                  {/* 🟢 الشارة الذكية بناءً على تقييم الثقة */}
                   {(item.donor?.trustScore ?? 0) >= 90 && (
                     <div className="flex items-center gap-1 mt-1 bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full w-max border border-blue-100">
                       <span className="material-symbols-outlined text-[12px]">verified</span>
@@ -214,7 +219,6 @@ export default function ItemDetailsPage() {
               <span className="material-symbols-outlined text-gray-300 group-hover:-translate-x-1 transition-transform">chevron_left</span>
             </Link>
 
-            {/* Action Buttons */}
             <div className="space-y-4 mt-2">
               {message.text && (
                 <div className={`p-4 rounded-2xl text-center text-xs font-bold border animate-pulse ${

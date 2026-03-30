@@ -39,20 +39,24 @@ export default function BrowsePage() {
   }, [router]);
 
   // 2. جلب البيانات من الباك إند
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        const res = await axios.get('http://localhost:5000/api/items');
+ useEffect(() => {
+  let isMounted = true; // لمنع تحديث الـ State إذا اليوزر طلع من الصفحة
+  const fetchItems = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/items');
+      if (isMounted) {
         setItems(res.data);
         setFilteredItems(res.data);
-      } catch { // 🟢 تم إزالة err هنا لحل خطأ no-unused-vars
-        console.error("خطأ في جلب البيانات");
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchItems();
-  }, []);
+    } catch (err) {
+      console.error("خطأ في جلب البيانات");
+    } finally {
+      if (isMounted) setLoading(false);
+    }
+  };
+  fetchItems();
+  return () => { isMounted = false; }; // تنظيف (Cleanup)
+}, []);
 
   // 3. لوجيك الفلترة التلقائي
   useEffect(() => {

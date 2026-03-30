@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google"; 
+import { Inter, Tajawal, Cairo } from "next/font/google"; 
 import "./globals.css";
-// استدعينا الـ Navbar من المجلد اللي عملناه
 import Navbar from "../components/Navbar"; 
+import Footer from '@/components/Footer';
 
-
-const inter = Inter({ subsets: ["latin"] });
+// إعداد الخطوط بشكل احترافي لتقليل الـ Layout Shift
+const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
+const tajawal = Tajawal({ subsets: ["arabic"], weight: ['400', '500', '700', '800', '900'], variable: '--font-headline' });
+const cairo = Cairo({ subsets: ["arabic"], weight: ['400', '500', '600', '700'], variable: '--font-body' });
 
 export const metadata: Metadata = {
-  title: "منصة عون",
-  description: "المنصة الجامعية لتبادل الأغراض",
+  title: "منصة عون | للتكافل الاجتماعي",
+  description: "المنصة الجامعية الأولى لتبادل الأغراض والكتب بين الطلاب مجاناً",
 };
 
 export default function RootLayout({
@@ -18,15 +20,23 @@ export default function RootLayout({
   children: React.ReactNode; 
 }>) {
   return (
-    // ضفنا dir="rtl" عشان الموقع يصير من اليمين لليسار
     <html lang="ar" dir="rtl"> 
-    <head>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&family=Be+Vietnam+Pro:wght@400;500;600&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-</head>
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+      <head>
+        {/* 🟢 حل مشكلة الكلمات الغريبة: استدعاء مكتبة الأيقونات بشكل صحيح */}
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" 
+          rel="stylesheet" 
+        />
+      </head>
+      <body className={`${cairo.variable} ${tajawal.variable} ${inter.className} bg-surface min-h-screen flex flex-col`}>
         <Navbar />
-        {children}
+        
+        {/* الـ main مع flex-grow يضمن بقاء الفوتر في الأسفل دائماً */}
+        <main className="flex-grow">
+          {children}
+        </main>
+
+        <Footer />
       </body>
     </html>
   );

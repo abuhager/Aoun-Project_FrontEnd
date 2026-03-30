@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Cookies from "js-cookie"; // 🟢 استيراد مكتبة الكوكيز
 
 interface UserData {
   name: string;
@@ -10,14 +11,12 @@ interface UserData {
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter(); // 🟢 استخدام الـ router للتوجيه البرمجي
   
-  // 1. 🟢 الحل الجذري: نستخدم Initialization Function للـ State
-  // هيك React بيعرف الحالة فوراً من أول رندر بدون الحاجة لـ useEffect و setState
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
 
-  // نستخدم الـ useEffect فقط لمزامنة البيانات عند تغيير المسار (Pathname)
-  // بدون ما نحدث الـ State بشكل يسبب Cascading Renders
+  // مزامنة البيانات عند تغيير المسار
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
@@ -39,19 +38,27 @@ export default function Navbar() {
     } else if (!hasToken && isLoggedIn) {
       setUser(null);
     }
-  }, [pathname, isLoggedIn, user?.name]); // الـ Dependencies مدروسة بدقة
+  }, [pathname, isLoggedIn, user?.name]);
 
+  // 🟢 دالة تسجيل الخروج المحدثة
   const handleLogout = () => {
+    // 1. مسح التوكن والبيانات من localStorage
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+
+    // 2. مسح التoكن من Cookies لتعطيل الـ Middleware فوراً
+    Cookies.remove("token");
+
+    // 3. تحديث الـ State المحلية
     setIsLoggedIn(false);
     setUser(null);
-    window.location.href = "/login";
+
+    // 4. التوجيه لصفحة تسجيل الدخول
+    router.push("/login");
   };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-100 bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between" dir="rtl">
-      {/* باقي الكود (الـ JSX) بضل زي ما هو بالظبط بدون أي تغيير */}
       <div className="flex items-center gap-4 md:gap-10">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">

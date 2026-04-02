@@ -13,6 +13,7 @@ interface User {
   email: string;
   trustScore: number;
   quota: number;
+  isVerifiedStudent?: boolean; // 🟢 أضفنا هاي هون كمان
 }
 
 interface Item {
@@ -200,8 +201,12 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="z-10 flex flex-col items-center">
-            <h1 className="text-xl md:text-2xl font-black">
+            <h1 className="text-xl md:text-2xl font-black flex items-center justify-center gap-2">
               {data.user?.name || "مستخدم عون"}
+              {/* 🟢 إضافة شارة الطالب هون عشان تظهر في الداشبورد */}
+              {data.user?.isVerifiedStudent && (
+                <span className="material-symbols-outlined text-secondary text-xl" title="طالب جامعي">school</span>
+              )}
             </h1>
             <p className="text-xs md:text-sm text-on-surface-variant mt-1">
               {data.user?.email}
@@ -531,7 +536,6 @@ export default function DashboardPage() {
               >
                 {ratingLoading ? "جاري الحفظ..." : "إرسال التقييم"}
               </button>
-              {/* 🟢 تم إزالة زر الإلغاء ليكون التقييم إجبارياً */}
             </div>
           </div>
         </div>

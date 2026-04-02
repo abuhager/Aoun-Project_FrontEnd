@@ -24,6 +24,7 @@ interface ProfileData {
     trustScore: number;
     phone: string;
     createdAt: string;
+    isVerifiedStudent?: boolean; // 🟢 أضفنا هاي عشان TypeScript يتعرف عليها
   };
   stats: {
     donationsCount: number;
@@ -122,7 +123,8 @@ export default function PublicProfilePage() {
         <section className="text-center mb-8 mt-4">
           <h1 className="text-2xl md:text-3xl font-black flex items-center justify-center gap-2">
             {user.name}
-            {user.email?.includes('.edu') && (
+            {/* 🟢 التعديل هون: استخدام المتغير اللي جاي من الباك إند */}
+            {user.isVerifiedStudent && (
               <span className="material-symbols-outlined text-secondary text-xl" title="طالب جامعي">school</span>
             )}
           </h1>

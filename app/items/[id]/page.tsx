@@ -156,12 +156,14 @@ export default function ItemDetailsPage() {
             <div className="relative rounded-3xl overflow-hidden bg-white aspect-square border border-[#edeeef] shadow-sm group">
               {item.imageUrl ? (
                 <Image 
-                  src={item.imageUrl.startsWith('http') ? item.imageUrl : `${backendUrl}/${item.imageUrl}`} 
-                  alt={item.title} 
-                  fill 
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  unoptimized 
-                />
+  src={item.imageUrl.startsWith('http') ? item.imageUrl : `${backendUrl}/${item.imageUrl}`} 
+  alt={item.title} 
+  fill 
+  priority // ✅ لأنها أهم صورة بالصفحة (LCP)
+  sizes="(max-width: 768px) 100vw, 50vw" // ✅ موبايل عرض كامل، لابتوب نصف العرض
+  className="object-cover group-hover:scale-105 transition-transform duration-500"
+  // شيل unoptimized إذا بدك Next.js يضغط الصورة
+/>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-50">
                   <span className="material-symbols-outlined text-6xl text-gray-200">image</span>

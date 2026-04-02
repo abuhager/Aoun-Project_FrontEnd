@@ -64,13 +64,15 @@ export default function RegisterPage() {
         {/* 🟢 القسم الأيسر: الصورة مع التعتيم والوضوح */}
         <section className="hidden md:flex md:w-1/2 relative overflow-hidden bg-primary items-center justify-center min-h-75 md:min-h-full">
           <div className="absolute inset-0 z-0">
-            <Image 
-              src="/students-bg.jpg" 
-              alt="University students smiling" 
-              fill 
-              className="object-cover" 
-              priority 
-            />
+           <Image 
+  src="/students-bg.jpg" 
+  alt="University students smiling" 
+  fill 
+  priority 
+  // 100vw للموبايل، و 50vw للابتوب (شاشات أكبر من 1024px)
+  sizes="(max-width: 1024px) 100vw, 50vw"
+  className="object-cover" 
+/>
             {/* طبقة تعتيم Overlay سوداء لضمان وضوح النص الأبيض */}
             <div className="absolute inset-0 bg-black/50 z-10"></div>
           </div>

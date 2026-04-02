@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -151,8 +152,14 @@ export default function LoginPage() {
       {/* القسم الأيسر: الصورة والنص (يظهر فقط في الشاشات الكبيرة) */}
       <section className="hidden lg:block lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 w-full h-full bg-primary">
-          <img className="w-full h-full object-cover mix-blend-overlay opacity-60" src="/Volunteer-Background.png" alt="Volunteer Background" />
-          <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/30 to-transparent"></div>
+<Image 
+    src="/Volunteer-Background.png" 
+    alt="Volunteer Background"
+    fill // يملأ المساحة المتاحة
+    priority // ضروري لأنها خلفية في صفحة اللوجن (تظهر أولاً)
+    sizes="(max-width: 1024px) 100vw, 50vw" // لأنها خلفية تأخذ عرض الشاشة بالكامل
+    className="object-cover mix-blend-overlay opacity-60" 
+  />          <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/30 to-transparent"></div>
         </div>
 
         <div className="absolute bottom-16 right-16 left-16 glass-effect p-12 rounded-2xl border border-white/10 text-white shadow-2xl">

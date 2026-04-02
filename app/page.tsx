@@ -90,10 +90,13 @@ export default function HomePage() {
               <div className="relative rounded-[3rem] overflow-hidden shadow-2xl transform rotate-2 max-w-sm md:max-w-md mx-auto md:mx-0">
                 <div className="relative w-full h-87.5 md:h-112.5">
                   <Image
-                    alt="عون"
+                    src="/Home.png"
+                    alt="Home Hero"
                     fill
-                    className="object-cover"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCw93s688quPK_GYTpPLVuSdOuokxVL_kAEivbgOMp05gcClG9rq12hyXUKaJ6o-vOhIVnNa2iO3Q926aEr96kORDXKkSSDf5d5v2b7l5TUI21FmHiZgUTvjTL9i9bnVEOLon-77Yp0iiQFKoHLR0XH7m-bHSzYURzpNqjGxPGeiYuHUY5r6gyOJxsFw3LUeO3EuWJ4cmgZMlxDEITYj1_ZXiFjdVC0kaqRx16gNtmg2xfy19b0aw1EEhC3M7NMoT3Ot0bQHMTgiXA"
+                    priority // ضروري جداً لأنها في بداية الصفحة (حل لتحذير LCP)
+                    // هذا السطر هو الحل لتحذير الـ sizes:
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover" // أو object-cover حسب رغبتك في قص الصورة
                   />
                 </div>
                 <div className="absolute bottom-6 left-6 right-6 p-6 rounded-2xl flex items-center gap-4 border border-white/20 bg-white/30 backdrop-blur-md">
@@ -233,13 +236,16 @@ export default function HomePage() {
                     key={item._id}
                     className="group bg-white border border-surface-container-highest rounded-xl overflow-hidden hover:shadow-xl transition-all flex flex-col h-full"
                   >
-                    <div className="relative h-48 md:h-52 overflow-hidden bg-gray-50">
-                      <img
-                        alt={item.title}
+                    <div className="relative w-full h-80 overflow-hidden rounded-2xl">
+                      <Image
                         src={getImageUrl(item)}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      />{" "}
+                        alt="Aoun Item"
+                        fill
+                        priority // لأنها LCP (أول صورة تظهر)
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-cover"
+                      />
+
                       <span className="absolute top-4 right-4 px-3 py-1 bg-primary/90 text-white text-xs font-bold rounded-full">
                         {item.category || "عام"}
                       </span>

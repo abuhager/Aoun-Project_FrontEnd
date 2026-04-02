@@ -114,11 +114,6 @@ export default function BrowsePage() {
                   <option>إلكترونيات</option><option>كتب</option><option>ملابس</option><option>أثاث</option>
                 </select>
               </div>
-              <div className="md:col-span-1">
-                <button className="w-full h-full py-4 bg-primary text-white rounded-md flex items-center justify-center hover:bg-primary-container transition-colors shadow-md">
-                  <span className="material-symbols-outlined">tune</span>
-                </button>
-              </div>
             </div>
           </div>
         </section>

@@ -438,22 +438,7 @@ export default function DashboardPage() {
                               </button>
                             )}
 
-                          {activeTab === "requests" &&
-                            item.status === "تم التسليم" &&
-                            !item.isRated && (
-                              <button
-                                onClick={() => {
-                                  setSelectedItem(item);
-                                  setShowRatingModal(true);
-                                }}
-                                className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-yellow-200"
-                              >
-                                <span className="material-symbols-outlined text-xs">
-                                  star
-                                </span>{" "}
-                                تقييم
-                              </button>
-                            )}
+                          
 
                           {(item.status === "محجوز" ||
                             item.status === "تم التسليم") && (

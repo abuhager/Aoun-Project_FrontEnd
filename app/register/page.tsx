@@ -1,5 +1,4 @@
 'use client';
-
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -36,7 +35,8 @@ export default function RegisterPage() {
 
     try {
       setLoading(true);
-       await axios.post('https://aoun-project-backend.onrender.com/api/auth/register', {
+      // 🟢 التعديل الاحترافي: استخدام المتغير البيئي للرابط
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
         name: formData.name,
         email: formData.email,
         phone: "962" + formData.phone,
@@ -56,6 +56,8 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  // ... (باقي كود الـ Return يضل زي ما هو لأنه تصميم ممتاز)
 
   return (
     <div className="bg-surface text-on-background min-h-screen flex flex-col overflow-x-hidden">

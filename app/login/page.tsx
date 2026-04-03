@@ -29,10 +29,11 @@ export default function LoginPage() {
     try {
       setLoading(true);
       
-      const res = await axios.post('https://aoun-project-backend.onrender.com/api/auth/login', {
-        email: formData.email,
-        password: formData.password,
-      });
+      // 🟢 التعديل للعمل محلياً (أسرع بمليون مرة)
+const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+  email: formData.email,
+  password: formData.password,
+});
 
       // 🟢 التعديل الاحترافي: حفظ التوكن في مكانين
       // 1. في localStorage للتعامل مع الطلبات من جهة الـ Client

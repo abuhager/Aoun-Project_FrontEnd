@@ -13,7 +13,7 @@ interface User {
   email: string;
   trustScore: number;
   quota: number;
-  isVerifiedStudent?: boolean; // 🟢 أضفنا هاي هون كمان
+  isVerifiedStudent?: boolean;
 }
 
 interface Item {
@@ -40,22 +40,16 @@ export default function DashboardPage() {
     myRequests: [],
     user: null,
   });
-  const [activeTab, setActiveTab] = useState<"donations" | "requests">(
-    "donations",
-  );
+  const [activeTab, setActiveTab] = useState<"donations" | "requests">("donations");
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // متغيرات الـ OTP فقط (لأن التقييم نقلناه)
   const [showModal, setShowModal] = useState(false);
-  const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
-
-  const [rating, setRating] = useState(0);
-  const [ratingLoading, setRatingLoading] = useState(false);
 
   const backendBaseUrl = "https://aoun-project-backend.onrender.com";
 
@@ -81,24 +75,8 @@ export default function DashboardPage() {
     fetchData();
   }, [fetchData]);
 
-  // 🟢 التعديل الجديد: إظهار مودال التقييم إجبارياً إذا كان هناك غرض مستلم ولم يقيم
-  useEffect(() => {
-    if (data.myRequests && data.myRequests.length > 0) {
-      const pendingRatingItem = data.myRequests.find(
-        (item) => item.status === "تم التسليم" && !item.isRated
-      );
-
-      if (pendingRatingItem) {
-        setSelectedItem(pendingRatingItem);
-        setShowRatingModal(true);
-      }
-    }
-  }, [data.myRequests]);
-
   const handleReport = async (userId: string, itemTitle: string) => {
-    const reason = prompt(
-      `لماذا تود التبليغ عن هذا المستخدم بخصوص "${itemTitle}"؟`,
-    );
+    const reason = prompt(`لماذا تود التبليغ عن هذا المستخدم بخصوص "${itemTitle}"؟`);
     if (!reason) return;
     try {
       const token = localStorage.getItem("token");
@@ -112,30 +90,6 @@ export default function DashboardPage() {
       if (axios.isAxiosError(err)) {
         alert(err.response?.data?.msg || "حدث خطأ أثناء تقديم البلاغ ❌");
       }
-    }
-  };
-
-  const handleRateItem = async () => {
-    if (rating === 0 || !selectedItem)
-      return alert("الرجاء اختيار عدد النجوم ⭐");
-    try {
-      setRatingLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await axios.put(
-        `${backendBaseUrl}/api/items/rate/${selectedItem._id}`,
-        { rating },
-        { headers: { "x-auth-token": token } },
-      );
-      alert(res.data.msg);
-      setShowRatingModal(false);
-      setRating(0);
-      fetchData(); // تحديث البيانات لإزالة المودال الإجباري
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        alert(err.response?.data?.msg || "حدث خطأ أثناء التقييم ❌");
-      }
-    } finally {
-      setRatingLoading(false);
     }
   };
 
@@ -162,9 +116,7 @@ export default function DashboardPage() {
       await axios.put(
         `${backendBaseUrl}/api/items/complete/${selectedItem._id}`,
         { otp },
-        {
-          headers: { "x-auth-token": token },
-        },
+        { headers: { "x-auth-token": token } },
       );
       setShowModal(false);
       setOtp("");
@@ -186,10 +138,7 @@ export default function DashboardPage() {
     );
 
   return (
-    <div
-      className="bg-surface min-h-screen pb-16 md:pb-20 text-[#191c1d] font-body"
-      dir="rtl"
-    >
+    <div className="bg-surface min-h-screen pb-16 md:pb-20 text-[#191c1d] font-body" dir="rtl">
       <Navbar />
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6 md:space-y-8">
         {/* Profile Card */}
@@ -203,7 +152,6 @@ export default function DashboardPage() {
           <div className="z-10 flex flex-col items-center">
             <h1 className="text-xl md:text-2xl font-black flex items-center justify-center gap-2">
               {data.user?.name || "مستخدم عون"}
-              {/* 🟢 إضافة شارة الطالب هون عشان تظهر في الداشبورد */}
               {data.user?.isVerifiedStudent && (
                 <span className="material-symbols-outlined text-secondary text-xl" title="طالب جامعي">school</span>
               )}
@@ -211,12 +159,9 @@ export default function DashboardPage() {
             <p className="text-xs md:text-sm text-on-surface-variant mt-1">
               {data.user?.email}
             </p>
-            {/* 🟢 الشارة الذكية لليوزر نفسه داخل الداشبورد */}
             {(data.user?.trustScore ?? 0) >= 90 && (
               <span className="mt-2.5 flex items-center gap-1 text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full text-[10px] font-bold border border-blue-100 shadow-sm">
-                <span className="material-symbols-outlined text-[14px]">
-                  verified
-                </span>
+                <span className="material-symbols-outlined text-[14px]">verified</span>
                 عضو موثوق
               </span>
             )}
@@ -226,19 +171,10 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#edeeef] text-center flex flex-col items-center justify-center">
-            <span className="text-on-surface-variant font-bold text-xs block mb-3">
-              نقاط الثقة
-            </span>
+            <span className="text-on-surface-variant font-bold text-xs block mb-3">نقاط الثقة</span>
             <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
               <svg className="w-full h-full -rotate-90">
-                <circle
-                  className="text-[#e7e8e9]"
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  fill="transparent"
-                  strokeWidth="6"
-                ></circle>
+                <circle className="text-[#e7e8e9]" cx="40" cy="40" r="36" fill="transparent" strokeWidth="6"></circle>
                 <circle
                   className="text-primary"
                   cx="40"
@@ -247,21 +183,15 @@ export default function DashboardPage() {
                   fill="transparent"
                   strokeWidth="6"
                   strokeDasharray="226"
-                  strokeDashoffset={
-                    226 - (226 * (data.user?.trustScore || 85)) / 100
-                  }
+                  strokeDashoffset={226 - (226 * (data.user?.trustScore || 85)) / 100}
                 ></circle>
               </svg>
-              <span className="absolute text-xl font-black text-primary">
-                {data.user?.trustScore || 85}
-              </span>
+              <span className="absolute text-xl font-black text-primary">{data.user?.trustScore || 85}</span>
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#edeeef] flex flex-col justify-center text-center gap-3">
-            <span className="text-on-surface-variant font-bold text-xs">
-              الكوتا المتبقية
-            </span>
+            <span className="text-on-surface-variant font-bold text-xs">الكوتا المتبقية</span>
             <div className="h-2 w-full bg-[#e7e8e9] rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 rounded-full transition-all duration-500"
@@ -276,16 +206,10 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#edeeef] flex flex-col items-center justify-center gap-2">
-            <span className="text-on-surface-variant font-bold text-xs">
-              إجمالي العطاء
-            </span>
-            <span className="text-4xl md:text-5xl font-black text-primary">
-              {data.myDonations.length}
-            </span>
+            <span className="text-on-surface-variant font-bold text-xs">إجمالي العطاء</span>
+            <span className="text-4xl md:text-5xl font-black text-primary">{data.myDonations.length}</span>
             <div className="flex items-center gap-1 text-secondary">
-              <span className="material-symbols-outlined text-xs">
-                favorite
-              </span>
+              <span className="material-symbols-outlined text-xs">favorite</span>
               <span className="text-[10px] font-bold">أثرك ممتد</span>
             </div>
           </div>
@@ -321,14 +245,8 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#edeeef]">
-                  {(activeTab === "donations"
-                    ? data.myDonations
-                    : data.myRequests
-                  ).map((item) => (
-                    <tr
-                      key={item._id}
-                      className="hover:bg-surface transition-colors"
-                    >
+                  {(activeTab === "donations" ? data.myDonations : data.myRequests).map((item) => (
+                    <tr key={item._id} className="hover:bg-surface transition-colors">
                       <td className="px-4 py-3 font-bold">{item.title}</td>
                       <td className="px-4 py-3">
                         <div className="relative w-10 h-10 overflow-hidden rounded-lg">
@@ -357,15 +275,12 @@ export default function DashboardPage() {
                             {item.status}
                           </span>
 
-                          {(item.status === "محجوز" ||
-                            item.status === "تم التسليم") && (
+                          {(item.status === "محجوز" || item.status === "تم التسليم") && (
                             <Link
                               href={`/profile/${activeTab === "donations" ? item.bookedBy?._id : item.donor?._id}`}
                               className="text-[9px] text-blue-600 hover:underline font-bold flex items-center gap-0.5"
                             >
-                              <span className="material-symbols-outlined text-[12px]">
-                                person
-                              </span>{" "}
+                              <span className="material-symbols-outlined text-[12px]">person</span>{" "}
                               {activeTab === "donations"
                                 ? `المستلم: ${item.bookedBy?.name.split(" ")[0]}`
                                 : `المتبرع: ${item.donor?.name.split(" ")[0]}`}
@@ -382,94 +297,66 @@ export default function DashboardPage() {
                             التفاصيل
                           </button>
 
-                          {activeTab === "requests" &&
-                            item.status === "محجوز" &&
-                            item.otp && (
-                              <div
-                                className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 cursor-help"
-                                title="أعطِ هذا الرمز للمتبرع عند الاستلام"
-                              >
-                                <span className="material-symbols-outlined text-blue-500 text-sm">
-                                  lock
-                                </span>
-                                <span className="text-blue-700 text-xs font-black tracking-widest">
-                                  {item.otp}
-                                </span>
-                              </div>
-                            )}
+                          {activeTab === "requests" && item.status === "محجوز" && item.otp && (
+                            <div
+                              className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 cursor-help"
+                              title="أعطِ هذا الرمز للمتبرع عند الاستلام"
+                            >
+                              <span className="material-symbols-outlined text-blue-500 text-sm">lock</span>
+                              <span className="text-blue-700 text-xs font-black tracking-widest">{item.otp}</span>
+                            </div>
+                          )}
 
-                          {activeTab === "donations" &&
-                            item.status === "متاح" && (
-                              <button
-                                onClick={() =>
-                                  router.push(`/edit-item/${item._id}`)
-                                }
-                                className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-lg"
-                                title="تعديل"
-                              >
-                                <span className="material-symbols-outlined text-sm">
-                                  edit
-                                </span>
-                              </button>
-                            )}
+                          {activeTab === "donations" && item.status === "متاح" && (
+                            <button
+                              onClick={() => router.push(`/edit-item/${item._id}`)}
+                              className="text-blue-500 hover:bg-blue-50 p-1.5 rounded-lg"
+                              title="تعديل"
+                            >
+                              <span className="material-symbols-outlined text-sm">edit</span>
+                            </button>
+                          )}
 
-                          {activeTab === "donations" &&
-                            item.status === "متاح" && (
-                              <button
-                                onClick={() => handleDelete(item._id)}
-                                className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg"
-                              >
-                                <span className="material-symbols-outlined text-sm">
-                                  delete
-                                </span>
-                              </button>
-                            )}
+                          {activeTab === "donations" && item.status === "متاح" && (
+                            <button
+                              onClick={() => handleDelete(item._id)}
+                              className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg"
+                            >
+                              <span className="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                          )}
 
-                          {activeTab === "donations" &&
-                            item.status === "محجوز" && (
-                              <button
-                                onClick={() => {
-                                  setSelectedItem(item);
-                                  setShowModal(true);
-                                }}
-                                className="bg-primary text-white px-3 py-1 rounded-lg text-[10px] font-bold"
-                              >
-                                تأكيد التسليم
-                              </button>
-                            )}
+                          {activeTab === "donations" && item.status === "محجوز" && (
+                            <button
+                              onClick={() => {
+                                setSelectedItem(item);
+                                setShowModal(true);
+                              }}
+                              className="bg-primary text-white px-3 py-1 rounded-lg text-[10px] font-bold"
+                            >
+                              تأكيد التسليم
+                            </button>
+                          )}
 
-                          
-
-                          {(item.status === "محجوز" ||
-                            item.status === "تم التسليم") && (
+                          {(item.status === "محجوز" || item.status === "تم التسليم") && (
                             <>
                               <a
                                 href={`https://wa.me/${(activeTab === "requests" ? item.donor?.phone : item.bookedBy?.phone)?.replace(/\D/g, "")}`}
                                 target="_blank"
                                 className="bg-[#25D366] text-white p-1.5 rounded-lg"
                               >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                   <path d="M12.031 0C5.383 0 0 5.383 0 12.031c0 2.124.553 4.195 1.604 6.015L.234 23.4l5.495-1.44a11.96 11.96 0 0 0 6.302 1.763c6.648 0 12.031-5.383 12.031-12.031S18.679 0 12.031 0zm3.84 17.387c-.165.465-.96 1.05-1.503 1.155-.544.105-1.042.23-3.21-.67-2.613-1.085-4.282-3.765-4.412-3.938-.13-.173-1.054-1.405-1.054-2.68 0-1.275.66-1.905.897-2.16.237-.255.513-.319.682-.319.17 0 .341.005.49.012.16.007.375-.062.571.393.195.455.665 1.62.723 1.745.058.125.097.27.019.43-.078.16-.117.26-.237.41-.12.15-.25.32-.355.45-.115.14-.24.29-.105.504.135.215.6 1.005 1.3 1.635.905.815 1.69 1.07 1.91 1.19.22.12.35.095.48-.07.13-.165.56-.655.71-.88.15-.225.3-.187.5-.112.2.075 1.26.595 1.475.705.215.11.355.165.405.255.05.09.05.52-.115.985z" />
                                 </svg>
                               </a>
                               <button
                                 onClick={() => {
-                                  const targetId =
-                                    activeTab === "requests"
-                                      ? item.donor?._id
-                                      : item.bookedBy?._id;
-                                  if (targetId)
-                                    handleReport(targetId, item.title);
+                                  const targetId = activeTab === "requests" ? item.donor?._id : item.bookedBy?._id;
+                                  if (targetId) handleReport(targetId, item.title);
                                 }}
                                 className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg"
                               >
-                                <span className="material-symbols-outlined text-sm">
-                                  report
-                                </span>
+                                <span className="material-symbols-outlined text-sm">report</span>
                               </button>
                             </>
                           )}
@@ -484,64 +371,15 @@ export default function DashboardPage() {
         </section>
       </main>
 
-      {/* مودال التقييم الإجباري */}
-      {showRatingModal && selectedItem && (
-        <div className="fixed inset-0 z-110 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
-            {/* 🟢 رسالة تحفيزية */}
-            <p className="text-sm text-primary font-bold mb-2">العطاء بيكمل بكلمة شكر 💚</p>
-            
-            <div className="flex justify-center gap-2 mb-6 mt-4">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setRating(star)}
-                  className={`transition-all hover:scale-125 ${rating >= star ? "text-yellow-400" : "text-gray-300"}`}
-                >
-                  <span
-                    className="material-symbols-outlined text-4xl"
-                    style={{
-                      fontVariationSettings: `'FILL' ${rating >= star ? 1 : 0}`,
-                    }}
-                  >
-                    star
-                  </span>
-                </button>
-              ))}
-            </div>
-            <h3 className="text-lg font-bold mb-6 text-[#191c1d]">
-              قيم تجربتك مع المتبرع{" "}
-              <span className="text-primary">{activeTab === "requests" ? selectedItem.donor?.name : selectedItem.bookedBy?.name}</span>
-            </h3>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={handleRateItem}
-                disabled={ratingLoading || rating === 0}
-                className="w-full bg-primary text-white font-bold py-4 rounded-2xl shadow-lg disabled:opacity-50"
-              >
-                {ratingLoading ? "جاري الحفظ..." : "إرسال التقييم"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* مودال OTP */}
+      {/* مودال OTP فقط */}
       {showModal && selectedItem && (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
-            <h3 className="text-lg font-bold mb-2 text-primary">
-              تأكيد التسليم
-            </h3>
+            <h3 className="text-lg font-bold mb-2 text-primary">تأكيد التسليم</h3>
             <p className="text-on-surface-variant text-xs mb-5">
-              أدخل رمز الـ OTP الخاص بـ{" "}
-              <span className="font-bold">{selectedItem.title}</span>
+              أدخل رمز الـ OTP الخاص بـ <span className="font-bold">{selectedItem.title}</span>
             </p>
-            {otpError && (
-              <div className="bg-red-50 text-red-600 p-2 rounded-lg text-xs mb-4">
-                {otpError}
-              </div>
-            )}
+            {otpError && <div className="bg-red-50 text-red-600 p-2 rounded-lg text-xs mb-4">{otpError}</div>}
             <form onSubmit={handleConfirmDelivery}>
               <input
                 type="text"

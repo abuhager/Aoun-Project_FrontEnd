@@ -3,6 +3,7 @@ import { Inter, Tajawal, Cairo } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Navbar"; 
 import Footer from '@/components/Footer';
+import GlobalRatingModal from "@/components/GlobalRatingModal";
 
 // إعداد الخطوط بشكل احترافي لتقليل الـ Layout Shift
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
@@ -30,7 +31,7 @@ export default function RootLayout({
       </head>
       <body className={`${cairo.variable} ${tajawal.variable} ${inter.className} bg-surface min-h-screen flex flex-col`}>
         <Navbar />
-        
+        <GlobalRatingModal />
         {/* الـ main مع flex-grow يضمن بقاء الفوتر في الأسفل دائماً */}
         <main className="flex-grow">
           {children}

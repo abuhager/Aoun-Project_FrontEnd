@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import Cookies from "js-cookie"; // 🟢 استيراد مكتبة الكوكيز
+import Cookies from "js-cookie";
 
 interface UserData {
   name: string;
@@ -11,15 +11,13 @@ interface UserData {
 
 export default function Navbar() {
   const pathname = usePathname();
-  const router = useRouter(); // 🟢 استخدام الـ router للتوجيه البرمجي
+  const router = useRouter(); 
   
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   
-  // 🟢 حالة للتحكم بفتح وإغلاق القائمة على الموبايل
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // مزامنة البيانات عند تغيير المسار
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
@@ -43,21 +41,20 @@ export default function Navbar() {
     }
   }, [pathname, isLoggedIn, user?.name]);
 
-  // دالة تسجيل الخروج المحدثة
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     Cookies.remove("token");
     setIsLoggedIn(false);
     setUser(null);
-    setIsMobileMenuOpen(false); // 🟢 إغلاق القائمة عند الخروج
+    setIsMobileMenuOpen(false); 
     router.push("/login");
   };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between transition-all" dir="rtl">
       
-      {/* 🟢 القسم الأيمن: اللوجو ورابط التصفح (للدسكتوب) */}
+      {/* 🟢 القسم الأيمن: اللوجو وروابط التصفح */}
       <div className="flex items-center gap-4 md:gap-10">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
@@ -66,18 +63,29 @@ export default function Navbar() {
           <span className="text-xl font-black tracking-tighter text-[#191c1d]">عـون</span>
         </Link>
 
-        {isLoggedIn && (
+        {/* 🟢 إضافة رابط "كيف نعمل؟" بجانب تصفح الأغراض */}
+        <div className="hidden md:flex items-center gap-6">
           <Link 
-            href="/browse" 
-            className={`hidden md:flex items-center gap-1.5 text-sm font-black transition-all ${pathname === "/browse" ? "text-primary" : "text-on-surface-variant hover:text-primary"}`}
+            href="/#how-it-works" 
+            className="flex items-center gap-1.5 text-sm font-black text-on-surface-variant hover:text-primary transition-all"
           >
-            <span className="material-symbols-outlined text-lg">explore</span>
-            تصفح الأغراض
+            <span className="material-symbols-outlined text-lg">help</span>
+            كيف نعمل؟
           </Link>
-        )}
+
+          {isLoggedIn && (
+            <Link 
+              href="/browse" 
+              className={`flex items-center gap-1.5 text-sm font-black transition-all ${pathname === "/browse" ? "text-primary" : "text-on-surface-variant hover:text-primary"}`}
+            >
+              <span className="material-symbols-outlined text-lg">explore</span>
+              تصفح الأغراض
+            </Link>
+          )}
+        </div>
       </div>
 
-      {/* 🟢 القسم الأيسر للشاشات الكبيرة (Desktop) */}
+      {/* 🟢 القسم الأيسر للشاشات الكبيرة */}
       <div className="hidden md:flex items-center gap-3 md:gap-6">
         {isLoggedIn ? (
           <>
@@ -112,7 +120,7 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* 🟢 زر القائمة للموبايل (Hamburger Icon) */}
+      {/* 🟢 زر القائمة للموبايل */}
       <button 
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
         className="md:hidden flex items-center justify-center text-[#191c1d] hover:text-primary transition-colors p-1"
@@ -122,10 +130,13 @@ export default function Navbar() {
         </span>
       </button>
 
-      {/* 🟢 القائمة المنسدلة للموبايل (Mobile Dropdown) */}
-      <div className={`absolute top-full left-0 right-0 bg-white border-b border-[#edeeef] shadow-lg md:hidden transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen ? "max-h-96 opacity-100 py-4" : "max-h-0 opacity-0 py-0"}`}>
+      {/* 🟢 القائمة المنسدلة للموبايل */}
+      <div className={`absolute top-full left-0 right-0 bg-white border-b border-[#edeeef] shadow-lg md:hidden transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen ? "max-h-[500px] opacity-100 py-4" : "max-h-0 opacity-0 py-0"}`}>
         {isLoggedIn ? (
           <div className="flex flex-col gap-2 px-6 font-bold text-sm">
+            <Link href="/#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-3 rounded-xl transition-colors text-gray-600 hover:bg-gray-50">
+              <span className="material-symbols-outlined text-lg">help</span> كيف نعمل؟
+            </Link>
             <Link href="/browse" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-2 p-3 rounded-xl transition-colors ${pathname === "/browse" ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50"}`}>
               <span className="material-symbols-outlined text-lg">explore</span> تصفح الأغراض
             </Link>
@@ -141,8 +152,11 @@ export default function Navbar() {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 px-6 font-bold">
-            <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="bg-primary text-white px-4 py-3 rounded-xl text-center shadow-md">
+          <div className="flex flex-col gap-2 px-6 font-bold">
+            <Link href="/#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-3 rounded-xl transition-colors text-gray-600 hover:bg-gray-50">
+              <span className="material-symbols-outlined text-lg">help</span> كيف نعمل؟
+            </Link>
+            <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="bg-primary text-white px-4 py-3 rounded-xl text-center shadow-md mt-2">
               تسجيل الدخول
             </Link>
           </div>

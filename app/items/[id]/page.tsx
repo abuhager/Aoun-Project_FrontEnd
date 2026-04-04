@@ -35,11 +35,13 @@ interface Item {
 }
 
 // 🟢 دالة مساعدة (Helper) لتوحيد استخراج الـ ID
-const getUserId = (userField: any): string | null => {
+const getUserId = (userField: string | { _id: string } | null | undefined): string | null => {
   if (!userField) return null;
-  return typeof userField === "object" ? userField._id : userField;
+  if (typeof userField === 'object') {
+    return userField._id;
+  }
+  return userField;
 };
-
 export default function ItemDetailsPage() {
   const { id } = useParams();
   const router = useRouter();

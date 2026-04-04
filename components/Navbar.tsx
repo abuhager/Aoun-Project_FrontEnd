@@ -17,29 +17,32 @@ export default function Navbar() {
   const [user, setUser] = useState<UserData | null>(null);
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+// مزامنة البيانات عند تغيير المسار
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-    const hasToken = !!token;
+    const syncAuth = () => {
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+      const hasToken = !!token;
 
-    if (hasToken !== isLoggedIn) {
-      setIsLoggedIn(hasToken);
-    }
+      // 1. تحديث حالة تسجيل الدخول فقط إذا تغيرت (لتجنب الرندر الإضافي)
+      setIsLoggedIn((prev) => (prev !== hasToken ? hasToken : prev));
 
-    if (hasToken && storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        if (user?.name !== parsedUser.name) {
-          setUser(parsedUser);
+      // 2. تحديث بيانات المستخدم
+      if (hasToken && storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser((prev) => (prev?.name !== parsedUser.name ? parsedUser : prev));
+        } catch {
+          console.error("Error parsing user data");
+          setUser(null);
         }
-      } catch {
-        console.error("Error parsing user data");
+      } else {
+        setUser(null);
       }
-    } else if (!hasToken && isLoggedIn) {
-      setUser(null);
-    }
-  }, [pathname, isLoggedIn, user?.name]);
+    };
+
+    syncAuth();
+  }, [pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -52,7 +55,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between transition-all" dir="rtl">
+    <nav className="fixed top-0 left-0 right-0 z-100 bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between transition-all" dir="rtl">
       
       {/* 🟢 القسم الأيمن: اللوجو وروابط التصفح */}
       <div className="flex items-center gap-4 md:gap-10">
@@ -131,7 +134,7 @@ export default function Navbar() {
       </button>
 
       {/* 🟢 القائمة المنسدلة للموبايل */}
-      <div className={`absolute top-full left-0 right-0 bg-white border-b border-[#edeeef] shadow-lg md:hidden transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen ? "max-h-[500px] opacity-100 py-4" : "max-h-0 opacity-0 py-0"}`}>
+      <div className={`absolute top-full left-0 right-0 bg-white border-b border-[#edeeef] shadow-lg md:hidden transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen ? "max-h-500px opacity-100 py-4" : "max-h-0 opacity-0 py-0"}`}>
         {isLoggedIn ? (
           <div className="flex flex-col gap-2 px-6 font-bold text-sm">
             <Link href="/#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-3 rounded-xl transition-colors text-gray-600 hover:bg-gray-50">

@@ -68,7 +68,7 @@ const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://aoun-project-
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, backendBaseUrl]);
 
   useEffect(() => {
     fetchData();

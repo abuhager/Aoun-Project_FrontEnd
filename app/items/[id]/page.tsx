@@ -251,6 +251,21 @@ export default function ItemDetailsPage() {
                 </p>
               </div>
             )}
+            {item.status === "محجوز" && isBooker && (
+              <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                <span className="material-symbols-outlined text-red-600 text-xl animate-pulse">
+                  warning
+                </span>
+                <p className="text-xs font-bold text-red-700 leading-relaxed">
+                  أنت من قام بحجز هذا الغرض! يرجى الاستلام خلال 72 ساعة.
+                  <br />
+                  <span className="text-red-500 text-[10px]">
+                    ملاحظة: إذا تراجعت عن الطلب، قم بإلغاء الحجز فوراً لاسترداد
+                    حصتك (الكوتا)، وإلا ستفقدها نهائياً عند انتهاء الوقت.
+                  </span>
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-3">
               {[

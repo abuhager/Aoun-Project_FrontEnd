@@ -40,22 +40,21 @@ export default function PublicProfilePage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<'donations' | 'requests'>('donations'); 
   const [loading, setLoading] = useState(true);
+const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://aoun-project-backend.onrender.com';
 
-  const backendUrl = 'https://aoun-project-backend.onrender.com';
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await axios.get(`${backendUrl}/api/auth/profile/${id}`);
-        setProfileData(res.data);
-      } catch {
-        console.error("خطأ في جلب البروفايل");
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (id) fetchProfile();
-  }, [id]);
+useEffect(() => {
+  const fetchProfile = async () => {
+    try {
+      const res = await axios.get(`${backendUrl}/api/auth/profile/${id}`);
+      setProfileData(res.data);
+    } catch {
+      console.error("خطأ في جلب البروفايل");
+    } finally {
+      setLoading(false);
+    }
+  };
+  if (id) fetchProfile();
+}, [id, backendUrl]);
 
   if (loading) return (
     <div className="flex justify-center items-center min-h-screen bg-surface">

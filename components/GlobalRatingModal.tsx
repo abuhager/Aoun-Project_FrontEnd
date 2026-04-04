@@ -18,10 +18,11 @@ export default function GlobalRatingModal() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [rating, setRating] = useState(0);
   const [ratingLoading, setRatingLoading] = useState(false);
-  
-  const pathname = usePathname();
-  const backendBaseUrl = "https://aoun-project-backend.onrender.com";
 
+  const pathname = usePathname();
+  const backendBaseUrl =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://aoun-project-backend.onrender.com";
   const checkPendingRatings = async () => {
     const token = localStorage.getItem("token");
     if (!token) return; // إذا مش مسجل دخول، ما تعمل إشي
@@ -33,20 +34,20 @@ export default function GlobalRatingModal() {
       const res = await axios.get(`${backendBaseUrl}/api/items/me`, {
         headers: { "x-auth-token": token },
       });
-      
+
       const requests: Item[] = res.data.myRequests;
-      
+
       if (requests && requests.length > 0) {
         // دور على أول غرض مستلم ومش مقيم
         const pendingItem = requests.find(
-          (item) => item.status === "تم التسليم" && !item.isRated
+          (item) => item.status === "تم التسليم" && !item.isRated,
         );
 
         if (pendingItem) {
           setSelectedItem(pendingItem);
           setShowRatingModal(true);
         } else {
-            setShowRatingModal(false);
+          setShowRatingModal(false);
         }
       }
     } catch (err) {
@@ -60,8 +61,9 @@ export default function GlobalRatingModal() {
   }, [pathname]);
 
   const handleRateItem = async () => {
-    if (rating === 0 || !selectedItem) return alert("الرجاء اختيار عدد النجوم ⭐");
-    
+    if (rating === 0 || !selectedItem)
+      return alert("الرجاء اختيار عدد النجوم ⭐");
+
     try {
       setRatingLoading(true);
       const token = localStorage.getItem("token");
@@ -70,15 +72,14 @@ export default function GlobalRatingModal() {
         { rating },
         { headers: { "x-auth-token": token } },
       );
-      
+
       alert(res.data.msg);
       setShowRatingModal(false);
       setRating(0);
       setSelectedItem(null);
-      
-      // ارجع افحص كمان مرة، بركي عنده غرض ثاني مش مقيمه!
-      checkPendingRatings(); 
 
+      // ارجع افحص كمان مرة، بركي عنده غرض ثاني مش مقيمه!
+      checkPendingRatings();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         alert(err.response?.data?.msg || "حدث خطأ أثناء التقييم ❌");
@@ -93,8 +94,10 @@ export default function GlobalRatingModal() {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
       <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
-        <p className="text-sm text-primary font-bold mb-2">العطاء بيكمل بكلمة شكر 💚</p>
-        
+        <p className="text-sm text-primary font-bold mb-2">
+          العطاء بيكمل بكلمة شكر 💚
+        </p>
+
         <div className="flex justify-center gap-2 mb-6 mt-4">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
@@ -104,7 +107,9 @@ export default function GlobalRatingModal() {
             >
               <span
                 className="material-symbols-outlined text-4xl"
-                style={{ fontVariationSettings: `'FILL' ${rating >= star ? 1 : 0}` }}
+                style={{
+                  fontVariationSettings: `'FILL' ${rating >= star ? 1 : 0}`,
+                }}
               >
                 star
               </span>
@@ -113,7 +118,9 @@ export default function GlobalRatingModal() {
         </div>
         <h3 className="text-lg font-bold mb-6 text-[#191c1d]">
           قيم تجربتك مع المتبرع{" "}
-          <span className="text-primary">{selectedItem.donor?.name || "المتبرع"}</span>
+          <span className="text-primary">
+            {selectedItem.donor?.name || "المتبرع"}
+          </span>
         </h3>
         <div className="flex flex-col gap-3">
           <button

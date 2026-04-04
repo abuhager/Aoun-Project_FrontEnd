@@ -51,8 +51,7 @@ export default function DashboardPage() {
   const [otpError, setOtpError] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
 
-  const backendBaseUrl = "https://aoun-project-backend.onrender.com";
-
+const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://aoun-project-backend.onrender.com";
   const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");

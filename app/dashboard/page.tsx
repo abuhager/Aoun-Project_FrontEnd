@@ -189,17 +189,17 @@ const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://aoun-project-
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#edeeef] flex flex-col justify-center text-center gap-3">
+         <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#edeeef] flex flex-col justify-center text-center gap-3">
             <span className="text-on-surface-variant font-bold text-xs">الكوتا المتبقية</span>
             <div className="h-2 w-full bg-[#e7e8e9] rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                style={{ width: `${((data.user?.quota || 0) / 3) * 100}%` }}
+                style={{ width: `${((data.user?.quota || 0) / 2) * 100}%` }}
               ></div>
             </div>
             <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-[10px] font-bold">
-              {(data.user?.quota ?? 3) > 0
-                ? `متاح لك حجز ${data.user?.quota ?? 3} أغراض إضافية هذا الشهر`
+              {(data.user?.quota ?? 2) > 0
+                ? `متاح لك حجز ${data.user?.quota ?? 2} أغراض إضافية هذا الشهر`
                 : "لقد استنفدت حصتك لهذا الشهر ⚠️"}
             </div>
           </div>

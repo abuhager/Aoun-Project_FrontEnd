@@ -2,7 +2,7 @@
 import Cookies from 'js-cookie';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 import Image from 'next/image';
@@ -15,6 +15,8 @@ export default function LoginPage() {
     password: '',
   });
 
+  const searchParams = useSearchParams();
+const expiredMsg   = searchParams.get("msg");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 

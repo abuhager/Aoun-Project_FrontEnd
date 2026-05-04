@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, FormEvent } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 
 // ─── الأنواع ───
 interface User {
@@ -36,35 +37,30 @@ interface ConfirmModalState {
   onConfirm: () => void;
 }
 
-// ─── مساعد localStorage آمن مع SSR ───
-const getToken = () =>
-  typeof window !== "undefined" ? localStorage.getItem("token") : null;
+// ✅ Token من Cookie بدل localStorage
+const getToken = () => Cookies.get("token") ?? null;
 
 export function useDashboard() {
   const router = useRouter();
   const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // ─── State ───
   const [data, setData] = useState<DashboardData>({
     myDonations: [], myRequests: [], user: null,
   });
   const [activeTab, setActiveTab] = useState<"donations" | "requests">("donations");
   const [loading, setLoading] = useState(true);
 
-  // حالات الـ Modals
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
     show: false, msg: "", isDanger: false, onConfirm: () => {},
   });
   const [toast, setToast] = useState<{ msg: string; type: "error" | "success" } | null>(null);
 
-  // حالات الـ OTP
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [otp,          setOtp]          = useState("");
   const [otpError,     setOtpError]     = useState("");
   const [otpLoading,   setOtpLoading]   = useState(false);
 
-  // ─── جلب البيانات ───
   const fetchData = useCallback(async () => {
     try {
       const token = getToken();
@@ -82,7 +78,6 @@ export function useDashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ─── 1. حذف الغرض ───
   const handleDelete = (id: string, status: string) => {
     const msg =
       status === "محجوز"
@@ -111,7 +106,6 @@ export function useDashboard() {
     });
   };
 
-  // ─── 2. إلغاء حجز المستلم ───
   const handleCancelBooking = (id: string) => {
     setConfirmModal({
       show: true,
@@ -137,7 +131,6 @@ export function useDashboard() {
     });
   };
 
-  // ─── 3. تأكيد التسليم بالـ OTP (6 خانات) ───
   const handleConfirmDelivery = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedItem) return;
@@ -154,14 +147,15 @@ export function useDashboard() {
       setOtp("");
       setToast({ msg: "تم تأكيد التسليم بنجاح! 💚", type: "success" });
       fetchData();
-    } catch (err: any) {
-      setOtpError(err.response?.data?.msg || "الرمز غير صحيح ❌");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setOtpError(err.response?.data?.msg || "الرمز غير صحيح ❌");
+      }
     } finally {
       setOtpLoading(false);
     }
   };
 
-  // ─── فتح Modal الـ OTP ───
   const openOtpModal = (item: Item) => {
     setSelectedItem(item);
     setShowOtpModal(true);
@@ -174,11 +168,9 @@ export function useDashboard() {
   };
 
   return {
-    // State
     data, activeTab, setActiveTab, loading,
     showOtpModal, confirmModal, setConfirmModal, toast, setToast,
     selectedItem, otp, setOtp, otpError, otpLoading,
-    // Actions
     handleDelete, handleCancelBooking,
     handleConfirmDelivery,
     openOtpModal, closeOtpModal,

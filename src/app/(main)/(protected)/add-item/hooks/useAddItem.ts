@@ -1,6 +1,7 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import Cookies from "js-cookie";
 
 interface FormData {
   title:       string;
@@ -27,9 +28,9 @@ export function useAddItem() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<Message>({ type: "", text: "" });
 
-  // ─── حماية الصفحة: يحول للـ login إذا ما في token ───
+  // ✅ حماية الصفحة عبر Cookie — الـ proxy هو الحارس الأساسي
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = Cookies.get("token");
     if (!token) router.push("/login?redirect=/add-item");
   }, [router]);
 
@@ -61,7 +62,8 @@ export function useAddItem() {
     setLoading(true);
     setMessage({ type: "", text: "" });
 
-    const token = localStorage.getItem("token");
+    // ✅ Token من Cookie
+    const token = Cookies.get("token");
     const data  = new FormData();
     data.append("title",       formData.title);
     data.append("description", formData.description);

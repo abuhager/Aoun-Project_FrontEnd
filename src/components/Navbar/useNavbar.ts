@@ -13,8 +13,9 @@ export function useNavbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const syncAuth = useCallback(() => {
-    const token      = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    // ✅ التحقق من الـ Cookie بدل localStorage للتوكن
+    const token      = Cookies.get("token");
+    const storedUser = localStorage.getItem("user"); // بيانات المستخدم العامة فقط
 
     setIsLoggedIn(!!token);
 
@@ -29,13 +30,11 @@ export function useNavbar() {
     }
   }, []);
 
-  // ─── مزامنة عند تغيير المسار + إغلاق القائمة ───
   useEffect(() => {
     syncAuth();
     setIsMobileMenuOpen(false);
   }, [pathname, syncAuth]);
 
-  // ─── مزامنة عند الرجوع من bfcache ───
   useEffect(() => {
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) syncAuth();
@@ -45,12 +44,12 @@ export function useNavbar() {
   }, [syncAuth]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    // ✅ حذف الـ Cookie + بيانات المستخدم
     Cookies.remove("token");
+    localStorage.removeItem("user");
     setIsLoggedIn(false);
     setUser(null);
-    router.push("/login");
+    window.location.href = "/login"; // full reload يضمن تنظيف الـ state
   };
 
   const firstName = user?.name?.split(" ")[0] ?? "حسابي";

@@ -1,6 +1,7 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
+import Cookies from "js-cookie";
 
 interface FormData {
   title:       string;
@@ -24,7 +25,6 @@ export function useEditItem() {
   const [updating, setUpdating] = useState(false);
   const [error,    setError]    = useState("");
 
-  // ─── جلب بيانات الغرض عند التحميل ───
   useEffect(() => {
     if (!id) return;
 
@@ -34,7 +34,6 @@ export function useEditItem() {
         const { title, description, category, location, condition, imageUrl } = res.data;
 
         setFormData({ title, description, category, location, condition });
-        // ─── تأكد أن الصورة تبدأ بـ http، وإلا أضف الـ base URL ───
         setPreview(imageUrl.startsWith("http") ? imageUrl : `${apiUrl}/${imageUrl}`);
       } catch {
         setError("فشل في جلب بيانات الغرض 🛑");
@@ -64,7 +63,8 @@ export function useEditItem() {
     setUpdating(true);
     setError("");
 
-    const token = localStorage.getItem("token");
+    // ✅ Token من Cookie
+    const token = Cookies.get("token");
     const data  = new FormData();
     data.append("title",       formData.title);
     data.append("description", formData.description);
@@ -76,8 +76,8 @@ export function useEditItem() {
     try {
       await axios.put(`${apiUrl}/api/items/update/${id}`, data, {
         headers: {
-          "x-auth-token":   token,
-          "Content-Type":   "multipart/form-data",
+          "x-auth-token": token,
+          "Content-Type": "multipart/form-data",
         },
       });
       router.push("/dashboard");

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import axios from "axios";
 
 export interface ItemType {
@@ -14,7 +13,6 @@ export interface ItemType {
 }
 
 export function useBrowse() {
-  const router = useRouter();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL!;
 
   const [items,         setItems]         = useState<ItemType[]>([]);
@@ -23,18 +21,10 @@ export function useBrowse() {
   const [totalPages,    setTotalPages]    = useState(1);
   const [currentPage,   setCurrentPage]   = useState(1);
 
-  // ─── فلاتر البحث ───
-  const [searchQuery,       setSearchQuery]       = useState("");
-  const [selectedCity,      setSelectedCity]      = useState("");
-  const [selectedCategory,  setSelectedCategory]  = useState("");
+  const [searchQuery,      setSearchQuery]      = useState("");
+  const [selectedCity,     setSelectedCity]     = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
 
-  // ─── حماية الصفحة ───
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) router.push("/login?msg=يجب تسجيل الدخول لتصفح التبرعات");
-  }, [router]);
-
-  // ─── جلب البيانات من الباك إند ───
   useEffect(() => {
     let isMounted = true;
 
@@ -58,7 +48,6 @@ export function useBrowse() {
     return () => { isMounted = false; };
   }, [apiUrl]);
 
-  // ─── فلترة تلقائية عند تغيير أي فلتر ───
   useEffect(() => {
     let result = items;
 

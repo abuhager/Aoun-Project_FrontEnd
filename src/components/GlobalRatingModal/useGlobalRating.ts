@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import axios from "axios";
+import Cookies from "js-cookie";
 
 export interface Item {
   _id:      string;
@@ -14,19 +15,19 @@ export interface Item {
 const AUTH_PATHS = ["/login", "/register", "/verify"];
 
 export function useGlobalRating() {
-  const pathname   = usePathname();
-  const apiUrl     = process.env.NEXT_PUBLIC_API_URL!;
+  const pathname = usePathname();
+  const apiUrl   = process.env.NEXT_PUBLIC_API_URL!;
 
-  const [showModal,      setShowModal]      = useState(false);
-  const [selectedItem,   setSelectedItem]   = useState<Item | null>(null);
-  const [rating,         setRating]         = useState(0);
-  const [ratingLoading,  setRatingLoading]  = useState(false);
-  const [errorMsg,       setErrorMsg]       = useState("");
+  const [showModal,     setShowModal]     = useState(false);
+  const [selectedItem,  setSelectedItem]  = useState<Item | null>(null);
+  const [rating,        setRating]        = useState(0);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [errorMsg,      setErrorMsg]      = useState("");
 
-  // ✅ useCallback يمنع إعادة إنشاء الدالة في كل render
   const checkPendingRatings = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    if (!token || AUTH_PATHS.includes(pathname)) return;
+    // ✅ Token من Cookie
+    const token = Cookies.get("token");
+    if (!token || AUTH_PATHS.some((p) => pathname.startsWith(p))) return;
 
     try {
       const res = await axios.get(`${apiUrl}/api/items/me`, {
@@ -46,11 +47,16 @@ export function useGlobalRating() {
     } catch (err) {
       console.error("خطأ في فحص التقييمات المعلقة:", err);
     }
-  }, [pathname, apiUrl]); // ✅ dependencies صحيحة
+  }, [pathname, apiUrl]);
 
   useEffect(() => {
+  // انتظر ثانية عشان الـ Cookie يكون جاهز
+  const timer = setTimeout(() => {
     checkPendingRatings();
-  }, [checkPendingRatings]); // ✅ الآن ESLint راضي
+  }, 1000);
+
+  return () => clearTimeout(timer);
+}, [checkPendingRatings]);
 
   const handleRate = async () => {
     if (!selectedItem || rating === 0) return;
@@ -58,7 +64,8 @@ export function useGlobalRating() {
 
     try {
       setRatingLoading(true);
-      const token = localStorage.getItem("token");
+      // ✅ Token من Cookie
+      const token = Cookies.get("token");
 
       await axios.put(
         `${apiUrl}/api/items/rate/${selectedItem._id}`,
@@ -69,8 +76,6 @@ export function useGlobalRating() {
       setShowModal(false);
       setRating(0);
       setSelectedItem(null);
-
-      // افحص إذا في غرض ثاني مش مقيّم
       checkPendingRatings();
     } catch (err) {
       if (axios.isAxiosError(err)) {

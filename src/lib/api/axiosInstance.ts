@@ -1,20 +1,22 @@
 // src/lib/api/axiosInstance.ts
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 const AUTH_PATHS = ['/login', '/register', '/verify'];
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL!,
-  timeout: 15000, // ✅ timeout يمنع الطلبات المعلقة إلى الأبد
+  timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ─── Request: إضافة التوكن تلقائياً ───
+// ─── Request: إضافة التوكن تلقائياً من Cookie ───
 axiosInstance.interceptors.request.use(
   (config) => {
     if (typeof window === 'undefined') return config; // SSR guard
 
-    const token = localStorage.getItem('token');
+    // ✅ Token من Cookie بدل localStorage
+    const token = Cookies.get('token');
     if (token) config.headers['x-auth-token'] = token;
 
     return config;
@@ -31,9 +33,9 @@ axiosInstance.interceptors.response.use(
     const status   = error.response?.status;
     const isOnAuth = AUTH_PATHS.some((p) => window.location.pathname.startsWith(p));
 
-    // ✅ 401 بس إذا مش على صفحة auth (لتجنب الـ redirect loop)
+    // ✅ 401 → مسح الـ Cookie + redirect
     if (status === 401 && !isOnAuth) {
-      localStorage.removeItem('token');
+      Cookies.remove('token');
       localStorage.removeItem('user');
       window.location.href = '/login?expired=true';
     }

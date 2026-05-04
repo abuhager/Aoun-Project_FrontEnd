@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -25,6 +27,7 @@ export function useLogin() {
 
     try {
       setLoading(true);
+
       const res = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
         { email: formData.email, password: formData.password }
@@ -32,10 +35,16 @@ export function useLogin() {
 
       const { token, user } = res.data;
 
-      // ─── حفظ البيانات ───
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user)); // ✅ عشان الـ Navbar يعرض الاسم
-      Cookies.set("token", token, { expires: 7, sameSite: "lax" }); // ✅ عشان الـ proxy يشتغل
+      // ✅ Token يُحفظ فقط في Cookie (أكثر أمناً من localStorage ضد XSS)
+      // ⚠️ localStorage.setItem("token") محذوف — كان خطر أمني
+      Cookies.set("token", token, {
+        expires:  7,
+        sameSite: "lax",
+        // secure: true  // ← فعّله عند الـ production (HTTPS فقط)
+      });
+
+      // ✅ بيانات المستخدم العامة فقط (بدون token) للـ Navbar
+      localStorage.setItem("user", JSON.stringify(user));
 
       router.push("/browse");
 

@@ -3,29 +3,73 @@
 import { Suspense } from "react";
 import { useVerifyEmail } from "./hooks/useVerifyEmail";
 
-// ─── المحتوى الفعلي (بداخل Suspense لأن useSearchParams يحتاجه) ───
+// ─── Types ───
+interface OtpInputProps {
+  digit: string;
+  index: number;
+  inputRef: (el: HTMLInputElement | null) => void;
+  onChange: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void;
+  onKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
+}
+
+// ─── مكوّن خانة OTP منفصل (أوضح وأسهل للـ TypeScript) ───
+function OtpInput({ digit, index, inputRef, onChange, onKeyDown }: OtpInputProps) {
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="numeric"
+      maxLength={1}
+      value={digit}
+      onChange={(e) => onChange(index, e)}
+      onKeyDown={(e) => onKeyDown(index, e)}
+      className={`w-14 h-14 text-center text-2xl font-black rounded-2xl outline-none transition-all border-2 bg-surface-container-highest
+        ${digit
+          ? "border-primary bg-primary/5 text-primary"
+          : "border-transparent focus:border-primary/40 focus:bg-white text-[#191c1d]"
+        } focus:ring-2 focus:ring-primary/20`}
+    />
+  );
+}
+
+// ─── المحتوى الفعلي (داخل Suspense لأن useSearchParams يحتاجه) ───
 function VerifyContent() {
   const {
-    email, otp, error, loading, isComplete,
-    inputRefs, handleChange, handleKeyDown, handleSubmit,
+    email,
+    otp,
+    error,
+    loading,
+    isComplete,
+    inputRefs,
+    handleChange,
+    handleKeyDown,
+    handleSubmit,
   } = useVerifyEmail();
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center p-4 font-body" dir="rtl">
+    <div
+      className="min-h-screen bg-surface flex items-center justify-center p-4 font-body"
+      dir="rtl"
+    >
       <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-sm border border-[#edeeef] text-center">
 
         {/* ─── الأيقونة ─── */}
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-          <span className="material-symbols-outlined text-3xl text-primary">mark_email_read</span>
+          <span className="material-symbols-outlined text-3xl text-primary">
+            mark_email_read
+          </span>
         </div>
 
         <h1 className="text-2xl font-black text-[#191c1d] mb-2 font-headline">
           تحقق من بريدك الإلكتروني ✉️
         </h1>
+
         <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
           أدخل الرمز المكون من 4 أرقام الذي أرسلناه إلى:
           <br />
-          <span className="font-black text-primary" dir="ltr">{email}</span>
+          <span className="font-black text-primary" dir="ltr">
+            {email}
+          </span>
         </p>
 
         {/* ─── رسالة الخطأ ─── */}
@@ -36,24 +80,16 @@ function VerifyContent() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-
           {/* ─── خانات الـ OTP ─── */}
           <div className="flex justify-center gap-3" dir="ltr">
-            {otp.map((digit, index) => (
-              <input
+            {otp.map((digit: string, index: number) => (
+              <OtpInput
                 key={index}
-                ref={(el) => { inputRefs.current[index] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleChange(index, e)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                className={`w-14 h-14 text-center text-2xl font-black rounded-2xl outline-none transition-all border-2 bg-surface-container-highest
-                  ${digit
-                    ? "border-primary bg-primary/5 text-primary"
-                    : "border-transparent focus:border-primary/40 focus:bg-white text-[#191c1d]"
-                  } focus:ring-2 focus:ring-primary/20`}
+                digit={digit}
+                index={index}
+                inputRef={(el) => { inputRefs.current[index] = el; }}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
               />
             ))}
           </div>

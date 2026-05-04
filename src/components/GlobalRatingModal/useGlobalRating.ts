@@ -1,21 +1,23 @@
 import { useState, useCallback, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import axios from "axios";
 import Cookies from "js-cookie";
 
 export interface Item {
-  _id:      string;
-  title:    string;
-  status:   string;
-  isRated:  boolean;
-  donor?:   { _id: string; name: string };
+  _id:     string;
+  title:   string;
+  status:  string;
+  isRated: boolean;
+  donor?:  { _id: string; name: string };
   bookedBy?: { _id: string; name: string };
 }
 
-const AUTH_PATHS = ["/login", "/register", "/verify"];
+// الصفحات المسموح بالتنقل إليها حتى لو في تقييم معلق
+const ALLOWED_PATHS = ["/login", "/register", "/verify", "/"];
 
 export function useGlobalRating() {
   const pathname = usePathname();
+  const router   = useRouter();
   const apiUrl   = process.env.NEXT_PUBLIC_API_URL!;
 
   const [showModal,     setShowModal]     = useState(false);
@@ -25,21 +27,16 @@ export function useGlobalRating() {
   const [errorMsg,      setErrorMsg]      = useState("");
 
   const checkPendingRatings = useCallback(async () => {
-    // ✅ Token من Cookie
     const token = Cookies.get("token");
-    if (!token || AUTH_PATHS.some((p) => pathname.startsWith(p))) return;
+    if (!token || ALLOWED_PATHS.some((p) => pathname.startsWith(p))) return;
 
     try {
-      const res = await axios.get(`${apiUrl}/api/items/me`, {
+      const res = await axios.get(`${apiUrl}/api/items/pending-rating`, {
         headers: { "x-auth-token": token },
       });
 
-      const pending = (res.data.myRequests as Item[])?.find(
-        (item) => item.status === "تم التسليم" && !item.isRated
-      );
-
-      if (pending) {
-        setSelectedItem(pending);
+      if (res.data.hasPending) {
+        setSelectedItem(res.data.item);
         setShowModal(true);
       } else {
         setShowModal(false);
@@ -49,14 +46,20 @@ export function useGlobalRating() {
     }
   }, [pathname, apiUrl]);
 
+  // ─── فحص عند كل تغيير في الصفحة ───
   useEffect(() => {
-  // انتظر ثانية عشان الـ Cookie يكون جاهز
-  const timer = setTimeout(() => {
-    checkPendingRatings();
-  }, 1000);
+    const timer = setTimeout(() => checkPendingRatings(), 500);
+    return () => clearTimeout(timer);
+  }, [checkPendingRatings]);
 
-  return () => clearTimeout(timer);
-}, [checkPendingRatings]);
+  // ─── منع التنقل إذا في تقييم معلق ───
+  useEffect(() => {
+    if (!showModal) return;
+    if (ALLOWED_PATHS.some((p) => pathname.startsWith(p))) return;
+
+    // إرجاع المستخدم للصفحة الحالية إذا حاول يتنقل
+    router.replace(pathname);
+  }, [pathname, showModal, router]);
 
   const handleRate = async () => {
     if (!selectedItem || rating === 0) return;
@@ -64,7 +67,6 @@ export function useGlobalRating() {
 
     try {
       setRatingLoading(true);
-      // ✅ Token من Cookie
       const token = Cookies.get("token");
 
       await axios.put(
@@ -76,6 +78,8 @@ export function useGlobalRating() {
       setShowModal(false);
       setRating(0);
       setSelectedItem(null);
+
+      // فحص إذا في تقييم ثاني
       checkPendingRatings();
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -87,15 +91,14 @@ export function useGlobalRating() {
   };
 
   const handleClose = () => {
-    setShowModal(false);
-    setRating(0);
-    setErrorMsg("");
+    // ✅ لا يُغلق الـ Modal — المستخدم مجبر على التقييم
+    setErrorMsg("يجب تقييم المتبرع أولاً قبل المتابعة 🌟");
   };
 
   return {
     showModal, selectedItem,
-    rating, setRating,
+    rating,        setRating,
     ratingLoading, errorMsg,
-    handleRate, handleClose,
+    handleRate,    handleClose,
   };
 }

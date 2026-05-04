@@ -61,13 +61,7 @@ export default function GlobalRatingModal() {
             {ratingLoading ? "جاري الحفظ..." : "إرسال التقييم"}
           </button>
 
-          {/* ─── زر التخطي ─── */}
-          <button
-            onClick={handleClose}
-            className="w-full text-gray-400 text-xs font-bold py-2 hover:text-gray-600 transition-colors"
-          >
-            تخطي الآن
-          </button>
+        
         </div>
 
       </div>

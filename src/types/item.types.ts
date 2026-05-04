@@ -1,53 +1,110 @@
 // src/types/item.types.ts
+// مطابق لـ Item.js Schema + itemDto.js transformations
 
-// ─── Status ─── (مركزي يُستخدم في كل المشروع)
-export type ItemStatus = 'متاح' | 'محجوز' | 'تم التسليم';
+import type {
+  ItemStatus,
+  ItemCategory,
+  HandoverMode,
+  PaginatedResponse,
+} from './api.types';
 
-// ─── User ───
-export interface User {
-  _id:               string;
-  name:              string;
-  email:             string;
-  phone?:            string;
-  avatar?:           string;
-  trustScore:        number;
-  quota:             number;
-  isVerifiedStudent?: boolean;
-}
+import type {
+  PublicUser,
+  DonorUser,
+  BookedByUser,
+} from './user.types';
 
-// ─── Waitlist Entry ───
+// ── re-export لسهولة الاستخدام ────────────────────────────────────
+export type { ItemStatus, ItemCategory, HandoverMode };
+
+// ── Waitlist Entry ────────────────────────────────────────────────
 export interface WaitlistEntry {
-  user: { _id: string; name?: string };
+  user: {
+    _id: string;
+    name?: string;
+  };
+  joinedAt?: string;
 }
 
-// ─── Item ───
+// ── الغرض العام — من toPublicItem() ─────────────────────────────
 export interface Item {
-  _id:          string;
-  title:        string;
-  description:  string;
-  category:     string;
-  condition?:   string;
-  status:       ItemStatus;       // ✅ بدل string مفتوح
-  imageUrl:     string;
-  location:     string;
-  createdAt:    string;
-  bookedAt?:    string;
-  donor:        User;
-  bookedBy?:    { _id: string; name: string };   // ✅ بعد الـ populate دايماً object
-  waitlist:     WaitlistEntry[];
-  deliveryOtp?: string;
-  cancelledBy?: { _id: string }[];               // ✅ array من objects
-  isRated?:     boolean;
+  _id: string;
+  title: string;
+  description: string;
+  category: ItemCategory;
+  location: string;
+  condition?: string;
+  imageUrl: string;
+  status: ItemStatus;           // ✅ الآن يشمل 'مخفي'
+  reportCount: number;
+  waitlistCount: number;        // ✅ عدد — مش array كاملة
+  // ✅ حقول كانت مفقودة
+  bookedAt?: string;
+  isRated: boolean;
+  handoverMode: HandoverMode;
+  hubId?: string;
+  createdAt: string;
+  updatedAt?: string;
+  donor: PublicUser | null;
+  bookedBy?: {
+    _id: string;
+    name: string;
+  } | null;
 }
 
-// ─── API Responses ───
-export interface ItemsResponse {
-  items: Item[];
-  pages: number;
-  total: number;
+// ── الغرض للمتبرع — من toDonorItem() ────────────────────────────
+export interface DonorItem extends Item {
+  // ✅ لا يوجد otp — محذوف من الـ Backend
+  bookedBy?: BookedByUser | null;  // يشمل phone + email
 }
+
+// ── الغرض للمستلم — من toReceiverItem() ─────────────────────────
+export interface ReceiverItem extends Item {
+  // ✅ لا يوجد otp — محذوف من الـ Backend
+  donor: DonorUser | null;          // يشمل phone
+}
+
+// ── Responses من الـ API ──────────────────────────────────────────
+export interface ItemsResponse extends PaginatedResponse<Item> {}
 
 export interface MyItemsResponse {
-  myDonations: Item[];
-  myRequests:  Item[];
+  myDonations: DonorItem[];
+  myRequests: ReceiverItem[];
+  totalDonations: number;
+  quota: number;
+  trustScore: number;
+}
+
+// ── Create / Update Payloads ──────────────────────────────────────
+export interface CreateItemPayload {
+  title: string;
+  category: ItemCategory;
+  description?: string;
+  location: string;
+  condition?: string;
+  // الصورة تُرسَل كـ FormData — مش هون
+}
+
+export interface UpdateItemPayload extends Partial<CreateItemPayload> {}
+
+// ── Rating ────────────────────────────────────────────────────────
+export interface RateItemPayload {
+  rating: number; // 1-5 حالياً، سيصبح 1-10 في Phase 4
+}
+
+// ── Report ────────────────────────────────────────────────────────
+export interface ReportUserPayload {
+  reportedUserId: string;
+  itemId: string;
+}
+
+// ── Pending Rating Response ───────────────────────────────────────
+export interface PendingRatingItem {
+  _id: string;
+  title: string;
+  imageUrl: string;
+  bookedBy: {
+    _id: string;
+    name: string;
+  };
 }

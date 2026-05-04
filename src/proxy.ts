@@ -1,10 +1,10 @@
 // src/proxy.ts
-
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
 
-const PUBLIC_PATHS    = ['/', '/login', '/register'];
-const PUBLIC_PREFIXES = ['/verify'];
+const PUBLIC_PATHS = ['/', '/login', '/register', '/browse'];
+const PUBLIC_PREFIXES = ['/verify', '/items/'];
 
 function isPublicPath(pathname: string): boolean {
   return (
@@ -13,19 +13,40 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
-// ✅ Next.js 16 → الاسم proxy وليس middleware
-export function proxy(request: NextRequest) {
-  const token            = request.cookies.get('token')?.value;
-  const { pathname }     = request.nextUrl;
+async function isValidToken(token: string): Promise<boolean> {
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+    await jwtVerify(token, secret);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-  if (!isPublicPath(pathname) && !token) {
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const token = request.cookies.get('token')?.value;
+
+  if (isPublicPath(pathname)) {
+    if (token && (pathname === '/login' || pathname === '/register')) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  if (!token) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (token && (pathname === '/login' || pathname === '/register')) {
-    return NextResponse.redirect(new URL('/', request.url));
+  const valid = await isValidToken(token);
+  if (!valid) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('expired', 'true');
+    const response = NextResponse.redirect(loginUrl);
+    response.cookies.delete('token');
+    return response;
   }
 
   return NextResponse.next();
@@ -33,13 +54,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/browse',
-    '/dashboard',
-    '/add-item',
-    '/edit-item/:path*',
-    '/items/:path*',
-    '/profile/:path*',
-    '/login',
-    '/register',
+    // ✅ backslashes صحيحة
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

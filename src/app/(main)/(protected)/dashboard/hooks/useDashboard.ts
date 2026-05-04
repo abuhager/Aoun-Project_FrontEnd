@@ -3,7 +3,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 
-// ─── الأنواع ───
+// ── الأنواع ──────────────────────────────────────────
 interface User {
   name: string;
   email: string;
@@ -12,167 +12,217 @@ interface User {
   isVerifiedStudent?: boolean;
 }
 
+// ✅ حذف otp من الـ Item interface نهائياً
 interface Item {
   _id: string;
   title: string;
   imageUrl: string;
   status: string;
-  createdAt: string;
   isRated: boolean;
-  otp?: string;
+  // otp?: string; ← محذوف — OTP لا يأتي من الـ API بعد الآن
   bookedBy?: { _id: string; name: string; phone: string };
-  donor?:    { _id: string; name: string; phone: string };
 }
 
 interface DashboardData {
+  user: User;
   myDonations: Item[];
-  myRequests:  Item[];
-  user:        User | null;
+  myRequests: Item[];
+  totalDonations: number;
+  quota: number;
+  trustScore: number;
 }
 
 interface ConfirmModalState {
-  show: boolean;
-  msg: string;
-  isDanger: boolean;
+  open: boolean;
+  title: string;
+  message: string;
   onConfirm: () => void;
 }
 
-// ✅ Token من Cookie بدل localStorage
-const getToken = () => Cookies.get("token") ?? null;
+// ── Helper: قراءة التوكن ─────────────────────────────
+function getToken(): string {
+  return Cookies.get("token") ?? "";
+}
 
+// ── الـ Hook الرئيسي ─────────────────────────────────
 export function useDashboard() {
   const router = useRouter();
-  const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  const [data, setData] = useState<DashboardData>({
-    myDonations: [], myRequests: [], user: null,
-  });
-  const [activeTab, setActiveTab] = useState<"donations" | "requests">("donations");
-  const [loading, setLoading] = useState(true);
+  // ── States ──
+  const [data, setData]               = useState<DashboardData | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [activeTab, setActiveTab]     = useState<"donations" | "requests">("donations");
+  const [toast, setToast]             = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  const [showOtpModal, setShowOtpModal] = useState(false);
+  // OTP Modal
+  const [showOtpModal, setShowOtpModal]   = useState(false);
+  const [selectedItem, setSelectedItem]   = useState<Item | null>(null);
+  const [otp, setOtp]                     = useState("");        // ← هاد input من المستخدم، مش من الـ API
+  const [otpError, setOtpError]           = useState("");
+  const [otpLoading, setOtpLoading]       = useState(false);
+
+  // Confirm Modal
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
-    show: false, msg: "", isDanger: false, onConfirm: () => {},
+    open: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
   });
-  const [toast, setToast] = useState<{ msg: string; type: "error" | "success" } | null>(null);
 
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [otp,          setOtp]          = useState("");
-  const [otpError,     setOtpError]     = useState("");
-  const [otpLoading,   setOtpLoading]   = useState(false);
+  // ── جلب البيانات ────────────────────────────────────
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = getToken();
+        if (!token) { router.push("/login"); return; }
 
-  const fetchData = useCallback(async () => {
-    try {
-      const token = getToken();
-      if (!token) return router.push("/login");
-      const res = await axios.get(`${backendBaseUrl}/api/items/me`, {
-        headers: { "x-auth-token": token },
-      });
-      setData(res.data);
-    } catch (err) {
-      console.error("Error fetching dashboard", err);
-    } finally {
-      setLoading(false);
+        const { data: res } = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/items/me`,
+          { headers: { "x-auth-token": token } }
+        );
+        setData(res);
+      } catch {
+        showToast("حدث خطأ في تحميل البيانات", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [router]);
+
+  // ── Toast ────────────────────────────────────────────
+  const showToast = useCallback((msg: string, type: "success" | "error") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  // ── حذف غرض ─────────────────────────────────────────
+  const handleDelete = useCallback((id: string, status: string) => {
+    if (status !== "متاح") {
+      showToast("لا يمكن حذف غرض محجوز", "error");
+      return;
     }
-  }, [router, backendBaseUrl]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  const handleDelete = (id: string, status: string) => {
-    const msg =
-      status === "محجوز"
-        ? "⚠️ تنبيه: هذا الغرض محجوز حالياً!\nحذفك له سيعتبر كسر التزام وسيتم خصم 3 نقاط من رصيدك.\nهل أنت متأكد؟"
-        : "هل أنت متأكد من حذف هذا التبرع نهائياً؟";
-
     setConfirmModal({
-      show: true,
-      msg,
-      isDanger: status === "محجوز",
+      open: true,
+      title: "حذف الغرض",
+      message: "هل أنت متأكد من حذف هذا الغرض؟ لا يمكن التراجع.",
       onConfirm: async () => {
         try {
-          const token = getToken();
-          if (!token) return;
-          await axios.delete(`${backendBaseUrl}/api/items/delete/${id}`, {
-            headers: { "x-auth-token": token },
-          });
-          setConfirmModal((prev) => ({ ...prev, show: false }));
-          setToast({ msg: "تم حذف الغرض بنجاح ✅", type: "success" });
-          fetchData();
-        } catch {
-          setConfirmModal((prev) => ({ ...prev, show: false }));
-          setToast({ msg: "خطأ في الحذف، حاول مرة أخرى", type: "error" });
-        }
-      },
-    });
-  };
-
-  const handleCancelBooking = (id: string) => {
-    setConfirmModal({
-      show: true,
-      msg: "هل تريد إلغاء حجز المستلم الحالي؟\n\nسيتم تمرير الدور تلقائياً للشخص التالي في الانتظار، وسيتم منع هذا المستلم من حجز الغرض مجدداً.",
-      isDanger: true,
-      onConfirm: async () => {
-        try {
-          const token = getToken();
-          if (!token) return;
-          await axios.put(
-            `${backendBaseUrl}/api/items/cancel/${id}`,
-            {},
-            { headers: { "x-auth-token": token } }
+          await axios.delete(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/items/delete/${id}`,
+            { headers: { "x-auth-token": getToken() } }
           );
-          setConfirmModal((prev) => ({ ...prev, show: false }));
-          setToast({ msg: "تم إلغاء الحجز بنجاح 🔄", type: "success" });
-          fetchData();
+          setData((prev) =>
+            prev ? { ...prev, myDonations: prev.myDonations.filter((i) => i._id !== id) } : prev
+          );
+          showToast("تم حذف الغرض بنجاح", "success");
         } catch {
-          setConfirmModal((prev) => ({ ...prev, show: false }));
-          setToast({ msg: "خطأ في العملية، حاول مرة أخرى", type: "error" });
+          showToast("حدث خطأ أثناء الحذف", "error");
+        } finally {
+          setConfirmModal((prev) => ({ ...prev, open: false }));
         }
       },
     });
-  };
+  }, [showToast]);
 
-  const handleConfirmDelivery = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!selectedItem) return;
+  // ── إلغاء الحجز ──────────────────────────────────────
+  const handleCancelBooking = useCallback((id: string) => {
+    setConfirmModal({
+      open: true,
+      title: "إلغاء الحجز",
+      message: "هل أنت متأكد من إلغاء حجزك؟",
+      onConfirm: async () => {
+        try {
+          await axios.put(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/items/cancel/${id}`,
+            {},
+            { headers: { "x-auth-token": getToken() } }
+          );
+          setData((prev) =>
+            prev ? { ...prev, myRequests: prev.myRequests.filter((i) => i._id !== id) } : prev
+          );
+          showToast("تم إلغاء الحجز بنجاح", "success");
+        } catch {
+          showToast("حدث خطأ أثناء الإلغاء", "error");
+        } finally {
+          setConfirmModal((prev) => ({ ...prev, open: false }));
+        }
+      },
+    });
+  }, [showToast]);
+
+  // ── فتح OTP Modal ────────────────────────────────────
+  const openOtpModal = useCallback((item: Item) => {
+    setSelectedItem(item);
+    setOtp("");           // ← فارغ — المستخدم يدخل الـ OTP من الإيميل
     setOtpError("");
+    setShowOtpModal(true);
+  }, []);
+
+  const closeOtpModal = useCallback(() => {
+    setShowOtpModal(false);
+    setSelectedItem(null);
+    setOtp("");
+    setOtpError("");
+  }, []);
+
+  // ── تأكيد التسليم ────────────────────────────────────
+  const handleConfirmDelivery = useCallback(async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedItem || otp.length < 4) {
+      setOtpError("الرجاء إدخال رمز التسليم كاملاً");
+      return;
+    }
+
     setOtpLoading(true);
+    setOtpError("");
+
     try {
-      const token = getToken();
       await axios.put(
-        `${backendBaseUrl}/api/items/complete/${selectedItem._id}`,
-        { otp },
-        { headers: { "x-auth-token": token } }
+        `${process.env.NEXT_PUBLIC_API_URL}/api/items/complete/${selectedItem._id}`,
+        { otp },   // ← الـ OTP اللي كتبه المستخدم يدوياً من الإيميل
+        { headers: { "x-auth-token": getToken() } }
       );
-      setShowOtpModal(false);
-      setOtp("");
-      setToast({ msg: "تم تأكيد التسليم بنجاح! 💚", type: "success" });
-      fetchData();
+
+      // تحديث الـ state
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          myDonations: prev.myDonations.map((i) =>
+            i._id === selectedItem._id ? { ...i, status: "تم التسليم" } : i
+          ),
+        };
+      });
+
+      closeOtpModal();
+      showToast("تم تأكيد التسليم بنجاح 🎉", "success");
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        setOtpError(err.response?.data?.msg || "الرمز غير صحيح ❌");
+        setOtpError(err.response?.data?.msg ?? "رمز التسليم غير صحيح");
+      } else {
+        setOtpError("حدث خطأ، حاول مجدداً");
       }
     } finally {
       setOtpLoading(false);
     }
-  };
-
-  const openOtpModal = (item: Item) => {
-    setSelectedItem(item);
-    setShowOtpModal(true);
-  };
-
-  const closeOtpModal = () => {
-    setShowOtpModal(false);
-    setOtp("");
-    setOtpError("");
-  };
+  }, [selectedItem, otp, closeOtpModal, showToast]);
 
   return {
-    data, activeTab, setActiveTab, loading,
-    showOtpModal, confirmModal, setConfirmModal, toast, setToast,
-    selectedItem, otp, setOtp, otpError, otpLoading,
-    handleDelete, handleCancelBooking,
+    data,
+    loading,
+    activeTab,        setActiveTab,
+    toast,            setToast,
+    showOtpModal,
+    confirmModal,     setConfirmModal,
+    selectedItem,
+    otp,              setOtp,
+    otpError,
+    otpLoading,
+    handleDelete,
+    handleCancelBooking,
     handleConfirmDelivery,
-    openOtpModal, closeOtpModal,
+    openOtpModal,
+    closeOtpModal,
   };
 }

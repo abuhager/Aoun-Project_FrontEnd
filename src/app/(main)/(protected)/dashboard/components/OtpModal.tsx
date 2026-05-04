@@ -17,8 +17,13 @@ interface OtpModalProps {
 }
 
 export function OtpModal({
-  item, otp, otpError, otpLoading,
-  onOtpChange, onSubmit, onClose,
+  item,
+  otp,
+  otpError,
+  otpLoading,
+  onOtpChange,
+  onSubmit,
+  onClose,
 }: OtpModalProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -27,19 +32,23 @@ export function OtpModal({
         className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-4"
         dir="rtl"
       >
-        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-          <span className="material-symbols-outlined text-primary text-3xl">lock_open</span>
+        {/* العنوان */}
+        <div className="space-y-1">
+          <h2 className="text-xl font-black text-gray-800">تأكيد التسليم</h2>
+          <p className="text-sm text-gray-500 font-medium truncate">{item.title}</p>
         </div>
-        <h3 className="text-xl font-black text-primary">تأكيد الاستلام 🎁</h3>
-        <p className="text-xs text-gray-500 leading-relaxed">
-          أدخل الرمز الذي سيقدمه لك المستلم
-          <br />
-          <span className="font-black text-[#191c1d]">{item.title}</span>
-        </p>
 
-        {otpError && <p className="text-[10px] text-red-500 font-bold">{otpError}</p>}
+        {/* ✅ رسالة توضيحية — المستخدم يدخل الـ OTP من إيميله */}
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-right">
+          <p className="text-sm text-blue-700 font-semibold">
+            📧 تم إرسال رمز التسليم إلى بريدك الإلكتروني
+          </p>
+          <p className="text-xs text-blue-500 mt-0.5">
+            أدخل الرمز المكوّن من 6 أرقام الذي وصلك
+          </p>
+        </div>
 
-        {/* ✅ 6 خانات */}
+        {/* Input الـ OTP */}
         <input
           type="text"
           inputMode="numeric"
@@ -48,21 +57,27 @@ export function OtpModal({
           onChange={(e) => onOtpChange(e.target.value.replace(/\D/g, ""))}
           className="w-full bg-gray-50 text-center text-3xl font-black py-4 rounded-2xl outline-none focus:ring-2 ring-primary/20 tracking-[0.5em] font-mono"
           placeholder="000000"
+          autoFocus
         />
-        <p className="text-[10px] text-gray-400">رمز مكون من 6 أرقام</p>
 
-        <div className="flex gap-2">
+        {/* خطأ */}
+        {otpError && (
+          <p className="text-xs text-red-500 font-bold">{otpError}</p>
+        )}
+
+        {/* الأزرار */}
+        <div className="flex gap-3">
           <button
             type="submit"
-            disabled={otpLoading || otp.length !== 6} // ✅ 6 بدل 4
-            className="flex-1 bg-primary text-white py-3 rounded-2xl font-black text-xs disabled:opacity-50 transition-all"
+            disabled={otp.length < 6 || otpLoading}
+            className="flex-1 bg-primary text-white font-black py-3 rounded-2xl disabled:opacity-40 hover:bg-primary/90 transition-colors"
           >
-            {otpLoading ? "جاري..." : "تأكيد التسليم"}
+            {otpLoading ? "جارٍ التحقق..." : "تأكيد التسليم"}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 bg-gray-50 text-gray-400 py-3 rounded-2xl font-black text-xs hover:bg-gray-100 transition-all"
+            className="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-2xl hover:bg-gray-200 transition-colors"
           >
             إلغاء
           </button>

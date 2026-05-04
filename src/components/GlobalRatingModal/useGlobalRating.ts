@@ -13,7 +13,7 @@ export interface Item {
 }
 
 // الصفحات المسموح بالتنقل إليها حتى لو في تقييم معلق
-const ALLOWED_PATHS = ["/login", "/register", "/verify", "/"];
+const BLOCKED_FROM_CHECK = ["/login", "/register", "/verify"];
 
 export function useGlobalRating() {
   const pathname = usePathname();
@@ -28,7 +28,7 @@ export function useGlobalRating() {
 
   const checkPendingRatings = useCallback(async () => {
     const token = Cookies.get("token");
-    if (!token || ALLOWED_PATHS.some((p) => pathname.startsWith(p))) return;
+if (!token || BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
 
     try {
       const res = await axios.get(`${apiUrl}/api/items/pending-rating`, {
@@ -55,7 +55,7 @@ export function useGlobalRating() {
   // ─── منع التنقل إذا في تقييم معلق ───
   useEffect(() => {
     if (!showModal) return;
-    if (ALLOWED_PATHS.some((p) => pathname.startsWith(p))) return;
+if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
 
     // إرجاع المستخدم للصفحة الحالية إذا حاول يتنقل
     router.replace(pathname);

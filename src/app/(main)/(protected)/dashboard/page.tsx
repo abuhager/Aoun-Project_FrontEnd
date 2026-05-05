@@ -19,10 +19,20 @@ export default function DashboardPage() {
     openOtpModal, closeOtpModal,
   } = useDashboard();
 
+  // ✅ FIX 1: Spinner while loading
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-surface">
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // ✅ FIX 2: Guard — data قد يكون null إذا فشل الـ API أو لم ينتهِ بعد
+  if (!data) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-surface">
+        <p className="text-gray-400 text-sm">حدث خطأ في تحميل البيانات. تأكد من اتصالك بالسيرفر.</p>
       </div>
     );
   }
@@ -33,12 +43,13 @@ export default function DashboardPage() {
     <div className="bg-surface min-h-screen pb-16 text-[#191c1d] font-body" dir="rtl">
 
       {/* ─── Modals & Toasts ─── */}
-      {confirmModal.show && (
+      {/* ✅ FIX 3: confirmModal.open (وليس .show) — يطابق ConfirmModalState في الـ hook */}
+      {confirmModal.open && (
         <ActionModal
-          message={confirmModal.msg}
-          isDanger={confirmModal.isDanger}
+          message={confirmModal.message}
+          isDanger
           onConfirm={confirmModal.onConfirm}
-          onCancel={() => setConfirmModal((p) => ({ ...p, show: false }))}
+          onCancel={() => setConfirmModal((p) => ({ ...p, open: false }))}
         />
       )}
       {toast && (

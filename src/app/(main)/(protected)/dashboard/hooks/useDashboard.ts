@@ -3,23 +3,23 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 
-// ── الأنواع ──────────────────────────────────────────
+// ── الأنواع ────────────────────────────────────────────────
 interface User {
   name: string;
   email: string;
   trustScore: number;
   quota: number;
   isVerifiedStudent?: boolean;
+  trustLevel?: 1 | 2;
+  phoneVerified?: boolean;
 }
 
-// ✅ حذف otp من الـ Item interface نهائياً
 interface Item {
   _id: string;
   title: string;
   imageUrl: string;
   status: string;
   isRated: boolean;
-  // otp?: string; ← محذوف — OTP لا يأتي من الـ API بعد الآن
   bookedBy?: { _id: string; name: string; phone: string };
 }
 
@@ -39,12 +39,12 @@ interface ConfirmModalState {
   onConfirm: () => void;
 }
 
-// ── Helper: قراءة التوكن ─────────────────────────────
+// ── Helper: قراءة التوكن ────────────────────────────────
 function getToken(): string {
   return Cookies.get("token") ?? "";
 }
 
-// ── الـ Hook الرئيسي ─────────────────────────────────
+// ── الـ Hook الرئيسي ──────────────────────────────────
 export function useDashboard() {
   const router = useRouter();
 
@@ -57,11 +57,11 @@ export function useDashboard() {
   // OTP Modal
   const [showOtpModal, setShowOtpModal]   = useState(false);
   const [selectedItem, setSelectedItem]   = useState<Item | null>(null);
-  const [otp, setOtp]                     = useState("");        // ← هاد input من المستخدم، مش من الـ API
+  const [otp, setOtp]                     = useState("");
   const [otpError, setOtpError]           = useState("");
   const [otpLoading, setOtpLoading]       = useState(false);
 
-  // Confirm Modal
+  // Confirm Modal — ✅ open (وليس show)
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
     open: false,
     title: "",
@@ -76,11 +76,18 @@ export function useDashboard() {
         const token = getToken();
         if (!token) { router.push("/login"); return; }
 
+        // ✅ FIX: الـ endpoint الصحيح بعد Phase 1
         const { data: res } = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/items/me`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/items/user/my-items`,
           { headers: { "x-auth-token": token } }
         );
-        setData(res);
+
+        // ✅ Fallback: ضمان وجود المصفوفات حتى لو الـ API أعاد null
+        setData({
+          ...res,
+          myDonations: res.myDonations ?? [],
+          myRequests:  res.myRequests  ?? [],
+        });
       } catch {
         showToast("حدث خطأ في تحميل البيانات", "error");
       } finally {
@@ -88,15 +95,16 @@ export function useDashboard() {
       }
     };
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  // ── Toast ────────────────────────────────────────────
+  // ── Toast ───────────────────────────────────────────────
   const showToast = useCallback((msg: string, type: "success" | "error") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }, []);
 
-  // ── حذف غرض ─────────────────────────────────────────
+  // ── حذف غرض ───────────────────────────────────────────
   const handleDelete = useCallback((id: string, status: string) => {
     if (status !== "متاح") {
       showToast("لا يمكن حذف غرض محجوز", "error");
@@ -125,7 +133,7 @@ export function useDashboard() {
     });
   }, [showToast]);
 
-  // ── إلغاء الحجز ──────────────────────────────────────
+  // ── إلغاء الحجز ──────────────────────────────────────────
   const handleCancelBooking = useCallback((id: string) => {
     setConfirmModal({
       open: true,
@@ -151,10 +159,10 @@ export function useDashboard() {
     });
   }, [showToast]);
 
-  // ── فتح OTP Modal ────────────────────────────────────
+  // ── فتح OTP Modal ──────────────────────────────────────
   const openOtpModal = useCallback((item: Item) => {
     setSelectedItem(item);
-    setOtp("");           // ← فارغ — المستخدم يدخل الـ OTP من الإيميل
+    setOtp("");
     setOtpError("");
     setShowOtpModal(true);
   }, []);
@@ -166,7 +174,7 @@ export function useDashboard() {
     setOtpError("");
   }, []);
 
-  // ── تأكيد التسليم ────────────────────────────────────
+  // ── تأكيد التسليم ──────────────────────────────────────
   const handleConfirmDelivery = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedItem || otp.length < 4) {
@@ -180,11 +188,10 @@ export function useDashboard() {
     try {
       await axios.put(
         `${process.env.NEXT_PUBLIC_API_URL}/api/items/complete/${selectedItem._id}`,
-        { otp },   // ← الـ OTP اللي كتبه المستخدم يدوياً من الإيميل
+        { otp },
         { headers: { "x-auth-token": getToken() } }
       );
 
-      // تحديث الـ state
       setData((prev) => {
         if (!prev) return prev;
         return {

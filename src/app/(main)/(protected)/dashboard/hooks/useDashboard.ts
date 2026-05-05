@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, FormEvent } from "react";
 import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
-import { useRouter } from "next/navigation";
 
 // ── الأنواع ───────────────────────────────────────────
 interface User {
@@ -41,12 +40,10 @@ interface ConfirmModalState {
 
 // ── الـ Hook الرئيسي ───────────────────────────────────
 export function useDashboard() {
-  const router = useRouter();
-
-  const [data,    setData]    = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data,      setData]      = useState<DashboardData | null>(null);
+  const [loading,   setLoading]   = useState(true);
   const [activeTab, setActiveTab] = useState<"donations" | "requests">("donations");
-  const [toast, setToast]     = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [toast,     setToast]     = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
   // OTP Modal
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -60,11 +57,12 @@ export function useDashboard() {
     open: false, title: "", message: "", onConfirm: () => {},
   });
 
-  // ── جلب البيانات ────────────────────────────────────
+  // ── جلب البيانات — مرة واحدة عند التحميل ───────────────────
   useEffect(() => {
+    // ✅ FIX: [] بدل [router] — router object يتغيّر عند كل render
+    // الحماية تتم عبر proxy.ts — لا نحتاج router هنا
     const fetchData = async () => {
       try {
-        // ✅ axiosInstance يرفق Token تلقائياً — لا Cookies، لا headers يدوية
         const { data: res } = await axiosInstance.get("/api/items/user/my-items");
         setData({
           ...res,
@@ -72,14 +70,14 @@ export function useDashboard() {
           myRequests:  res.myRequests  ?? [],
         });
       } catch {
-        showToast("حدث خطأ في تحميل البيانات", "error");
+        // axiosInstance interceptor يتعامل مع 401 و redirect تلقائياً
+        setData(null);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, []); // ✅ فارغ — تشغيل مرة واحدة فقط
 
   // ── Toast ────────────────────────────────────────────
   const showToast = useCallback((msg: string, type: "success" | "error") => {
@@ -157,15 +155,10 @@ export function useDashboard() {
       setOtpError("الرجاء إدخال رمز التسليم كاملاً");
       return;
     }
-
     setOtpLoading(true);
     setOtpError("");
-
     try {
-      await axiosInstance.put(
-        `/api/items/complete/${selectedItem._id}`,
-        { otp }
-      );
+      await axiosInstance.put(`/api/items/complete/${selectedItem._id}`, { otp });
       setData((prev) => {
         if (!prev) return prev;
         return {

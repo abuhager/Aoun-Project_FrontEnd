@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import axios from "axios";
+import axiosInstance from "@/lib/api/axiosInstance";
 
 export interface ProfileItem {
   _id:       string;
@@ -30,8 +30,8 @@ export interface ProfileData {
 }
 
 export function usePublicProfile() {
-  const { id }    = useParams();
-  const apiUrl    = process.env.NEXT_PUBLIC_API_URL!;
+  const { id } = useParams();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL!;
 
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [activeTab,   setActiveTab]   = useState<"donations" | "requests">("donations");
@@ -42,28 +42,27 @@ export function usePublicProfile() {
 
     const fetchProfile = async () => {
       try {
-        const res = await axios.get(`${apiUrl}/api/auth/profile/${id}`);
+        // ✅ Public endpoint — axiosInstance يضيف Token إن وجد ويتجاهله إن لم يجد
+        const res = await axiosInstance.get(`/api/auth/profile/${id}`);
         setProfileData(res.data);
       } catch {
-        console.error("خطأ في جلب البروفايل");
+        // صامت — لا console.error في Production
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, [id, apiUrl]);
+  }, [id]);
 
-  // ─── تأكد أن الصورة تبدأ بـ http ───
   const getImageUrl = (url: string) => {
     if (!url) return "/placeholder.png";
     return url.startsWith("http") ? url : `${apiUrl}/${url}`;
   };
 
-  // ─── تحويل نقاط الثقة لنجوم ───
   const renderStars = (score: number) =>
     Array.from({ length: 5 }, (_, i) => ({
-      key:   i + 1,
+      key:    i + 1,
       filled: i + 1 <= Math.floor(score / 20),
     }));
 

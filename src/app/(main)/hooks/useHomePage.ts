@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "@/lib/api/axiosInstance";
 
 export interface Item {
   _id:        string;
@@ -12,9 +12,9 @@ export interface Item {
 }
 
 export const FEATURES = [
-  { icon: "person_add",  t: "سجل حسابك",           d: "انضم لمجتمعنا بخطوات بسيطة وآمنة لحماية خصوصيتك." },
+  { icon: "person_add",  t: "سجّل حسابك",           d: "انضم لمجتمعنا بخطوات بسيطة وآمنة لحماية خصوصيتك." },
   { icon: "add_box",     t: "أضف غرضاً أو اطلبه",  d: "اعرض ما لا تحتاجه أو تصفح ما يحتاجه الآخرون بكل سهولة." },
-  { icon: "handshake",   t: "تم اللقاء والتبادل",   d: "نسق موعد الاستلام في مكان عام وآمن للجميع." },
+  { icon: "handshake",   t: "تم اللقاء والتبادل",   d: "نسّق موعد الاستلام في مكان عام وآمن للجميع." },
   { icon: "star",        t: "قيّم تجربتك",          d: "ساهم في بناء مجتمع الثقة من خلال تقييم التبادل." },
 ] as const;
 
@@ -33,10 +33,11 @@ export function useHomePage() {
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const res = await axios.get(`${apiUrl}/api/items`);
+        // ✅ Public endpoint — لا token مطلوب
+        const res = await axiosInstance.get("/api/items");
         setItems(res.data.items ?? []);
-      } catch (err) {
-        console.error("خطأ في جلب الأغراض:", err);
+      } catch {
+        // صامت — الصفحة الرئيسية لا يجب أن تكسر بسبب API 
       } finally {
         setLoading(false);
       }

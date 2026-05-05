@@ -1,7 +1,7 @@
-import { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import { useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
-import Cookies from "js-cookie";
 
 interface FormData {
   title:       string;
@@ -28,11 +28,7 @@ export function useAddItem() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<Message>({ type: "", text: "" });
 
-  // ✅ حماية الصفحة عبر Cookie — الـ proxy هو الحارس الأساسي
-  useEffect(() => {
-    const token = Cookies.get("token");
-    if (!token) router.push("/login?redirect=/add-item");
-  }, [router]);
+  // ✅ الحماية تتم عبر proxy.ts — لا نحتاج Cookies هنا
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -43,12 +39,10 @@ export function useAddItem() {
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > 5 * 1024 * 1024) {
       setMessage({ type: "error", text: "حجم الصورة كبير جداً، الحد الأقصى 5 ميجا" });
       return;
     }
-
     setImage(file);
     setPreview(URL.createObjectURL(file));
   };
@@ -62,9 +56,7 @@ export function useAddItem() {
     setLoading(true);
     setMessage({ type: "", text: "" });
 
-    // ✅ Token من Cookie
-    const token = Cookies.get("token");
-    const data  = new FormData();
+    const data = new FormData();
     data.append("title",       formData.title);
     data.append("description", formData.description);
     data.append("category",    formData.category);
@@ -73,12 +65,9 @@ export function useAddItem() {
     data.append("image",       image);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      await axios.post(`${apiUrl}/api/items`, data, {
-        headers: {
-          "x-auth-token": token,
-          "Content-Type": "multipart/form-data",
-        },
+      // ✅ axiosInstance يرفق Token تلقائياً + baseURL مضبوط
+      await axiosInstance.post("/api/items", data, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
       setMessage({ type: "success", text: "تم نشر التبرع بنجاح! جاري تحويلك..." });
       setTimeout(() => router.push("/browse"), 2000);

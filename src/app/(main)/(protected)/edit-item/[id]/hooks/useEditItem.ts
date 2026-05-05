@@ -1,7 +1,7 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
-import Cookies from "js-cookie";
 
 interface FormData {
   title:       string;
@@ -14,7 +14,6 @@ interface FormData {
 export function useEditItem() {
   const { id } = useParams();
   const router  = useRouter();
-  const apiUrl  = process.env.NEXT_PUBLIC_API_URL!;
 
   const [formData, setFormData] = useState<FormData>({
     title: "", description: "", category: "", location: "", condition: "",
@@ -30,9 +29,10 @@ export function useEditItem() {
 
     const fetchItem = async () => {
       try {
-        const res = await axios.get(`${apiUrl}/api/items/${id}`);
+        // ✅ Public GET — axiosInstance يضيف Token إن وجد
+        const res = await axiosInstance.get(`/api/items/${id}`);
         const { title, description, category, location, condition, imageUrl } = res.data;
-
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL!;
         setFormData({ title, description, category, location, condition });
         setPreview(imageUrl.startsWith("http") ? imageUrl : `${apiUrl}/${imageUrl}`);
       } catch {
@@ -43,7 +43,7 @@ export function useEditItem() {
     };
 
     fetchItem();
-  }, [id, apiUrl]);
+  }, [id]);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -63,9 +63,7 @@ export function useEditItem() {
     setUpdating(true);
     setError("");
 
-    // ✅ Token من Cookie
-    const token = Cookies.get("token");
-    const data  = new FormData();
+    const data = new FormData();
     data.append("title",       formData.title);
     data.append("description", formData.description);
     data.append("category",    formData.category);
@@ -74,11 +72,9 @@ export function useEditItem() {
     if (image) data.append("image", image);
 
     try {
-      await axios.put(`${apiUrl}/api/items/update/${id}`, data, {
-        headers: {
-          "x-auth-token": token,
-          "Content-Type": "multipart/form-data",
-        },
+      // ✅ axiosInstance يرفق Token تلقائياً
+      await axiosInstance.put(`/api/items/update/${id}`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
       router.push("/dashboard");
     } catch (err: unknown) {

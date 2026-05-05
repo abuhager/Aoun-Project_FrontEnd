@@ -2,6 +2,14 @@
 import axiosInstance from './axiosInstance';
 import type { Item, ItemsResponse, MyItemsResponse } from '@/types/item.types';
 
+// شكل الـ response الفعلي للـ bookItem — يطابق الـ Backend
+export interface BookItemResponse {
+  status:   'booked' | 'waitlist';
+  message:  string;          // موجود دائماً
+  msg?:     string;          // fallback
+  item?:    Item;            // موجود فقط عند status === 'booked'
+}
+
 export const itemApi = {
   // ─── جلب كل الأغراض ───
   getAllItems: async (): Promise<ItemsResponse> => {
@@ -22,7 +30,7 @@ export const itemApi = {
   },
 
   // ─── حجز غرض ───
-  bookItem: async (id: string): Promise<{ msg: string }> => {
+  bookItem: async (id: string): Promise<BookItemResponse> => {
     const res = await axiosInstance.put(`/api/items/book/${id}`);
     return res.data;
   },
@@ -48,6 +56,12 @@ export const itemApi = {
   // ─── حذف غرض ───
   deleteItem: async (id: string): Promise<{ msg: string }> => {
     const res = await axiosInstance.delete(`/api/items/${id}`);
+    return res.data;
+  },
+
+  // ─── الإبلاغ عن مستخدم ───
+  reportUser: async (userId: string): Promise<{ msg: string }> => {
+    const res = await axiosInstance.post(`/api/items/report/${userId}`);
     return res.data;
   },
 };

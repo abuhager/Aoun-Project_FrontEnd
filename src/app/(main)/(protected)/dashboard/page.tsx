@@ -14,12 +14,11 @@ export default function DashboardPage() {
     data, activeTab, setActiveTab, loading,
     showOtpModal, confirmModal, setConfirmModal, toast, setToast,
     selectedItem, otp, setOtp, otpError, otpLoading,
-    handleDelete, handleCancelBooking,
-    handleConfirmDelivery,
+    handleDelete, handleCancelBooking, handleDonorCancelBooking,
+    handleEdit, handleConfirmDelivery,
     openOtpModal, closeOtpModal,
   } = useDashboard();
 
-  // ✅ FIX 1: Spinner while loading
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-surface">
@@ -28,7 +27,6 @@ export default function DashboardPage() {
     );
   }
 
-  // ✅ FIX 2: Guard — data قد يكون null إذا فشل الـ API أو لم ينتهِ بعد
   if (!data) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-surface">
@@ -42,8 +40,7 @@ export default function DashboardPage() {
   return (
     <div className="bg-surface min-h-screen pb-16 text-[#191c1d] font-body" dir="rtl">
 
-      {/* ─── Modals & Toasts ─── */}
-      {/* ✅ FIX 3: confirmModal.open (وليس .show) — يطابق ConfirmModalState في الـ hook */}
+      {/* Modals & Toasts */}
       {confirmModal.open && (
         <ActionModal
           message={confirmModal.message}
@@ -69,21 +66,18 @@ export default function DashboardPage() {
 
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6">
 
-        {/* ─── Profile ─── */}
         <ProfileCard
           name={data.user?.name}
           email={data.user?.email}
           trustScore={data.user?.trustScore}
         />
 
-        {/* ─── Stats ─── */}
         <StatsGrid
           trustScore={data.user?.trustScore}
           quota={data.user?.quota}
           donationsCount={data.myDonations.length}
         />
 
-        {/* ─── Tabs & Table ─── */}
         <section className="space-y-4">
           <div className="flex gap-4 border-b border-gray-100">
             {(["donations", "requests"] as const).map((t) => (
@@ -108,6 +102,8 @@ export default function DashboardPage() {
             activeTab={activeTab}
             onDelete={handleDelete}
             onCancelBooking={handleCancelBooking}
+            onDonorCancelBooking={handleDonorCancelBooking}
+            onEdit={handleEdit}
             onOpenOtp={openOtpModal}
           />
         </section>

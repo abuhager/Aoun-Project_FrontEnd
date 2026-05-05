@@ -1,23 +1,15 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-
-// ✅ حذف otp من الـ interface
-interface Item {
-  _id: string;
-  title: string;
-  imageUrl: string;
-  status: string;
-  isRated: boolean;
-  // otp?: string; ← محذوف
-  bookedBy?: { _id: string; name: string; phone: string };
-}
+import type { Item } from "../hooks/useDashboard";
 
 interface ItemsTableProps {
   items: Item[];
   activeTab: "donations" | "requests";
   onDelete: (id: string, status: string) => void;
   onCancelBooking: (id: string) => void;
+  onDonorCancelBooking: (id: string) => void;
+  onEdit: (id: string) => void;
   onOpenOtp: (item: Item) => void;
 }
 
@@ -26,6 +18,8 @@ export function ItemsTable({
   activeTab,
   onDelete,
   onCancelBooking,
+  onDonorCancelBooking,
+  onEdit,
   onOpenOtp,
 }: ItemsTableProps) {
   if (items.length === 0) {
@@ -50,16 +44,9 @@ export function ItemsTable({
           {/* صورة الغرض */}
           <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
             {item.imageUrl ? (
-              <Image
-                src={item.imageUrl}
-                alt={item.title}
-                fill
-                className="object-cover"
-              />
+              <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl">
-                📦
-              </div>
+              <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
             )}
           </div>
 
@@ -72,11 +59,10 @@ export function ItemsTable({
               {item.title}
             </Link>
 
-            {/* حالة الغرض */}
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <StatusBadge status={item.status} />
 
-              {/* ✅ بدل عرض OTP — رسالة إيميل */}
+              {/* رسالة OTP للمستلم */}
               {item.status === "محجوز" && activeTab === "requests" && (
                 <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-xl text-xs border border-blue-100 flex items-center gap-1">
                   <span>📧</span>
@@ -90,38 +76,66 @@ export function ItemsTable({
                   ⭐ بانتظار تقييمك
                 </span>
               )}
+
+              {/* من حجز الغرض — للمتبرع */}
+              {activeTab === "donations" && item.status === "محجوز" && item.bookedBy && (
+                <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-lg">
+                  محجوز بواسطة: {item.bookedBy.name}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* الأزرار */}
+          {/* ── أزرار الإجراءات ── */}
           <div className="flex flex-col gap-2 flex-shrink-0">
-            {/* زر تأكيد التسليم — للمتبرع فقط */}
+
+            {/* ✅ تأكيد التسليم — للمتبرع عندما الغرض محجوز */}
             {activeTab === "donations" && item.status === "محجوز" && (
               <button
                 onClick={() => onOpenOtp(item)}
                 className="text-xs bg-primary text-white px-3 py-1.5 rounded-xl font-bold hover:bg-primary/90 transition-colors"
               >
-                تأكيد التسليم
+                ✅ تأكيد التسليم
               </button>
             )}
 
-            {/* زر إلغاء الحجز — للمستلم */}
+            {/* ✅ فك الحجز — للمتبرع عندما الغرض محجوز */}
+            {activeTab === "donations" && item.status === "محجوز" && (
+              <button
+                onClick={() => onDonorCancelBooking(item._id)}
+                className="text-xs bg-orange-50 text-orange-500 px-3 py-1.5 rounded-xl font-bold hover:bg-orange-100 transition-colors"
+              >
+                🔓 فك الحجز
+              </button>
+            )}
+
+            {/* ✅ تعديل الغرض — للمتبرع عندما الغرض متاح أو مخفي */}
+            {activeTab === "donations" && ["متاح", "مخفي"].includes(item.status) && (
+              <button
+                onClick={() => onEdit(item._id)}
+                className="text-xs bg-blue-50 text-blue-500 px-3 py-1.5 rounded-xl font-bold hover:bg-blue-100 transition-colors"
+              >
+                ✏️ تعديل
+              </button>
+            )}
+
+            {/* ✅ حذف — للمتبرع (متاح أو محجوز، ليس تم التسليم) */}
+            {activeTab === "donations" && item.status !== "تم التسليم" && (
+              <button
+                onClick={() => onDelete(item._id, item.status)}
+                className="text-xs bg-gray-50 text-gray-500 px-3 py-1.5 rounded-xl font-bold hover:bg-gray-100 transition-colors"
+              >
+                🗑️ حذف
+              </button>
+            )}
+
+            {/* ✅ إلغاء الحجز — للمستلم من تبويب طلباتي */}
             {activeTab === "requests" && item.status === "محجوز" && (
               <button
                 onClick={() => onCancelBooking(item._id)}
                 className="text-xs bg-red-50 text-red-500 px-3 py-1.5 rounded-xl font-bold hover:bg-red-100 transition-colors"
               >
-                إلغاء الحجز
-              </button>
-            )}
-
-            {/* زر حذف */}
-            {activeTab === "donations" && item.status === "متاح" && (
-              <button
-                onClick={() => onDelete(item._id, item.status)}
-                className="text-xs bg-gray-50 text-gray-500 px-3 py-1.5 rounded-xl font-bold hover:bg-gray-100 transition-colors"
-              >
-                حذف
+                ❌ إلغاء الحجز
               </button>
             )}
           </div>
@@ -134,14 +148,12 @@ export function ItemsTable({
 // ── مكون مساعد للحالة ──────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    "متاح":       { label: "متاح",        className: "bg-green-50 text-green-600 border-green-100" },
-    "محجوز":      { label: "محجوز",       className: "bg-yellow-50 text-yellow-600 border-yellow-100" },
-    "تم التسليم": { label: "تم التسليم",  className: "bg-blue-50 text-blue-600 border-blue-100" },
-    "مخفي":       { label: "مخفي",        className: "bg-gray-50 text-gray-500 border-gray-200" },
+    "متاح":       { label: "متاح",       className: "bg-green-50 text-green-600 border-green-100" },
+    "محجوز":      { label: "محجوز",      className: "bg-yellow-50 text-yellow-600 border-yellow-100" },
+    "تم التسليم": { label: "تم التسليم", className: "bg-blue-50 text-blue-600 border-blue-100" },
+    "مخفي":       { label: "مخفي",       className: "bg-gray-50 text-gray-500 border-gray-200" },
   };
-
   const config = map[status] ?? { label: status, className: "bg-gray-50 text-gray-500 border-gray-200" };
-
   return (
     <span className={`text-xs px-2 py-0.5 rounded-lg border font-semibold ${config.className}`}>
       {config.label}

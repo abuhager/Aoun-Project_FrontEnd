@@ -1,8 +1,18 @@
 import { useEffect, useState, useCallback, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
 
 // ── الأنواع ───────────────────────────────────────────
+export interface Item {
+  _id: string;
+  title: string;
+  imageUrl: string;
+  status: string;
+  isRated: boolean;
+  bookedBy?: { _id: string; name: string; phone: string };
+}
+
 interface User {
   name: string;
   email: string;
@@ -11,15 +21,6 @@ interface User {
   isVerifiedStudent?: boolean;
   trustLevel?: 1 | 2;
   phoneVerified?: boolean;
-}
-
-interface Item {
-  _id: string;
-  title: string;
-  imageUrl: string;
-  status: string;
-  isRated: boolean;
-  bookedBy?: { _id: string; name: string; phone: string };
 }
 
 interface DashboardData {
@@ -40,6 +41,7 @@ interface ConfirmModalState {
 
 // ── الـ Hook الرئيسي ───────────────────────────────────
 export function useDashboard() {
+  const router = useRouter();
   const [data,      setData]      = useState<DashboardData | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [activeTab, setActiveTab] = useState<"donations" | "requests">("donations");
@@ -57,10 +59,8 @@ export function useDashboard() {
     open: false, title: "", message: "", onConfirm: () => {},
   });
 
-  // ── جلب البيانات — مرة واحدة عند التحميل ───────────────────
+  // ── جلب البيانات ─────────────────────────────────────
   useEffect(() => {
-    // ✅ FIX: [] بدل [router] — router object يتغيّر عند كل render
-    // الحماية تتم عبر proxy.ts — لا نحتاج router هنا
     const fetchData = async () => {
       try {
         const { data: res } = await axiosInstance.get("/api/items/user/my-items");
@@ -70,34 +70,37 @@ export function useDashboard() {
           myRequests:  res.myRequests  ?? [],
         });
       } catch {
-        // axiosInstance interceptor يتعامل مع 401 و redirect تلقائياً
         setData(null);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []); // ✅ فارغ — تشغيل مرة واحدة فقط
+  }, []);
 
-  // ── Toast ────────────────────────────────────────────
+  // ── Toast ─────────────────────────────────────────────
   const showToast = useCallback((msg: string, type: "success" | "error") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }, []);
 
-  // ── حذف غرض ────────────────────────────────────────
+  // ── حذف غرض (متاح فقط) ───────────────────────────────
   const handleDelete = useCallback((id: string, status: string) => {
-    if (status !== "متاح") {
-      showToast("لا يمكن حذف غرض محجوز", "error");
+    if (status === "تم التسليم") {
+      showToast("لا يمكن حذف غرض تم تسليمه", "error");
       return;
     }
+    const isBoosted = status === "محجوز";
     setConfirmModal({
       open: true,
       title: "حذف الغرض",
-      message: "هل أنت متأكد من حذف هذا الغرض؟ لا يمكن التراجع.",
+      message: isBoosted
+        ? "هذا الغرض محجوز حالياً. هل أنت متأكد من حذفه؟ سيتم إلغاء الحجز تلقائياً."
+        : "هل أنت متأكد من حذف هذا الغرض؟ لا يمكن التراجع.",
       onConfirm: async () => {
         try {
-          await axiosInstance.delete(`/api/items/delete/${id}`);
+          // ✅ FIX: الـ route الصح هو DELETE /api/items/:id
+          await axiosInstance.delete(`/api/items/${id}`);
           setData((prev) =>
             prev ? { ...prev, myDonations: prev.myDonations.filter((i) => i._id !== id) } : prev
           );
@@ -111,7 +114,7 @@ export function useDashboard() {
     });
   }, [showToast]);
 
-  // ── إلغاء الحجز ─────────────────────────────────────
+  // ── إلغاء الحجز (من طرف المستلم) ─────────────────────
   const handleCancelBooking = useCallback((id: string) => {
     setConfirmModal({
       open: true,
@@ -133,6 +136,40 @@ export function useDashboard() {
     });
   }, [showToast]);
 
+  // ── إلغاء الحجز من طرف المتبرع (فك الحجز عن غرضه) ───
+  const handleDonorCancelBooking = useCallback((id: string) => {
+    setConfirmModal({
+      open: true,
+      title: "فك الحجز",
+      message: "هل تريد فك الحجز عن هذا الغرض وإعادته للقائمة؟",
+      onConfirm: async () => {
+        try {
+          await axiosInstance.put(`/api/items/cancel/${id}`, {});
+          setData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  myDonations: prev.myDonations.map((i) =>
+                    i._id === id ? { ...i, status: "متاح", bookedBy: undefined } : i
+                  ),
+                }
+              : prev
+          );
+          showToast("تم فك الحجز بنجاح", "success");
+        } catch {
+          showToast("حدث خطأ أثناء فك الحجز", "error");
+        } finally {
+          setConfirmModal((prev) => ({ ...prev, open: false }));
+        }
+      },
+    });
+  }, [showToast]);
+
+  // ── تعديل غرض — يفتح صفحة التعديل ────────────────────
+  const handleEdit = useCallback((id: string) => {
+    router.push(`/items/${id}/edit`);
+  }, [router]);
+
   // ── OTP Modal ─────────────────────────────────────────
   const openOtpModal = useCallback((item: Item) => {
     setSelectedItem(item);
@@ -148,7 +185,7 @@ export function useDashboard() {
     setOtpError("");
   }, []);
 
-  // ── تأكيد التسليم ──────────────────────────────────
+  // ── تأكيد التسليم ─────────────────────────────────────
   const handleConfirmDelivery = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedItem || otp.length < 4) {
@@ -193,6 +230,8 @@ export function useDashboard() {
     otpLoading,
     handleDelete,
     handleCancelBooking,
+    handleDonorCancelBooking,
+    handleEdit,
     handleConfirmDelivery,
     openOtpModal,
     closeOtpModal,

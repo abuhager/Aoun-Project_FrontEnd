@@ -1,11 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import axiosInstance, { setAccessToken } from "@/lib/api/axiosInstance";
 import axios from "axios";
 
 interface FormData {
-  email:    string;
+  email: string;
   password: string;
+}
+
+interface LoginResponse {
+  token: string;
+  user: {
+    _id?: string;
+    id?:  string;
+    name: string;
+    email: string;
+    role: string;
+    isVerifiedStudent?: boolean;
+    trustLevel?: number;
+  };
 }
 
 export function useLogin() {
@@ -24,27 +38,33 @@ export function useLogin() {
     try {
       setLoading(true);
 
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
-        { email: formData.email, password: formData.password }
-      );
+      const res = await axiosInstance.post<LoginResponse>("/api/auth/login", {
+        email:    formData.email,
+        password: formData.password,
+      });
 
       const { token, user } = res.data;
 
-      // ✅ كتابة الـ Cookie بشكل يضمن قراءته من الـ middleware
+      // ── 1. حفظ الـ token في cookie يقرأه الـ proxy على الـ Edge ──
       const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
       document.cookie = `token=${token}; path=/; expires=${expires}; SameSite=Lax`;
 
-      // ✅ بيانات المستخدم للـ Navbar
+      // ── 2. حفظ الـ token في الذاكرة للـ axiosInstance interceptor ──
+      setAccessToken(token);
+
+      // ── 3. بيانات المستخدم للـ Navbar ──────────────────────────────
       localStorage.setItem("user", JSON.stringify({
-        id:    user._id || user.id,
+        id:    user._id ?? user.id,
         name:  user.name,
         email: user.email,
         role:  user.role,
+        trustLevel: user.trustLevel ?? 1,
       }));
 
-      // ✅ full page reload — يضمن أن الـ middleware يقرأ الـ Cookie الجديد
-      window.location.href = "/browse";
+      // ── 4. توجيه للـ dashboard (أو الصفحة المطلوبة قبل الـ login) ──
+      const params  = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect') || '/dashboard';
+      window.location.href = redirect;
 
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -55,7 +75,7 @@ export function useLogin() {
           }, 2000);
         } else {
           setError(
-            err.response?.data?.msg || "البريد الإلكتروني أو كلمة المرور غير صحيحة ❌"
+            err.response?.data?.msg ?? "البريد الإلكتروني أو كلمة المرور غير صحيحة ❌"
           );
         }
       } else {

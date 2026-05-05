@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import axios from "axios";
-import Cookies from "js-cookie";
+import axiosInstance, { getAccessToken } from "@/lib/api/axiosInstance";
 
 export interface Item {
   _id:     string;
@@ -18,7 +17,6 @@ const BLOCKED_FROM_CHECK = ["/login", "/register", "/verify"];
 export function useGlobalRating() {
   const pathname = usePathname();
   const router   = useRouter();
-  const apiUrl   = process.env.NEXT_PUBLIC_API_URL!;
 
   const [showModal,     setShowModal]     = useState(false);
   const [selectedItem,  setSelectedItem]  = useState<Item | null>(null);
@@ -27,13 +25,14 @@ export function useGlobalRating() {
   const [errorMsg,      setErrorMsg]      = useState("");
 
   const checkPendingRatings = useCallback(async () => {
-    const token = Cookies.get("token");
-if (!token || BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
+    // ✅ FIX: استخدم getAccessToken() بدل Cookies.get('token')
+    // بعد Phase 1 الـ Access Token في الذاكرة وليس في Cookie
+    const token = getAccessToken();
+    if (!token || BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
 
     try {
-      const res = await axios.get(`${apiUrl}/api/items/pending-rating`, {
-        headers: { "x-auth-token": token },
-      });
+      // ✅ FIX: axiosInstance ترفق التوكن تلقائياً + تتعامل مع الـ 401
+      const res = await axiosInstance.get("/api/items/pending-rating");
 
       if (res.data.hasPending) {
         setSelectedItem(res.data.item);
@@ -42,9 +41,11 @@ if (!token || BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
         setShowModal(false);
       }
     } catch (err) {
-      console.error("خطأ في فحص التقييمات المعلقة:", err);
+      // صامت — الـ interceptor يتعامل مع 401 تلقائياً
+      // لا نريد أخطاء console مزعجة للمستخدم أو في Dev Tools
+      void err;
     }
-  }, [pathname, apiUrl]);
+  }, [pathname]);
 
   // ─── فحص عند كل تغيير في الصفحة ───
   useEffect(() => {
@@ -55,9 +56,7 @@ if (!token || BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
   // ─── منع التنقل إذا في تقييم معلق ───
   useEffect(() => {
     if (!showModal) return;
-if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
-
-    // إرجاع المستخدم للصفحة الحالية إذا حاول يتنقل
+    if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
     router.replace(pathname);
   }, [pathname, showModal, router]);
 
@@ -67,31 +66,28 @@ if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
 
     try {
       setRatingLoading(true);
-      const token = Cookies.get("token");
-
-      await axios.put(
-        `${apiUrl}/api/items/rate/${selectedItem._id}`,
-        { rating },
-        { headers: { "x-auth-token": token } }
+      // ✅ axiosInstance ترفق التوكن تلقائياً
+      await axiosInstance.put(
+        `/api/items/rate/${selectedItem._id}`,
+        { rating }
       );
 
       setShowModal(false);
       setRating(0);
       setSelectedItem(null);
-
-      // فحص إذا في تقييم ثاني
       checkPendingRatings();
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setErrorMsg(err.response?.data?.msg || "حدث خطأ أثناء التقييم ❌");
-      }
+      import("axios").then(({ default: axios }) => {
+        if (axios.isAxiosError(err)) {
+          setErrorMsg(err.response?.data?.msg || "حدث خطأ أثناء التقييم ❌");
+        }
+      });
     } finally {
       setRatingLoading(false);
     }
   };
 
   const handleClose = () => {
-    // ✅ لا يُغلق الـ Modal — المستخدم مجبر على التقييم
     setErrorMsg("يجب تقييم المتبرع أولاً قبل المتابعة 🌟");
   };
 

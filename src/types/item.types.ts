@@ -1,6 +1,4 @@
 // src/types/item.types.ts
-// ✅ PHASE 1 — محدّث: أضيف DashboardItem + DashboardData — Single Source of Truth
-
 import type { PublicUser, BookedByUser, DonorUser } from './user.types';
 
 export type ItemStatus =
@@ -18,48 +16,52 @@ export type ItemCategory =
   | 'أدوات'
   | 'أخرى';
 
-// مدخل طابور الانتظار — يطابق الـ Backend Schema
+export type ItemCondition =
+  | 'جديد'
+  | 'جيد جداً'
+  | 'جيد'
+  | 'مقبول'
+  | 'يحتاج إصلاح';
+
 export interface WaitlistEntry {
-  user:      string;   // ObjectId as string
-  joinedAt:  string;   // ISO date
+  user:     string;
+  joinedAt: string;
 }
 
-// ── الغرض الكامل — من GET /api/items و GET /api/items/:id ─────────────
 export interface Item {
   _id:         string;
   title:       string;
   description: string;
   category:    ItemCategory;
+  condition?:  ItemCondition | string;  // حالة الغرض
+  location?:   string;                  // موقع التسليم
   imageUrl:    string;
   status:      ItemStatus;
   isRated:     boolean;
   donor:       PublicUser;
   bookedBy?:   BookedByUser;
-  waitlist:    WaitlistEntry[];   // ✅ صحيح: { user, joinedAt }[] وليس string[]
-  cancelledBy: string[];          // مصفوفة ObjectIds
+  waitlist:    WaitlistEntry[];
+  cancelledBy: string[];
   createdAt:   string;
   updatedAt:   string;
 }
 
-// ── الغرض كما يراه المستلم ────────────────────────────
 export interface ItemAsReceiver extends Item {
   donor: DonorUser;
 }
 
-// ── الغرض في Dashboard ──────────────────────────────────
 export interface DashboardItem {
-  _id:        string;
-  title:      string;
-  imageUrl:   string;
-  status:     ItemStatus;
-  isRated:    boolean;
-  bookedBy?:  BookedByUser;
-  donor?:     PublicUser;    // محتاج في تبويب الطلبات
-  waitlist:   WaitlistEntry[];
+  _id:         string;
+  title:       string;
+  imageUrl:    string;
+  status:      ItemStatus;
+  isRated:     boolean;
+  bookedBy?:   BookedByUser;
+  donor?:      PublicUser;
+  waitlist:    WaitlistEntry[];
   cancelledBy: string[];
 }
 
-// ── بيانات Dashboard كاملة ─────────────────────────────
 export interface DashboardData {
   user:           import('./user.types').AuthUser;
   myDonations:    DashboardItem[];
@@ -69,11 +71,12 @@ export interface DashboardData {
   trustScore:     number;
 }
 
-// ── طلب إنشاء غرض ───────────────────────────────────
 export interface CreateItemRequest {
   title:       string;
   description: string;
   category:    ItemCategory;
+  condition?:  string;
+  location?:   string;
 }
 
 export interface CreateItemResponse {
@@ -82,10 +85,13 @@ export interface CreateItemResponse {
   item:     Item;
 }
 
-// ── Pagination ──────────────────────────────────────────
 export interface PaginatedItemsResponse {
   items:  Item[];
   total:  number;
   page:   number;
   pages:  number;
 }
+
+// للتوافق مع المستخدمين الموجودين
+export type ItemsResponse       = PaginatedItemsResponse;
+export type MyItemsResponse     = { user: import('./user.types').AuthUser; myDonations: DashboardItem[]; myRequests: DashboardItem[] };

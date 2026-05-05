@@ -1,3 +1,2 @@
-// src/middleware.ts
-// Next.js 16 يستخدم proxy.ts كـ middleware — هذا الملف يستورده فقط
-export { proxy as middleware, config } from './proxy';
+// middleware محذوف — proxy.ts يعمل بشكل مستقل في Next.js 16
+export {};

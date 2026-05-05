@@ -12,7 +12,6 @@ interface OtpInputProps {
   onKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
-// ─── مكوّن خانة OTP منفصل (أوضح وأسهل للـ TypeScript) ───
 function OtpInput({ digit, index, inputRef, onChange, onKeyDown }: OtpInputProps) {
   return (
     <input
@@ -23,7 +22,7 @@ function OtpInput({ digit, index, inputRef, onChange, onKeyDown }: OtpInputProps
       value={digit}
       onChange={(e) => onChange(index, e)}
       onKeyDown={(e) => onKeyDown(index, e)}
-      className={`w-14 h-14 text-center text-2xl font-black rounded-2xl outline-none transition-all border-2 bg-surface-container-highest
+      className={`w-12 h-14 text-center text-2xl font-black rounded-2xl outline-none transition-all border-2 bg-surface-container-highest
         ${digit
           ? "border-primary bg-primary/5 text-primary"
           : "border-transparent focus:border-primary/40 focus:bg-white text-[#191c1d]"
@@ -32,7 +31,6 @@ function OtpInput({ digit, index, inputRef, onChange, onKeyDown }: OtpInputProps
   );
 }
 
-// ─── المحتوى الفعلي (داخل Suspense لأن useSearchParams يحتاجه) ───
 function VerifyContent() {
   const {
     email,
@@ -65,14 +63,13 @@ function VerifyContent() {
         </h1>
 
         <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
-          أدخل الرمز المكون من 4 أرقام الذي أرسلناه إلى:
+          أدخل الرمز المكون من 6 أرقام الذي أرسلناه إلى:
           <br />
           <span className="font-black text-primary" dir="ltr">
             {email}
           </span>
         </p>
 
-        {/* ─── رسالة الخطأ ─── */}
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-bold mb-6 border border-red-100">
             {error}
@@ -80,8 +77,7 @@ function VerifyContent() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* ─── خانات الـ OTP ─── */}
-          <div className="flex justify-center gap-3" dir="ltr">
+          <div className="flex justify-center gap-2" dir="ltr">
             {otp.map((digit: string, index: number) => (
               <OtpInput
                 key={index}
@@ -114,7 +110,6 @@ function VerifyContent() {
   );
 }
 
-// ─── Suspense ضروري لأن useSearchParams يحتاجه Next.js ───
 export default function VerifyEmailPage() {
   return (
     <Suspense

@@ -7,11 +7,11 @@ export function useVerifyEmail() {
   const searchParams = useSearchParams();
   const email        = searchParams.get("email");
 
-  const [otp,     setOtp]     = useState<string[]>(["", "", "", ""]);
+  // 6 خانات بدل 4 لتطابق الـ Backend
+  const [otp,     setOtp]     = useState<string[]>(["", "", "", "", "", ""]);
   const [error,   setError]   = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ─── Refs للتنقل بين الخانات ───
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -22,14 +22,12 @@ export function useVerifyEmail() {
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
-    // ─── انتقل للخانة التالية تلقائياً ───
-    if (value && index < 3) {
+    if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    // ─── عند Backspace ارجع للخانة السابقة ───
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -39,8 +37,8 @@ export function useVerifyEmail() {
     e.preventDefault();
     const otpCode = otp.join("");
 
-    if (otpCode.length !== 4) {
-      setError("الرجاء إدخال الرمز المكون من 4 أرقام 🛑");
+    if (otpCode.length !== 6) {
+      setError("الرجاء إدخال الرمز المكون من 6 أرقام 🛑");
       return;
     }
 

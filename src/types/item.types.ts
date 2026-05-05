@@ -1,110 +1,82 @@
 // src/types/item.types.ts
-// مطابق لـ Item.js Schema + itemDto.js transformations
+// ✅ PHASE 1 — محدّث: أضيف DashboardItem + DashboardData — Single Source of Truth
+// حذف الـ interfaces المكرّرة في useDashboard.ts
 
-import type {
-  ItemStatus,
-  ItemCategory,
-  HandoverMode,
-  PaginatedResponse,
-} from './api.types';
+import type { PublicUser, BookedByUser, DonorUser } from './user.types';
 
-import type {
-  PublicUser,
-  DonorUser,
-  BookedByUser,
-} from './user.types';
+export type ItemStatus =
+  | 'متاح'
+  | 'محجوز'
+  | 'مكتمل'
+  | 'تم التسليم'
+  | 'ملغي';
 
-// ── re-export لسهولة الاستخدام ────────────────────────────────────
-export type { ItemStatus, ItemCategory, HandoverMode };
+export type ItemCategory =
+  | 'ملابس'
+  | 'كتب'
+  | 'أثاث'
+  | 'إلكترونيات'
+  | 'أدوات'
+  | 'أخرى';
 
-// ── Waitlist Entry ────────────────────────────────────────────────
-export interface WaitlistEntry {
-  user: {
-    _id: string;
-    name?: string;
-  };
-  joinedAt?: string;
-}
-
-// ── الغرض العام — من toPublicItem() ─────────────────────────────
+// ── الغرض الكامل — من GET /api/items و GET /api/items/:id ───────
 export interface Item {
-  _id: string;
-  title: string;
+  _id:        string;
+  title:      string;
   description: string;
-  category: ItemCategory;
-  location: string;
-  condition?: string;
-  imageUrl: string;
-  status: ItemStatus;           // ✅ الآن يشمل 'مخفي'
-  reportCount: number;
-  waitlistCount: number;        // ✅ عدد — مش array كاملة
-  // ✅ حقول كانت مفقودة
-  bookedAt?: string;
-  isRated: boolean;
-  handoverMode: HandoverMode;
-  hubId?: string;
-  createdAt: string;
-  updatedAt?: string;
-  donor: PublicUser | null;
-  bookedBy?: {
-    _id: string;
-    name: string;
-  } | null;
+  category:   ItemCategory;
+  imageUrl:   string;
+  status:     ItemStatus;
+  isRated:    boolean;
+  donor:      PublicUser;
+  bookedBy?:  BookedByUser;
+  waitlist:   string[];
+  createdAt:  string;
+  updatedAt:  string;
 }
 
-// ── الغرض للمتبرع — من toDonorItem() ────────────────────────────
-export interface DonorItem extends Item {
-  // ✅ لا يوجد otp — محذوف من الـ Backend
-  bookedBy?: BookedByUser | null;  // يشمل phone + email
+// ── الغرض كما يراه المستلم ──────────────────────────────
+export interface ItemAsReceiver extends Item {
+  donor: DonorUser;
 }
 
-// ── الغرض للمستلم — من toReceiverItem() ─────────────────────────
-export interface ReceiverItem extends Item {
-  // ✅ لا يوجد otp — محذوف من الـ Backend
-  donor: DonorUser | null;          // يشمل phone
+// ── الغرض في Dashboard ──────────────────────────────────
+export interface DashboardItem {
+  _id:       string;
+  title:     string;
+  imageUrl:  string;
+  status:    ItemStatus;
+  isRated:   boolean;
+  bookedBy?: BookedByUser;
 }
 
-// ── Responses من الـ API ──────────────────────────────────────────
-export interface ItemsResponse extends PaginatedResponse<Item> {}
-
-export interface MyItemsResponse {
-  myDonations: DonorItem[];
-  myRequests: ReceiverItem[];
+// ── بيانات Dashboard كاملة ───────────────────────────────
+export interface DashboardData {
+  user:           import('./user.types').AuthUser;
+  myDonations:    DashboardItem[];
+  myRequests:     DashboardItem[];
   totalDonations: number;
-  quota: number;
-  trustScore: number;
+  quota:          number;
+  trustScore:     number;
 }
 
-// ── Create / Update Payloads ──────────────────────────────────────
-export interface CreateItemPayload {
-  title: string;
-  category: ItemCategory;
-  description?: string;
-  location: string;
-  condition?: string;
-  // الصورة تُرسَل كـ FormData — مش هون
+// ── طلب إنشاء غرض ───────────────────────────────────────
+export interface CreateItemRequest {
+  title:       string;
+  description: string;
+  category:    ItemCategory;
 }
 
-export interface UpdateItemPayload extends Partial<CreateItemPayload> {}
-
-// ── Rating ────────────────────────────────────────────────────────
-export interface RateItemPayload {
-  rating: number; // 1-5 حالياً، سيصبح 1-10 في Phase 4
+export interface CreateItemResponse {
+  success:  boolean;
+  message?: string;
+  item:     Item;
 }
 
-// ── Report ────────────────────────────────────────────────────────
-export interface ReportUserPayload {
-  reportedUserId: string;
-  itemId: string;
-}
-
-// ── Pending Rating Response ───────────────────────────────────────
-export interface PendingRatingItem {
-  _id: string;
-  title: string;
-  imageUrl: string;
-  bookedBy: {
-    _id: string;
-    name: string;
-  };
+// ── Pagination ──────────────────────────────────────────────
+export interface PaginatedItemsResponse {
+  items:  Item[];
+  total:  number;
+  page:   number;
+  pages:  number;
 }

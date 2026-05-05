@@ -1,66 +1,59 @@
 // src/types/auth.types.ts
-// كل ما يتعلق بالـ authentication
+// ✅ PHASE 1 — محدّث: أضيف RefreshTokenResponse + LogoutResponse
 
 import type { AuthUser } from './user.types';
 
-// ── Register ──────────────────────────────────────────────────────
-export interface RegisterPayload {
-  name: string;
-  email: string;
+// ── Requests ──────────────────────────────────────────────────
+export interface LoginRequest {
+  email:    string;
   password: string;
-  phone?: string;
+}
+
+export interface RegisterRequest {
+  name:     string;
+  email:    string;
+  password: string;
+  phone?:   string;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp:   string;
+}
+
+// ── Responses ────────────────────────────────────────────────
+export interface LoginResponse {
+  token:        string;     // Access Token (in-memory)
+  refreshToken?: string;    // يجي في httpOnly cookie — ليس في body
+  user:         AuthUser;
 }
 
 export interface RegisterResponse {
-  msg: string;
-  // لا يوجد token — يجب التحقق من الإيميل أولاً
-}
-
-// ── Verify Email ──────────────────────────────────────────────────
-export interface VerifyEmailPayload {
+  msg:   string;
   email: string;
-  otp: string;   // 4 أرقام — مطابق لـ authDto validateVerifyEmail
 }
 
-export interface VerifyEmailResponse {
-  msg: string;
+export interface VerifyOtpResponse {
   token: string;
-  user: AuthUser;
+  user:  AuthUser;
 }
 
-// ── Login ─────────────────────────────────────────────────────────
-export interface LoginPayload {
-  email: string;
-  password: string;
+// ✅ Phase 1 — جديد
+export interface RefreshTokenResponse {
+  accessToken: string;
 }
 
-export interface LoginResponse {
-  token: string;
-  user: AuthUser;
-}
-
-// ── Forgot Password ───────────────────────────────────────────────
-export interface ForgotPasswordPayload {
-  email: string;
-}
-
-export interface ForgotPasswordResponse {
+export interface LogoutResponse {
   msg: string;
 }
 
-// ── Reset Password ────────────────────────────────────────────────
-export interface ResetPasswordPayload {
-  password: string;
-}
-
-export interface ResetPasswordResponse {
-  msg: string;
-}
-
-// ── الـ state الكاملة للـ auth في الـ Frontend ───────────────────
-export interface AuthState {
-  user: AuthUser | null;
-  token: string | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
+// ── JWT Decoded Payload ───────────────────────────────────
+export interface JwtPayload {
+  user: {
+    id:         string;
+    role:       string;
+    trustLevel: 1 | 2;
+  };
+  iat: number;
+  exp: number;
 }

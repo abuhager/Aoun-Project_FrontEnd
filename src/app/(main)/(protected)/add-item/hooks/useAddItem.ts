@@ -28,8 +28,6 @@ export function useAddItem() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<Message>({ type: "", text: "" });
 
-  // ✅ الحماية تتم عبر proxy.ts — لا نحتاج Cookies هنا
-
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -62,18 +60,21 @@ export function useAddItem() {
     data.append("category",    formData.category);
     data.append("location",    formData.location);
     data.append("condition",   formData.condition);
-    data.append("image",       image);
+    data.append("image",       image);  // ✅ field name = 'image' يتطابق upload.single('image')
 
     try {
-      // ✅ axiosInstance يرفق Token تلقائياً + baseURL مضبوط
-      await axiosInstance.post("/api/items", data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // ✅ لا تضع Content-Type هنا — المتصفح يضيفه تلقائياً مع الـ boundary الصحيح
+      // إذا حددت هو Content-Type: multipart/form-data يدوياً → multer يفشل لأنه بدون boundary
+      await axiosInstance.post("/api/items", data);
+
       setMessage({ type: "success", text: "تم نشر التبرع بنجاح! جاري تحويلك..." });
       setTimeout(() => router.push("/browse"), 2000);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        setMessage({ type: "error", text: err.response?.data?.msg || "فشل في إضافة التبرع" });
+        const msg = err.response?.data?.message
+                 || err.response?.data?.msg
+                 || "فشل في إضافة التبرع";
+        setMessage({ type: "error", text: msg });
       } else {
         setMessage({ type: "error", text: "حدث خطأ غير متوقع" });
       }

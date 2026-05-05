@@ -11,6 +11,7 @@ interface FormData {
 
 interface LoginResponse {
   token: string;
+  msg: string;
   user: {
     _id?: string;
     id?:  string;
@@ -45,14 +46,14 @@ export function useLogin() {
 
       const { token, user } = res.data;
 
-      // ── 1. حفظ الـ token في cookie يقرأه الـ proxy على الـ Edge ──
+      // 1. حفظ الـ token في cookie يقرأه الـ middleware
       const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
       document.cookie = `token=${token}; path=/; expires=${expires}; SameSite=Lax`;
 
-      // ── 2. حفظ الـ token في الذاكرة للـ axiosInstance interceptor ──
+      // 2. حفظ في الذاكرة للـ axiosInstance
       setAccessToken(token);
 
-      // ── 3. بيانات المستخدم للـ Navbar ──────────────────────────────
+      // 3. بيانات المستخدم
       localStorage.setItem("user", JSON.stringify({
         id:    user._id ?? user.id,
         name:  user.name,
@@ -61,10 +62,12 @@ export function useLogin() {
         trustLevel: user.trustLevel ?? 1,
       }));
 
-      // ── 4. توجيه للـ dashboard (أو الصفحة المطلوبة قبل الـ login) ──
-      const params  = new URLSearchParams(window.location.search);
-      const redirect = params.get('redirect') || '/dashboard';
-      window.location.href = redirect;
+      // 4. توجيه — /browse آمن (ليس محمي)
+      //    المستخدم يضغط dashboard بنفسه من الـ Navbar
+      const params   = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect');
+      // ✅ لا ترسل للـ dashboard مباشرةً — الـ middleware قد لا يشوف الـ cookie بعد
+      window.location.replace(redirect && redirect !== '/login' ? redirect : '/browse');
 
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -74,9 +77,7 @@ export function useLogin() {
             window.location.href = `/verify?email=${formData.email}`;
           }, 2000);
         } else {
-          setError(
-            err.response?.data?.msg ?? "البريد الإلكتروني أو كلمة المرور غير صحيحة ❌"
-          );
+          setError(err.response?.data?.msg ?? "البريد أو كلمة المرور غير صحيحة ❌");
         }
       } else {
         setError("حدث خطأ غير متوقع ❌");

@@ -28,41 +28,71 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const USER_COOKIE = "aoun_user";
+
+function saveUserCookie(u: AuthUser) {
+  Cookies.set(USER_COOKIE, JSON.stringify(u), { expires: 7, sameSite: "lax" });
+}
+
+function loadUserCookie(): AuthUser | null {
+  try {
+    const raw = Cookies.get(USER_COOKIE);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearUserCookie() {
+  Cookies.remove(USER_COOKIE);
+  Cookies.remove("isLoggedIn");
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user,      setUser]      = useState<AuthUser | null>(null);
+  // ابدأ ببيانات الكوكي فوراً عشان الناف بار يظهر بدون انتظار
+  const [user,      setUserState] = useState<AuthUser | null>(loadUserCookie);
   const [isLoading, setIsLoading] = useState(true);
-  // useRef بدل module-level variable — يتصفّر مع كل mount جديد
   const initialized = useRef(false);
   const refreshing  = useRef<Promise<boolean> | null>(null);
 
+  const setUser = useCallback((u: AuthUser | null) => {
+    setUserState(u);
+    if (u) {
+      saveUserCookie(u);
+      Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
+    } else {
+      clearUserCookie();
+    }
+  }, []);
+
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    // لو في refresh شغّال، انتظر نفس الـ promise
     if (refreshing.current) return refreshing.current;
 
     refreshing.current = (async () => {
       try {
-        const { data } = await axiosInstance.post<{
-          accessToken: string;
-          user?: AuthUser;
-        }>("/api/auth/refresh", {});
-        // withCredentials موجودة في axiosInstance افتراضياً
+        const { data } = await axiosInstance.post<{ accessToken: string }>(
+          "/api/auth/refresh", {}
+        );
 
         const freshToken = data.accessToken;
         setAccessToken(freshToken);
 
-        // بعث الـ token يدوياً في /me لمنع race condition
         const meRes = await axiosInstance.get<{ user: AuthUser }>("/api/auth/me", {
           headers: { Authorization: `Bearer ${freshToken}` },
         });
 
         const fetchedUser = meRes.data.user ?? (meRes.data as unknown as AuthUser);
         setUser(fetchedUser);
-        Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
         return true;
       } catch {
         setAccessToken(null);
-        setUser(null);
-        Cookies.remove("isLoggedIn");
+        // لو فشل الـ refresh نظف الكوكي فقط لو كان محدود الصلاحية
+        const existing = loadUserCookie();
+        if (existing) {
+          // كوكي موجودة لكن refresh فشل — نظف الكل
+          clearUserCookie();
+          setUserState(null);
+        }
         return false;
       } finally {
         refreshing.current = null;
@@ -70,15 +100,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
 
     return refreshing.current;
-  }, []);
+  }, [setUser]);
 
   const logout = useCallback(async () => {
     try {
       await axiosInstance.post("/api/auth/logout", {});
     } finally {
       setAccessToken(null);
-      setUser(null);
-      Cookies.remove("isLoggedIn");
+      clearUserCookie();
+      setUserState(null);
       window.location.replace("/login");
     }
   }, []);
@@ -86,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
+    // لو كان في كوكي موجودة يعني في session محتملة — جرب refresh
     refreshSession().finally(() => setIsLoading(false));
   }, [refreshSession]);
 

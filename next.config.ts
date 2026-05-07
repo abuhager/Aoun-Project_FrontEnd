@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'res.cloudinary.com', // 🟢 إضافة كلاوديناري هنا
+        hostname: 'res.cloudinary.com',
       },
       {
         protocol: 'http',
@@ -21,19 +21,18 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.googleusercontent.com',
       },
-      {
-        protocol: 'http',
-        hostname: 'googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'via.placeholder.com',
-      },
     ],
+  },
+
+  // ✅ Proxy: كل طلبات /api/* تروح للباك إند على نفس الـ origin
+  // هذا يحل مشكلة cross-origin cookies في localhost
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
+      },
+    ];
   },
 };
 

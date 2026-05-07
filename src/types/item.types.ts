@@ -1,9 +1,9 @@
 // src/types/item.types.ts
-// ✅ مزامنة 100% مع Item.js في الـ Backend — لا تعديل جزئي بعد الآن
+// ✅ متزامن 100% مع Item.js Schema + itemService responses
 
-import type { PublicUser, BookedByUser, DonorUser } from './user.types';
+import type { PublicUser, BookedByUser, DonorUser, AuthUser } from './user.types';
 
-// ── Enums ─────────────────────────────────────────────
+// ── Enums ───────────────────────────────────────────────
 export type ItemStatus =
   | 'متاح'
   | 'محجوز'
@@ -19,13 +19,13 @@ export type ItemCategory =
 
 export type HandoverMode = 'direct' | 'hub';
 
-// ── Sub-types ─────────────────────────────────────────
+// ── Sub-types ───────────────────────────────────────
 export interface WaitlistEntry {
   user:     string;
   joinedAt: string;
 }
 
-// ── Item الكامل — مطابق حقل بحقل مع Item.js ───────────
+// ── Item الكامل — مطابق حقل بحقل مع Item.js ──────────
 export interface Item {
   _id:          string;
   title:        string;
@@ -34,19 +34,17 @@ export interface Item {
   imageUrl:     string;
   cloudinaryId?: string;
   location:     string;
-  condition?:   string;           // default: 'مستعمل ممتاز'
+  condition?:   string;          // default: 'مستعمل ممتاز'
   status:       ItemStatus;
   isRated:      boolean;
-  bookedAt?:    string | null;    // ISO date
+  bookedAt?:    string | null;   // ISO date
   reportCount?: number;
-  rating?:      number | null;    // 1-5
-  handoverMode: HandoverMode;     // 'direct' | 'hub'
-  hubId?:       string | null;    // ref: SafeHub
+  rating?:      number | null;   // 1–5
+  handoverMode: HandoverMode;
+  hubId?:       string | null;
 
-  // الحقول ذات الـ select:false — تصل فقط في ردود مخصصة
-  deliveryOtp?: string;
-  hubDropOtp?:  string;
-  hubPickupOtp?: string;
+  // ✅ deliveryOtp لا يجي أبداً في الـ response — حذفناه من الـ service
+  // hubDropOtp / hubPickupOtp — حقول Phase 2
 
   donor:       PublicUser;
   bookedBy?:   BookedByUser | null;
@@ -57,12 +55,12 @@ export interface Item {
   updatedAt:   string;
 }
 
-// ── الغرض كما يراه المستلم ───────────────────────────
+// ── الغرض كما يراه المستلم ─────────────────────────
 export interface ItemAsReceiver extends Item {
   donor: DonorUser;
 }
 
-// ── الغرض في Dashboard ─────────────────────────────────
+// ── الغرض في Dashboard ──────────────────────────────
 export interface DashboardItem {
   _id:          string;
   title:        string;
@@ -78,17 +76,21 @@ export interface DashboardItem {
   rating?:      number | null;
 }
 
-// ── بيانات Dashboard ──────────────────────────────────
-export interface DashboardData {
-  user:           import('./user.types').AuthUser;
-  myDonations:    DashboardItem[];
-  myRequests:     DashboardItem[];
-  totalDonations: number;
-  quota:          number;
-  trustScore:     number;
+// ── رد GET /api/items/me — مطابق لـ getMyItemsLogic ──────────
+export interface MyItemsResponse {
+  user:        AuthUser;       // user object كامل (quota, totalDonations, trustScore في داخله)
+  myDonations: DashboardItem[];
+  myRequests:  DashboardItem[];
 }
 
-// ── طلبات الـ API ───────────────────────────────────────
+// ── رد مبسط للـ Dashboard page ─────────────────────────
+export interface DashboardData {
+  user:        AuthUser;
+  myDonations: DashboardItem[];
+  myRequests:  DashboardItem[];
+}
+
+// ── طلبات الـ API ────────────────────────────────────
 export interface CreateItemRequest {
   title:        string;
   description:  string;
@@ -112,10 +114,5 @@ export interface PaginatedItemsResponse {
   pages:  number;
 }
 
-// ── Aliases ──────────────────────────────────────────────
-export type ItemsResponse   = PaginatedItemsResponse;
-export type MyItemsResponse = {
-  user:        import('./user.types').AuthUser;
-  myDonations: DashboardItem[];
-  myRequests:  DashboardItem[];
-};
+// ── Aliases ────────────────────────────────────────────
+export type ItemsResponse = PaginatedItemsResponse;

@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
+import { useAuth } from "@/context/AuthContext";
 
 export function useRedirectIfAuth(redirectTo = "/browse") {
   const router = useRouter();
+  const { isLoggedIn, isLoading } = useAuth();
 
   useEffect(() => {
-    const token = Cookies.get("token");
-    if (token) router.replace(redirectTo);
-  }, [router, redirectTo]);
+    if (!isLoading && isLoggedIn) {
+      router.replace(redirectTo);
+    }
+  }, [isLoggedIn, isLoading, router, redirectTo]);
 }

@@ -27,9 +27,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// قفل على مستوى الـ module — يمنع React StrictMode من استدعاء /refresh مرتين
+// منع React StrictMode من استدعاء /refresh مرتين
 let sessionInitialized = false;
 let sessionPromise: Promise<boolean> | null = null;
+
+// تنظيف كل الكوكيز القديمة عند الفشل
+function clearAllAuthCookies() {
+  Cookies.remove("isLoggedIn");
+  Cookies.remove("token");
+  Cookies.remove("refreshToken");
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user,      setUserState] = useState<AuthUser | null>(null);
@@ -40,7 +47,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    // لو في طلب refresh جاري بالفعل، انتظره بدل ما تبعت طلب جديد
     if (sessionPromise) return sessionPromise;
 
     sessionPromise = (async () => {
@@ -60,10 +66,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserState(fetchedUser);
         Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
         return true;
-      } catch {
+      } catch (err: unknown) {
         setAccessToken(null);
         setUserState(null);
-        Cookies.remove("isLoggedIn");
+        // مسح كل الكوكيز القديمة عند أي فشل في الـ refresh
+        clearAllAuthCookies();
         return false;
       } finally {
         sessionPromise = null;
@@ -80,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(null);
       setUserState(null);
       sessionInitialized = false;
-      Cookies.remove("isLoggedIn");
+      clearAllAuthCookies();
       window.location.replace("/login");
     }
   }, []);

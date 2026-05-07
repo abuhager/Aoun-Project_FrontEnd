@@ -33,6 +33,9 @@ export default function ItemDetailsPage() {
     ? item.imageUrl
     : `${backendUrl}/${item.imageUrl}`;
 
+  // ✅ العداد يظهر فقط للحاجز الحالي أو المتبرع — ليس لمن ألغى حجزه
+  const showCountdown = item.status === "محجوز" && (isBooker || isDonor);
+
   return (
     <div className="bg-surface min-h-screen text-[#191c1d] pb-20" dir="rtl">
 
@@ -79,8 +82,8 @@ export default function ItemDetailsPage() {
               </p>
             </div>
 
-            {/* ─── Countdown Timer ─── */}
-            {item.status === "محجوز" && (
+            {/* ─── Countdown Timer — فقط للحاجز الحالي أو المتبرع ─── */}
+            {showCountdown && (
               item.bookedAt ? (
                 <CountdownTimer bookedAt={item.bookedAt} isBooker={isBooker} isDonor={isDonor} />
               ) : (
@@ -92,8 +95,8 @@ export default function ItemDetailsPage() {
                     </p>
                     <p className="text-[11px] text-amber-700 font-medium mt-1 leading-relaxed">
                       {isBooker
-                        ? "يجب إتمام الاستلام خلال 72 ساعة كحد أقصى، وإلا سيُلغى حجزك تلقائياً."
-                        : "هذا الغرض محجوز حالياً. في حال لم يقم الحاجز بالاستلام خلال 72 ساعة، سيعود الغرض متاحاً."}
+                        ? "يجب إتمام الاستلام خلال 72 ساعة كحد أقصى."
+                        : "في حال لم يستلم الحاجز خلال 72 ساعة، سيعود الغرض متاحاً."}
                     </p>
                   </div>
                 </div>
@@ -104,7 +107,7 @@ export default function ItemDetailsPage() {
             {isBooker && item.status === "محجوز" && (
               <Link
                 href="/dashboard"
-                className="flex items-center gap-3 bg-primary/10 border-2 border-dashed border-primary p-5 rounded-3xl text-center hover:bg-primary/15 transition-colors"
+                className="flex items-center gap-3 bg-primary/10 border-2 border-dashed border-primary p-5 rounded-3xl hover:bg-primary/15 transition-colors"
               >
                 <span className="material-symbols-outlined text-primary text-2xl">lock</span>
                 <div className="text-right">

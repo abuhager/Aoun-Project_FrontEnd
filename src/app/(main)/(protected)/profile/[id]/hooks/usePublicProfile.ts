@@ -14,11 +14,10 @@ export interface ProfileData {
   user: {
     name:               string;
     avatar?:            string;
-    email:              string;
     trustScore:         number;
-    phone:              string;
     createdAt:          string;
     isVerifiedStudent?: boolean;
+    whatsapp?:          string;  // ✅ رقم منسق جاهز لـ wa.me
   };
   stats: {
     donationsCount: number;
@@ -39,10 +38,8 @@ export function usePublicProfile() {
 
   useEffect(() => {
     if (!id) return;
-
     const fetchProfile = async () => {
       try {
-        // ✅ Public endpoint — axiosInstance يضيف Token إن وجد ويتجاهله إن لم يجد
         const res = await axiosInstance.get(`/api/auth/profile/${id}`);
         setProfileData(res.data);
       } catch {
@@ -51,7 +48,6 @@ export function usePublicProfile() {
         setLoading(false);
       }
     };
-
     fetchProfile();
   }, [id]);
 

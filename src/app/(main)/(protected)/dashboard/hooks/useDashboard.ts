@@ -1,60 +1,30 @@
-import { useEffect, useState, useCallback, FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import axiosInstance from "@/lib/api/axiosInstance";
-import axios from "axios";
+// useDashboard.ts — يستخدم /api/items/me (endpoint واحد يرجع كل شيء)
+import { useEffect, useState, useCallback, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import axiosInstance from '@/lib/api/axiosInstance';
+import axios from 'axios';
+import type { DashboardItem, MyItemsResponse } from '@/types/item.types';
 
-export interface Item {
-  _id: string;
-  title: string;
-  imageUrl: string;
-  status: string;
-  isRated: boolean;
-  donor?: string | { _id: string };
-  bookedBy?: string | { _id: string; name: string; phone: string };
-}
-
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-  trustScore: number;
-  quota: number;
-}
-
-// شكل الـ response من /api/auth/me
-interface MeResponse {
-  user:               User;
-  stats:              { donationsCount: number; completedDonations: number; receivedCount: number; totalRatings: number };
-  allDonations:       Item[];
-  completedRequests:  Item[];
-}
+// ✅ نستخدم DashboardItem من الـ types بدل تعريف محلي
+export type { DashboardItem as Item };
 
 interface DashboardData {
-  user:           User;
-  myDonations:    Item[];
-  myRequests:     Item[];
-  totalDonations: number;
-  quota:          number;
-  trustScore:     number;
+  user: MyItemsResponse['user'];
+  myDonations: DashboardItem[];
+  myRequests:  DashboardItem[];
 }
 
 interface ConfirmModalState {
-  open: boolean;
-  title: string;
-  message: string;
+  open:      boolean;
+  title:     string;
+  message:   string;
   onConfirm: () => void;
 }
 
-export function getBookedByName(val: Item['bookedBy']): string {
+// ── helpers ────────────────────────────────────────────
+export function getBookedByName(val: DashboardItem['bookedBy']): string {
   if (!val) return '';
-  if (typeof val === 'string') return val;
   return val.name ?? '';
-}
-
-function getId(val: string | { _id: string } | undefined): string {
-  if (!val) return '';
-  if (typeof val === 'string') return val;
-  return val._id;
 }
 
 export function useDashboard() {
@@ -66,7 +36,7 @@ export function useDashboard() {
   const [toast,     setToast]     = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const [showOtpModal, setShowOtpModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [selectedItem, setSelectedItem] = useState<DashboardItem | null>(null);
   const [otp,          setOtp]          = useState('');
   const [otpError,     setOtpError]     = useState('');
   const [otpLoading,   setOtpLoading]   = useState(false);
@@ -78,33 +48,13 @@ export function useDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // /api/auth/me يرجع { user, stats, allDonations, completedRequests }
-        const { data: res } = await axiosInstance.get<MeResponse>('/api/auth/me');
-
-        const userId       = res.user._id;
-        // allDonations من البيكند هي كل تبرعات المستخدم
-        const myDonations  = res.allDonations ?? [];
-        // completedRequests هي طلباته المكتملة — لكن نحتاج أيضاً المحجوزة حالياً
-        // نجلب items لنجد المحجوزة أيضاً (bookedBy == userId و status == محجوز)
-        const { data: itemsRes } = await axiosInstance.get<{ items: Item[] }>('/api/items');
-        const allItems = itemsRes.items ?? [];
-        const activeRequests = allItems.filter(i =>
-          getId(i.bookedBy as string | { _id: string } | undefined) === userId && i.status === 'محجوز'
-        );
-        // دمج الطلبات: النشطة + المكتملة
-        const seenIds = new Set(activeRequests.map(i => i._id));
-        const myRequests = [
-          ...activeRequests,
-          ...(res.completedRequests ?? []).filter(i => !seenIds.has(i._id)),
-        ];
+        // ✅ API call واحد فقط — يرجع { user, myDonations, myRequests }
+        const { data: res } = await axiosInstance.get<MyItemsResponse>('/api/items/me');
 
         setData({
-          user:           res.user,
-          myDonations,
-          myRequests,
-          totalDonations: res.stats?.donationsCount ?? myDonations.length,
-          quota:          res.user.quota   ?? 0,
-          trustScore:     res.user.trustScore ?? 0,
+          user:        res.user,
+          myDonations: res.myDonations ?? [],
+          myRequests:  res.myRequests  ?? [],
         });
       } catch (err: unknown) {
         if (axios.isAxiosError(err)) {
@@ -129,58 +79,79 @@ export function useDashboard() {
   }, []);
 
   const handleDelete = useCallback((id: string, status: string) => {
-    if (status === 'تم التسليم') { showToast('لا يمكن حذف غرض تم تسليمه', 'error'); return; }
-    const isBoosted = status === 'محجوز';
+    if (status === 'تم التسليم') {
+      showToast('لا يمكن حذف غرض تم تسليمه', 'error');
+      return;
+    }
     setConfirmModal({
       open: true, title: 'حذف الغرض',
-      message: isBoosted
+      message: status === 'محجوز'
         ? 'هذا الغرض محجوز حالياً. هل أنت متأكد من حذفه؟ سيتم إلغاء الحجز تلقائياً.'
         : 'هل أنت متأكد من حذف هذا الغرض؟ لا يمكن التراجع.',
       onConfirm: async () => {
         try {
           await axiosInstance.delete(`/api/items/${id}`);
-          setData(prev => prev ? { ...prev, myDonations: prev.myDonations.filter(i => i._id !== id) } : prev);
+          setData(prev => prev
+            ? { ...prev, myDonations: prev.myDonations.filter(i => i._id !== id) }
+            : prev);
           showToast('تم حذف الغرض بنجاح', 'success');
-        } catch { showToast('حدث خطأ أثناء الحذف', 'error'); }
-        finally { setConfirmModal(prev => ({ ...prev, open: false })); }
+        } catch {
+          showToast('حدث خطأ أثناء الحذف', 'error');
+        } finally {
+          setConfirmModal(prev => ({ ...prev, open: false }));
+        }
       },
     });
   }, [showToast]);
 
   const handleCancelBooking = useCallback((id: string) => {
     setConfirmModal({
-      open: true, title: 'إلغاء الحجز', message: 'هل أنت متأكد من إلغاء حجزك؟',
+      open: true, title: 'إلغاء الحجز',
+      message: 'هل أنت متأكد من إلغاء حجزك؟',
       onConfirm: async () => {
         try {
           await axiosInstance.put(`/api/items/cancel/${id}`, {});
-          setData(prev => prev ? { ...prev, myRequests: prev.myRequests.filter(i => i._id !== id) } : prev);
+          setData(prev => prev
+            ? { ...prev, myRequests: prev.myRequests.filter(i => i._id !== id) }
+            : prev);
           showToast('تم إلغاء الحجز بنجاح', 'success');
-        } catch { showToast('حدث خطأ أثناء الإلغاء', 'error'); }
-        finally { setConfirmModal(prev => ({ ...prev, open: false })); }
+        } catch {
+          showToast('حدث خطأ أثناء الإلغاء', 'error');
+        } finally {
+          setConfirmModal(prev => ({ ...prev, open: false }));
+        }
       },
     });
   }, [showToast]);
 
   const handleDonorCancelBooking = useCallback((id: string) => {
     setConfirmModal({
-      open: true, title: 'فك الحجز', message: 'هل تريد فك الحجز عن هذا الغرض وإعادته للقائمة؟',
+      open: true, title: 'فك الحجز',
+      message: 'هل تريد فك الحجز عن هذا الغرض وإعادته للقائمة؟',
       onConfirm: async () => {
         try {
           await axiosInstance.put(`/api/items/cancel/${id}`, {});
           setData(prev => prev ? {
             ...prev,
-            myDonations: prev.myDonations.map(i => i._id === id ? { ...i, status: 'متاح', bookedBy: undefined } : i),
+            myDonations: prev.myDonations.map(i =>
+              i._id === id ? { ...i, status: 'متاح' as const, bookedBy: null } : i
+            ),
           } : prev);
           showToast('تم فك الحجز بنجاح', 'success');
-        } catch { showToast('حدث خطأ أثناء فك الحجز', 'error'); }
-        finally { setConfirmModal(prev => ({ ...prev, open: false })); }
+        } catch {
+          showToast('حدث خطأ أثناء فك الحجز', 'error');
+        } finally {
+          setConfirmModal(prev => ({ ...prev, open: false }));
+        }
       },
     });
   }, [showToast]);
 
-  const handleEdit = useCallback((id: string) => { router.push(`/items/${id}/edit`); }, [router]);
+  const handleEdit = useCallback((id: string) => {
+    router.push(`/edit-item/${id}`);
+  }, [router]);
 
-  const openOtpModal = useCallback((item: Item) => {
+  const openOtpModal = useCallback((item: DashboardItem) => {
     setSelectedItem(item); setOtp(''); setOtpError(''); setShowOtpModal(true);
   }, []);
 
@@ -190,19 +161,30 @@ export function useDashboard() {
 
   const handleConfirmDelivery = useCallback(async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedItem || otp.length < 4) { setOtpError('الرجاء إدخال رمز التسليم كاملاً'); return; }
+    if (!selectedItem || otp.length < 4) {
+      setOtpError('الرجاء إدخال رمز التسليم كاملاً');
+      return;
+    }
     setOtpLoading(true); setOtpError('');
     try {
       await axiosInstance.put(`/api/items/complete/${selectedItem._id}`, { otp });
       setData(prev => prev ? {
         ...prev,
-        myDonations: prev.myDonations.map(i => i._id === selectedItem._id ? { ...i, status: 'تم التسليم' } : i),
+        myDonations: prev.myDonations.map(i =>
+          i._id === selectedItem._id ? { ...i, status: 'تم التسليم' as const } : i
+        ),
       } : prev);
       closeOtpModal();
       showToast('تم تأكيد التسليم بنجاح 🎉', 'success');
     } catch (err: unknown) {
-      setOtpError(axios.isAxiosError(err) ? err.response?.data?.msg ?? 'رمز التسليم غير صحيح' : 'حدث خطأ، حاول مجدداً');
-    } finally { setOtpLoading(false); }
+      setOtpError(
+        axios.isAxiosError(err)
+          ? err.response?.data?.msg ?? 'رمز التسليم غير صحيح'
+          : 'حدث خطأ، حاول مجدداً'
+      );
+    } finally {
+      setOtpLoading(false);
+    }
   }, [selectedItem, otp, closeOtpModal, showToast]);
 
   return {

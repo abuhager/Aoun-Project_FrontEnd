@@ -3,20 +3,14 @@ import { useRouter } from "next/navigation";
 import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
 
-// ── الأنواع ───────────────────────────────────────────
 export interface Item {
   _id: string;
   title: string;
   imageUrl: string;
   status: string;
   isRated: boolean;
-  donor?: string | { _id: string };     // البيكند يرجعه string ID
+  donor?: string | { _id: string };
   bookedBy?: string | { _id: string; name: string; phone: string };
-}
-
-interface JwtPayload {
-  user?: { id?: string; _id?: string; role?: string; name?: string; email?: string };
-  exp?: number;
 }
 
 interface User {
@@ -43,32 +37,30 @@ interface ConfirmModalState {
   onConfirm: () => void;
 }
 
-// ── فك الـ JWT من الـ cookie (بدون verify) ────────────────────────
-function getUserFromToken(): { id: string; name: string; email: string } | null {
+// ── decode الـ JWT محلياً للحصول على user.id فقط ─────────────────────
+function getUserIdFromToken(): string | null {
   try {
     const match = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
     if (!match?.[1]) return null;
-    const token = decodeURIComponent(match[1]);
-    const parts = token.split('.');
+    const parts = decodeURIComponent(match[1]).split('.');
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))) as JwtPayload;
-    const u = payload.user;
-    const id = u?.id ?? u?._id ?? '';
-    if (!id) return null;
-    return { id, name: u?.name ?? '', email: u?.email ?? '' };
-  } catch {
-    return null;
-  }
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload?.user?.id ?? payload?.user?._id ?? null;
+  } catch { return null; }
 }
 
-// ── مساعدة للمقارنة سواء donor كان string أو object ─────────────
 function getId(val: string | { _id: string } | undefined): string {
   if (!val) return '';
   if (typeof val === 'string') return val;
   return val._id;
 }
 
-// ── الـ Hook الرئيسي ───────────────────────────────────
+export function getBookedByName(val: Item['bookedBy']): string {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  return val.name ?? '';
+}
+
 export function useDashboard() {
   const router = useRouter();
   const [data,      setData]      = useState<DashboardData | null>(null);
@@ -87,44 +79,44 @@ export function useDashboard() {
     open: false, title: '', message: '', onConfirm: () => {},
   });
 
-  // ── جلب البيانات ─────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. استخرج بيانات المستخدم من الـ JWT محلياً (decode فقط — بدون API call)
-        const tokenUser = getUserFromToken();
-        if (!tokenUser) throw new Error('لم يتم العثور على بيانات الجلسة');
+        // 1. بيانات المستخدم — نجرب /api/auth/me أولاً للحصول على كل البيانات
+        let me: User;
+        try {
+          const { data: meRes } = await axiosInstance.get<User>('/api/auth/me');
+          me = meRes;
+        } catch {
+          // fallback: decode من الـ JWT إذا فشل /api/auth/me
+          const id = getUserIdFromToken();
+          if (!id) throw new Error('لم يتم العثور على بيانات الجلسة');
+          me = { _id: id, name: '', email: '', trustScore: 0, quota: 0 };
+        }
 
-        // 2. كل الأغراض — نفلتر بـ donor و bookedBy
+        // 2. كل الأغراض مفلترة بالمستخدم
         const { data: itemsRes } = await axiosInstance.get<{ items: Item[] }>('/api/items');
         const allItems = itemsRes.items ?? [];
 
-        const myDonations = allItems.filter(i => getId(i.donor)   === tokenUser.id);
-        const myRequests  = allItems.filter(i => getId(i.bookedBy as string | { _id: string; name: string; phone: string } | undefined) === tokenUser.id);
+        const userId = me._id;
+        const myDonations = allItems.filter(i => getId(i.donor)   === userId);
+        const myRequests  = allItems.filter(i => getId(i.bookedBy as string | { _id: string } | undefined) === userId);
 
         setData({
-          user: {
-            _id:        tokenUser.id,
-            name:       tokenUser.name,
-            email:      tokenUser.email,
-            trustScore: 0,   // سيتحدث بعد إضافة endpoint مخصص
-            quota:      0,
-          },
+          user:           me,
           myDonations,
           myRequests,
           totalDonations: myDonations.length,
-          quota:          0,
-          trustScore:     0,
+          quota:          me.quota,
+          trustScore:     me.trustScore,
         });
       } catch (err: unknown) {
         if (axios.isAxiosError(err)) {
           const status  = err.response?.status;
           const message = err.response?.data?.msg ?? err.message;
-          const url     = err.config?.url;
-          console.error('[Dashboard] API Error:', { status, message, url });
-          setError(`${status ?? 'Network'}: ${message} (${url})`);
+          console.error('[Dashboard] API Error:', { status, message, url: err.config?.url });
+          setError(`${status ?? 'Network'}: ${message} (${err.config?.url})`);
         } else {
-          console.error('[Dashboard] Unknown error:', err);
           setError(String(err));
         }
         setData(null);

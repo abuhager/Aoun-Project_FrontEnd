@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import axiosInstance, { setAccessToken } from "@/lib/api/axiosInstance";
+import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
+import Cookies from "js-cookie";
 
 interface FormData {
   email: string;
@@ -23,9 +25,10 @@ interface LoginResponse {
 }
 
 export function useLogin() {
+  const { setUser } = useAuth();
   const [formData, setFormData] = useState<FormData>({ email: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -39,25 +42,33 @@ export function useLogin() {
       setLoading(true);
 
       const res = await axiosInstance.post<LoginResponse>("/api/auth/login", {
-        email: formData.email,
+        email:    formData.email,
         password: formData.password,
       });
 
       const { accessToken, user } = res.data;
 
-      // ✅ accessToken في الذاكرة فقط
+      // access token في الذاكرة
       setAccessToken(accessToken);
 
-      // ✅ refreshToken زُرع تلقائياً من الباك كـ httpOnly cookie
-      // ✅ لا localStorage، لا document.cookie
+      // cookie خفيفة يقرأها middleware لحماية الصفحات
+      Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
 
-      // ✅ redirect
-      const params = new URLSearchParams(window.location.search);
+      // حدّث AuthContext مباشرة بدون انتظار /refresh
+      setUser({
+        _id:               user._id ?? user.id ?? "",
+        name:              user.name,
+        email:             user.email,
+        role:              user.role,
+        isVerifiedStudent: user.isVerifiedStudent ?? false,
+      });
+
+      // redirect
+      const params   = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
       window.location.replace(
         redirect && redirect !== "/login" ? redirect : "/browse"
       );
-
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         if (err.response?.data?.needsVerification) {

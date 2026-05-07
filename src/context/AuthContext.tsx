@@ -1,22 +1,29 @@
 "use client";
 
 import {
-  createContext, useContext, useEffect,
-  useState, useCallback, useRef
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
 } from "react";
 import axiosInstance, {
-  setAccessToken, getAccessToken
+  setAccessToken,
+  getAccessToken,
 } from "@/lib/api/axiosInstance";
 import type { AuthUser } from "@/types/user.types";
+import Cookies from "js-cookie";
 
 interface AuthContextType {
-  user:          AuthUser | null;
-  accessToken:   string | null;
-  isLoading:     boolean;
+  user:            AuthUser | null;
+  accessToken:     string | null;
+  isLoading:       boolean;
+  isLoggedIn:      boolean;
   isAuthenticated: boolean;
-  setUser:       (u: AuthUser | null) => void;
-  refreshSession: () => Promise<boolean>;
-  logout:        () => Promise<void>;
+  setUser:         (u: AuthUser | null) => void;
+  refreshSession:  () => Promise<boolean>;
+  logout:          () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -26,56 +33,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const initialized               = useRef(false);
 
-  // ── استعادة الجلسة عند تحميل الصفحة ─────────────────────
   const refreshSession = useCallback(async (): Promise<boolean> => {
     try {
       const { data } = await axiosInstance.post<{
         accessToken: string;
-        user?: AuthUser;
       }>("/api/auth/refresh", {}, { withCredentials: true });
 
-      setAccessToken(data.accessToken);
+      const freshToken = data.accessToken;
+      setAccessToken(freshToken);
 
-      // جيب بيانات المستخدم
-      const meRes = await axiosInstance.get<{ user: AuthUser }>("/api/auth/me");
-      setUser(meRes.data.user ?? meRes.data as unknown as AuthUser);
+      const meRes = await axiosInstance.get<{ user: AuthUser }>("/api/auth/me", {
+        headers: { Authorization: `Bearer ${freshToken}` },
+      });
+
+      const fetchedUser = meRes.data.user ?? (meRes.data as unknown as AuthUser);
+      setUser(fetchedUser);
+
+      // تجديد cookie الـ middleware
+      Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
+
       return true;
     } catch {
       setAccessToken(null);
       setUser(null);
+      Cookies.remove("isLoggedIn");
       return false;
     }
   }, []);
 
-  // ── تسجيل الخروج ────────────────────────────────────────
   const logout = useCallback(async () => {
     try {
       await axiosInstance.post("/api/auth/logout", {}, { withCredentials: true });
     } finally {
       setAccessToken(null);
       setUser(null);
+      Cookies.remove("isLoggedIn");
       window.location.replace("/login");
     }
   }, []);
 
-  // ── عند أول تحميل — استعد الجلسة من refreshToken cookie ─
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-
     refreshSession().finally(() => setIsLoading(false));
   }, [refreshSession]);
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      accessToken:     getAccessToken(),
-      isLoading,
-      isAuthenticated: !!user,
-      setUser,
-      refreshSession,
-      logout,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        accessToken:     getAccessToken(),
+        isLoading,
+        isLoggedIn:      !!user,
+        isAuthenticated: !!user,
+        setUser,
+        refreshSession,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

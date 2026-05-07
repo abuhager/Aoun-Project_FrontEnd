@@ -3,6 +3,7 @@
 import { useState } from "react";
 import axiosInstance, { setAccessToken } from "@/lib/api/axiosInstance";
 import { useAuth } from "@/context/AuthContext";
+import type { UserRole } from "@/types/user.types";
 import axios from "axios";
 import Cookies from "js-cookie";
 
@@ -48,22 +49,17 @@ export function useLogin() {
 
       const { accessToken, user } = res.data;
 
-      // access token في الذاكرة
       setAccessToken(accessToken);
-
-      // cookie خفيفة يقرأها middleware لحماية الصفحات
       Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
 
-      // حدّث AuthContext مباشرة بدون انتظار /refresh
       setUser({
         _id:               user._id ?? user.id ?? "",
         name:              user.name,
         email:             user.email,
-        role:              user.role,
+        role:              user.role as UserRole,
         isVerifiedStudent: user.isVerifiedStudent ?? false,
       });
 
-      // redirect
       const params   = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
       window.location.replace(

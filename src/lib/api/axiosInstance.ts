@@ -5,10 +5,11 @@ let accessToken: string | null = null;
 export const setAccessToken = (t: string | null) => { accessToken = t; };
 export const getAccessToken = () => accessToken;
 
-// استرجع الـ token من cookie عند reload الصفحة
-if (typeof window !== 'undefined') {
+// ── قراءة الـ token من الـ cookie (تُستدعى في كل طلب لضمان التزامن الصحيح) ────────
+function getTokenFromCookie(): string | null {
+  if (typeof window === 'undefined') return null;
   const match = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
-  if (match?.[1]) accessToken = decodeURIComponent(match[1]);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
 const AUTH_PATHS = ['/login', '/register', '/verify'];
@@ -17,17 +18,21 @@ const axiosInstance = axios.create({
   baseURL:         process.env.NEXT_PUBLIC_API_URL,
   timeout:         15000,
   withCredentials: true,
-  // ✅ لا تضع Content-Type هنا أبداً — axios يضيفه لـ JSON تلقائياً
-  // والمتصفح يضيفه لـ FormData مع boundary الصحيح تلقائياً
 });
 
-// Request Interceptor
+// Request Interceptor — يقرأ الـ token في كل طلب
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (accessToken) {
-      config.headers['x-auth-token'] = accessToken;
+    // أولاً: الـ memory (أسرع) — ثانياً: الـ cookie (ضمان reload وـ redirect)
+    const token = accessToken ?? getTokenFromCookie();
+
+    // إذا الـ memory فارغ لكن الـ cookie موجود — حدّث الـ memory تلقائياً
+    if (!accessToken && token) setAccessToken(token);
+
+    if (token) {
+      config.headers['x-auth-token'] = token;
     }
-    // إذا الـ data ليس FormData → أضف JSON header فقط
+
     if (config.data && !(config.data instanceof FormData)) {
       config.headers['Content-Type'] = 'application/json';
     }
@@ -45,7 +50,7 @@ axiosInstance.interceptors.response.use(
     const isOnAuth = AUTH_PATHS.some(p => window.location.pathname.startsWith(p));
     if (status === 401 && !isOnAuth) {
       setAccessToken(null);
-      document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
       window.location.replace('/login?expired=true');
     }
     return Promise.reject(error);

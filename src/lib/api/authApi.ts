@@ -1,9 +1,5 @@
 // src/lib/api/authApi.ts
-// ================================================================
 // ✅ PHASE 1 — Centralized Auth API Layer
-//
-// كل طلب auth يمر من هنا — لا يوجد axios.post('/login') مباشرة في المكونات
-// ================================================================
 import axiosInstance, { setAccessToken } from './axiosInstance';
 import type {
   LoginRequest,
@@ -14,52 +10,59 @@ import type {
   VerifyOtpResponse,
 } from '@/types/auth.types';
 
-// ── تسجيل الدخول
+// ── حفظ الـ token في memory + cookie (للـ middleware) ────────────────
+function persistToken(token: string) {
+  // 1. ذاكرة التطبيق — للـ axios interceptor
+  setAccessToken(token);
+  // 2. Cookie — يقرأه الـ Edge Middleware في الناحية الخادم
+  //    SameSite=Lax — آمن كفاية لحماية CSRF في الجلسات العادية
+  if (typeof window !== 'undefined') {
+    const maxAge = 60 * 60 * 24 * 7; // 7 أيام
+    document.cookie =
+      `token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  }
+}
+
+function clearToken() {
+  setAccessToken(null);
+  if (typeof window !== 'undefined') {
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+  }
+}
+
+// ── تسجيل الدخول ─────────────────────────────────────────────
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
-  const { data } = await axiosInstance.post<LoginResponse>(
-    '/api/auth/login',
-    credentials
-  );
-  // ✅ حفظ Access Token في الذاكرة (Refresh يجي تلقائياً بالـ httpOnly cookie)
-  if (data.token) setAccessToken(data.token);
+  const { data } = await axiosInstance.post<LoginResponse>('/api/auth/login', credentials);
+  if (data.token) persistToken(data.token);
   return data;
 }
 
-// ── التسجيل
+// ── التسجيل ────────────────────────────────────────────────
 export async function register(payload: RegisterRequest): Promise<RegisterResponse> {
-  const { data } = await axiosInstance.post<RegisterResponse>(
-    '/api/auth/register',
-    payload
-  );
+  const { data } = await axiosInstance.post<RegisterResponse>('/api/auth/register', payload);
   return data;
 }
 
-// ── تحقق الإيميل
+// ── تحقق الإيميل (OTP) ─────────────────────────────────────
 export async function verifyOtp(payload: VerifyOtpRequest): Promise<VerifyOtpResponse> {
-  const { data } = await axiosInstance.post<VerifyOtpResponse>(
-    '/api/auth/verify',
-    payload
-  );
-  if (data.token) setAccessToken(data.token);
+  const { data } = await axiosInstance.post<VerifyOtpResponse>('/api/auth/verify', payload);
+  if (data.token) persistToken(data.token);
   return data;
 }
 
-// ── تجديد الجلسة (يُستدعى تلقائياً من interceptor)
+// ── تجديد الجلسة ────────────────────────────────────────────
 export async function refreshAccessToken(): Promise<string> {
-  const { data } = await axiosInstance.post<{ accessToken: string }>(
-    '/api/auth/refresh-token'
-  );
-  setAccessToken(data.accessToken);
+  const { data } = await axiosInstance.post<{ accessToken: string }>('/api/auth/refresh-token');
+  persistToken(data.accessToken);
   return data.accessToken;
 }
 
-// ── تسجيل الخروج
+// ── تسجيل الخروج ─────────────────────────────────────────────
 export async function logout(): Promise<void> {
   try {
     await axiosInstance.post('/api/auth/logout');
   } finally {
-    // مسح الذاكرة دائماً حتى لو فشل الطلب
-    setAccessToken(null);
+    clearToken();
     window.location.href = '/login';
   }
 }

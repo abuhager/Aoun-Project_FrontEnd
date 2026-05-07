@@ -2,13 +2,14 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { itemApi } from "@/lib/api/itemApi";
 import { Item } from "@/types/item.types";
-import Cookies from "js-cookie";
+import { useAuth } from "@/context/AuthContext";
 
 const getId = (field: unknown): string | null => {
   if (!field) return null;
   if (typeof field === "string") return field;
-  if (typeof field === "object" && field !== null && "_id" in field)
+  if (typeof field === "object" && field !== null && "_id" in field) {
     return String((field as { _id: unknown })._id);
+  }
   return null;
 };
 
@@ -22,103 +23,117 @@ interface ConfirmModalState {
 export function useItemDetails() {
   const { id } = useParams();
   const router = useRouter();
-
-  const [item,          setItem]          = useState<Item | null>(null);
-  const [loading,       setLoading]       = useState(true);
-  const [message,       setMessage]       = useState({ type: "", text: "" });
+  const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+  const [item, setItem] = useState<Item | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState({ type: "", text: "" });
   const [actionLoading, setActionLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [confirmModal,  setConfirmModal]  = useState<ConfirmModalState>({
-    show: false, msg: "", isDanger: false, onConfirm: () => {},
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
+    show: false,
+    msg: "",
+    isDanger: false,
+    onConfirm: () => {},
   });
 
-  const fetchItem = useCallback(
-    async (isMounted = true) => {
-      try {
-        const data = await itemApi.getItemById(id as string);
-        if (isMounted) setItem(data);
-      } catch {
-        console.error("Error fetching item");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    },
-    [id]
-  );
+  // تحديث currentUserId من AuthContext مباشرة
+  useEffect(() => {
+    if (user) {
+      setCurrentUserId(user._id ?? null);
+    } else {
+      setCurrentUserId(null);
+    }
+  }, [user]);
 
-  // ✅ استخراج userId من الـ JWT عبر Cookie
+  const fetchItem = useCallback(async (isMounted = true) => {
+    try {
+      setLoading(true);
+      const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+      const data = await itemApi.getItemById(itemId);
+      if (isMounted) setItem(data);
+    } catch {
+      if (isMounted) setMessage({ type: "error", text: "حدث خطأ أثناء تحميل بيانات الطلب" });
+    } finally {
+      if (isMounted) setLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     let isMounted = true;
-
-    const token = Cookies.get("token");
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        setCurrentUserId(payload.user.id || payload.user._id);
-      } catch {}
-    }
-
-    if (id) fetchItem(isMounted);
+    fetchItem(isMounted);
     return () => { isMounted = false; };
-  }, [id, fetchItem]);
+  }, [fetchItem]);
 
-  const isDonor          = getId(item?.donor)    === currentUserId;
-  const isBooker         = getId(item?.bookedBy) === currentUserId;
-  const isWaitlisted     = item?.waitlist?.some((w) => getId(w.user) === currentUserId);
-  const isCancelledBefore = item?.cancelledBy?.some((uid) => getId(uid) === currentUserId);
-
-  const handleRequestItem = async () => {
-    const token = Cookies.get("token");
-    if (!token) return router.push(`/login?redirect=/items/${id}`);
-
-    try {
-      setActionLoading(true);
-      setMessage({ type: "", text: "" });
-      const res = await itemApi.bookItem(id as string);
-      setMessage({ type: "success", text: res.message || res.msg || "العملية تمت بنجاح" });
-      fetchItem(true);
-    } catch (err: unknown) {
-  const msg = (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg;
-  setMessage({ type: "error", text: msg || "حدث خطأ أثناء الطلب" });
-} finally {
-      setActionLoading(false);
+  const handleRequestItem = useCallback(async () => {
+    // ✅ استخدم useAuth بدل Cookies.get("token")
+    if (authLoading) return;
+    if (!isLoggedIn) {
+      router.push(`/login?redirect=/items/${id}`);
+      return;
     }
-  };
-
-  const handleCancelAction = () => {
-    const isDanger     = isBooker || isDonor;
-    const confirmMsg   = isBooker
-      ? "⚠️ تنبيه: إلغاء الحجز سيمنعك من حجز هذه القطعة مجدداً للأبد!\nهل أنت متأكد؟"
-      : isDonor
-      ? "هل تريد إلغاء حجز المستلم وتمرير الدور؟"
-      : "هل تريد الانسحاب من قائمة الانتظار؟";
 
     setConfirmModal({
       show: true,
-      msg: confirmMsg,
-      isDanger,
+      msg: "هل تريد الانضمام لهذا الطابور؟",
+      isDanger: false,
       onConfirm: async () => {
         setConfirmModal((prev) => ({ ...prev, show: false }));
+        setActionLoading(true);
         try {
-          setActionLoading(true);
-          const res = await itemApi.cancelBooking(id as string);
-          setMessage({ type: "success", text: res.msg });
-          fetchItem(true);
+          const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+          await itemApi.requestItem(itemId);
+          setMessage({ type: "success", text: "تم طلبك بنجاح" });
+          fetchItem();
         } catch (err: unknown) {
-          setMessage({
-            type: "error",
-            text: (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg || "حدث خطأ أثناء الإلغاء",
-          });
+          const msg =
+            err instanceof Error ? err.message : "حدث خطأ أثناء الطلب";
+          setMessage({ type: "error", text: msg });
         } finally {
           setActionLoading(false);
         }
       },
     });
-  };
+  }, [authLoading, isLoggedIn, id, router, fetchItem]);
+
+  const handleCancelAction = useCallback(
+    (actionType: "cancel" | "restore") =>
+      async () => {
+        setActionLoading(true);
+        try {
+          const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+          if (actionType === "cancel") {
+            await itemApi.cancelRequest(itemId);
+            setMessage({ type: "success", text: "تم إلغاء طلبك بنجاح" });
+          } else {
+            await itemApi.restoreItem(itemId);
+            setMessage({ type: "success", text: "تم استعادة العنصر بنجاح" });
+          }
+          fetchItem();
+        } catch {
+          setMessage({ type: "error", text: "حدث خطأ أثناء العملية" });
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    [id, fetchItem]
+  );
+
+  const onConfirm = useCallback(() => {
+    confirmModal.onConfirm();
+  }, [confirmModal]);
 
   return {
-    item, loading, message, actionLoading, confirmModal, setConfirmModal,
-    isDonor, isBooker, isWaitlisted, isCancelledBefore,
-    handleRequestItem, handleCancelAction,
+    item,
+    loading,
+    message,
+    setMessage,
+    actionLoading,
+    currentUserId,
+    confirmModal,
+    setConfirmModal,
+    handleRequestItem,
+    handleCancelAction,
+    onConfirm,
+    fetchItem,
   };
 }

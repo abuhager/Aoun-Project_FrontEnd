@@ -21,13 +21,21 @@ interface User {
   quota: number;
 }
 
+// شكل الـ response من /api/auth/me
+interface MeResponse {
+  user:               User;
+  stats:              { donationsCount: number; completedDonations: number; receivedCount: number; totalRatings: number };
+  allDonations:       Item[];
+  completedRequests:  Item[];
+}
+
 interface DashboardData {
-  user: User;
-  myDonations: Item[];
-  myRequests: Item[];
+  user:           User;
+  myDonations:    Item[];
+  myRequests:     Item[];
   totalDonations: number;
-  quota: number;
-  trustScore: number;
+  quota:          number;
+  trustScore:     number;
 }
 
 interface ConfirmModalState {
@@ -37,28 +45,16 @@ interface ConfirmModalState {
   onConfirm: () => void;
 }
 
-// ── decode الـ JWT محلياً للحصول على user.id فقط ─────────────────────
-function getUserIdFromToken(): string | null {
-  try {
-    const match = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
-    if (!match?.[1]) return null;
-    const parts = decodeURIComponent(match[1]).split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return payload?.user?.id ?? payload?.user?._id ?? null;
-  } catch { return null; }
+export function getBookedByName(val: Item['bookedBy']): string {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  return val.name ?? '';
 }
 
 function getId(val: string | { _id: string } | undefined): string {
   if (!val) return '';
   if (typeof val === 'string') return val;
   return val._id;
-}
-
-export function getBookedByName(val: Item['bookedBy']): string {
-  if (!val) return '';
-  if (typeof val === 'string') return val;
-  return val.name ?? '';
 }
 
 export function useDashboard() {
@@ -82,33 +78,33 @@ export function useDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. بيانات المستخدم — نجرب /api/auth/me أولاً للحصول على كل البيانات
-        let me: User;
-        try {
-          const { data: meRes } = await axiosInstance.get<User>('/api/auth/me');
-          me = meRes;
-        } catch {
-          // fallback: decode من الـ JWT إذا فشل /api/auth/me
-          const id = getUserIdFromToken();
-          if (!id) throw new Error('لم يتم العثور على بيانات الجلسة');
-          me = { _id: id, name: '', email: '', trustScore: 0, quota: 0 };
-        }
+        // /api/auth/me يرجع { user, stats, allDonations, completedRequests }
+        const { data: res } = await axiosInstance.get<MeResponse>('/api/auth/me');
 
-        // 2. كل الأغراض مفلترة بالمستخدم
+        const userId       = res.user._id;
+        // allDonations من البيكند هي كل تبرعات المستخدم
+        const myDonations  = res.allDonations ?? [];
+        // completedRequests هي طلباته المكتملة — لكن نحتاج أيضاً المحجوزة حالياً
+        // نجلب items لنجد المحجوزة أيضاً (bookedBy == userId و status == محجوز)
         const { data: itemsRes } = await axiosInstance.get<{ items: Item[] }>('/api/items');
         const allItems = itemsRes.items ?? [];
-
-        const userId = me._id;
-        const myDonations = allItems.filter(i => getId(i.donor)   === userId);
-        const myRequests  = allItems.filter(i => getId(i.bookedBy as string | { _id: string } | undefined) === userId);
+        const activeRequests = allItems.filter(i =>
+          getId(i.bookedBy as string | { _id: string } | undefined) === userId && i.status === 'محجوز'
+        );
+        // دمج الطلبات: النشطة + المكتملة
+        const seenIds = new Set(activeRequests.map(i => i._id));
+        const myRequests = [
+          ...activeRequests,
+          ...(res.completedRequests ?? []).filter(i => !seenIds.has(i._id)),
+        ];
 
         setData({
-          user:           me,
+          user:           res.user,
           myDonations,
           myRequests,
-          totalDonations: myDonations.length,
-          quota:          me.quota,
-          trustScore:     me.trustScore,
+          totalDonations: res.stats?.donationsCount ?? myDonations.length,
+          quota:          res.user.quota   ?? 0,
+          trustScore:     res.user.trustScore ?? 0,
         });
       } catch (err: unknown) {
         if (axios.isAxiosError(err)) {

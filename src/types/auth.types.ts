@@ -23,9 +23,9 @@ export interface VerifyOtpRequest {
 
 // ── Responses ────────────────────────────────────────────────
 export interface LoginResponse {
-  token:        string;     // Access Token (in-memory)
-  refreshToken?: string;    // يجي في httpOnly cookie — ليس في body
-  user:         AuthUser;
+  accessToken:   string;     // ✅ تغيّر من token إلى accessToken
+  user:          AuthUser;
+  msg?:          string;
 }
 
 export interface RegisterResponse {
@@ -34,10 +34,10 @@ export interface RegisterResponse {
 }
 
 export interface VerifyOtpResponse {
-  token: string;
-  user:  AuthUser;
+  accessToken:   string;     // ✅ نفس التغيير هنا
+  user?:         AuthUser;
+  msg?:          string;
 }
-
 // ✅ Phase 1 — جديد
 export interface RefreshTokenResponse {
   accessToken: string;

@@ -10,23 +10,22 @@ interface FormData {
 }
 
 interface LoginResponse {
-  token: string;
+  accessToken: string;
   msg: string;
   user: {
     _id?: string;
-    id?:  string;
+    id?: string;
     name: string;
     email: string;
     role: string;
     isVerifiedStudent?: boolean;
-    trustLevel?: number;
   };
 }
 
 export function useLogin() {
   const [formData, setFormData] = useState<FormData>({ email: "", password: "" });
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -40,34 +39,24 @@ export function useLogin() {
       setLoading(true);
 
       const res = await axiosInstance.post<LoginResponse>("/api/auth/login", {
-        email:    formData.email,
+        email: formData.email,
         password: formData.password,
       });
 
-      const { token, user } = res.data;
+      const { accessToken, user } = res.data;
 
-      // 1. حفظ الـ token في cookie يقرأه الـ middleware
-      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
-      document.cookie = `token=${token}; path=/; expires=${expires}; SameSite=Lax`;
+      // ✅ accessToken في الذاكرة فقط
+      setAccessToken(accessToken);
 
-      // 2. حفظ في الذاكرة للـ axiosInstance
-      setAccessToken(token);
+      // ✅ refreshToken زُرع تلقائياً من الباك كـ httpOnly cookie
+      // ✅ لا localStorage، لا document.cookie
 
-      // 3. بيانات المستخدم
-      localStorage.setItem("user", JSON.stringify({
-        id:    user._id ?? user.id,
-        name:  user.name,
-        email: user.email,
-        role:  user.role,
-        trustLevel: user.trustLevel ?? 1,
-      }));
-
-      // 4. توجيه — /browse آمن (ليس محمي)
-      //    المستخدم يضغط dashboard بنفسه من الـ Navbar
-      const params   = new URLSearchParams(window.location.search);
-      const redirect = params.get('redirect');
-      // ✅ لا ترسل للـ dashboard مباشرةً — الـ middleware قد لا يشوف الـ cookie بعد
-      window.location.replace(redirect && redirect !== '/login' ? redirect : '/browse');
+      // ✅ redirect
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+      window.location.replace(
+        redirect && redirect !== "/login" ? redirect : "/browse"
+      );
 
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {

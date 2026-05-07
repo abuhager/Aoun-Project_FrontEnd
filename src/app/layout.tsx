@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Tajawal, Cairo } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 import GlobalRatingModal from "@/components/GlobalRatingModal";
 
 const tajawal = Tajawal({
@@ -19,7 +20,7 @@ const cairo = Cairo({
 
 export const metadata: Metadata = {
   title: "منصة عون | للتكافل الاجتماعي",
-  description: "المنصة الجامعية الأولى لتبادل الأغراض والكتب بين الطلاب مجاناً",
+  description: "منصة مفتوحة لتبادل الأغراض مجاناً",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -34,10 +35,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className={`${cairo.variable} ${tajawal.variable} bg-surface min-h-screen flex flex-col`}>
-        <GlobalRatingModal />
-        <main className="flex-grow">
-          {children}
-        </main>
+        {/* ✅ AuthProvider يلف كل شيء */}
+        <AuthProvider>
+          <GlobalRatingModal />
+          <main className="flex-grow">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

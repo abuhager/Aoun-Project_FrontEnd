@@ -1,38 +1,26 @@
 // src/lib/api/axiosInstance.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
+// ── Access Token في الذاكرة فقط — لا cookie لا localStorage ──
 let accessToken: string | null = null;
+let isRefreshing = false;
+let refreshQueue: Array<(token: string) => void> = [];
+
 export const setAccessToken = (t: string | null) => { accessToken = t; };
 export const getAccessToken = () => accessToken;
-
-// ── قراءة الـ token من الـ cookie (تُستدعى في كل طلب لضمان التزامن الصحيح) ────────
-function getTokenFromCookie(): string | null {
-  if (typeof window === 'undefined') return null;
-  const match = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
-const AUTH_PATHS = ['/login', '/register', '/verify'];
 
 const axiosInstance = axios.create({
   baseURL:         process.env.NEXT_PUBLIC_API_URL,
   timeout:         15000,
-  withCredentials: true,
+  withCredentials: true, // ← مهم لإرسال httpOnly cookie مع كل طلب
 });
 
-// Request Interceptor — يقرأ الـ token في كل طلب
+// ── Request: أرسل accessToken في Authorization header ──────────
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // أولاً: الـ memory (أسرع) — ثانياً: الـ cookie (ضمان reload وـ redirect)
-    const token = accessToken ?? getTokenFromCookie();
-
-    // إذا الـ memory فارغ لكن الـ cookie موجود — حدّث الـ memory تلقائياً
-    if (!accessToken && token) setAccessToken(token);
-
-    if (token) {
-      config.headers['x-auth-token'] = token;
+    if (accessToken) {
+      config.headers['Authorization'] = `Bearer ${accessToken}`;
     }
-
     if (config.data && !(config.data instanceof FormData)) {
       config.headers['Content-Type'] = 'application/json';
     }
@@ -41,18 +29,59 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor
+// ── Response: عند 401 جرب refresh قبل logout ──────────────────
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (typeof window === 'undefined') return Promise.reject(error);
-    const status   = error.response?.status;
-    const isOnAuth = AUTH_PATHS.some(p => window.location.pathname.startsWith(p));
-    if (status === 401 && !isOnAuth) {
-      setAccessToken(null);
-      document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-      window.location.replace('/login?expired=true');
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const status = error.response?.status;
+    const isAuthRoute = originalRequest.url?.includes('/auth/');
+
+    // لو 401 وهو مش طلب auth ومش جرّبنا refresh بعد
+    if (status === 401 && !isAuthRoute && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      // لو في refresh جاري — ضيف الطلب في queue
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          refreshQueue.push((newToken: string) => {
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            resolve(axiosInstance(originalRequest));
+          });
+        });
+      }
+
+      isRefreshing = true;
+
+      try {
+        const { data } = await axios.post<{ accessToken: string }>(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+
+        const newToken = data.accessToken;
+        setAccessToken(newToken);
+
+        // أكمل الطلبات اللي كانت منتظرة
+        refreshQueue.forEach(cb => cb(newToken));
+        refreshQueue = [];
+
+        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+        return axiosInstance(originalRequest);
+      } catch {
+        // Refresh فشل — logout
+        setAccessToken(null);
+        refreshQueue = [];
+        if (typeof window !== 'undefined') {
+          window.location.replace('/login?expired=true');
+        }
+        return Promise.reject(error);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject(error);
   }
 );

@@ -1,4 +1,5 @@
-// useDashboard.ts — يستخدم /api/items/me (endpoint واحد يرجع كل شيء)
+// src/app/(main)/(protected)/dashboard/hooks/useDashboard.ts
+// يستخدم /api/items/me (endpoint واحد يرجع كل شيء)
 import { useEffect, useState, useCallback, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import axiosInstance from '@/lib/api/axiosInstance';
@@ -48,9 +49,7 @@ export function useDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // ✅ API call واحد فقط — يرجع { user, myDonations, myRequests }
         const { data: res } = await axiosInstance.get<MyItemsResponse>('/api/items/me');
-
         setData({
           user:        res.user,
           myDonations: res.myDonations ?? [],
@@ -90,7 +89,7 @@ export function useDashboard() {
         : 'هل أنت متأكد من حذف هذا الغرض؟ لا يمكن التراجع.',
       onConfirm: async () => {
         try {
-          await axiosInstance.delete(`/api/items/${id}`);
+          await axiosInstance.delete(`/api/items/delete/${id}`);
           setData(prev => prev
             ? { ...prev, myDonations: prev.myDonations.filter(i => i._id !== id) }
             : prev);

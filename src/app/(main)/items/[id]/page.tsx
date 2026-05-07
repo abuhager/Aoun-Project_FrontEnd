@@ -17,7 +17,6 @@ export default function ItemDetailsPage() {
     handleRequestItem, handleCancelAction,
   } = useItemDetails();
 
-  // ─── Loading ───
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-surface">
@@ -26,7 +25,6 @@ export default function ItemDetailsPage() {
     );
   }
 
-  // ─── Not Found ───
   if (!item) {
     return <div className="text-center py-20 font-bold">🛑 القطعة غير موجودة</div>;
   }
@@ -102,13 +100,21 @@ export default function ItemDetailsPage() {
               )
             )}
 
-            {/* ─── رمز الاستلام OTP ─── */}
-            {isBooker && item.status === "محجوز" && item.deliveryOtp && (
-              <div className="bg-primary/10 border-2 border-dashed border-primary p-6 rounded-3xl text-center shadow-inner">
-                <p className="text-primary text-xs font-bold mb-2">رمز الاستلام الخاص بك 🔐</p>
-                <div className="text-5xl font-black tracking-widest text-primary font-mono">{item.deliveryOtp}</div>
-                <p className="text-[10px] text-primary/60 mt-3 font-bold">أظهر هذا الرمز للمتبرع لتأكيد الاستلام</p>
-              </div>
+            {/* ─── رمز الاستلام — يظهر في الـ Dashboard فقط ─── */}
+            {isBooker && item.status === "محجوز" && (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-3 bg-primary/10 border-2 border-dashed border-primary p-5 rounded-3xl text-center hover:bg-primary/15 transition-colors"
+              >
+                <span className="material-symbols-outlined text-primary text-2xl">lock</span>
+                <div className="text-right">
+                  <p className="text-primary text-xs font-black">رمز الاستلام الخاص بك 🔐</p>
+                  <p className="text-[11px] text-primary/70 font-medium mt-0.5">
+                    اذهب إلى لوحة التحكم لعرض الرمز وتأكيد الاستلام
+                  </p>
+                </div>
+                <span className="material-symbols-outlined text-primary mr-auto">chevron_left</span>
+              </Link>
             )}
 
             {/* ─── معلومات الغرض ─── */}

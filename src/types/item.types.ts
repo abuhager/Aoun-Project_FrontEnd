@@ -33,13 +33,14 @@ export interface Item {
   title:       string;
   description: string;
   category:    ItemCategory;
-  condition?:  ItemCondition | string;  // حالة الغرض
-  location?:   string;                  // موقع التسليم
+  condition?:  ItemCondition | string;
+  location?:   string;
   imageUrl:    string;
   status:      ItemStatus;
   isRated:     boolean;
   donor:       PublicUser;
   bookedBy?:   BookedByUser;
+  bookedAt?:   string;          // تاريخ الحجز — ISO date
   waitlist:    WaitlistEntry[];
   cancelledBy: string[];
   createdAt:   string;
@@ -57,6 +58,7 @@ export interface DashboardItem {
   status:      ItemStatus;
   isRated:     boolean;
   bookedBy?:   BookedByUser;
+  bookedAt?:   string;
   donor?:      PublicUser;
   waitlist:    WaitlistEntry[];
   cancelledBy: string[];
@@ -92,6 +94,9 @@ export interface PaginatedItemsResponse {
   pages:  number;
 }
 
-// للتوافق مع المستخدمين الموجودين
-export type ItemsResponse       = PaginatedItemsResponse;
-export type MyItemsResponse     = { user: import('./user.types').AuthUser; myDonations: DashboardItem[]; myRequests: DashboardItem[] };
+export type ItemsResponse   = PaginatedItemsResponse;
+export type MyItemsResponse = {
+  user:        import('./user.types').AuthUser;
+  myDonations: DashboardItem[];
+  myRequests:  DashboardItem[];
+};

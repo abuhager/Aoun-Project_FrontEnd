@@ -13,6 +13,13 @@ interface ItemsTableProps {
   onOpenOtp: (item: Item) => void;
 }
 
+// مساعد — يستخرج اسم المحجوز سواء bookedBy كان string أو object
+function getBookedByName(bookedBy: Item['bookedBy']): string {
+  if (!bookedBy) return '';
+  if (typeof bookedBy === 'string') return bookedBy;
+  return bookedBy.name ?? '';
+}
+
 export function ItemsTable({
   items,
   activeTab,
@@ -80,7 +87,7 @@ export function ItemsTable({
               {/* من حجز الغرض — للمتبرع */}
               {activeTab === "donations" && item.status === "محجوز" && item.bookedBy && (
                 <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-lg">
-                  محجوز بواسطة: {item.bookedBy.name}
+                  محجوز بواسطة: {getBookedByName(item.bookedBy)}
                 </span>
               )}
             </div>
@@ -89,7 +96,6 @@ export function ItemsTable({
           {/* ── أزرار الإجراءات ── */}
           <div className="flex flex-col gap-2 flex-shrink-0">
 
-            {/* ✅ تأكيد التسليم — للمتبرع عندما الغرض محجوز */}
             {activeTab === "donations" && item.status === "محجوز" && (
               <button
                 onClick={() => onOpenOtp(item)}
@@ -99,7 +105,6 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* ✅ فك الحجز — للمتبرع عندما الغرض محجوز */}
             {activeTab === "donations" && item.status === "محجوز" && (
               <button
                 onClick={() => onDonorCancelBooking(item._id)}
@@ -109,7 +114,6 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* ✅ تعديل الغرض — للمتبرع عندما الغرض متاح أو مخفي */}
             {activeTab === "donations" && ["متاح", "مخفي"].includes(item.status) && (
               <button
                 onClick={() => onEdit(item._id)}
@@ -119,7 +123,6 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* ✅ حذف — للمتبرع (متاح أو محجوز، ليس تم التسليم) */}
             {activeTab === "donations" && item.status !== "تم التسليم" && (
               <button
                 onClick={() => onDelete(item._id, item.status)}
@@ -129,7 +132,6 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* ✅ إلغاء الحجز — للمستلم من تبويب طلباتي */}
             {activeTab === "requests" && item.status === "محجوز" && (
               <button
                 onClick={() => onCancelBooking(item._id)}
@@ -145,7 +147,6 @@ export function ItemsTable({
   );
 }
 
-// ── مكون مساعد للحالة ──────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
     "متاح":       { label: "متاح",       className: "bg-green-50 text-green-600 border-green-100" },

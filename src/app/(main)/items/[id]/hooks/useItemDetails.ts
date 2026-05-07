@@ -24,11 +24,11 @@ export function useItemDetails() {
   const { id } = useParams();
   const router = useRouter();
   const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [actionLoading, setActionLoading] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
     show: false,
     msg: "",
@@ -36,14 +36,14 @@ export function useItemDetails() {
     onConfirm: () => {},
   });
 
-  // تحديث currentUserId من AuthContext مباشرة
-  useEffect(() => {
-    if (user) {
-      setCurrentUserId(user._id ?? null);
-    } else {
-      setCurrentUserId(null);
-    }
-  }, [user]);
+  // ✅ currentUserId مباشرة من AuthContext
+  const currentUserId = user?._id ?? null;
+
+  // ✅ هذي القيم تعتمد على currentUserId و item
+  const isDonor        = !!currentUserId && getId(item?.donor) === currentUserId;
+  const isBooker       = !!currentUserId && getId(item?.bookedBy) === currentUserId;
+  const isWaitlisted   = !!currentUserId && !!item?.waitlist?.some((w) => getId(w.user) === currentUserId);
+  const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid) => getId(uid) === currentUserId);
 
   const fetchItem = useCallback(async (isMounted = true) => {
     try {
@@ -65,7 +65,7 @@ export function useItemDetails() {
   }, [fetchItem]);
 
   const handleRequestItem = useCallback(async () => {
-    // ✅ استخدم useAuth بدل Cookies.get("token")
+    // ✅ انتظر حتى يكتمل الـ auth loading أولاً
     if (authLoading) return;
     if (!isLoggedIn) {
       router.push(`/login?redirect=/items/${id}`);
@@ -85,8 +85,7 @@ export function useItemDetails() {
           setMessage({ type: "success", text: "تم طلبك بنجاح" });
           fetchItem();
         } catch (err: unknown) {
-          const msg =
-            err instanceof Error ? err.message : "حدث خطأ أثناء الطلب";
+          const msg = err instanceof Error ? err.message : "حدث خطأ أثناء الطلب";
           setMessage({ type: "error", text: msg });
         } finally {
           setActionLoading(false);
@@ -129,6 +128,10 @@ export function useItemDetails() {
     setMessage,
     actionLoading,
     currentUserId,
+    isDonor,
+    isBooker,
+    isWaitlisted,
+    isCancelledBefore,
     confirmModal,
     setConfirmModal,
     handleRequestItem,

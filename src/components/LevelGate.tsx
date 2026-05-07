@@ -1,48 +1,39 @@
 // src/components/LevelGate.tsx
-// ================================================================
 // ✅ PHASE 2 Prep — LevelGate Component
 //
-// يخفي / يظهر زر الحجز بناءً على trustLevel الخاص بالمستخدم
+// يخفي / يظهر زر الحجز بناءً على trust level الخاص بالمستخدم
 //
 // الاستخدام:
 //   <LevelGate requiredLevel={2} user={user}>
 //     <BookButton />
 //   </LevelGate>
 //
-// BLAST RADIUS:
-//   Direct:     صفحات العرض تستخدمه لإخفاء زر الحجز
-//   Cross-Repo: Backend requireLevel2 middleware هو الحارس الحقيقي
-//   DB:         لا يوجد
-// ================================================================
+// ❗️ Phase 1: trustLevel يُحسب من trustScore (>= 50 = Level 2)
+//    Phase 2: يُضاف trustLevel لـ User schema ويرجع من الـ API
 'use client';
 
 import type { AuthUser } from '@/types';
 
 interface LevelGateProps {
-  /** المستوى المطلوب للظهور */
   requiredLevel: 1 | 2;
-  /** بيانات المستخدم الحالي */
   user: AuthUser | null;
-  /** المحتوى المحمي */
   children: React.ReactNode;
-  /** ما يظهر بدلاً عن children للمستخدم غير المؤهّل (اختياري) */
   fallback?: React.ReactNode;
 }
 
-export function LevelGate({
-  requiredLevel,
-  user,
-  children,
-  fallback,
-}: LevelGateProps) {
-  // لا يوجد مستخدم → لا يظهر شيء
+/** مؤقت: يحسب المستوى من trustScore حتى يُضاف trustLevel لـ DB في Phase 2 */
+function getTrustLevel(user: AuthUser): 1 | 2 {
+  if (user.isVerifiedStudent) return 2;
+  if (user.trustScore >= 50)  return 2;
+  return 1;
+}
+
+export function LevelGate({ requiredLevel, user, children, fallback }: LevelGateProps) {
   if (!user) return fallback ? <>{fallback}</> : null;
 
-  // لو المستوى كافي → اظهر المحتوى
-  const userLevel = user.trustLevel ?? 1;
+  const userLevel = getTrustLevel(user);
   if (userLevel >= requiredLevel) return <>{children}</>;
 
-  // مستوى غير كافي → fallback أو رسالة توضيحية
   if (fallback) return <>{fallback}</>;
 
   return (

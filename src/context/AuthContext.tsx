@@ -6,7 +6,6 @@ import {
   useEffect,
   useState,
   useCallback,
-  useRef,
 } from "react";
 import axiosInstance, {
   setAccessToken,
@@ -28,37 +27,50 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// قفل على مستوى الـ module — يمنع React StrictMode من استدعاء /refresh مرتين
+let sessionInitialized = false;
+let sessionPromise: Promise<boolean> | null = null;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user,      setUser]      = useState<AuthUser | null>(null);
+  const [user,      setUserState] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const initialized               = useRef(false);
+
+  const setUser = useCallback((u: AuthUser | null) => {
+    setUserState(u);
+  }, []);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    try {
-      const { data } = await axiosInstance.post<{
-        accessToken: string;
-      }>("/api/auth/refresh", {}, { withCredentials: true });
+    // لو في طلب refresh جاري بالفعل، انتظره بدل ما تبعت طلب جديد
+    if (sessionPromise) return sessionPromise;
 
-      const freshToken = data.accessToken;
-      setAccessToken(freshToken);
+    sessionPromise = (async () => {
+      try {
+        const { data } = await axiosInstance.post<{
+          accessToken: string;
+        }>("/api/auth/refresh", {}, { withCredentials: true });
 
-      const meRes = await axiosInstance.get<{ user: AuthUser }>("/api/auth/me", {
-        headers: { Authorization: `Bearer ${freshToken}` },
-      });
+        const freshToken = data.accessToken;
+        setAccessToken(freshToken);
 
-      const fetchedUser = meRes.data.user ?? (meRes.data as unknown as AuthUser);
-      setUser(fetchedUser);
+        const meRes = await axiosInstance.get<{ user: AuthUser }>("/api/auth/me", {
+          headers: { Authorization: `Bearer ${freshToken}` },
+        });
 
-      // تجديد cookie الـ middleware
-      Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
+        const fetchedUser = meRes.data.user ?? (meRes.data as unknown as AuthUser);
+        setUserState(fetchedUser);
+        Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
+        return true;
+      } catch {
+        setAccessToken(null);
+        setUserState(null);
+        Cookies.remove("isLoggedIn");
+        return false;
+      } finally {
+        sessionPromise = null;
+      }
+    })();
 
-      return true;
-    } catch {
-      setAccessToken(null);
-      setUser(null);
-      Cookies.remove("isLoggedIn");
-      return false;
-    }
+    return sessionPromise;
   }, []);
 
   const logout = useCallback(async () => {
@@ -66,15 +78,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await axiosInstance.post("/api/auth/logout", {}, { withCredentials: true });
     } finally {
       setAccessToken(null);
-      setUser(null);
+      setUserState(null);
+      sessionInitialized = false;
       Cookies.remove("isLoggedIn");
       window.location.replace("/login");
     }
   }, []);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    if (sessionInitialized) {
+      setIsLoading(false);
+      return;
+    }
+    sessionInitialized = true;
     refreshSession().finally(() => setIsLoading(false));
   }, [refreshSession]);
 

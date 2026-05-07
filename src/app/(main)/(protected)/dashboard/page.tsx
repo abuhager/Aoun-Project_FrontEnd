@@ -11,7 +11,7 @@ import { OtpModal }     from "./components/OtpModal";
 
 export default function DashboardPage() {
   const {
-    data, activeTab, setActiveTab, loading,
+    data, activeTab, setActiveTab, loading, error,
     showOtpModal, confirmModal, setConfirmModal, toast, setToast,
     selectedItem, otp, setOtp, otpError, otpLoading,
     handleDelete, handleCancelBooking, handleDonorCancelBooking,
@@ -29,8 +29,17 @@ export default function DashboardPage() {
 
   if (!data) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-surface">
-        <p className="text-gray-400 text-sm">حدث خطأ في تحميل البيانات. تأكد من اتصالك بالسيرفر.</p>
+      <div className="flex flex-col justify-center items-center min-h-screen bg-surface gap-3 p-8">
+        <p className="text-red-400 text-sm font-bold">حدث خطأ في تحميل البيانات</p>
+        {/* ⭐ تفاصيل الـ error — مؤقت للتشخيص */}
+        {error && (
+          <pre className="text-xs text-yellow-400 bg-gray-900 rounded p-4 max-w-lg w-full overflow-auto text-left dir-ltr">
+            {error}
+          </pre>
+        )}
+        <p className="text-gray-500 text-xs">
+          API: {process.env.NEXT_PUBLIC_API_URL ?? 'غير معرّف'}
+        </p>
       </div>
     );
   }

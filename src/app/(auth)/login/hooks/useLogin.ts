@@ -23,6 +23,8 @@ interface LoginResponse {
     avatar?: string;
     role: string;
     trustScore?: number;
+        trustLevel?: 1 | 2;    // ✅ أضف هذا
+
     quota?: number;
     isVerified?: boolean;
     isVerifiedStudent?: boolean;
@@ -68,6 +70,8 @@ export function useLogin() {
         avatar:            user.avatar,
         role:              user.role as UserRole,
         trustScore:        user.trustScore        ?? 0,
+          trustLevel:        (user.trustLevel as 1 | 2) ?? 1,  // ✅ السطر الناقص
+
         quota:             user.quota             ?? 0,
         isVerified:        user.isVerified        ?? false,
         isVerifiedStudent: user.isVerifiedStudent ?? false,

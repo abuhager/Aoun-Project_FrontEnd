@@ -1,6 +1,5 @@
 // src/types/item.types.ts ✅ ملف جديد — كان غائباً تماماً
-import type { PublicUser, BookedByUser } from './user.types';
-
+import type { PublicUser, BookedByUser, AuthUser } from './user.types';
 export type ItemStatus = 'متاح' | 'محجوز' | 'تم التسليم' | 'مخفي';
 export type ItemCategory = 'كتب' | 'إلكترونيات' | 'أثاث' | 'أخرى' | 'ملابس';
 export type HandoverMode = 'direct' | 'hub';
@@ -112,6 +111,7 @@ export interface DashboardItem {
 
 // ── Response من GET /api/items/my-items ────────────────────
 export interface MyItemsResponse {
+    user:      AuthUser;
   donations: DashboardItem[];
   bookings:  DashboardItem[];
 }

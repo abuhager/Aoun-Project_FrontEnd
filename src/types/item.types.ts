@@ -21,6 +21,7 @@ export interface Item {
   rating?: number | null;
   reportCount: number;
   bookedAt?: string | null;
+  cancelledBy?: string[];
   createdAt: string;
   updatedAt: string;
   donor: PublicUser;

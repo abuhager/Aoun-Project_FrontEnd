@@ -1,118 +1,89 @@
-// src/types/item.types.ts
-// ✅ متزامن 100% مع Item.js Schema + itemService responses
+// src/types/item.types.ts ✅ ملف جديد — كان غائباً تماماً
+import type { PublicUser, BookedByUser } from './user.types';
 
-import type { PublicUser, BookedByUser, DonorUser, AuthUser } from './user.types';
-
-// ── Enums ───────────────────────────────────────────────
-export type ItemStatus =
-  | 'متاح'
-  | 'محجوز'
-  | 'تم التسليم'
-  | 'مخفي';
-
-export type ItemCategory =
-  | 'كتب'
-  | 'إلكترونيات'
-  | 'أثاث'
-  | 'أخرى'
-  | 'ملابس';
-
+export type ItemStatus = 'متاح' | 'محجوز' | 'تم التسليم' | 'مخفي';
+export type ItemCategory = 'كتب' | 'إلكترونيات' | 'أثاث' | 'أخرى' | 'ملابس';
 export type HandoverMode = 'direct' | 'hub';
 
-// ── Sub-types ───────────────────────────────────────
+// ── الغرض الكامل (من GET /api/items/:id) ───────────────
+export interface Item {
+  _id: string;
+  title: string;
+  description: string;
+  category: ItemCategory;
+  imageUrl: string;
+  cloudinaryId?: string;
+  location: string;
+  condition: string;
+  status: ItemStatus;
+  handoverMode: HandoverMode;
+  hubId?: string | null;
+  isRated: boolean;
+  rating?: number | null;
+  reportCount: number;
+  bookedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  donor: PublicUser;
+  bookedBy?: BookedByUser | null;
+  waitlist?: WaitlistEntry[];
+}
+
+// ── عنصر في قائمة الانتظار ─────────────────────────────
 export interface WaitlistEntry {
-  user:     string;
+  user: string;
   joinedAt: string;
 }
 
-// ── Item الكامل — مطابق حقل بحقل مع Item.js ──────────
-export interface Item {
-  _id:          string;
-  title:        string;
-  description:  string;
-  category:     ItemCategory;
-  imageUrl:     string;
-  cloudinaryId?: string;
-  location:     string;
-  condition?:   string;          // default: 'مستعمل ممتاز'
-  status:       ItemStatus;
-  isRated:      boolean;
-  bookedAt?:    string | null;   // ISO date
-  reportCount?: number;
-  rating?:      number | null;   // 1–5
-  handoverMode: HandoverMode;
-  hubId?:       string | null;
-
-  // ✅ deliveryOtp لا يجي أبداً في الـ response — حذفناه من الـ service
-  // hubDropOtp / hubPickupOtp — حقول Phase 2
-
-  donor:       PublicUser;
-  bookedBy?:   BookedByUser | null;
-  waitlist:    WaitlistEntry[];
-  cancelledBy: string[];
-
-  createdAt:   string;
-  updatedAt:   string;
+// ── الغرض في القوائم (بدون populate كامل) ──────────────
+export interface ItemSummary {
+  _id: string;
+  title: string;
+  imageUrl: string;
+  status: ItemStatus;
+  category: ItemCategory;
+  location: string;
+  createdAt: string;
+  donor: Pick<PublicUser, '_id' | 'name' | 'avatar'>;
 }
 
-// ── الغرض كما يراه المستلم ─────────────────────────
-export interface ItemAsReceiver extends Item {
-  donor: DonorUser;
-}
-
-// ── الغرض في Dashboard ──────────────────────────────
-export interface DashboardItem {
-  _id:          string;
-  title:        string;
-  imageUrl:     string;
-  status:       ItemStatus;
-  isRated:      boolean;
-  bookedAt?:    string | null;
-  bookedBy?:    BookedByUser | null;
-  donor?:       PublicUser;
-  waitlist:     WaitlistEntry[];
-  cancelledBy:  string[];
+// ── إنشاء غرض جديد ─────────────────────────────────────
+export interface CreateItemPayload {
+  title: string;
+  description: string;
+  category: ItemCategory;
+  location: string;
+  condition?: string;
   handoverMode?: HandoverMode;
-  rating?:      number | null;
+  hubId?: string;
+  image: File;
 }
 
-// ── رد GET /api/items/me — مطابق لـ getMyItemsLogic ──────────
-export interface MyItemsResponse {
-  user:        AuthUser;       // user object كامل (quota, totalDonations, trustScore في داخله)
-  myDonations: DashboardItem[];
-  myRequests:  DashboardItem[];
+// ── نتيجة جلب الأغراض مع Pagination ───────────────────
+export interface GetItemsResponse {
+  items: ItemSummary[];
+  total: number;
+  page: number;
+  pages: number;
 }
 
-// ── رد مبسط للـ Dashboard page ─────────────────────────
-export interface DashboardData {
-  user:        AuthUser;
-  myDonations: DashboardItem[];
-  myRequests:  DashboardItem[];
+// ── نتيجة الحجز ────────────────────────────────────────
+export interface BookItemResponse {
+  status: 'booked' | 'waitlist';
+  message: string;
+  item?: Omit<Item, 'deliveryOtp'>;
 }
 
-// ── طلبات الـ API ────────────────────────────────────
-export interface CreateItemRequest {
-  title:        string;
-  description:  string;
-  category:     ItemCategory;
-  location:     string;
-  condition?:   string;
-  handoverMode?: HandoverMode;
-  hubId?:       string;
+// ── نتيجة التقييم ──────────────────────────────────────
+export interface RateItemResponse {
+  msg: string;
+  trustScore: number;
 }
 
-export interface CreateItemResponse {
-  success:  boolean;
-  message?: string;
-  item:     Item;
+// ── فلاتر البحث ────────────────────────────────────────
+export interface ItemFilters {
+  category?: ItemCategory;
+  location?: string;
+  page?: number;
+  limit?: number;
 }
-
-export interface PaginatedItemsResponse {
-  items:  Item[];
-  total:  number;
-  page:   number;
-  pages:  number;
-}
-
-// ── Aliases ────────────────────────────────────────────
-export type ItemsResponse = PaginatedItemsResponse;

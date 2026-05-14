@@ -1,4 +1,4 @@
-// src/middleware.ts — Next.js Edge Middleware
+// src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -6,6 +6,7 @@ const PUBLIC_PATHS    = ["/", "/login", "/register", "/browse", "/forgot-passwor
 const PUBLIC_PREFIXES = ["/verify", "/items/", "/reset-password", "/_next", "/api"];
 const PROTECTED       = ["/dashboard", "/add-item", "/edit-item", "/profile"];
 const ADMIN           = ["/admin"];
+const AUTH_ONLY       = ["/login", "/register"]; // ✅ جديد
 
 function isPublic(p: string) {
   return PUBLIC_PATHS.includes(p) || PUBLIC_PREFIXES.some((x) => p.startsWith(x));
@@ -22,12 +23,15 @@ export async function middleware(request: NextRequest) {
 
   if (isPublic(pathname)) return NextResponse.next();
 
-  // isLoggedIn: cookie خفيفة يزرعها الفرونت بعد اللوجن
-  // refreshToken/token: fallback للتوافق مع الكوميتات القديمة
   const hasSession =
     request.cookies.has("isLoggedIn") ||
     request.cookies.has("refreshToken") ||
     request.cookies.has("token");
+
+  // ✅ جديد — منع المُسجَّل من /login و /register
+  if (AUTH_ONLY.some((x) => pathname.startsWith(x)) && hasSession) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
 
   if (isProtected(pathname) || isAdmin(pathname)) {
     if (!hasSession) {

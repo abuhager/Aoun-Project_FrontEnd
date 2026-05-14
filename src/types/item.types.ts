@@ -112,6 +112,6 @@ export interface DashboardItem {
 // ── Response من GET /api/items/my-items ────────────────────
 export interface MyItemsResponse {
     user:      AuthUser;
-  donations: DashboardItem[];
-  bookings:  DashboardItem[];
+ myDonations: DashboardItem[];
+ myRequests:  DashboardItem[];
 }

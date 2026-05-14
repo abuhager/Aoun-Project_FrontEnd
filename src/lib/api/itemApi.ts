@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance';
-import type { Item, ItemsResponse, MyItemsResponse } from '@/types/item.types';
+import type { Item, GetItemsResponse as ItemsResponse, MyItemsResponse } from '@/types/item.types';
 
 export interface BookItemResponse {
   status:  'booked' | 'waitlist';

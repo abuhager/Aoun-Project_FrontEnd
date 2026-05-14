@@ -69,10 +69,11 @@ export default function ItemDetailsPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold">{item.category}</span>
                 <span className="px-3 py-1 rounded-lg bg-primary/5 text-primary text-[10px] font-bold">{item.condition || "حالة جيدة"}</span>
-                {item.waitlist?.length > 0 && (
+{(item.waitlist?.length ?? 0) > 0 && (
                   <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-100 rounded-lg">
                     <span className="material-symbols-outlined text-blue-500 text-sm">group</span>
-                    <p className="text-[10px] font-black text-blue-700">{item.waitlist.length} ينتظرون</p>
+                    <p className="text-[10px] font-black text-blue-700">{item.waitlist?.length ?? 0}
+ ينتظرون</p>
                   </div>
                 )}
               </div>

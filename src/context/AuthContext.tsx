@@ -46,20 +46,27 @@ function loadUserCookie(): AuthUser | null {
 
 function clearUserCookie() {
   Cookies.remove(USER_COOKIE);
-  // ✅ حذفنا Cookies.remove("isLoggedIn") — لم يعد مستخدماً
+}
+
+// ✅ جديد — warm-up خفيف للباك إند لتقليل أول request البطيء
+async function warmUpBackend() {
+  try {
+    await axiosInstance.get("/health", { timeout: 3000 });
+  } catch {
+    // تجاهل الفشل — الهدف فقط إيقاظ السيرفر
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user,      setUserState] = useState<AuthUser | null>(loadUserCookie);
+  const [user, setUserState] = useState<AuthUser | null>(loadUserCookie);
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
-  const refreshing  = useRef<Promise<boolean> | null>(null);
+  const refreshing = useRef<Promise<boolean> | null>(null);
 
   const setUser = useCallback((u: AuthUser | null) => {
     setUserState(u);
     if (u) {
       saveUserCookie(u);
-      // ✅ حذفنا Cookies.set("isLoggedIn") — refreshToken httpOnly يكفي
     } else {
       clearUserCookie();
     }
@@ -71,7 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshing.current = (async () => {
       try {
         const { data } = await axiosInstance.post<{ accessToken: string }>(
-          "/api/auth/refresh", {}
+          "/api/auth/refresh",
+          {}
         );
 
         const freshToken = data.accessToken;
@@ -114,16 +122,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    refreshSession().finally(() => setIsLoading(false));
+
+    // ✅ سخّن الباك أولاً ثم نفّذ refreshSession
+    warmUpBackend().finally(() => {
+      refreshSession().finally(() => setIsLoading(false));
+    });
   }, [refreshSession]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        accessToken:     getAccessToken(),
+        accessToken: getAccessToken(),
         isLoading,
-        isLoggedIn:      !!user,
+        isLoggedIn: !!user,
         isAuthenticated: !!user,
         setUser,
         refreshSession,

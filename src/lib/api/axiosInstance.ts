@@ -10,7 +10,7 @@ export const setAccessToken = (t: string | null) => { accessToken = t; };
 export const getAccessToken = () => accessToken;
 
 const axiosInstance = axios.create({
-  baseURL:         process.env.NEXT_PUBLIC_API_URL,
+baseURL: typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL : '',
   timeout:         15000,
   withCredentials: true, // ← مهم لإرسال httpOnly cookie مع كل طلب
 });
@@ -55,7 +55,7 @@ axiosInstance.interceptors.response.use(
 
       try {
         const { data } = await axios.post<{ accessToken: string }>(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`,
+'/api/auth/refresh',
           {},
           { withCredentials: true }
         );

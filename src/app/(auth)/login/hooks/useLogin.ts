@@ -1,10 +1,11 @@
+// src/app/(auth)/login/hooks/useLogin.ts
 "use client";
 
 import { useState } from "react";
 import axiosInstance, { setAccessToken } from "@/lib/api/axiosInstance";
 import { useAuth } from "@/context/AuthContext";
 import type { AuthUser, UserRole } from "@/types/user.types";
-import Cookies from "js-cookie";
+// ✅ حذفنا import Cookies — لم يعد مطلوباً
 
 interface FormData {
   email: string;
@@ -23,8 +24,7 @@ interface LoginResponse {
     avatar?: string;
     role: string;
     trustScore?: number;
-        trustLevel?: 1 | 2;    // ✅ أضف هذا
-
+    trustLevel?: 1 | 2;
     quota?: number;
     isVerified?: boolean;
     isVerifiedStudent?: boolean;
@@ -58,10 +58,12 @@ export function useLogin() {
 
       const { accessToken, user } = res.data;
 
+      // ✅ Access Token في الـ Memory فقط — آمن من XSS
       setAccessToken(accessToken);
-      Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
 
-      // ✅ بناء AuthUser كامل بقيم افتراضية للفيلدز المطلوبة
+      // ✅ حذفنا Cookies.set("isLoggedIn") — الـ refreshToken httpOnly من Backend يكفي
+      // ❌ Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
+
       const authUser: AuthUser = {
         _id:               user._id ?? user.id ?? "",
         name:              user.name,
@@ -70,8 +72,7 @@ export function useLogin() {
         avatar:            user.avatar,
         role:              user.role as UserRole,
         trustScore:        user.trustScore        ?? 0,
-          trustLevel:        (user.trustLevel as 1 | 2) ?? 1,  // ✅ السطر الناقص
-
+        trustLevel:        (user.trustLevel as 1 | 2) ?? 1,
         quota:             user.quota             ?? 0,
         isVerified:        user.isVerified        ?? false,
         isVerifiedStudent: user.isVerifiedStudent ?? false,

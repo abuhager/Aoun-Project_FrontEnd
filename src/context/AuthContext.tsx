@@ -1,3 +1,4 @@
+// src/context/AuthContext.tsx
 "use client";
 
 import {
@@ -45,11 +46,10 @@ function loadUserCookie(): AuthUser | null {
 
 function clearUserCookie() {
   Cookies.remove(USER_COOKIE);
-  Cookies.remove("isLoggedIn");
+  // ✅ حذفنا Cookies.remove("isLoggedIn") — لم يعد مستخدماً
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // ابدأ ببيانات الكوكي فوراً عشان الناف بار يظهر بدون انتظار
   const [user,      setUserState] = useState<AuthUser | null>(loadUserCookie);
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserState(u);
     if (u) {
       saveUserCookie(u);
-      Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
+      // ✅ حذفنا Cookies.set("isLoggedIn") — refreshToken httpOnly يكفي
     } else {
       clearUserCookie();
     }
@@ -86,10 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return true;
       } catch {
         setAccessToken(null);
-        // لو فشل الـ refresh نظف الكوكي فقط لو كان محدود الصلاحية
         const existing = loadUserCookie();
         if (existing) {
-          // كوكي موجودة لكن refresh فشل — نظف الكل
           clearUserCookie();
           setUserState(null);
         }
@@ -116,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    // لو كان في كوكي موجودة يعني في session محتملة — جرب refresh
     refreshSession().finally(() => setIsLoading(false));
   }, [refreshSession]);
 

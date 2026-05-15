@@ -1,3 +1,4 @@
+// src/components/Navbar/useNavbar.ts
 import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -6,6 +7,11 @@ export function useNavbar() {
   const pathname = usePathname();
   const { user, isLoggedIn, isLoading, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -20,8 +26,9 @@ export function useNavbar() {
 
   return {
     pathname,
-    isLoggedIn: !isLoading && isLoggedIn,
+    isLoggedIn: isMounted ? isLoggedIn : false,
     isLoading,
+    isMounted,
     firstName,
     isMobileMenuOpen,
     setIsMobileMenuOpen,

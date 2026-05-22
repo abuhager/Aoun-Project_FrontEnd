@@ -64,24 +64,20 @@ export function useLogin() {
       // ✅ حذفنا Cookies.set("isLoggedIn") — الـ refreshToken httpOnly من Backend يكفي
       // ❌ Cookies.set("isLoggedIn", "1", { expires: 7, sameSite: "lax" });
 
-      const authUser: AuthUser = {
-        _id:               user._id ?? user.id ?? "",
-        name:              user.name,
-        email:             user.email,
-        phone:             user.phone,
-        avatar:            user.avatar,
-        role:              user.role as UserRole,
-        trustScore:        user.trustScore        ?? 0,
-        trustLevel:        (user.trustLevel as 1 | 2) ?? 1,
-        quota:             user.quota             ?? 0,
-        isVerified:        user.isVerified        ?? false,
-        isVerifiedStudent: user.isVerifiedStudent ?? false,
-        isBanned:          user.isBanned          ?? false,
-        totalDonations:    user.totalDonations    ?? 0,
-        badges:            user.badges            ?? [],
-        createdAt:         user.createdAt         ?? "",
-        updatedAt:         user.updatedAt         ?? "",
-      };
+     // useLogin.ts — الحقول الصحيحة فقط
+const authUser: AuthUser = {
+  _id:               user._id ?? user.id ?? "",
+  name:              user.name,
+  email:             user.email,
+  avatar:            user.avatar,
+  role:              user.role as UserRole,
+  trustScore:        user.trustScore        ?? 0,
+  trustLevel:        (user.trustLevel as 1 | 2) ?? 1,
+  quota:             user.quota             ?? 0,
+  isVerified:        user.isVerified        ?? false,
+  isVerifiedStudent: user.isVerifiedStudent ?? false,
+  createdAt:         user.createdAt         ?? "",
+};
 
       setUser(authUser);
 

@@ -95,7 +95,7 @@ export default function BrowsePage() {
           </div>
         ) : (
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {filteredItems.map((item) => (
+            {filteredItems.map((item, index) => (  // ✅ أضفنا index
               <div
                 key={item._id}
                 className="bg-white rounded-xl overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-xl border border-[#edeeef]"
@@ -105,7 +105,9 @@ export default function BrowsePage() {
                     src={item.imageUrl || item.image || "/placeholder.png"}
                     alt={item.title || item.name || "صورة الغرض"}
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     unoptimized
+                    priority={index === 0}  // ✅ الصورة الأولى فقط eager
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                   <div className="absolute top-4 left-4">

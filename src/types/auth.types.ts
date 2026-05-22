@@ -23,9 +23,9 @@ export interface VerifyOtpRequest {
 
 // ── Responses ────────────────────────────────────────────────
 export interface LoginResponse {
-  accessToken:   string;     // ✅ تغيّر من token إلى accessToken
-  user:          AuthUser;
-  msg?:          string;
+  msg:         string;
+  accessToken: string;
+  user:        AuthUser;
 }
 
 export interface RegisterResponse {

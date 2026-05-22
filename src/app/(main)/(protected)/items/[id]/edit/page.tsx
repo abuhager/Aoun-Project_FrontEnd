@@ -51,9 +51,15 @@ export default function EditItemPage() {
                 preview ? "border-primary bg-emerald-50" : "border-outline-variant bg-surface-container-low hover:bg-[#edeeef]"
               }`}>
                 {preview ? (
-                  <div className="relative w-full h-40 md:h-48">
-                    <Image src={preview} alt="معاينة" fill className="object-contain rounded-xl" />
-                  </div>
+                <div className="relative w-full h-40 md:h-48">
+  <Image
+    src={preview}
+    alt="معاينة"
+    fill
+    sizes="(max-width: 768px) 100vw, 50vw"
+    className="object-contain rounded-xl"
+  />
+</div>
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-4xl md:text-5xl text-primary/60 mb-3">

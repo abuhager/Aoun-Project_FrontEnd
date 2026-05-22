@@ -136,11 +136,15 @@ export default function PublicProfilePage() {
                 className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm flex flex-col group hover:shadow-md transition-all"
               >
                 <div className="relative h-40 overflow-hidden bg-gray-50">
-                  <Image src={getImageUrl(item.imageUrl)} alt={item.title} fill
-                    className={`object-cover group-hover:scale-110 transition-transform duration-500 ${
-                      item.status === "تم التسليم" ? "grayscale-[0.5] opacity-80" : ""
-                    }`}
-                  />
+                 <Image
+  src={getImageUrl(item.imageUrl)}
+  alt={item.title}
+  fill
+  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+  className={`object-cover group-hover:scale-110 transition-transform duration-500 ${
+    item.status === "تم التسليم" ? "grayscale-[0.5] opacity-80" : ""
+  }`}
+/>
                   <div className="absolute top-3 right-3">
                     <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black text-white backdrop-blur-md ${
                       item.status === "تم التسليم" ? "bg-gray-500/80" :

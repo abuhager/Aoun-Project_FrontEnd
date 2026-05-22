@@ -58,9 +58,16 @@ export default function ItemDetailsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
           {/* ─── صورة الغرض ─── */}
-          <div className="relative rounded-3xl overflow-hidden bg-white aspect-square border border-[#edeeef] shadow-sm">
-            <Image src={imageUrl} alt={item.title} fill priority className="object-cover" />
-          </div>
+         <div className="relative rounded-3xl overflow-hidden bg-white aspect-square border border-[#edeeef] shadow-sm">
+  <Image
+    src={imageUrl}
+    alt={item.title}
+    fill
+    priority
+    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
+    className="object-cover"
+  />
+</div>
 
           {/* ─── تفاصيل الغرض ─── */}
           <div className="flex flex-col gap-6">

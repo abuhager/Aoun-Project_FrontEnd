@@ -12,6 +12,7 @@ import {
 import axiosInstance, {
   setAccessToken,
   getAccessToken,
+    setInitialized,
 } from "@/lib/api/axiosInstance";
 import type { AuthUser } from "@/types/user.types";
 import Cookies from "js-cookie";
@@ -163,9 +164,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (initialized.current) return;
     initialized.current = true;
 
-    warmUpBackend().finally(() => {
-      refreshSession().finally(() => setIsLoading(false));
-    });
+   warmUpBackend().finally(() => {
+  refreshSession().finally(() => {
+    setIsLoading(false);
+    setInitialized(); // ← أضف هذا السطر
+  });
+});
   }, [refreshSession]);
 
   return (

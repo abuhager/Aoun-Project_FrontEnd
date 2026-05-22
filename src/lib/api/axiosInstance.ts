@@ -1,23 +1,44 @@
-// src/lib/api/axiosInstance.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 // ── Access Token في الذاكرة فقط — لا cookie لا localStorage ──
 let accessToken: string | null = null;
-let isRefreshing = false;
-let refreshQueue: Array<(token: string) => void> = [];
+let isRefreshing   = false;
+let refreshQueue:  Array<(token: string) => void> = [];
+
+// ✅ جديد — queue للطلبات اللي جاءت قبل ما refreshSession تنتهي
+let isInitialized  = false;
+let initQueue:     Array<() => void> = [];
 
 export const setAccessToken = (t: string | null) => { accessToken = t; };
 export const getAccessToken = () => accessToken;
 
+// ✅ تُستدعى من AuthContext بعد ما refreshSession تنتهي
+export const setInitialized = () => {
+  isInitialized = true;
+  // شغّل كل الطلبات اللي كانت تنتظر التهيئة
+  initQueue.forEach(cb => cb());
+  initQueue = [];
+};
+
 const axiosInstance = axios.create({
-baseURL: typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL : '',
+  baseURL:         typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL : '',
   timeout:         15000,
   withCredentials: true, // ← مهم لإرسال httpOnly cookie مع كل طلب
 });
 
-// ── Request: أرسل accessToken في Authorization header ──────────
+// ── Request: انتظر التهيئة ثم أرسل accessToken ───────────────
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const isAuthRoute = config.url?.includes('/auth/');
+
+    // ✅ إذا التهيئة لم تنتهِ بعد، علّق الطلب حتى تنتهي refreshSession
+    // استثنِ طلبات /auth/ لأنها هي التي تُنجز التهيئة
+    if (!isInitialized && !isAuthRoute) {
+      return new Promise<InternalAxiosRequestConfig>((resolve) => {
+        initQueue.push(() => resolve(config));
+      });
+    }
+
     if (accessToken) {
       config.headers['Authorization'] = `Bearer ${accessToken}`;
     }
@@ -34,14 +55,14 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    const status = error.response?.status;
-    const isAuthRoute = originalRequest.url?.includes('/auth/');
+    const status          = error.response?.status;
+    const isAuthRoute     = originalRequest.url?.includes('/auth/');
 
     // لو 401 وهو مش طلب auth ومش جرّبنا refresh بعد
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // لو في refresh جاري — ضيف الطلب في queue
+      // لو في refresh جاري — ضيف الطلب في queue وانتظر
       if (isRefreshing) {
         return new Promise((resolve) => {
           refreshQueue.push((newToken: string) => {
@@ -55,7 +76,7 @@ axiosInstance.interceptors.response.use(
 
       try {
         const { data } = await axios.post<{ accessToken: string }>(
-'/api/auth/refresh',
+          '/api/auth/refresh',
           {},
           { withCredentials: true }
         );
@@ -70,7 +91,7 @@ axiosInstance.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
         return axiosInstance(originalRequest);
       } catch {
-        // Refresh فشل — logout
+        // Refresh فشل — logout كامل
         setAccessToken(null);
         refreshQueue = [];
         if (typeof window !== 'undefined') {

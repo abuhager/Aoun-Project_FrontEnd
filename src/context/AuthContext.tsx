@@ -45,7 +45,7 @@ function toMinimalUser(u: AuthUser): CachedUser {
     _id:               u._id,
     name:              u.name,
     email:             u.email,
-    avatar:            u.avatar ?? null,
+    avatar: u.avatar ?? undefined,
     role:              u.role,
     trustLevel:        u.trustLevel ?? 1,
     isVerifiedStudent: u.isVerifiedStudent ?? false,

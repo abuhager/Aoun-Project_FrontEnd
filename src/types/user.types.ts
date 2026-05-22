@@ -41,6 +41,7 @@ export interface ProfileUser {
 export interface PublicUser {
   name:              string;
   avatar:            string;
+   _id:               string;
   trustScore:        number;
   trustLevel:        1 | 2;
   totalDonations:    number;

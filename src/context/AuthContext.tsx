@@ -161,16 +161,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ─── تهيئة الجلسة عند فتح التطبيق ──────────────────────
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+  if (initialized.current) return;
+  initialized.current = true;
 
-   warmUpBackend().finally(() => {
+  // ✅ إيقاظ السيرفر في الخلفية — لا ينتظرها أحد
+  warmUpBackend();
+
+  // ✅ تجديد الجلسة فوراً بالتوازي
   refreshSession().finally(() => {
     setIsLoading(false);
-    setInitialized(); // ← أضف هذا السطر
+    setInitialized();
   });
-});
-  }, [refreshSession]);
+}, [refreshSession]);
 
   return (
     <AuthContext.Provider

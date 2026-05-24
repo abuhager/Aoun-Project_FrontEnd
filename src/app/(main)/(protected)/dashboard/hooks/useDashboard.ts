@@ -1,6 +1,6 @@
 // src/app/(main)/(protected)/dashboard/hooks/useDashboard.ts
 // يستخدم /api/items/me (endpoint واحد يرجع كل شيء)
-import { useEffect, useState, useCallback, FormEvent } from 'react';
+import { useEffect, useState, useCallback, useRef, FormEvent } from 'react'; // ✅ Fix Bug #4 #12 — أضيف useRef
 import { useRouter } from 'next/navigation';
 import axiosInstance from '@/lib/api/axiosInstance';
 import axios from 'axios';
@@ -46,35 +46,71 @@ export function useDashboard() {
     open: false, title: '', message: '', onConfirm: () => {},
   });
 
+  // ✅ Fix Bug #12 — AbortController ref لإلغاء الطلب عند unmount
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // ✅ Fix Bug #4 — timeout IDs ref لتنظيف كل setTimeout عند unmount
+  const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   useEffect(() => {
+    // ✅ Fix Bug #12 — إلغاء أي طلب سابق قبل بدء جديد
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const fetchData = async () => {
       try {
-        const { data: res } = await axiosInstance.get<MyItemsResponse>('/api/items/me');
+        const { data: res } = await axiosInstance.get<MyItemsResponse>(
+          '/api/items/me',
+          { signal: controller.signal }, // ✅ Fix Bug #12 — ربط الطلب بالـ controller
+        );
+
+        if (controller.signal.aborted) return; // ✅ Fix Bug #12 — لا تُحدِّث state بعد unmount
+
         setData({
           user:        res.user,
           myDonations: res.myDonations ?? [],
           myRequests:  res.myRequests  ?? [],
         });
       } catch (err: unknown) {
-        if (axios.isAxiosError(err)) {
-          const status  = err.response?.status;
-          const message = err.response?.data?.msg ?? err.message;
-          console.error('[Dashboard] API Error:', { status, message, url: err.config?.url });
-          setError(`${status ?? 'Network'}: ${message} (${err.config?.url})`);
-        } else {
-          setError(String(err));
+        // ✅ Fix Bug #12 — تجاهل AbortError (طبيعي عند unmount أو re-fetch)
+        if (err instanceof Error && err.name === 'AbortError') return;
+
+        if (!controller.signal.aborted) {
+          if (axios.isAxiosError(err)) {
+            const status  = err.response?.status;
+            const message = err.response?.data?.msg ?? err.message;
+            console.error('[Dashboard] API Error:', { status, message, url: err.config?.url });
+            setError(`${status ?? 'Network'}: ${message} (${err.config?.url})`);
+          } else {
+            setError(String(err));
+          }
+          setData(null);
         }
-        setData(null);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) { // ✅ Fix Bug #12 — فقط إذا لم يُلغَ
+          setLoading(false);
+        }
       }
     };
+
     fetchData();
+
+    // ✅ Fix Bug #12 + #4 — cleanup شامل عند unmount
+    return () => {
+      abortControllerRef.current?.abort();
+      timeoutIdsRef.current.forEach(clearTimeout);
+      timeoutIdsRef.current = [];
+    };
   }, []);
 
+  // ✅ Fix Bug #4 — تسجيل الـ timeout في ref بدل إطلاقه حراً
   const showToast = useCallback((msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    const id = setTimeout(() => setToast(null), 3500);
+    timeoutIdsRef.current.push(id); // ✅ Fix Bug #4 — يُنظَّف في cleanup
   }, []);
 
   const handleDelete = useCallback((id: string, status: string) => {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { itemApi } from "@/lib/api/itemApi";
+import { getItemById, bookItem, cancelBooking } from "@/lib/api/itemApi";
 import { Item } from "@/types/item.types";
 import { useAuth } from "@/context/AuthContext";
 
@@ -43,7 +43,7 @@ export function useItemDetails() {
     try {
       setLoading(true);
       const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-      const data   = await itemApi.getItemById(itemId);
+      const data   = await getItemById(itemId);
       if (isMounted) setItem(data);
     } catch {
       if (isMounted) setMessage({ type: "error", text: "حدث خطأ أثناء تحميل بيانات الطلب" });
@@ -73,7 +73,7 @@ export function useItemDetails() {
         setActionLoading(true);
         try {
           const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-          const res    = await itemApi.bookItem(itemId);
+          const res    = await bookItem(itemId);
           setMessage({ type: "success", text: res.message ?? "تم طلبك بنجاح" });
           fetchItem();
         } catch (err: unknown) {
@@ -103,7 +103,7 @@ export function useItemDetails() {
         setActionLoading(true);
         try {
           const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-          const res    = await itemApi.cancelBooking(itemId);
+          const res    = await cancelBooking(itemId);
           setMessage({ type: "success", text: res.msg ?? "تم الإلغاء بنجاح" });
           fetchItem();
         } catch (err: unknown) {

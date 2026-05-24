@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useDashboard }  from '@/hooks/useDashboard';
+import { useDashboard }  from './hooks/useDashboard';
 import { useAuth }       from '@/context/AuthContext';
 import type { Item }     from '@/types/item.types';
 

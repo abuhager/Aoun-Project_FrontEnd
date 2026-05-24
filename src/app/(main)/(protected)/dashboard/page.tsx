@@ -1,186 +1,125 @@
-// app/dashboard/page.tsx
-// ✅ Phase 1 Fix:
-//    Bug #20 — حذف debug state من الـ UI
-//              console.log الداخلية تُحذف من production
-
+// src/app/(main)/(protected)/dashboard/page.tsx
+// ✅ Phase 1 Fix: Bug #20 — debug info محجوب بـ NODE_ENV فقط
 'use client';
 
-import { useDashboard }  from './hooks/useDashboard';
-import { useAuth }       from '@/context/AuthContext';
-import type { Item }     from '@/types/item.types';
+import Navbar from '@/components/Navbar';
+import { useDashboard } from './hooks/useDashboard';
+import { ActionModal }  from './components/ActionModal';
+import { Toast }        from './components/Toast';
+import { ProfileCard }  from './components/ProfileCard';
+import { StatsGrid }    from './components/StatsGrid';
+import { ItemsTable }   from './components/ItemsTable';
+import { OtpModal }     from './components/OtpModal';
 
 export default function DashboardPage() {
-  const { user }                        = useAuth();
-  const { profile, items, isLoading, error, refresh } = useDashboard();
+  const {
+    data, activeTab, setActiveTab, loading, error,
+    showOtpModal, confirmModal, setConfirmModal, toast, setToast,
+    selectedItem, otp, setOtp, otpError, otpLoading,
+    handleDelete, handleCancelBooking, handleDonorCancelBooking,
+    handleEdit, handleConfirmDelivery,
+    openOtpModal, closeOtpModal,
+  } = useDashboard();
 
-  // ✅ Fix Bug #20 — console.log للمطوّر فقط في dev
-  // لا تعرض state الداخلية في الـ UI أبداً
-  if (process.env.NODE_ENV === 'development') {
-    console.debug('[Dashboard] state:', { profile, items });
-  }
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <span className="text-muted-foreground">جارٍ التحميل...</span>
+      <div className="flex justify-center items-center min-h-screen bg-surface">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  if (error) {
+  if (!data) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-destructive">حدث خطأ في تحميل لوحة التحكم.</p>
-        <button
-          onClick={refresh}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
-        >
-          إعادة المحاولة
-        </button>
+      <div className="flex flex-col justify-center items-center min-h-screen bg-surface gap-3 p-8">
+        <p className="text-red-400 text-sm font-bold">
+          حدث خطأ في تحميل البيانات، يرجى تحديث الصفحة
+        </p>
+        {/* ✅ Fix Bug #20 — debug info في dev فقط */}
+        {process.env.NODE_ENV === 'development' && error && (
+          <pre className="text-xs text-yellow-400 bg-gray-900 rounded p-4 max-w-lg w-full overflow-auto text-left dir-ltr">
+            {error}
+          </pre>
+        )}
+        {process.env.NODE_ENV === 'development' && (
+          <p className="text-gray-500 text-xs">
+            API: {process.env.NEXT_PUBLIC_API_URL ?? 'غير معرّف'}
+          </p>
+        )}
       </div>
     );
   }
 
-  const myDonations: Item[] = items?.myDonations ?? [];
-  const myRequests:  Item[] = items?.myRequests  ?? [];
+  const activeItems = activeTab === 'donations' ? data.myDonations : data.myRequests;
 
   return (
-    <main className="container mx-auto px-4 py-8" dir="rtl">
+    <div className="bg-surface min-h-screen pb-16 text-[#191c1d] font-body" dir="rtl">
 
-      {/* ── معلومات المستخدم ──────────────────────────────── */}
-      {profile && (
-        <section className="mb-8 p-6 bg-card rounded-xl border">
-          <div className="flex items-center gap-4">
-            {profile.avatar && (
-              <img
-                src={profile.avatar}
-                alt={profile.name}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            )}
-            <div>
-              <h1 className="text-xl font-bold">{profile.name}</h1>
-              <p className="text-sm text-muted-foreground">{profile.email}</p>
-            </div>
-          </div>
-
-          {/* ✅ Fix Bug #15 + #20 — عرض القيم الحقيقية فقط */}
-          {/* لا نعرض trustScore أو quota حتى يُحمَّل profile فعلاً */}
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Stat
-              label="درجة الثقة"
-              value={
-                profile.trustScore != null
-                  ? `${profile.trustScore} / 100`
-                  : '—'
-              }
-            />
-            <Stat
-              label="الحصص المتبقية"
-              value={profile.quota != null ? String(profile.quota) : '—'}
-            />
-            <Stat
-              label="إجمالي التبرعات"
-              value={String(profile.totalDonations ?? 0)}
-            />
-            <Stat
-              label="مستوى التحقق"
-              value={`المستوى ${profile.trustLevel ?? 1}`}
-            />
-          </div>
-
-          {/* ✅ Fix Bug #20 — لا debug JSON في الـ UI */}
-          {/* ❌ كان: <pre>{JSON.stringify(profile, null, 2)}</pre> */}
-        </section>
-      )}
-
-      {/* ── تبرعاتي ────────────────────────────────────────── */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">
-          تبرعاتي ({myDonations.length})
-        </h2>
-        {myDonations.length === 0 ? (
-          <EmptyState message="لم تتبرع بأي غرض حتى الآن 💚" />
-        ) : (
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {myDonations.map(item => (
-              <DashboardItemCard key={item._id} item={item} />
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* ── حجوزاتي ────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-lg font-semibold mb-4">
-          حجوزاتي ({myRequests.length})
-        </h2>
-        {myRequests.length === 0 ? (
-          <EmptyState message="لم تحجز أي غرض حتى الآن 🎁" />
-        ) : (
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {myRequests.map(item => (
-              <DashboardItemCard key={item._id} item={item} />
-            ))}
-          </ul>
-        )}
-      </section>
-
-    </main>
-  );
-}
-
-// ── Sub-components ─────────────────────────────────────────────
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-muted rounded-lg p-3 text-center">
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className="text-base font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="text-center py-12 text-muted-foreground text-sm">
-      {message}
-    </div>
-  );
-}
-
-function DashboardItemCard({ item }: { item: Item }) {
-  const STATUS_COLORS: Record<string, string> = {
-    'متاح':       'bg-green-100 text-green-800',
-    'محجوز':      'bg-yellow-100 text-yellow-800',
-    'تم التسليم': 'bg-blue-100  text-blue-800',
-  };
-
-  return (
-    <li className="border rounded-xl overflow-hidden bg-card hover:shadow-md transition-shadow">
-      {item.imageUrl && (
-        <img
-          src={item.imageUrl}
-          alt={item.title}
-          className="w-full h-40 object-cover"
-          loading="lazy"
+      {confirmModal.open && (
+        <ActionModal
+          message={confirmModal.message}
+          isDanger
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal((p) => ({ ...p, open: false }))}
         />
       )}
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-medium text-sm line-clamp-2">{item.title}</h3>
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
-              STATUS_COLORS[item.status] ?? 'bg-muted text-muted-foreground'
-            }`}
-          >
-            {item.status}
-          </span>
-        </div>
-        {item.location && (
-          <p className="text-xs text-muted-foreground">{item.location}</p>
-        )}
-      </div>
-    </li>
+      {toast && (
+        <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />
+      )}
+      {showOtpModal && selectedItem && (
+        <OtpModal
+          item={selectedItem}
+          otp={otp}
+          otpError={otpError}
+          otpLoading={otpLoading}
+          onOtpChange={setOtp}
+          onSubmit={handleConfirmDelivery}
+          onClose={closeOtpModal}
+        />
+      )}
+
+      <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6">
+        <ProfileCard
+          name={data.user?.name}
+          email={data.user?.email}
+          trustScore={data.user?.trustScore}
+        />
+        <StatsGrid
+          trustScore={data.user?.trustScore}
+          quota={data.user?.quota}
+          donationsCount={data.myDonations.length}
+        />
+
+        <section className="space-y-4">
+          <div className="flex gap-4 border-b border-gray-100">
+            {(['donations', 'requests'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setActiveTab(t)}
+                className={`pb-3 text-sm font-black transition-all ${
+                  activeTab === t
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-gray-400'
+                }`}
+              >
+                {t === 'donations'
+                  ? `تبرعاتي (${data.myDonations.length})`
+                  : `طلباتي (${data.myRequests.length})`}
+              </button>
+            ))}
+          </div>
+
+          <ItemsTable
+            items={activeItems}
+            activeTab={activeTab}
+            onDelete={handleDelete}
+            onCancelBooking={handleCancelBooking}
+            onDonorCancelBooking={handleDonorCancelBooking}
+            onEdit={handleEdit}
+            onOpenOtp={openOtpModal}
+          />
+        </section>
+      </main>
+    </div>
   );
 }

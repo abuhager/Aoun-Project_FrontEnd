@@ -23,11 +23,8 @@ interface LevelGateProps {
 
 /** مؤقت: يحسب المستوى من trustScore حتى يُضاف trustLevel لـ DB في Phase 2 */
 function getTrustLevel(user: AuthUser): 1 | 2 {
-  if (user.isVerifiedStudent) return 2;
-  if (user.trustScore >= 50)  return 2;
-  return 1;
+  return user.trustLevel ?? 1;
 }
-
 export function LevelGate({ requiredLevel, user, children, fallback }: LevelGateProps) {
   if (!user) return fallback ? <>{fallback}</> : null;
 

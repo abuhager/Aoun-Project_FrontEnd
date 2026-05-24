@@ -11,6 +11,7 @@ import type {
   CreateItemPayload,
 } from '@/types/item.types';
 import type { PaginationQuery } from '@/types/api.types';
+import type { CreateReportPayload } from '@/types/report.types';
 
 // ── جلب الأغراض (مع فلتر وpagination) ────────────────────────
 export async function getItems(params?: PaginationQuery): Promise<GetItemsResponse> {
@@ -72,17 +73,15 @@ export async function rateItem(id: string, rating: number): Promise<{ msg: strin
 
 // ✅ Fix Bug #1 — URL مُصلَح: /report/:userId (param) بدل /report-user (body)
 // Backend يقرأ: req.params.userId + req.body.reason
-export async function reportUser(
-  userId: string,
-  reason: string
-): Promise<{ msg: string }> {
-  const { data } = await axiosInstance.post<{ msg: string }>(
-    `/api/items/report/${userId}`, // ✅ userId في الـ URL path
-    { reason }                     // ✅ reason في الـ body فقط
+
+export const reportUser = async (payload: CreateReportPayload): Promise<{ msg: string }> => {
+  const { reportedUserId, reason, details, relatedItemId } = payload;
+  const { data } = await axiosInstance.post(
+    `/api/items/report/${reportedUserId}`,
+    { reason, details, relatedItemId }
   );
   return data;
-}
-
+};
 // ── تقييم معلق ───────────────────────────────────────────────
 export async function getPendingRating(): Promise<{ pendingRating: Item | null }> {
   const { data } = await axiosInstance.get<{ pendingRating: Item | null }>(

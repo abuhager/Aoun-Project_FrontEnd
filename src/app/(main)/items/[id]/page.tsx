@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { CountdownTimer } from "./components/CountdownTimer";
 import { useItemDetails } from "./hooks/useItemDetails";
+import { LevelGate } from "./components/LevelGate";
 
 const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -219,6 +220,8 @@ export default function ItemDetailsPage() {
                     الانسحاب من الانتظار 🚶‍♂️
                   </button>
                 ) : item.status === "متاح" ? (
+                  <LevelGate>
+                    
                   <button
                     onClick={handleRequestItem}
                     disabled={actionLoading}
@@ -226,6 +229,7 @@ export default function ItemDetailsPage() {
                   >
                     احجز هذه القطعة الآن
                   </button>
+                  </LevelGate>
                 ) : (
                   <button
                     onClick={handleRequestItem}

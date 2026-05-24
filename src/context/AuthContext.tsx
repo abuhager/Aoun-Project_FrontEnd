@@ -51,8 +51,8 @@ function toMinimalUser(u: AuthUser): CachedUser {
     avatar:     u.avatar ?? undefined,
     role:       u.role,
     trustLevel: u.trustLevel ?? 1,
-    trustScore: u.trustScore ?? 85,
-    quota:      u.quota ?? 3,
+    trustScore: u.trustScore ?? 0,
+    quota:      u.quota ?? 0,
   };
 }
 

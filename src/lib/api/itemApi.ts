@@ -1,68 +1,114 @@
-import axiosInstance from './axiosInstance';
-import type { Item, GetItemsResponse as ItemsResponse, MyItemsResponse } from '@/types/item.types';
+// src/lib/api/itemApi.ts
+// ✅ Phase 1 Fix:
+//    Bug #1 — reportUser: URL مُصلَح + userId في الـ path param
 
-export interface BookItemResponse {
-  status:  'booked' | 'waitlist';
-  message: string;
-  msg?:    string;
-  item?:   Item;
+import axiosInstance from './axiosInstance';
+import type {
+  GetItemsResponse,
+  Item,
+  MyItemsResponse,
+  BookItemResponse,
+  CreateItemPayload,
+} from '@/types/item.types';
+import type { PaginationQuery } from '@/types/api.types';
+
+// ── جلب الأغراض (مع فلتر وpagination) ────────────────────────
+export async function getItems(params?: PaginationQuery): Promise<GetItemsResponse> {
+  const { data } = await axiosInstance.get<GetItemsResponse>('/api/items', { params });
+  return data;
 }
 
-export const itemApi = {
+// ── تفاصيل غرض واحد ──────────────────────────────────────────
+export async function getItemById(id: string): Promise<Item> {
+  const { data } = await axiosInstance.get<Item>(`/api/items/${id}`);
+  return data;
+}
 
-  // ─── جلب كل الأغراض ───────────────────────────────────────
-  getAllItems: async (): Promise<ItemsResponse> => {
-    const res = await axiosInstance.get('/api/items');
-    return res.data;
-  },
+// ── أغراضي ───────────────────────────────────────────────────
+export async function getMyItems(): Promise<MyItemsResponse> {
+  const { data } = await axiosInstance.get<MyItemsResponse>('/api/items/me');
+  return data;
+}
 
-  // ─── جلب تفاصيل غرض ───────────────────────────────────────
-  getItemById: async (id: string): Promise<Item> => {
-    const res = await axiosInstance.get(`/api/items/${id}`);
-    return res.data;
-  },
-
-  // ─── جلب أغراضي الشخصية ───────────────────────────────────
-  getMyItems: async (): Promise<MyItemsResponse> => {
-    const res = await axiosInstance.get('/api/items/me');
-    return res.data;
-  },
-
-  // ─── حجز غرض ──────────────────────────────────────────────
-  bookItem: async (id: string): Promise<BookItemResponse> => {
-    const res = await axiosInstance.put(`/api/items/book/${id}`);
-    return res.data;
-  },
-
-  // ─── إلغاء الحجز ──────────────────────────────────────────
-  cancelBooking: async (id: string): Promise<{ msg: string }> => {
-    const res = await axiosInstance.put(`/api/items/cancel/${id}`);
-    return res.data;
-  },
-
-  // ─── تأكيد التسليم ✅ صح: complete وليس deliver ────────────
-  completeDelivery: async (id: string, otp: string): Promise<{ msg: string }> => {
-    const res = await axiosInstance.put(`/api/items/complete/${id}`, { otp });
-    return res.data;
-  },
-
-  // ─── تقييم المتبرع ────────────────────────────────────────
-  rateItem: async (id: string, rating: number): Promise<{ msg: string }> => {
-    const res = await axiosInstance.put(`/api/items/rate/${id}`, { rating });
-    return res.data;
-  },
-
-  // ─── حذف غرض ✅ صح: delete/:id وليس /:id ──────────────────
-  deleteItem: async (id: string): Promise<{ msg: string }> => {
-    const res = await axiosInstance.delete(`/api/items/delete/${id}`);
-    return res.data;
-  },
-
-  // ─── الإبلاغ عن مستخدم ✅ صح: report-user + body ──────────
-reportUser: async (userId: string): Promise<{ msg: string }> => {
-  const res = await axiosInstance.post('/api/items/report-user', {
-    reportedUserId: userId,
+// ── إنشاء غرض ────────────────────────────────────────────────
+export async function createItem(payload: CreateItemPayload): Promise<{ msg: string; item: Item }> {
+  const formData = new FormData();
+  Object.entries(payload).forEach(([key, val]) => {
+    if (val !== undefined && val !== null) formData.append(key, val as string | Blob);
   });
-  return res.data;
-},
-};
+  const { data } = await axiosInstance.post<{ msg: string; item: Item }>('/api/items', formData);
+  return data;
+}
+
+// ── حجز غرض ──────────────────────────────────────────────────
+export async function bookItem(id: string): Promise<BookItemResponse> {
+  const { data } = await axiosInstance.put<BookItemResponse>(`/api/items/book/${id}`);
+  return data;
+}
+
+// ── إلغاء الحجز ───────────────────────────────────────────────
+export async function cancelBooking(id: string): Promise<{ msg: string }> {
+  const { data } = await axiosInstance.put<{ msg: string }>(`/api/items/cancel/${id}`);
+  return data;
+}
+
+// ── إتمام التسليم ─────────────────────────────────────────────
+export async function completeDelivery(id: string, otp: string): Promise<{ msg: string; item: Item }> {
+  const { data } = await axiosInstance.put<{ msg: string; item: Item }>(
+    `/api/items/complete/${id}`,
+    { otp }
+  );
+  return data;
+}
+
+// ── تقييم غرض ────────────────────────────────────────────────
+export async function rateItem(id: string, rating: number): Promise<{ msg: string; trustScore: number }> {
+  const { data } = await axiosInstance.post<{ msg: string; trustScore: number }>(
+    `/api/items/rate/${id}`,
+    { rating }
+  );
+  return data;
+}
+
+// ✅ Fix Bug #1 — URL مُصلَح: /report/:userId (param) بدل /report-user (body)
+// Backend يقرأ: req.params.userId + req.body.reason
+export async function reportUser(
+  userId: string,
+  reason: string
+): Promise<{ msg: string }> {
+  const { data } = await axiosInstance.post<{ msg: string }>(
+    `/api/items/report/${userId}`, // ✅ userId في الـ URL path
+    { reason }                     // ✅ reason في الـ body فقط
+  );
+  return data;
+}
+
+// ── تقييم معلق ───────────────────────────────────────────────
+export async function getPendingRating(): Promise<{ pendingRating: Item | null }> {
+  const { data } = await axiosInstance.get<{ pendingRating: Item | null }>(
+    '/api/items/pending-rating'
+  );
+  return data;
+}
+
+// ── تعديل غرض ────────────────────────────────────────────────
+export async function updateItem(
+  id: string,
+  payload: Partial<CreateItemPayload>
+): Promise<{ msg: string; item: Item }> {
+  const formData = new FormData();
+  Object.entries(payload).forEach(([key, val]) => {
+    if (val !== undefined && val !== null) formData.append(key, val as string | Blob);
+  });
+  const { data } = await axiosInstance.put<{ msg: string; item: Item }>(
+    `/api/items/${id}`,
+    formData
+  );
+  return data;
+}
+
+// ── حذف غرض ──────────────────────────────────────────────────
+export async function deleteItem(id: string): Promise<{ msg: string }> {
+  const { data } = await axiosInstance.delete<{ msg: string }>(`/api/items/${id}`);
+  return data;
+}

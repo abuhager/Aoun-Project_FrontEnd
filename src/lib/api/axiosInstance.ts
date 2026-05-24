@@ -21,7 +21,7 @@ export const setInitialized = () => {
 };
 
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL:         typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL : '',
   timeout:         15000,
   withCredentials: true, // ← مهم لإرسال httpOnly cookie مع كل طلب
 });

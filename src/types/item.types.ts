@@ -2,6 +2,7 @@
 
 // ✅ حذف AuthUser من الـ import — لم يعد مستخدماً
 import type { PublicUser, BookedByUser } from './user.types';
+import { SafeHub } from "./hub.types"; // ✅ استيراد النوع
 
 export type ItemStatus   = 'متاح' | 'محجوز' | 'تم التسليم' | 'مخفي';
 export type ItemCategory = 'كتب' | 'إلكترونيات' | 'أثاث' | 'أخرى' | 'ملابس';
@@ -34,6 +35,7 @@ export interface Item {
   donor:        PublicUser;
   bookedBy?:    BookedByUser | null;
   waitlist?:    WaitlistEntry[];
+   safeHub?: SafeHub;
 }
 
 export interface ItemSummary {

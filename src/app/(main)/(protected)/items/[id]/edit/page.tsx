@@ -3,15 +3,17 @@
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { useEditItem } from "./hooks/useEditItem";
+import { HubSelector } from "@/components/HubSelector"; // ✅ إضافة
 
 export default function EditItemPage() {
-  const router  = useRouter();
-  const params  = useParams();
-  const itemId  = params.id as string;
+  const router = useRouter();
+  const params = useParams();
+  const itemId = params.id as string;
 
   const {
     formData, preview, loading, fetching, message,
     handleChange, handleImageChange, handleSubmit,
+    handleHubChange, // ✅ إضافة
     CONDITIONS, CATEGORIES, CITIES,
   } = useEditItem(itemId);
 
@@ -45,28 +47,36 @@ export default function EditItemPage() {
             <div className="relative group">
               <label className="block mb-2 font-bold text-xs md:text-sm">
                 صورة الغرض
-                <span className="text-on-surface-variant font-normal mr-1">(اختياري — إذا لم تختر ستبقى الصورة الحالية)</span>
+                <span className="text-on-surface-variant font-normal mr-1">
+                  (اختياري — إذا لم تختر ستبقى الصورة الحالية)
+                </span>
               </label>
               <div className={`border-2 border-dashed rounded-2xl p-6 md:p-10 flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden ${
-                preview ? "border-primary bg-emerald-50" : "border-outline-variant bg-surface-container-low hover:bg-[#edeeef]"
+                preview
+                  ? "border-primary bg-emerald-50"
+                  : "border-outline-variant bg-surface-container-low hover:bg-[#edeeef]"
               }`}>
                 {preview ? (
-                <div className="relative w-full h-40 md:h-48">
-  <Image
-    src={preview}
-    alt="معاينة"
-    fill
-    sizes="(max-width: 768px) 100vw, 50vw"
-    className="object-contain rounded-xl"
-  />
-</div>
+                  <div className="relative w-full h-40 md:h-48">
+                    <Image
+                      src={preview}
+                      alt="معاينة"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-contain rounded-xl"
+                    />
+                  </div>
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-4xl md:text-5xl text-primary/60 mb-3">
                       cloud_upload
                     </span>
-                    <p className="font-medium text-sm md:text-base mb-1">اسحب الصورة هنا أو اضغط للرفع</p>
-                    <p className="text-on-surface-variant text-[10px] md:text-xs italic">يدعم JPG, PNG (حد أقصى 5MB)</p>
+                    <p className="font-medium text-sm md:text-base mb-1">
+                      اسحب الصورة هنا أو اضغط للرفع
+                    </p>
+                    <p className="text-on-surface-variant text-[10px] md:text-xs italic">
+                      يدعم JPG, PNG (حد أقصى 5MB)
+                    </p>
                   </>
                 )}
                 <input
@@ -107,7 +117,9 @@ export default function EditItemPage() {
                       <option value="" disabled>اختر التصنيف</option>
                       {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
                     </select>
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
+                      expand_more
+                    </span>
                   </div>
                 </div>
 
@@ -122,7 +134,9 @@ export default function EditItemPage() {
                       <option value="" disabled>اختر المدينة</option>
                       {CITIES.map((c) => <option key={c}>{c}</option>)}
                     </select>
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">location_on</span>
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
+                      location_on
+                    </span>
                   </div>
                 </div>
               </div>
@@ -158,6 +172,13 @@ export default function EditItemPage() {
                   className="w-full bg-surface-container-low text-sm md:text-base border-none rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all placeholder:text-outline resize-none"
                 />
               </div>
+
+              {/* ── مركز التسليم ── */}
+              <HubSelector
+                value={formData.hubId}
+                onChange={handleHubChange}
+              />
+
             </div>
 
             {/* ── رسالة الحالة ── */}
@@ -189,6 +210,7 @@ export default function EditItemPage() {
                 إلغاء
               </button>
             </div>
+
           </form>
         </div>
       </main>

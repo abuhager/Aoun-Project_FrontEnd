@@ -9,6 +9,7 @@ interface FormData {
   category:    string;
   location:    string;
   condition:   string;
+    hubId:       string;
 }
 
 interface Message {
@@ -22,6 +23,7 @@ export function useAddItem() {
   const [formData, setFormData] = useState<FormData>({
     title: "", description: "", category: "",
     location: "", condition: "مستعمل ممتاز",
+    hubId: "",
   });
   const [image,   setImage]   = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -60,7 +62,9 @@ export function useAddItem() {
     data.append("category",    formData.category);
     data.append("location",    formData.location);
     data.append("condition",   formData.condition);
+    if (formData.hubId) data.append("safeHub", formData.hubId);
     data.append("image",       image);  // ✅ field name = 'image' يتطابق upload.single('image')
+    
 
     try {
       // ✅ لا تضع Content-Type هنا — المتصفح يضيفه تلقائياً مع الـ boundary الصحيح
@@ -82,9 +86,13 @@ export function useAddItem() {
       setLoading(false);
     }
   };
+  const handleHubChange = (hubId: string) => {
+  setFormData((prev) => ({ ...prev, hubId }));
+};
 
   return {
     formData, image, preview, loading, message,
     handleChange, handleImageChange, handleSubmit,
+    handleHubChange, // ✅
   };
 }

@@ -1,8 +1,8 @@
 "use client";
-
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar";
+import { HubSelector } from "@/components/HubSelector";
+
 import { useAddItem } from "./hooks/useAddItem";
 
 const CONDITIONS = ["جديد", "مستعمل ممتاز", "مستعمل جيد"] as const;
@@ -11,11 +11,11 @@ const CITIES     = ["عمان", "إربد", "الزرقاء", "العقبة"] as
 
 export default function AddItemPage() {
   const router = useRouter();
-  const {
-    formData, preview, loading, message,
-    handleChange, handleImageChange, handleSubmit,
-  } = useAddItem();
-
+ const {
+  formData, preview, loading, message,
+  handleChange, handleImageChange, handleSubmit,
+  handleHubChange, // ✅
+} = useAddItem();
   return (
     <div className="bg-surface min-h-screen pb-20 md:pb-32 text-[#191c1d]" dir="rtl">
 
@@ -150,7 +150,10 @@ export default function AddItemPage() {
                 />
               </div>
             </div>
-
+<HubSelector
+  value={formData.hubId}
+onChange={handleHubChange}
+/>
             {/* ─── رسالة الحالة ─── */}
             {message.text && (
               <div className={`p-4 rounded-xl text-center text-sm md:text-base font-bold ${

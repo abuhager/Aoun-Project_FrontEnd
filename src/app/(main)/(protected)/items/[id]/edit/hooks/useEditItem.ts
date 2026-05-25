@@ -13,11 +13,12 @@ export type City      = typeof CITIES[number];
 export { CONDITIONS, CATEGORIES, CITIES };
 
 interface FormData {
-  title: string;
+  title:       string;
   description: string;
-  category: string;
-  location: string;
-  condition: string;
+  category:    string;
+  location:    string;
+  condition:   string;
+  hubId:       string; // ✅ إضافة
 }
 
 interface Message {
@@ -29,15 +30,17 @@ export function useEditItem(itemId: string) {
   const router = useRouter();
 
   const [formData, setFormData] = useState<FormData>({
-    title: "", description: "", category: "", location: "", condition: "",
+    title: "", description: "", category: "",
+    location: "", condition: "",
+    hubId: "", // ✅ إضافة
   });
-  const [imageFile, setImageFile]     = useState<File | null>(null);
-  const [preview,   setPreview]       = useState<string>("");
-  const [loading,   setLoading]       = useState(false);
-  const [fetching,  setFetching]      = useState(true);
-  const [message,   setMessage]       = useState<Message>({ text: "", type: "" });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [preview,   setPreview]   = useState<string>("");
+  const [loading,   setLoading]   = useState(false);
+  const [fetching,  setFetching]  = useState(true);
+  const [message,   setMessage]   = useState<Message>({ text: "", type: "" });
 
-  // ── جلب بيانات الغرض الحالية وملء الفورم ──
+  // ── جلب بيانات الغرض وملء الفورم ──
   useEffect(() => {
     if (!itemId) return;
     const fetchItem = async () => {
@@ -50,6 +53,7 @@ export function useEditItem(itemId: string) {
           category:    item.category    ?? "",
           location:    item.location    ?? "",
           condition:   item.condition   ?? "",
+          hubId:       item.safeHub?._id ?? item.safeHub ?? "", // ✅ يدعم populated و ID فقط
         });
         if (item.imageUrl) setPreview(item.imageUrl);
       } catch {
@@ -61,7 +65,9 @@ export function useEditItem(itemId: string) {
     fetchItem();
   }, [itemId]);
 
-  const handleChange = useCallback((e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = useCallback((
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   }, []);
@@ -71,6 +77,11 @@ export function useEditItem(itemId: string) {
     if (!file) return;
     setImageFile(file);
     setPreview(URL.createObjectURL(file));
+  }, []);
+
+  // ✅ إضافة handleHubChange
+  const handleHubChange = useCallback((hubId: string) => {
+    setFormData((prev) => ({ ...prev, hubId }));
   }, []);
 
   const handleSubmit = useCallback(async (e: FormEvent) => {
@@ -85,19 +96,16 @@ export function useEditItem(itemId: string) {
       fd.append("category",    formData.category);
       fd.append("location",    formData.location);
       fd.append("condition",   formData.condition);
-      if (imageFile) fd.append("image", imageFile);
+      if (formData.hubId) fd.append("safeHub", formData.hubId); // ✅ إضافة
+      if (imageFile)      fd.append("image",   imageFile);
 
-      await axiosInstance.put(`/api/items/${itemId}`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // ✅ بدون Content-Type — المتصفح يضيف boundary تلقائياً
+      await axiosInstance.put(`/api/items/${itemId}`, fd);
 
       setMessage({ text: "تم تحديث الغرض بنجاح ✅", type: "success" });
       setTimeout(() => router.push("/dashboard"), 1200);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "حدث خطأ أثناء التعديل";
+      const msg = err instanceof Error ? err.message : "حدث خطأ أثناء التعديل";
       setMessage({ text: msg, type: "error" });
     } finally {
       setLoading(false);
@@ -107,6 +115,7 @@ export function useEditItem(itemId: string) {
   return {
     formData, preview, loading, fetching, message,
     handleChange, handleImageChange, handleSubmit,
+    handleHubChange, // ✅ إضافة
     CONDITIONS, CATEGORIES, CITIES,
   };
 }

@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import Navbar from "@/components/Navbar";
-import { ConfirmModal } from "./components/ConfirmModal";
-import { CountdownTimer } from "./components/CountdownTimer";
-import { useItemDetails } from "./hooks/useItemDetails";
-import { LevelGate } from "@/components/LevelGate";
+import { ConfirmModal }    from "./components/ConfirmModal";
+import { CountdownTimer }  from "./components/CountdownTimer";
+import { useItemDetails }  from "./hooks/useItemDetails";
+import { LevelGate }       from "@/components/LevelGate";
 
 const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -34,7 +33,6 @@ export default function ItemDetailsPage() {
     ? item.imageUrl
     : `${backendUrl}/${item.imageUrl}`;
 
-  // ✅ العداد يظهر فقط للحاجز الحالي أو المتبرع — ليس لمن ألغى حجزه
   const showCountdown = item.status === "محجوز" && (isBooker || isDonor);
 
   return (
@@ -44,12 +42,13 @@ export default function ItemDetailsPage() {
         <ConfirmModal
           message={confirmModal.msg}
           isDanger={confirmModal.isDanger}
-          onConfirm={confirmModal.onConfirm}
+          onConfirm={confirmModal.onConfirm} // ✅ مباشرة بدون wrapper
           onCancel={() => setConfirmModal((p) => ({ ...p, show: false }))}
         />
       )}
 
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-5xl mx-auto">
+
         {/* ─── Breadcrumb ─── */}
         <nav className="mb-6 flex items-center gap-2 text-on-surface-variant text-xs font-medium">
           <Link href="/browse" className="hover:text-primary transition-colors">تصفح التبرعات</Link>
@@ -58,30 +57,37 @@ export default function ItemDetailsPage() {
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
+
           {/* ─── صورة الغرض ─── */}
-         <div className="relative rounded-3xl overflow-hidden bg-white aspect-square border border-[#edeeef] shadow-sm">
-  <Image
-    src={imageUrl}
-    alt={item.title}
-    fill
-    priority
-    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
-    className="object-cover"
-  />
-</div>
+          <div className="relative rounded-3xl overflow-hidden bg-white aspect-square border border-[#edeeef] shadow-sm">
+            <Image
+              src={imageUrl}
+              alt={item.title}
+              fill
+              priority
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
+              className="object-cover"
+            />
+          </div>
 
           {/* ─── تفاصيل الغرض ─── */}
           <div className="flex flex-col gap-6">
-            {/* الـ Tags والعنوان */}
+
+            {/* Tags والعنوان */}
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold">{item.category}</span>
-                <span className="px-3 py-1 rounded-lg bg-primary/5 text-primary text-[10px] font-bold">{item.condition || "حالة جيدة"}</span>
-{(item.waitlist?.length ?? 0) > 0 && (
+                <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold">
+                  {item.category}
+                </span>
+                <span className="px-3 py-1 rounded-lg bg-primary/5 text-primary text-[10px] font-bold">
+                  {item.condition || "حالة جيدة"}
+                </span>
+                {(item.waitlist?.length ?? 0) > 0 && (
                   <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-100 rounded-lg">
                     <span className="material-symbols-outlined text-blue-500 text-sm">group</span>
-                    <p className="text-[10px] font-black text-blue-700">{item.waitlist?.length ?? 0}
- ينتظرون</p>
+                    <p className="text-[10px] font-black text-blue-700">
+                      {item.waitlist?.length ?? 0} ينتظرون
+                    </p>
                   </div>
                 )}
               </div>
@@ -91,7 +97,7 @@ export default function ItemDetailsPage() {
               </p>
             </div>
 
-            {/* ─── Countdown Timer — فقط للحاجز الحالي أو المتبرع ─── */}
+            {/* ─── Countdown Timer ─── */}
             {showCountdown && (
               item.bookedAt ? (
                 <CountdownTimer bookedAt={item.bookedAt} isBooker={isBooker} isDonor={isDonor} />
@@ -112,7 +118,7 @@ export default function ItemDetailsPage() {
               )
             )}
 
-            {/* ─── رمز الاستلام — يظهر في الـ Dashboard فقط ─── */}
+            {/* ─── رمز الاستلام ─── */}
             {isBooker && item.status === "محجوز" && (
               <Link
                 href="/dashboard"
@@ -132,9 +138,9 @@ export default function ItemDetailsPage() {
             {/* ─── معلومات الغرض ─── */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "الموقع",     val: item.location,                                    ic: "distance" },
-                { label: "التاريخ",    val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event" },
-                { label: "الموثوقية", val: (item.donor?.trustScore || 0) + "%",               ic: "verified_user" },
+                { label: "الموقع",    val: item.location,                                        ic: "distance"      },
+                { label: "التاريخ",   val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event"         },
+                { label: "الموثوقية", val: (item.donor?.trustScore || 0) + "%",                  ic: "verified_user" },
               ].map((s, i) => (
                 <div key={i} className="bg-white p-3 rounded-2xl border border-gray-100 text-center">
                   <span className="material-symbols-outlined text-primary text-xl mb-1">{s.ic}</span>
@@ -158,7 +164,9 @@ export default function ItemDetailsPage() {
                   )}
                 </div>
                 <div>
-                  <h3 className="font-black text-sm group-hover:text-primary transition-colors">{item.donor?.name}</h3>
+                  <h3 className="font-black text-sm group-hover:text-primary transition-colors">
+                    {item.donor?.name}
+                  </h3>
                   <p className="text-[10px] text-gray-400 font-bold">ملف المتبرع</p>
                 </div>
               </div>
@@ -166,6 +174,27 @@ export default function ItemDetailsPage() {
                 chevron_left
               </span>
             </Link>
+
+            {/* ─── مركز التسليم ─── */}
+            {item.safeHub && (
+              <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="material-symbols-outlined text-primary text-xl">warehouse</span>
+                  <p className="font-black text-sm">مركز التسليم</p>
+                </div>
+                <p className="font-bold text-sm text-[#191c1d]">{item.safeHub.name}</p>
+                <p className="text-[11px] text-on-surface-variant">
+                  {item.safeHub.address} — {item.safeHub.city}
+                </p>
+                <p className="text-[11px] text-on-surface-variant flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">schedule</span>
+                  {item.safeHub.workingHours}
+                </p>
+                {!item.safeHub.isActive && (
+                  <p className="text-[10px] text-red-500 font-bold">⚠️ المركز غير نشط حالياً</p>
+                )}
+              </div>
+            )}
 
             {/* ─── رسائل الحالة والأزرار ─── */}
             <div className="space-y-4">
@@ -221,14 +250,13 @@ export default function ItemDetailsPage() {
                   </button>
                 ) : item.status === "متاح" ? (
                   <LevelGate>
-                    
-                  <button
-                    onClick={handleRequestItem}
-                    disabled={actionLoading}
-                    className="w-full bg-primary text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 hover:bg-[#004d44] transition-all"
-                  >
-                    احجز هذه القطعة الآن
-                  </button>
+                    <button
+                      onClick={handleRequestItem}
+                      disabled={actionLoading}
+                      className="w-full bg-primary text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 hover:bg-[#004d44] transition-all"
+                    >
+                      احجز هذه القطعة الآن
+                    </button>
                   </LevelGate>
                 ) : (
                   <button
@@ -241,6 +269,7 @@ export default function ItemDetailsPage() {
                 )}
               </div>
             </div>
+
           </div>
         </div>
       </main>

@@ -3,6 +3,7 @@ import { useParams, useRouter } from "next/navigation";
 import { getItemById, bookItem, cancelBooking } from "@/lib/api/itemApi";
 import { Item } from "@/types/item.types";
 import { useAuth } from "@/context/AuthContext";
+import axios from "axios"; // ✅ إضافة
 
 const getId = (field: unknown): string | null => {
   if (!field) return null;
@@ -14,9 +15,9 @@ const getId = (field: unknown): string | null => {
 };
 
 interface ConfirmModalState {
-  show: boolean;
-  msg: string;
-  isDanger: boolean;
+  show:      boolean;
+  msg:       string;
+  isDanger:  boolean;
   onConfirm: () => void;
 }
 
@@ -34,8 +35,8 @@ export function useItemDetails() {
   });
 
   const currentUserId     = user?._id ?? null;
-  const isDonor           = !!currentUserId && getId(item?.donor)     === currentUserId;
-  const isBooker          = !!currentUserId && getId(item?.bookedBy)  === currentUserId;
+  const isDonor           = !!currentUserId && getId(item?.donor)    === currentUserId;
+  const isBooker          = !!currentUserId && getId(item?.bookedBy) === currentUserId;
   const isWaitlisted      = !!currentUserId && !!item?.waitlist?.some((w) => getId(w.user) === currentUserId);
   const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid) => getId(uid) === currentUserId);
 
@@ -66,7 +67,7 @@ export function useItemDetails() {
     }
     setConfirmModal({
       show: true,
-      msg: "هل تريد الانضمام لهذا الطابور؟",
+      msg:  "هل تريد الانضمام لهذا الطابور؟",
       isDanger: false,
       onConfirm: async () => {
         setConfirmModal((prev) => ({ ...prev, show: false }));
@@ -77,7 +78,10 @@ export function useItemDetails() {
           setMessage({ type: "success", text: res.message ?? "تم طلبك بنجاح" });
           fetchItem();
         } catch (err: unknown) {
-          const msg = (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ?? "حدث خطأ أثناء الطلب";
+          // ✅ axios type-safe error handling
+          const msg = axios.isAxiosError(err)
+            ? err.response?.data?.msg ?? "حدث خطأ أثناء الطلب"
+            : "حدث خطأ أثناء الطلب";
           setMessage({ type: "error", text: msg });
         } finally {
           setActionLoading(false);
@@ -87,16 +91,16 @@ export function useItemDetails() {
   }, [authLoading, isLoggedIn, id, router, fetchItem]);
 
   const handleCancelAction = useCallback(() => {
-    const isDanger    = isBooker || isDonor;
-    const confirmMsg  = isBooker
+    const isDanger   = isBooker || isDonor;
+    const confirmMsg = isBooker
       ? "⚠️ تنبيه: إلغاء الحجز سيمنعك من حجز هذه القطعة مجدداً للأبد!\nهل أنت متأكد؟"
       : isDonor
       ? "هل تريد إلغاء حجز المستلم وتمرير الدور؟"
       : "هل تريد الانسحاب من قائمة الانتظار؟";
 
     setConfirmModal({
-      show: true,
-      msg:  confirmMsg,
+      show:     true,
+      msg:      confirmMsg,
       isDanger,
       onConfirm: async () => {
         setConfirmModal((prev) => ({ ...prev, show: false }));
@@ -107,7 +111,10 @@ export function useItemDetails() {
           setMessage({ type: "success", text: res.msg ?? "تم الإلغاء بنجاح" });
           fetchItem();
         } catch (err: unknown) {
-          const msg = (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ?? "حدث خطأ أثناء الإلغاء";
+          // ✅ axios type-safe error handling
+          const msg = axios.isAxiosError(err)
+            ? err.response?.data?.msg ?? "حدث خطأ أثناء الإلغاء"
+            : "حدث خطأ أثناء الإلغاء";
           setMessage({ type: "error", text: msg });
         } finally {
           setActionLoading(false);
@@ -115,10 +122,6 @@ export function useItemDetails() {
       },
     });
   }, [id, isBooker, isDonor, fetchItem]);
-
-  const onConfirm = useCallback(() => {
-    confirmModal.onConfirm();
-  }, [confirmModal]);
 
   return {
     item,
@@ -135,7 +138,7 @@ export function useItemDetails() {
     setConfirmModal,
     handleRequestItem,
     handleCancelAction,
-    onConfirm,
     fetchItem,
+    // ✅ حذف onConfirm — استخدم confirmModal.onConfirm مباشرة
   };
 }

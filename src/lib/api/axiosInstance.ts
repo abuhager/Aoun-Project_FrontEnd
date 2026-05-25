@@ -1,3 +1,4 @@
+// src/lib/api/axiosInstance.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 // ── Access Token في الذاكرة فقط — لا cookie لا localStorage ──
@@ -5,19 +6,28 @@ let accessToken: string | null = null;
 let isRefreshing   = false;
 let refreshQueue:  Array<(token: string) => void> = [];
 
-// ✅ جديد — queue للطلبات اللي جاءت قبل ما refreshSession تنتهي
-let isInitialized  = false;
-let initQueue:     Array<() => void> = [];
+// ── Init queue: طلبات جاءت قبل انتهاء refreshSession ──────────
+let isInitialized      = false;
+let initQueue:         Array<() => void>           = [];
+let initQueueRejects:  Array<(err: Error) => void> = []; // ✅ F2 Fix
 
 export const setAccessToken = (t: string | null) => { accessToken = t; };
 export const getAccessToken = () => accessToken;
 
-// ✅ تُستدعى من AuthContext بعد ما refreshSession تنتهي
-export const setInitialized = () => {
+// ✅ F2 Fix — تقبل success flag: true = شغّل الطلبات / false = ارفضها
+export const setInitialized = (success = true) => {
   isInitialized = true;
-  // شغّل كل الطلبات اللي كانت تنتظر التهيئة
-  initQueue.forEach(cb => cb());
-  initQueue = [];
+
+  if (success) {
+    initQueue.forEach(cb => cb());
+  } else {
+    // ❌ التهيئة فشلت — ارفض كل الطلبات المعلّقة بدل تجميدها
+    const err = new Error('AUTH_INIT_FAILED');
+    initQueueRejects.forEach(rej => rej(err));
+  }
+
+  initQueue        = [];
+  initQueueRejects = [];
 };
 
 const axiosInstance = axios.create({
@@ -26,16 +36,16 @@ const axiosInstance = axios.create({
   withCredentials: true, // ← مهم لإرسال httpOnly cookie مع كل طلب
 });
 
-// ── Request: انتظر التهيئة ثم أرسل accessToken ───────────────
+// ── Request Interceptor ───────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const isAuthRoute = config.url?.includes('/auth/');
 
-    // ✅ إذا التهيئة لم تنتهِ بعد، علّق الطلب حتى تنتهي refreshSession
-    // استثنِ طلبات /auth/ لأنها هي التي تُنجز التهيئة
+    // ✅ F2 Fix — إذا التهيئة لم تنتهِ، علّق الطلب مع reject للأمان
     if (!isInitialized && !isAuthRoute) {
-      return new Promise<InternalAxiosRequestConfig>((resolve) => {
+      return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {
         initQueue.push(() => resolve(config));
+        initQueueRejects.push(reject); // ← جديد
       });
     }
 
@@ -50,7 +60,7 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ── Response: عند 401 جرب refresh قبل logout ──────────────────
+// ── Response Interceptor ──────────────────────────────────────
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -58,11 +68,9 @@ axiosInstance.interceptors.response.use(
     const status          = error.response?.status;
     const isAuthRoute     = originalRequest.url?.includes('/auth/');
 
-    // لو 401 وهو مش طلب auth ومش جرّبنا refresh بعد
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // لو في refresh جاري — ضيف الطلب في queue وانتظر
       if (isRefreshing) {
         return new Promise((resolve) => {
           refreshQueue.push((newToken: string) => {
@@ -84,14 +92,12 @@ axiosInstance.interceptors.response.use(
         const newToken = data.accessToken;
         setAccessToken(newToken);
 
-        // أكمل الطلبات اللي كانت منتظرة
         refreshQueue.forEach(cb => cb(newToken));
         refreshQueue = [];
 
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
         return axiosInstance(originalRequest);
       } catch {
-        // Refresh فشل — logout كامل
         setAccessToken(null);
         refreshQueue = [];
         if (typeof window !== 'undefined') {

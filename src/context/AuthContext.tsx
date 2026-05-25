@@ -57,12 +57,10 @@ function toMinimalUser(u: AuthUser): CachedUser {
 }
 
 function saveUserCookie(u: CachedUser) {
-  // ملاحظة: js-cookie لا تدعم httpOnly
-  // هذا الكوكي للعرض السريع (avatar، اسم) فقط
-  // الـ refreshToken الحقيقي محمي في httpOnly cookie يديره الباك إند
   Cookies.set(USER_COOKIE, JSON.stringify(u), {
-    expires:  7,    // يُجدَّد مع كل refreshSession ناجح
+    expires:  7,
     sameSite: "lax",
+    secure:   process.env.NODE_ENV === 'production', 
   });
 }
 
@@ -166,10 +164,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     warmUpBackend(); // في الخلفية — لا ينتظرها أحد
 
-    refreshSession().finally(() => {
-      setIsLoading(false);
-      setInitialized();
-    });
+   refreshSession().then((success) => {
+  setInitialized(success);
+}).finally(() => {
+  setIsLoading(false);
+});
   }, [refreshSession]);
 
   return (

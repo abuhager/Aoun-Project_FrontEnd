@@ -47,11 +47,12 @@ export function useAddItem() {
     setPreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!image) {
-      return setMessage({ type: "error", text: "الرجاء اختيار صورة للقطعة" });
-    }
+  
+const handleSubmit = async (e: FormEvent) => {
+  e.preventDefault();
+  if (!image) return setMessage({ type: "error", text: "الرجاء اختيار صورة" });
+  if (!formData.hubId) return setMessage({ type: "error", text: "الرجاء اختيار مركز التسليم" }); // ✅
+
 
     setLoading(true);
     setMessage({ type: "", text: "" });
@@ -62,7 +63,7 @@ export function useAddItem() {
     data.append("category",    formData.category);
     data.append("location",    formData.location);
     data.append("condition",   formData.condition);
-    if (formData.hubId) data.append("safeHub", formData.hubId);
+    data.append("safeHub", formData.hubId);
     data.append("image",       image);  // ✅ field name = 'image' يتطابق upload.single('image')
     
 

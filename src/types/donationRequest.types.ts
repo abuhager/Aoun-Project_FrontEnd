@@ -1,23 +1,24 @@
-import type { ItemCategory } from './item.types';
+// src/types/donationRequest.types.ts
+// Phase 5 — طلبات التبرع
 
-export type RequestStatus = 'active' | 'fulfilled' | 'expired' | 'cancelled';
+export type DonationRequestStatus = 'active' | 'fulfilled' | 'expired' | 'cancelled';
 
 export interface DonationRequest {
   _id:         string;
-  requester:   { _id: string; name: string; avatar: string; trustLevel: 1 | 2 };
+  requester:   { _id: string; name: string; avatar?: string; trustScore: number };
   title:       string;
-  category:    ItemCategory;
   description: string;
+  category:    string;
   location:    string;
-  status:      RequestStatus;
-  month:       string;
-  expiresAt:   string;
+  status:      DonationRequestStatus;
+  fulfilledBy?: string; // userId
   createdAt:   string;
+  expiresAt:   string; // 30 يوم من الإنشاء
 }
 
 export interface CreateDonationRequestPayload {
   title:       string;
-  category:    ItemCategory;
   description: string;
+  category:    string;
   location:    string;
 }

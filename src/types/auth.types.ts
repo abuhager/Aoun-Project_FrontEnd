@@ -53,6 +53,7 @@ export interface JwtPayload {
     id:         string;
     role:       string;
     trustLevel: 1 | 2;
+    isBanned:   boolean;   // ← مُضاف — موجود في tokenUtils.js
   };
   iat: number;
   exp: number;

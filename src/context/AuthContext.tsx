@@ -37,6 +37,7 @@ interface AuthContextType {
   refreshSession:  () => Promise<boolean>;
   logout:          () => Promise<void>;
 }
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -59,8 +60,8 @@ function toMinimalUser(u: AuthUser): CachedUser {
 function saveUserCookie(u: CachedUser) {
   Cookies.set(USER_COOKIE, JSON.stringify(u), {
     expires:  7,
-    sameSite: "lax",
-    secure:   process.env.NODE_ENV === 'production', 
+    sameSite: IS_PRODUCTION ? 'none' : 'lax',
+    secure:   IS_PRODUCTION,
   });
 }
 

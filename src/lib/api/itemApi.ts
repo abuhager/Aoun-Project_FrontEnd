@@ -74,14 +74,15 @@ export async function rateItem(id: string, rating: number): Promise<{ msg: strin
 // ✅ Fix Bug #1 — URL مُصلَح: /report/:userId (param) بدل /report-user (body)
 // Backend يقرأ: req.params.userId + req.body.reason
 
-export const reportUser = async (payload: CreateReportPayload): Promise<{ msg: string }> => {
-  const { reportedUserId, reason, details, relatedItemId } = payload;
+
+export async function reportUser(payload: CreateReportPayload): Promise<{ msg: string }> {
+  const { reportedUserId, reason, detail, itemId } = payload;
   const { data } = await axiosInstance.post(
     `/api/items/report/${reportedUserId}`,
-    { reason, details, relatedItemId }
+    { reason, detail, itemId }
   );
   return data;
-};
+}
 // ── تقييم معلق ───────────────────────────────────────────────
 export async function getPendingRating(): Promise<{ pendingRating: Item | null }> {
   const { data } = await axiosInstance.get<{ pendingRating: Item | null }>(

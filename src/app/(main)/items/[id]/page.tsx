@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { CountdownTimer } from "./components/CountdownTimer";
 import { useItemDetails } from "./hooks/useItemDetails";
-import { LevelGate } from "./components/LevelGate";
+import { LevelGate } from "@/components/LevelGate";
 
 const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 

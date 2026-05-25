@@ -26,4 +26,5 @@ export interface CreateReportPayload {
   itemId:         string;
   reason:         ReportReason;
   details?:       string;
+  relatedItemId?: string;
 }

@@ -9,6 +9,7 @@ import {
   useCallback,
   useRef,
 } from "react";
+import axios from "axios";
 import axiosInstance, {
   setAccessToken,
   getAccessToken,
@@ -18,54 +19,47 @@ import type { AuthUser } from "@/types/user.types";
 import Cookies from "js-cookie";
 
 // ─── CachedUser: أصغر subset آمن يُخزَّن في Cookie قابل للقراءة ──
-// القاعدة: أي حقل هنا = مرئي في المتصفح بدون جهد
-// ✅ أضفنا: quota, trustScore  ← يحتاجهما StatsGrid و ProfileCard
-// ❌ حذفنا: isVerifiedStudent  ← لا يُعرض في الـ navbar أو الـ layout
-// ❌ لا isBanned, لا phone, لا badges, لا totalDonations
 type CachedUser = Pick<
   AuthUser,
   "_id" | "name" | "email" | "avatar" | "role" | "trustLevel" | "trustScore" | "quota"
 >;
 
 interface AuthContextType {
-  user:            CachedUser | null;
-  accessToken:     string | null;
-  isLoading:       boolean;
-  isLoggedIn:      boolean;
+  user: CachedUser | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  isLoggedIn: boolean;
   isAuthenticated: boolean;
-  setUser:         (u: AuthUser | null) => void;
-  refreshSession:  () => Promise<boolean>;
-  logout:          () => Promise<void>;
+  setUser: (u: AuthUser | null) => void;
+  refreshSession: () => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const USER_COOKIE    = "aoun_user";
-// ✅ جديد — مؤشر خفيف لـ middleware.ts (لا يحتوي بيانات حساسة)
+const USER_COOKIE = "aoun_user";
 const SESSION_COOKIE = "session_active";
 
-// ─── الفلتر الوحيد — أي بيانات لا تمر منه لا تُحفظ ────────────
 function toMinimalUser(u: AuthUser): CachedUser {
   return {
-    _id:        u._id,
-    name:       u.name,
-    email:      u.email,
-    avatar:     u.avatar ?? undefined,
-    role:       u.role,
+    _id: u._id,
+    name: u.name,
+    email: u.email,
+    avatar: u.avatar ?? undefined,
+    role: u.role,
     trustLevel: u.trustLevel ?? 1,
     trustScore: u.trustScore ?? 0,
-    quota:      u.quota ?? 0,
+    quota: u.quota ?? 0,
   };
 }
 
-// ─── إدارة aoun_user cookie ──────────────────────────────────
 function saveUserCookie(u: CachedUser) {
   Cookies.set(USER_COOKIE, JSON.stringify(u), {
-    expires:  7,
+    expires: 7,
     sameSite: IS_PRODUCTION ? "none" : "lax",
-    secure:   IS_PRODUCTION,
+    secure: IS_PRODUCTION,
   });
 }
 
@@ -73,9 +67,10 @@ function loadUserCookie(): CachedUser | null {
   try {
     const raw = Cookies.get(USER_COOKIE);
     if (!raw) return null;
+
     const parsed = JSON.parse(raw) as Partial<CachedUser>;
-    // ✅ تحقق بسيط — إذا الكوكي تالف أو قديم لا يحتوي _id
     if (!parsed._id) return null;
+
     return parsed as CachedUser;
   } catch {
     return null;
@@ -85,65 +80,56 @@ function loadUserCookie(): CachedUser | null {
 function clearUserCookie() {
   Cookies.remove(USER_COOKIE, {
     sameSite: IS_PRODUCTION ? "none" : "lax",
-    secure:   IS_PRODUCTION,
+    secure: IS_PRODUCTION,
   });
 }
 
-// ─── إدارة session_active cookie (لـ middleware.ts Edge) ─────
-// ✅ لا يحتوي بيانات حساسة — مجرد مؤشر true/false للـ Edge middleware
-// ✅ SameSite=Lax دائماً — لأنه يُقرأ على نفس الـ domain
-// ✅ httpOnly=false مقصود — middleware.ts في Next.js Edge يقرأ req.cookies مباشرة
 function setSessionCookie() {
   Cookies.set(SESSION_COOKIE, "true", {
-    expires:  7,        // نفس عمر aoun_user
-    sameSite: "lax",    // ✅ لا يحتاج "none" لأنه لـ same-origin middleware فقط
-    secure:   IS_PRODUCTION,
-    path:     "/",
+    expires: 7,
+    sameSite: "lax",
+    secure: IS_PRODUCTION,
+    path: "/",
   });
 }
 
 function clearSessionCookie() {
   Cookies.remove(SESSION_COOKIE, {
-    path:     "/",
+    path: "/",
     sameSite: "lax",
-    secure:   IS_PRODUCTION,
+    secure: IS_PRODUCTION,
   });
 }
 
-// ─── إيقاظ الباك إند قبل أول طلب حقيقي (Render free tier) ──
 async function warmUpBackend() {
   try {
     await axiosInstance.get("/health", { timeout: 3000 });
   } catch {
-    // تجاهل — الهدف إيقاظ السيرفر فقط
+    // تجاهل — الهدف فقط إيقاظ السيرفر
   }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState]      = useState<CachedUser | null>(loadUserCookie);
+  const [user, setUserState] = useState<CachedUser | null>(loadUserCookie);
   const [isLoading, setIsLoading] = useState(true);
-  const initialized = useRef(false);
-  const refreshing  = useRef<Promise<boolean> | null>(null);
 
-  // ─── setUser: تقبل AuthUser الكامل من API، تحفظ المصغّر فقط ──
+  const initialized = useRef(false);
+  const refreshing = useRef<Promise<boolean> | null>(null);
+
   const setUser = useCallback((u: AuthUser | null) => {
     if (u) {
       const minimal = toMinimalUser(u);
       setUserState(minimal);
       saveUserCookie(minimal);
-      // ✅ جديد — أشعر middleware.ts بوجود جلسة نشطة
       setSessionCookie();
     } else {
       setUserState(null);
       clearUserCookie();
-      // ✅ جديد — امسح مؤشر الجلسة عند الـ logout أو انتهاء الصلاحية
       clearSessionCookie();
     }
   }, []);
 
-  // ─── refreshSession: يجدد Access Token عبر httpOnly Cookie ──
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    // منع طلبين متزامنين للـ refresh
     if (refreshing.current) return refreshing.current;
 
     refreshing.current = (async () => {
@@ -154,10 +140,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
 
         const freshToken = data.accessToken;
-        setAccessToken(freshToken); // ← في الذاكرة فقط، لا localStorage
+        setAccessToken(freshToken);
 
-        // ✅ جلب بيانات المستخدم المحدّثة من /me
-        // هذا يضمن أن quota وtrustScore محدّثان دائماً
         const meRes = await axiosInstance.get<{ user: AuthUser }>("/api/auth/me", {
           headers: { Authorization: `Bearer ${freshToken}` },
         });
@@ -165,13 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const fetchedUser =
           meRes.data.user ?? (meRes.data as unknown as AuthUser);
 
-        // ✅ setUser يتكفل بـ saveUserCookie + setSessionCookie تلقائياً
         setUser(fetchedUser);
         return true;
       } catch {
         setAccessToken(null);
         clearUserCookie();
-        // ✅ جديد — فشل الـ refresh = لا جلسة نشطة
         clearSessionCookie();
         setUserState(null);
         return false;
@@ -183,31 +165,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return refreshing.current;
   }, [setUser]);
 
-  // ─── logout ─────────────────────────────────────────────────
+  // ✅ logout المعدل: لا يعتمد على axiosInstance ولا على access token
   const logout = useCallback(async () => {
     try {
-      await axiosInstance.post("/api/auth/logout", {});
+      await axios.post("/api/auth/logout", {}, { withCredentials: true });
+    } catch {
+      // نتجاهل الخطأ لأننا سننظف الحالة محلياً مهما صار
     } finally {
       setAccessToken(null);
       clearUserCookie();
-      // ✅ جديد — امسح مؤشر الجلسة عند الخروج
       clearSessionCookie();
       setUserState(null);
       window.location.replace("/login");
     }
   }, []);
 
-  // ─── تهيئة الجلسة عند فتح التطبيق ───────────────────────
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
-    warmUpBackend(); // في الخلفية — لا ينتظرها أحد
+    warmUpBackend();
 
     refreshSession()
       .then((success) => {
         setInitialized(success);
-        // ✅ لو فشل الـ refresh → تأكد أن session_active ممسوح
         if (!success) clearSessionCookie();
       })
       .finally(() => {
@@ -219,9 +200,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        accessToken:     getAccessToken(),
+        accessToken: getAccessToken(),
         isLoading,
-        isLoggedIn:      !!user,
+        isLoggedIn: !!user,
         isAuthenticated: !!user,
         setUser,
         refreshSession,
@@ -239,5 +220,4 @@ export function useAuth() {
   return ctx;
 }
 
-// ─── Export النوع للمكونات التي تحتاج CachedUser ─────────────
 export type { CachedUser };

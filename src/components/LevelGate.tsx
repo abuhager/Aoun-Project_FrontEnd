@@ -1,66 +1,55 @@
-// src/components/LevelGate.tsx
-// ✅ Phase 2 — Merged: نسخة نهائية تجمع أفضل ما في الاثنتين
 'use client';
 
-import { useState }       from 'react';
-import { useAuth }        from '@/context/AuthContext';
-import PhoneVerifyModal   from './PhoneVerifyModal';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import PhoneVerifyModal from './PhoneVerifyModal';
 
 interface LevelGateProps {
-  requiredLevel?: 1 | 2;          // افتراضي: 2
-  children:       React.ReactNode;
-  fallback?:      React.ReactNode; // إذا لم يُمرَّر → رسالة amber الافتراضية
+  requiredLevel?:           1 | 2;
+  children:                 React.ReactNode;
+  fallback?:                React.ReactNode;
+  unauthenticatedFallback?: React.ReactNode;
 }
 
-export function LevelGate({
+export default function LevelGate({
   requiredLevel = 2,
   children,
   fallback,
+  unauthenticatedFallback,
 }: LevelGateProps) {
+  const router = useRouter();
   const { user, isLoading } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
 
-  // ─── لا تعرض شيئاً أثناء تحميل الجلسة ─────────────────
-  if (isLoading) return null;
+  // ✅ Skeleton بدل null — يمنع layout shift
+  if (isLoading) return (
+    <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
+  );
 
-  // ─── المستخدم يملك المستوى المطلوب ──────────────────────
-  const userLevel = user?.trustLevel ?? 1;
-  if (userLevel >= requiredLevel) return <>{children}</>;
+  if (!user) {
+    if (unauthenticatedFallback) return <>{unauthenticatedFallback}</>;
+    return (
+      <button onClick={() => router.push('/login')} className="btn-secondary w-full">
+        سجّل دخولك للمتابعة
+      </button>
+    );
+  }
 
-  // ─── Fallback مخصص من الخارج ────────────────────────────
+  if ((user.trustLevel ?? 1) >= requiredLevel) return <>{children}</>;
+
   if (fallback) return <>{fallback}</>;
 
-  // ─── Fallback الافتراضي: رسالة amber + تفتح المودال ────
   return (
     <>
       <button
         onClick={() => setModalOpen(true)}
-        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm hover:bg-amber-100 transition"
+        className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-4 h-4 shrink-0"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 9v3m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-          />
-        </svg>
-        <span>تحتاج لتفعيل حسابك (رقم واتسآب أو إيميل جامعي) للحجز</span>
+        🔐 تحتاج لتفعيل حسابك للمتابعة
       </button>
 
-      <PhoneVerifyModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-      />
+      <PhoneVerifyModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );
 }
-
-// ✅ default export أيضاً للتوافق مع import styles المختلفة
-export default LevelGate;

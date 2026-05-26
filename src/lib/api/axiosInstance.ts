@@ -1,82 +1,110 @@
 // src/lib/api/axiosInstance.ts
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-// ── Access Token في الذاكرة فقط — لا cookie لا localStorage ──
+// ── Access Token في الذاكرة فقط ───────────────────────────────
 let accessToken: string | null = null;
-let isRefreshing   = false;
-let refreshQueue:  Array<(token: string) => void> = [];
+let isRefreshing = false;
 
-// ── Init queue: طلبات جاءت قبل انتهاء refreshSession ──────────
-let isInitialized      = false;
-let initQueue:         Array<() => void>           = [];
-let initQueueRejects:  Array<(err: Error) => void> = [];
+type RefreshQueueItem = {
+  resolve: (token: string) => void;
+  reject: (error: Error) => void;
+};
 
-export const setAccessToken = (t: string | null) => { accessToken = t; };
+let refreshQueue: RefreshQueueItem[] = [];
+
+// ── Init queue: طلبات جاءت قبل انتهاء refreshSession ─────────
+let isInitialized = false;
+let initQueue: Array<() => void> = [];
+let initQueueRejects: Array<(err: Error) => void> = [];
+
+export const setAccessToken = (t: string | null) => {
+  accessToken = t;
+};
+
 export const getAccessToken = () => accessToken;
 
-// ✅ تقبل success flag: true = شغّل الطلبات / false = ارفضها
 export const setInitialized = (success = true) => {
   isInitialized = true;
 
   if (success) {
-    initQueue.forEach(cb => cb());
+    initQueue.forEach((cb) => cb());
   } else {
-    // ❌ التهيئة فشلت — ارفض كل الطلبات المعلّقة بدل تجميدها
-    const err = new Error('AUTH_INIT_FAILED');
-    initQueueRejects.forEach(rej => rej(err));
+    const err = new Error("AUTH_INIT_FAILED");
+    initQueueRejects.forEach((rej) => rej(err));
   }
 
-  initQueue        = [];
+  initQueue = [];
   initQueueRejects = [];
 };
 
-// ─── helpers لـ session_active cookie ────────────────────────
-// ✅ هذه الدوال مستقلة عن js-cookie لتجنب circular dependency مع AuthContext
-// ✅ session_active = مؤشر خفيف لـ middleware.ts Edge — لا بيانات حساسة
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+// ─── helpers لـ session_active cookie ─────────────────────────
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 function setSessionCookie() {
-  if (typeof document === 'undefined') return; // SSR guard
-  const secure   = IS_PRODUCTION ? '; Secure' : '';
-  const sameSite = '; SameSite=Lax';
-  // expires بعد 7 أيام — نفس عمر aoun_user
-  const expires  = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+  if (typeof document === "undefined") return;
+
+  const secure = IS_PRODUCTION ? "; Secure" : "";
+  const sameSite = "; SameSite=Lax";
+  const expires = new Date(
+    Date.now() + 7 * 24 * 60 * 60 * 1000
+  ).toUTCString();
+
   document.cookie = `session_active=true; path=/; expires=${expires}${sameSite}${secure}`;
 }
 
 function clearSessionCookie() {
-  if (typeof document === 'undefined') return; // SSR guard
-  const secure   = IS_PRODUCTION ? '; Secure' : '';
-  const sameSite = '; SameSite=Lax';
+  if (typeof document === "undefined") return;
+
+  const secure = IS_PRODUCTION ? "; Secure" : "";
+  const sameSite = "; SameSite=Lax";
+
   document.cookie = `session_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${sameSite}${secure}`;
 }
 
+function processRefreshQueue(error: Error | null, token: string | null = null) {
+  refreshQueue.forEach(({ resolve, reject }) => {
+    if (error || !token) {
+      reject(error ?? new Error("REFRESH_FAILED"));
+    } else {
+      resolve(token);
+    }
+  });
+
+  refreshQueue = [];
+}
+
+const API_BASE_URL =
+  typeof window === "undefined" ? process.env.NEXT_PUBLIC_API_URL : "";
+
 // ─── Axios Instance ───────────────────────────────────────────
 const axiosInstance = axios.create({
-  baseURL:         typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL : '',
-  timeout:         15000,
-  withCredentials: true, // ← مهم لإرسال httpOnly refreshToken cookie مع كل طلب
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+  withCredentials: true,
 });
 
 // ── Request Interceptor ───────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const isAuthRoute = config.url?.includes('/auth/');
+    const isAuthRoute = config.url?.includes("/auth/");
 
-    // ✅ إذا التهيئة لم تنتهِ، علّق الطلب مع reject للأمان
     if (!isInitialized && !isAuthRoute) {
       return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {
         initQueue.push(() => resolve(config));
-        initQueueRejects.push(reject);
+        initQueueRejects.push((err) => reject(err));
       });
     }
 
+    config.headers = config.headers ?? {};
+
     if (accessToken) {
-      config.headers['Authorization'] = `Bearer ${accessToken}`;
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
+
     if (config.data && !(config.data instanceof FormData)) {
-      config.headers['Content-Type'] = 'application/json';
+      config.headers["Content-Type"] = "application/json";
     }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -86,21 +114,31 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
-    const status      = error.response?.status;
-    const isAuthRoute = originalRequest.url?.includes('/auth/');
+    const originalRequest = error.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined;
+
+    const status = error.response?.status;
+    const isAuthRoute = originalRequest?.url?.includes("/auth/");
+
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
 
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // ── إذا refresh جارٍ بالفعل — أضف الطلب للـ queue ─────
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          refreshQueue.push((newToken: string) => {
-            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-            resolve(axiosInstance(originalRequest));
+        return new Promise((resolve, reject) => {
+          refreshQueue.push({
+            resolve: (newToken: string) => {
+              originalRequest.headers = originalRequest.headers ?? {};
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              resolve(axiosInstance(originalRequest));
+            },
+            reject: (queueError: Error) => {
+              reject(queueError);
+            },
           });
         });
       }
@@ -108,35 +146,39 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post<{ accessToken: string }>(
-          '/api/auth/refresh',
+        const { data } = await axiosInstance.post<{ accessToken: string }>(
+          "/api/auth/refresh",
           {},
-          { withCredentials: true }
+          {
+            withCredentials: true,
+          }
         );
 
         const newToken = data.accessToken;
         setAccessToken(newToken);
-
-        // ✅ جديد — جدّد مؤشر الجلسة بعد نجاح الـ Refresh
         setSessionCookie();
 
-        // شغّل كل الطلبات المعلّقة بالتوكن الجديد
-        refreshQueue.forEach(cb => cb(newToken));
-        refreshQueue = [];
+        processRefreshQueue(null, newToken);
 
-        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+        originalRequest.headers = originalRequest.headers ?? {};
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
         return axiosInstance(originalRequest);
-
       } catch (refreshError) {
-        // ✅ جديد — فشل الـ Refresh = لا جلسة نشطة
+        const finalError =
+          refreshError instanceof Error
+            ? refreshError
+            : new Error("REFRESH_FAILED");
+
         setAccessToken(null);
         clearSessionCookie();
-        refreshQueue = [];
+        processRefreshQueue(finalError, null);
 
-        if (typeof window !== 'undefined') {
-          window.location.replace('/login?expired=true');
+        if (typeof window !== "undefined") {
+          window.location.replace("/login?expired=true");
         }
-        return Promise.reject(refreshError); // ← رفع refreshError الأدق لا error القديم
+
+        return Promise.reject(finalError);
       } finally {
         isRefreshing = false;
       }

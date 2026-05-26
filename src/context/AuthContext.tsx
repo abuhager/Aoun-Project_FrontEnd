@@ -1,4 +1,3 @@
-// src/context/AuthContext.tsx
 "use client";
 
 import {
@@ -18,7 +17,6 @@ import axiosInstance, {
 import type { AuthUser } from "@/types/user.types";
 import Cookies from "js-cookie";
 
-// ─── CachedUser: أصغر subset آمن يُخزَّن في Cookie قابل للقراءة ──
 type CachedUser = Pick<
   AuthUser,
   "_id" | "name" | "email" | "avatar" | "role" | "trustLevel" | "trustScore" | "quota"
@@ -37,10 +35,10 @@ interface AuthContextType {
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-const AuthContext = createContext<AuthContextType | null>(null);
-
 const USER_COOKIE = "aoun_user";
 const SESSION_COOKIE = "session_active";
+
+const AuthContext = createContext<AuthContextType | null>(null);
 
 function toMinimalUser(u: AuthUser): CachedUser {
   return {
@@ -102,11 +100,7 @@ function clearSessionCookie() {
 }
 
 async function warmUpBackend() {
-  try {
-    await axiosInstance.get("/health", { timeout: 3000 });
-  } catch {
-    // تجاهل — الهدف فقط إيقاظ السيرفر
-  }
+  return;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -115,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const initialized = useRef(false);
   const refreshing = useRef<Promise<boolean> | null>(null);
+  const isLoggingOut = useRef(false);
 
   const setUser = useCallback((u: AuthUser | null) => {
     if (u) {
@@ -130,13 +125,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    if (refreshing.current) return refreshing.current;
+    if (isLoggingOut.current) {
+      return false;
+    }
+
+    if (refreshing.current) {
+      return refreshing.current;
+    }
 
     refreshing.current = (async () => {
       try {
         const { data } = await axiosInstance.post<{ accessToken: string }>(
           "/api/auth/refresh",
-          {}
+          {},
+          { withCredentials: true }
         );
 
         const freshToken = data.accessToken;
@@ -144,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const meRes = await axiosInstance.get<{ user: AuthUser }>("/api/auth/me", {
           headers: { Authorization: `Bearer ${freshToken}` },
+          withCredentials: true,
         });
 
         const fetchedUser =
@@ -151,11 +154,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUser(fetchedUser);
         return true;
-      } catch {
+      } catch (err) {
+        if (
+          axios.isAxiosError(err) &&
+          err.response?.status !== 401
+        ) {
+          console.error("refreshSession error:", err);
+        }
+
         setAccessToken(null);
-        clearUserCookie();
-        clearSessionCookie();
-        setUserState(null);
+        setUser(null);
         return false;
       } finally {
         refreshing.current = null;
@@ -165,31 +173,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return refreshing.current;
   }, [setUser]);
 
-  // ✅ logout المعدل: لا يعتمد على axiosInstance ولا على access token
   const logout = useCallback(async () => {
+    isLoggingOut.current = true;
+
     try {
-      await axios.post("/api/auth/logout", {}, { withCredentials: true });
-    } catch {
-      // نتجاهل الخطأ لأننا سننظف الحالة محلياً مهما صار
+      await axiosInstance.post(
+        "/api/auth/logout",
+        {},
+        { withCredentials: true }
+      );
+    } catch (err) {
+      if (
+        axios.isAxiosError(err) &&
+        err.response?.status !== 401
+      ) {
+        console.error("logout error:", err);
+      }
     } finally {
       setAccessToken(null);
-      clearUserCookie();
-      clearSessionCookie();
-      setUserState(null);
-      window.location.replace("/login");
+      setUser(null);
+      setInitialized(false);
+      initialized.current = false;
+      refreshing.current = null;
+
+      if (typeof window !== "undefined") {
+        window.location.replace("/login");
+      }
+
+      setTimeout(() => {
+        isLoggingOut.current = false;
+      }, 1000);
     }
-  }, []);
+  }, [setUser]);
 
   useEffect(() => {
     if (initialized.current) return;
-    initialized.current = true;
 
-    warmUpBackend();
+    initialized.current = true;
+    void warmUpBackend();
 
     refreshSession()
       .then((success) => {
         setInitialized(success);
-        if (!success) clearSessionCookie();
+        if (!success) {
+          clearSessionCookie();
+        }
       })
       .finally(() => {
         setIsLoading(false);
@@ -216,7 +244,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+
+  if (!ctx) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
+
   return ctx;
 }
 

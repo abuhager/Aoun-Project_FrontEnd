@@ -14,15 +14,6 @@ export default function GlobalRatingModal() {
     handleClose,
   } = useGlobalRating();
 
-  console.log("GlobalRatingModal render:", {
-    showModal,
-    selectedItem,
-    rating,
-    ratingLoading,
-    errorMsg,
-  });
-  
-
   if (!showModal || !selectedItem) return null;
 
   return (
@@ -31,7 +22,9 @@ export default function GlobalRatingModal() {
       dir="rtl"
     >
       <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
-        <p className="text-sm text-primary font-bold mb-1">العطاء بيكمل بكلمة شكر 💚</p>
+        <p className="text-sm text-primary font-bold mb-1">
+          العطاء بيكمل بكلمة شكر 💚
+        </p>
 
         <h3 className="text-lg font-bold mb-5 text-[#191c1d]">
           قيم تجربتك مع{" "}
@@ -44,6 +37,7 @@ export default function GlobalRatingModal() {
           {[1, 2, 3, 4, 5].map((star) => (
             <button
               key={star}
+              type="button"
               onClick={() => setRating(star)}
               aria-label={`${star} نجوم`}
               className={`transition-all hover:scale-125 ${
@@ -52,7 +46,9 @@ export default function GlobalRatingModal() {
             >
               <span
                 className="material-symbols-outlined text-4xl"
-                style={{ fontVariationSettings: `'FILL' ${rating >= star ? 1 : 0}` }}
+                style={{
+                  fontVariationSettings: `'FILL' ${rating >= star ? 1 : 0}`,
+                }}
               >
                 star
               </span>
@@ -65,11 +61,14 @@ export default function GlobalRatingModal() {
         )}
 
         {rating === 0 && (
-          <p className="text-xs text-gray-400 mb-3">اختر عدد النجوم أولاً ⭐</p>
+          <p className="text-xs text-gray-400 mb-3">
+            اختر عدد النجوم أولاً ⭐
+          </p>
         )}
 
         <div className="flex flex-col gap-2">
           <button
+            type="button"
             onClick={handleRate}
             disabled={ratingLoading || rating === 0}
             className="w-full bg-primary text-white font-bold py-4 rounded-2xl shadow-lg disabled:opacity-50 transition-opacity"
@@ -78,6 +77,7 @@ export default function GlobalRatingModal() {
           </button>
 
           <button
+            type="button"
             onClick={handleClose}
             className="w-full text-sm text-gray-500 py-2"
           >

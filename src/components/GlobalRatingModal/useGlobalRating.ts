@@ -1,5 +1,8 @@
+"use client";
+
 import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import axios from "axios";
 import axiosInstance, { getAccessToken } from "@/lib/api/axiosInstance";
 import { useAuth } from "@/context/AuthContext";
 
@@ -36,8 +39,14 @@ export function useGlobalRating() {
   const checkPendingRatings = useCallback(async () => {
     const token = getAccessToken();
 
-    if (!token) return;
-    if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
+    if (!token) {
+      resetRatingState();
+      return;
+    }
+
+    if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) {
+      return;
+    }
 
     try {
       const res = await axiosInstance.get("/api/items/pending-rating");
@@ -49,10 +58,11 @@ export function useGlobalRating() {
         setShowModal(false);
         setSelectedItem(null);
       }
-    } catch (err) {
-      console.error("pending-rating error:", err);
+    } catch {
+      setShowModal(false);
+      setSelectedItem(null);
     }
-  }, [pathname]);
+  }, [pathname, resetRatingState]);
 
   useEffect(() => {
     if (!user) {
@@ -72,38 +82,35 @@ export function useGlobalRating() {
     if (!showModal) return;
     if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
 
-    router.replace(pathname);
+    router.replace(pathname, { scroll: false });
   }, [pathname, showModal, router]);
 
- const handleRate = async () => {
-  if (!selectedItem || rating === 0) {
-    setErrorMsg("اختر تقييم أولاً ⭐");
-    return;
-  }
+  const handleRate = async () => {
+    if (!selectedItem || rating === 0) {
+      setErrorMsg("اختر تقييم أولاً ⭐");
+      return;
+    }
 
-  setErrorMsg("");
-
-  try {
+    setErrorMsg("");
     setRatingLoading(true);
 
-    await axiosInstance.post(`/api/items/rate/${selectedItem._id}`, {
-      rating,
-    });
+    try {
+      await axiosInstance.post(`/api/items/rate/${selectedItem._id}`, {
+        rating,
+      });
 
-    resetRatingState();
-    await checkPendingRatings();
-  } catch (err) {
-    const axios = (await import("axios")).default;
-
-    if (axios.isAxiosError(err)) {
-      setErrorMsg(err.response?.data?.msg || "حدث خطأ أثناء التقييم ❌");
-    } else {
-      setErrorMsg("حدث خطأ أثناء التقييم ❌");
+      resetRatingState();
+      await checkPendingRatings();
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setErrorMsg(err.response?.data?.msg || "حدث خطأ أثناء التقييم ❌");
+      } else {
+        setErrorMsg("حدث خطأ أثناء التقييم ❌");
+      }
+    } finally {
+      setRatingLoading(false);
     }
-  } finally {
-    setRatingLoading(false);
-  }
-};
+  };
 
   const handleClose = () => {
     setErrorMsg("يجب تقييم المتبرع أولاً قبل المتابعة 🌟");

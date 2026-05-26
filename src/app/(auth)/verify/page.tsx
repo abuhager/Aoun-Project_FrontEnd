@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useVerifyEmail } from "./hooks/useVerifyEmail";
 
-// ─── Types ───
 interface OtpInputProps {
   digit: string;
   index: number;
@@ -18,6 +17,7 @@ function OtpInput({ digit, index, inputRef, onChange, onKeyDown }: OtpInputProps
       ref={inputRef}
       type="text"
       inputMode="numeric"
+      pattern="[0-9]*"
       maxLength={1}
       value={digit}
       onChange={(e) => onChange(index, e)}
@@ -50,8 +50,6 @@ function VerifyContent() {
       dir="rtl"
     >
       <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-sm border border-[#edeeef] text-center">
-
-        {/* ─── الأيقونة ─── */}
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
           <span className="material-symbols-outlined text-3xl text-primary">
             mark_email_read
@@ -83,7 +81,9 @@ function VerifyContent() {
                 key={index}
                 digit={digit}
                 index={index}
-                inputRef={(el) => { inputRefs.current[index] = el; }}
+                inputRef={(el) => {
+                  inputRefs.current[index] = el;
+                }}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
               />
@@ -92,7 +92,7 @@ function VerifyContent() {
 
           <button
             type="submit"
-            disabled={loading || !isComplete}
+            disabled={loading || !isComplete || !email}
             className="w-full bg-primary text-white font-black py-4 rounded-xl hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2 shadow-md shadow-primary/20"
           >
             {loading ? (

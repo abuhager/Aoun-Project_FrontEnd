@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 const PROTECTED_PATHS = ['/dashboard', '/profile', '/donate', '/my-items', '/add-item', '/edit-item'];
-const AUTH_ONLY_PATHS = ['/login', '/register', '/verify-email', '/forgot-password', '/reset-password'];
+const AUTH_ONLY_PATHS = ['/login', '/register', '/verify', '/forgot-password', '/reset-password'];
 const ADMIN_PATHS = ['/admin'];
 
 export async function middleware(request: NextRequest) {
@@ -35,6 +35,6 @@ export const config = {
     '/dashboard/:path*', '/profile/:path*', '/donate/:path*',
     '/my-items/:path*',  '/add-item/:path*', '/edit-item/:path*',
     '/admin/:path*',
-    '/login', '/register', '/verify-email', '/forgot-password', '/reset-password',
+    '/login', '/register', '/verify', '/forgot-password', '/reset-password',
   ],
 };

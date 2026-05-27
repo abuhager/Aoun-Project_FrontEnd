@@ -1,19 +1,24 @@
 // src/components/Navbar/useNavbar.ts
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useLayoutEffect, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth }     from "@/context/AuthContext";
 
 export function useNavbar() {
   const pathname = usePathname();
   const { user, isLoggedIn, isLoading, logout } = useAuth();
+
+  // ✅ isMounted بدون useEffect
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
+  // ✅ أغلق المنيو عند تغيير الصفحة
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobileMenuOpen(false);
   }, [pathname]);
 

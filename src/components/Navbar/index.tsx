@@ -6,10 +6,11 @@ import { useNavbar } from "./useNavbar";
 import NotificationBell from "@/components/NotificationBell";
 
 const NAV_LINKS = [
-  { href: "/#how-it-works", icon: "help", label: "كيف نعمل؟", authRequired: false },
-  { href: "/browse", icon: "explore", label: "تصفح الأغراض", authRequired: true },
-  { href: "/add-item", icon: "add_box", label: "تبرع الآن", authRequired: true },
-  { href: "/dashboard", icon: "account_circle", label: "حسابي", authRequired: true },
+  { href: "/#how-it-works", icon: "help",            label: "كيف نعمل؟",    authRequired: false },
+  { href: "/hubs",          icon: "warehouse",        label: "مراكز التسليم", authRequired: false }, // ✅ إضافة
+  { href: "/browse",        icon: "explore",          label: "تصفح الأغراض", authRequired: true  },
+  { href: "/add-item",      icon: "add_box",          label: "تبرع الآن",    authRequired: true  },
+  { href: "/dashboard",     icon: "account_circle",   label: "حسابي",        authRequired: true  },
 ] as const;
 
 export default function Navbar() {
@@ -30,7 +31,7 @@ export default function Navbar() {
 
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between"
+      className="fixed top-0 left-0 right-0 z-100 bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between"
       dir="rtl"
     >
       <div className="flex items-center gap-4 md:gap-10">
@@ -86,7 +87,6 @@ export default function Navbar() {
               <span className="text-xs font-black text-[#191c1d] group-hover:text-primary">{firstName}</span>
             </Link>
 
-            {/* ✅ NotificationBell — بين dashboard وlogout */}
             <NotificationBell />
 
             <button
@@ -117,7 +117,7 @@ export default function Navbar() {
 
       <div
         className={`absolute top-full left-0 right-0 bg-white border-b border-[#edeeef] shadow-lg md:hidden transition-all duration-300 overflow-hidden ${
-          isMobileMenuOpen ? "max-h-[500px] opacity-100 py-4" : "max-h-0 opacity-0 py-0"
+          isMobileMenuOpen ? "max-h-125 opacity-100 py-4" : "max-h-0 opacity-0 py-0"
         }`}
       >
         <div className="flex flex-col gap-1 px-6 font-bold text-sm">
@@ -141,7 +141,6 @@ export default function Navbar() {
             <>
               <div className="h-px w-full bg-gray-100 my-1" />
 
-              {/* ✅ NotificationBell في Mobile Menu */}
               <div className="flex items-center gap-2 p-3">
                 <NotificationBell />
                 <span className="text-sm text-gray-600 font-bold">الإشعارات</span>

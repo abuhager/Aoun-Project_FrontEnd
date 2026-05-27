@@ -95,8 +95,10 @@ export function useGlobalRating() {
     setRatingLoading(true);
 
     try {
-      await axiosInstance.post(`/api/items/rate/${selectedItem._id}`, {
-        rating,
+      // ✅ الـ endpoint الصحيح + تحويل 5 نجوم → 10 نقاط
+      await axiosInstance.post(`/api/ratings`, {
+        itemId: selectedItem._id,
+        score:  rating * 2,
       });
 
       resetRatingState();

@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useNavbar } from "./useNavbar";
+import NotificationBell from "@/components/NotificationBell";
 
 const NAV_LINKS = [
   { href: "/#how-it-works", icon: "help", label: "كيف نعمل؟", authRequired: false },
@@ -85,6 +86,9 @@ export default function Navbar() {
               <span className="text-xs font-black text-[#191c1d] group-hover:text-primary">{firstName}</span>
             </Link>
 
+            {/* ✅ NotificationBell — بين dashboard وlogout */}
+            <NotificationBell />
+
             <button
               onClick={handleLogout}
               title="تسجيل الخروج"
@@ -136,6 +140,15 @@ export default function Navbar() {
           ) : isLoggedIn ? (
             <>
               <div className="h-px w-full bg-gray-100 my-1" />
+
+              {/* ✅ NotificationBell في Mobile Menu */}
+              <div className="flex items-center gap-2 p-3">
+                <NotificationBell />
+                <span className="text-sm text-gray-600 font-bold">الإشعارات</span>
+              </div>
+
+              <div className="h-px w-full bg-gray-100 my-1" />
+
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 p-3 rounded-xl text-red-500 hover:bg-red-50 text-right transition-colors"

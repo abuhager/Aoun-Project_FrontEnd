@@ -3,18 +3,16 @@
 
 import axiosInstance from './axiosInstance';
 import type {
-  SendOtpRequest,
-  SendOtpResponse,
-  VerifyOtpResponse,
+  SendPhoneOtpRequest,    // ✅ اسم جديد
+  SendPhoneOtpResponse,   // ✅ اسم جديد
+  VerifyPhoneOtpResponse, // ✅ اسم جديد
 } from '@/types/phone.types';
 
 // ─── إرسال OTP عبر WhatsApp ───────────────────────────────────
-// يتطلب: المستخدم مسجّل دخول (accessToken في الذاكرة)
-// axiosInstance.ts interceptor يُرفق الـ token تلقائياً
 export async function sendPhoneOtp(
-  payload: SendOtpRequest
-): Promise<SendOtpResponse> {
-  const { data } = await axiosInstance.post<SendOtpResponse>(
+  payload: SendPhoneOtpRequest               // ✅
+): Promise<SendPhoneOtpResponse> {           // ✅
+  const { data } = await axiosInstance.post<SendPhoneOtpResponse>(
     '/api/phone/send-otp',
     payload
   );
@@ -22,12 +20,10 @@ export async function sendPhoneOtp(
 }
 
 // ─── التحقق من الـ OTP ─────────────────────────────────────────
-// عند النجاح: Backend يرفع trustLevel إلى 2 في DB
-// requiresRefresh: true ← يجب استدعاء /refresh-token لتحديث JWT
 export async function verifyPhoneOtp(
   otp: string
-): Promise<VerifyOtpResponse> {
-  const { data } = await axiosInstance.post<VerifyOtpResponse>(
+): Promise<VerifyPhoneOtpResponse> {         // ✅
+  const { data } = await axiosInstance.post<VerifyPhoneOtpResponse>(
     '/api/phone/verify-otp',
     { otp }
   );

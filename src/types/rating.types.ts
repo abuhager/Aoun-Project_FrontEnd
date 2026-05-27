@@ -1,13 +1,30 @@
 // src/types/rating.types.ts
-export type RatingValue = 1 | 2 | 3 | 4 | 5;
+export type RatingScore = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10; // ✅ 1-10
 
-export interface RatingPayload {
-  rating: RatingValue;
+export interface SubmitRatingPayload {
+  itemId:   string;
+  score:    RatingScore;
+  comment?: string;
 }
 
-export interface RatingResponse {
-  msg:        string;
-  trustScore: number; // الـ trustScore الجديد للمتبرع
+export interface SubmitRatingResponse {
+  msg:    string;
+  rating: {
+    _id:        string;
+    score:      RatingScore;
+    comment:    string;
+    trustDelta: number;
+    createdAt:  string;
+  };
+}
+
+export interface UserRating {
+  _id:       string;
+  score:     RatingScore;
+  comment:   string;
+  createdAt: string;
+  item:      { _id: string; title: string };
+  rater:     { _id: string; name: string; avatar?: string };
 }
 
 export interface RatingPrompt {

@@ -21,6 +21,7 @@ export type ReportStatus = 'pending' | 'reviewed' | 'dismissed' | 'actioned';
 export interface CreateReportPayload {
   reportedUserId: string;
   itemId?:        string;
+  detail?:        string;
   reason:         ReportReason;
   details?:       string; // ✅ details مش detail — مطابقة Backend
 }

@@ -1,6 +1,4 @@
 // src/lib/api/itemApi.ts
-// ✅ Phase 1 Fix:
-//    Bug #1 — reportUser: URL مُصلَح + userId في الـ path param
 
 import axiosInstance from './axiosInstance';
 import type {
@@ -11,9 +9,8 @@ import type {
   CreateItemPayload,
 } from '@/types/item.types';
 import type { PaginationQuery } from '@/types/api.types';
-import type { CreateReportPayload } from '@/types/report.types';
 
-// ── جلب الأغراض (مع فلتر وpagination) ────────────────────────
+// ── جلب الأغراض ──────────────────────────────────────────────
 export async function getItems(params?: PaginationQuery): Promise<GetItemsResponse> {
   const { data } = await axiosInstance.get<GetItemsResponse>('/api/items', { params });
   return data;
@@ -71,18 +68,6 @@ export async function rateItem(id: string, rating: number): Promise<{ msg: strin
   return data;
 }
 
-// ✅ Fix Bug #1 — URL مُصلَح: /report/:userId (param) بدل /report-user (body)
-// Backend يقرأ: req.params.userId + req.body.reason
-
-
-export async function reportUser(payload: CreateReportPayload): Promise<{ msg: string }> {
-  const { reportedUserId, reason, detail, itemId } = payload;
-  const { data } = await axiosInstance.post(
-    `/api/items/report/${reportedUserId}`,
-    { reason, detail, itemId }
-  );
-  return data;
-}
 // ── تقييم معلق ───────────────────────────────────────────────
 export async function getPendingRating(): Promise<{ pendingRating: Item | null }> {
   const { data } = await axiosInstance.get<{ pendingRating: Item | null }>(

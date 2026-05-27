@@ -1,23 +1,24 @@
 "use client";
 
-import Image from "next/image";
+import Image        from "next/image";
 import { useRouter, useParams } from "next/navigation";
-import { useEditItem } from "./hooks/useEditItem";
-import { HubSelector } from "@/components/HubSelector"; // ✅ إضافة
+import { useEditItem }   from "./hooks/useEditItem";
+import { HubSelector }   from "@/components/HubSelector";
+
+const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 
 export default function EditItemPage() {
-  const router = useRouter();
-  const params = useParams();
-  const itemId = params.id as string;
+  const router  = useRouter();
+  const params  = useParams();
+  const itemId  = params.id as string;
 
   const {
     formData, preview, loading, fetching, message,
     handleChange, handleImageChange, handleSubmit,
-    handleHubChange, // ✅ إضافة
+    handleHubChange,
     CONDITIONS, CATEGORIES, CITIES,
   } = useEditItem(itemId);
 
-  // ── Skeleton أثناء الجلب ──
   if (fetching) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-surface">
@@ -30,7 +31,6 @@ export default function EditItemPage() {
     <div className="bg-surface min-h-screen pb-20 md:pb-32 text-[#191c1d]" dir="rtl">
       <main className="pt-20 md:pt-24 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto font-body">
 
-        {/* ── العنوان ── */}
         <div className="mb-6 md:mb-10 text-center">
           <h1 className="text-2xl md:text-3xl font-extrabold font-headline mb-2">
             تعديل التبرع
@@ -51,7 +51,7 @@ export default function EditItemPage() {
                   (اختياري — إذا لم تختر ستبقى الصورة الحالية)
                 </span>
               </label>
-              <div className={`border-2 border-dashed rounded-2xl p-6 md:p-10 flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden ${
+              <div className={`relative border-2 border-dashed rounded-2xl p-6 md:p-10 flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden ${
                 preview
                   ? "border-primary bg-emerald-50"
                   : "border-outline-variant bg-surface-container-low hover:bg-[#edeeef]"

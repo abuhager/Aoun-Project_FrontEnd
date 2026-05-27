@@ -1,19 +1,19 @@
 "use client";
-import Link from "next/link";
+import Link  from "next/link";
 import Image from "next/image";
 import type { Item } from "../hooks/useDashboard";
 
 interface ItemsTableProps {
-  items: Item[];
-  activeTab: "donations" | "requests";
-  onDelete: (id: string, status: string) => void;
-  onCancelBooking: (id: string) => void;
+  items:                Item[];
+  activeTab:            "donations" | "requests";
+  onDelete:             (id: string, status: string) => void;
+  onCancelBooking:      (id: string) => void;
   onDonorCancelBooking: (id: string) => void;
-  onEdit: (id: string) => void;
-  onOpenOtp: (item: Item) => void;
+  onEdit:               (id: string) => void;
+  onOpenOtp:            (item: Item) => void;
+  onReport?:            (item: Item, target: 'donor' | 'receiver') => void;  // ✅ target
 }
 
-// مساعد — يستخرج اسم المحجوز سواء bookedBy كان string أو object
 function getBookedByName(bookedBy: Item['bookedBy']): string {
   if (!bookedBy) return '';
   if (typeof bookedBy === 'string') return bookedBy;
@@ -28,6 +28,7 @@ export function ItemsTable({
   onDonorCancelBooking,
   onEdit,
   onOpenOtp,
+  onReport,
 }: ItemsTableProps) {
   if (items.length === 0) {
     return (
@@ -50,18 +51,12 @@ export function ItemsTable({
         >
           {/* صورة الغرض */}
           <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
-  {item.imageUrl ? (
-    <Image
-      src={item.imageUrl}
-      alt={item.title}
-      fill
-      sizes="64px"
-      className="object-cover"
-    />
-  ) : (
-    <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
-  )}
-</div>
+            {item.imageUrl ? (
+              <Image src={item.imageUrl} alt={item.title} fill sizes="64px" className="object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
+            )}
+          </div>
 
           {/* معلومات الغرض */}
           <div className="flex-1 min-w-0">
@@ -75,7 +70,6 @@ export function ItemsTable({
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <StatusBadge status={item.status} />
 
-              {/* رسالة OTP للمستلم */}
               {item.status === "محجوز" && activeTab === "requests" && (
                 <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-xl text-xs border border-blue-100 flex items-center gap-1">
                   <span>📧</span>
@@ -83,14 +77,12 @@ export function ItemsTable({
                 </div>
               )}
 
-              {/* تقييم منتظر */}
               {item.status === "تم التسليم" && !item.isRated && (
                 <span className="text-xs text-orange-500 font-semibold bg-orange-50 px-2 py-0.5 rounded-lg">
                   ⭐ بانتظار تقييمك
                 </span>
               )}
 
-              {/* من حجز الغرض — للمتبرع */}
               {activeTab === "donations" && item.status === "محجوز" && item.bookedBy && (
                 <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-lg">
                   محجوز بواسطة: {getBookedByName(item.bookedBy)}
@@ -146,6 +138,29 @@ export function ItemsTable({
                 ❌ إلغاء الحجز
               </button>
             )}
+
+            {/* ✅ المستلم يبلّغ على المتبرع */}
+            {activeTab === "requests" && item.status === "تم التسليم" && onReport && (
+              <button
+                onClick={() => onReport(item, 'donor')}
+                className="text-xs bg-red-50 text-red-400 px-3 py-1.5 rounded-xl font-bold hover:bg-red-100 hover:text-red-600 transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">flag</span>
+                إبلاغ عن المتبرع
+              </button>
+            )}
+
+            {/* ✅ المتبرع يبلّغ على المستلم */}
+            {activeTab === "donations" && item.status === "تم التسليم" && onReport && (
+              <button
+                onClick={() => onReport(item, 'receiver')}
+                className="text-xs bg-red-50 text-red-400 px-3 py-1.5 rounded-xl font-bold hover:bg-red-100 hover:text-red-600 transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">flag</span>
+                إبلاغ عن المستلم
+              </button>
+            )}
+
           </div>
         </div>
       ))}

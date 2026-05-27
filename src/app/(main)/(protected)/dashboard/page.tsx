@@ -1,15 +1,14 @@
-// src/app/(main)/(protected)/dashboard/page.tsx
-// ✅ Phase 1 Fix: Bug #20 — debug info محجوب بـ NODE_ENV فقط
 'use client';
 
-import Navbar from '@/components/Navbar';
-import { useDashboard } from './hooks/useDashboard';
-import { ActionModal }  from './components/ActionModal';
-import { Toast }        from './components/Toast';
-import { ProfileCard }  from './components/ProfileCard';
-import { StatsGrid }    from './components/StatsGrid';
-import { ItemsTable }   from './components/ItemsTable';
-import { OtpModal }     from './components/OtpModal';
+import { useState } from 'react';
+import { useDashboard }  from './hooks/useDashboard';
+import { ActionModal }   from './components/ActionModal';
+import { Toast }         from './components/Toast';
+import { ProfileCard }   from './components/ProfileCard';
+import { StatsGrid }     from './components/StatsGrid';
+import { ItemsTable }    from './components/ItemsTable';
+import { OtpModal }      from './components/OtpModal';
+import ReportModal       from '@/components/ReportModal';
 
 export default function DashboardPage() {
   const {
@@ -20,6 +19,12 @@ export default function DashboardPage() {
     handleEdit, handleConfirmDelivery,
     openOtpModal, closeOtpModal,
   } = useDashboard();
+
+  const [reportTarget, setReportTarget] = useState<{
+    userId:   string;
+    userName: string;
+    itemId?:  string;
+  } | null>(null);
 
   if (loading) {
     return (
@@ -35,7 +40,6 @@ export default function DashboardPage() {
         <p className="text-red-400 text-sm font-bold">
           حدث خطأ في تحميل البيانات، يرجى تحديث الصفحة
         </p>
-        {/* ✅ Fix Bug #20 — debug info في dev فقط */}
         {process.env.NODE_ENV === 'development' && error && (
           <pre className="text-xs text-yellow-400 bg-gray-900 rounded p-4 max-w-lg w-full overflow-auto text-left dir-ltr">
             {error}
@@ -63,9 +67,11 @@ export default function DashboardPage() {
           onCancel={() => setConfirmModal((p) => ({ ...p, open: false }))}
         />
       )}
+
       {toast && (
         <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />
       )}
+
       {showOtpModal && selectedItem && (
         <OtpModal
           item={selectedItem}
@@ -75,6 +81,15 @@ export default function DashboardPage() {
           onOtpChange={setOtp}
           onSubmit={handleConfirmDelivery}
           onClose={closeOtpModal}
+        />
+      )}
+
+      {reportTarget && (
+        <ReportModal
+          reportedUserId={reportTarget.userId}
+          reportedUserName={reportTarget.userName}
+          itemId={reportTarget.itemId}
+          onClose={() => setReportTarget(null)}
         />
       )}
 
@@ -117,6 +132,19 @@ export default function DashboardPage() {
             onDonorCancelBooking={handleDonorCancelBooking}
             onEdit={handleEdit}
             onOpenOtp={openOtpModal}
+            onReport={(item, target) => {              // ✅ target: 'donor' | 'receiver'
+              const isDonorTarget = target === 'donor';
+
+              const userId = isDonorTarget
+                ? (item.donor?._id ?? '')
+                : (typeof item.bookedBy === 'object' ? item.bookedBy?._id ?? '' : '');
+
+              const userName = isDonorTarget
+                ? (item.donor?.name   ?? 'المتبرع')
+                : (typeof item.bookedBy === 'object' ? item.bookedBy?.name ?? 'المستلم' : 'المستلم');
+
+              setReportTarget({ userId, userName, itemId: item._id });
+            }}
           />
         </section>
       </main>

@@ -3,7 +3,6 @@ import Link  from "next/link";
 import Image from "next/image";
 import type { Item } from "../hooks/useDashboard";
 
-// ✅ نوع DashboardItem مستعار من Item
 type DashboardItem = Item;
 
 interface ItemsTableProps {
@@ -15,7 +14,7 @@ interface ItemsTableProps {
   onEdit:               (id: string) => void;
   onOpenOtp:            (item: DashboardItem) => void;
   onReport?:            (item: DashboardItem, target: 'donor' | 'receiver') => void;
-  onAppeal?:            (reportId: string) => void;  // ✅ إضافة
+  onAppeal?:            (reportId: string) => void;
 }
 
 function getBookedByName(bookedBy: DashboardItem['bookedBy']): string {
@@ -25,15 +24,9 @@ function getBookedByName(bookedBy: DashboardItem['bookedBy']): string {
 }
 
 export function ItemsTable({
-  items,
-  activeTab,
-  onDelete,
-  onCancelBooking,
-  onDonorCancelBooking,
-  onEdit,
-  onOpenOtp,
-  onReport,
-  onAppeal,  // ✅ إضافة
+  items, activeTab,
+  onDelete, onCancelBooking, onDonorCancelBooking,
+  onEdit, onOpenOtp, onReport, onAppeal,
 }: ItemsTableProps) {
   if (items.length === 0) {
     return (
@@ -91,6 +84,14 @@ export function ItemsTable({
               {activeTab === "donations" && item.status === "محجوز" && item.bookedBy && (
                 <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-lg">
                   محجوز بواسطة: {getBookedByName(item.bookedBy)}
+                </span>
+              )}
+
+              {/* ✅ badge بلاغ معلّق */}
+              {item.reportId && (
+                <span className="text-xs text-red-500 font-semibold bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">warning</span>
+                  بلاغ معلّق بحقك
                 </span>
               )}
             </div>
@@ -166,20 +167,20 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* ✅ المتبرع يعترض على بلاغ — يحتاج reportId من الـ item */}
-            {activeTab === "donations" && item.reportId && onAppeal && (
+            {/* ✅ زر الاعتراض — يظهر في donations و requests كليهما */}
+            {item.reportId && onAppeal && (
               <button
                 onClick={() => onAppeal(item.reportId!)}
                 className="text-xs bg-yellow-50 text-yellow-600 px-3 py-1.5 rounded-xl font-bold hover:bg-yellow-100 transition-colors flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-sm">gavel</span>
-                اعتراض
+                اعتراض على البلاغ
               </button>
             )}
 
           </div>
         </div>
-      ))}
+      ))}\
     </div>
   );
 }

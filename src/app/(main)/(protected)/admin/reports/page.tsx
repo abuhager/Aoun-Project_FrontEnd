@@ -40,22 +40,24 @@ export default function AdminReportsPage() {
   useEffect(() => { loadReports(); }, [loadReports]);
 
   const resolve = async (id: string, action: string) => {
-    try {
-      await axiosInstance.post(`/api/admin/reports/${id}/resolve`, { action });
-      showToast(
-        action === "warn"    ? "✅ تم إرسال التحذير للمستخدم"  :
-        action === "ban"     ? "🚫 تم حظر المستخدم"            :
-                               "✅ تم رفض البلاغ",
-        true
-      );
-      await loadReports();
-    } catch (err: unknown) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.msg ?? "حدث خطأ"
-        : "حدث خطأ";
-      showToast(msg, false);
-    }
-  };
+  try {
+    await axiosInstance.post(`/api/admin/reports/${id}/resolve`, { action });
+    showToast(
+      action === "warn"    ? "✅ تم إرسال التحذير للمستخدم"  :
+      action === "ban"     ? "🚫 تم حظر المستخدم"            :
+                             "✅ تم رفض البلاغ",
+      true
+    );
+    // ✅ احذف البلاغ من الـ state فوراً (Optimistic) + ريفرش
+    setReports((prev) => prev.filter((r) => r._id !== id));
+    await loadReports();
+  } catch (err: unknown) {
+    const msg = axios.isAxiosError(err)
+      ? err.response?.data?.msg ?? "حدث خطأ"
+      : "حدث خطأ";
+    showToast(msg, false);
+  }
+};
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -114,15 +116,15 @@ export default function AdminReportsPage() {
                   )}
 
                   {/* ✅ عرض الاعتراض إذا موجود */}
-                  {r.appealText && (
-                    <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
-                      <p className="text-[10px] font-black text-yellow-700 flex items-center gap-1 mb-1">
-                        <span className="material-symbols-outlined text-sm">gavel</span>
-                        اعتراض المستخدم:
-                      </p>
-                      <p className="text-[11px] text-yellow-800">{r.appealText}</p>
-                    </div>
-                  )}
+                  {r.appealText ? (
+  <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">
+    ⚖️ طعن المستخدم
+  </span>
+) : (
+  <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-bold">
+    ✅ انتهت مهلة الطعن
+  </span>
+)}
 
                   <p className="text-[10px] text-gray-400">
                     {new Date(r.createdAt).toLocaleDateString("ar-EG")}

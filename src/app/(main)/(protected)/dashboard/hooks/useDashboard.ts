@@ -1,16 +1,14 @@
 // src/app/(main)/(protected)/dashboard/hooks/useDashboard.ts
-// يستخدم /api/items/me (endpoint واحد يرجع كل شيء)
-import { useEffect, useState, useCallback, useRef, FormEvent } from 'react'; // ✅ Fix Bug #4 #12 — أضيف useRef
+import { useEffect, useState, useCallback, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import axiosInstance from '@/lib/api/axiosInstance';
 import axios from 'axios';
 import type { DashboardItem, MyItemsResponse } from '@/types/item.types';
 
-// ✅ نستخدم DashboardItem من الـ types بدل تعريف محلي
 export type { DashboardItem as Item };
 
 interface DashboardData {
-  user: MyItemsResponse['user'];
+  user:        MyItemsResponse['user'];
   myDonations: DashboardItem[];
   myRequests:  DashboardItem[];
 }
@@ -22,7 +20,11 @@ interface ConfirmModalState {
   onConfirm: () => void;
 }
 
-// ── helpers ────────────────────────────────────────────
+interface AppealModalState {
+  open:     boolean;
+  reportId: string;
+}
+
 export function getBookedByName(val: DashboardItem['bookedBy']): string {
   if (!val) return '';
   return val.name ?? '';
@@ -30,6 +32,7 @@ export function getBookedByName(val: DashboardItem['bookedBy']): string {
 
 export function useDashboard() {
   const router = useRouter();
+
   const [data,      setData]      = useState<DashboardData | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState<string | null>(null);
@@ -46,17 +49,17 @@ export function useDashboard() {
     open: false, title: '', message: '', onConfirm: () => {},
   });
 
-  // ✅ Fix Bug #12 — AbortController ref لإلغاء الطلب عند unmount
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const [appealModal, setAppealModal] = useState<AppealModalState>({
+    open: false, reportId: '',
+  });
 
-  // ✅ Fix Bug #4 — timeout IDs ref لتنظيف كل setTimeout عند unmount
-  const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutIdsRef      = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // ✅ ref لـ reportId لتجنب stale closure في onAppealSuccess
+  const appealReportIdRef  = useRef<string>('');
 
   useEffect(() => {
-    // ✅ Fix Bug #12 — إلغاء أي طلب سابق قبل بدء جديد
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -64,41 +67,33 @@ export function useDashboard() {
       try {
         const { data: res } = await axiosInstance.get<MyItemsResponse>(
           '/api/items/me',
-          { signal: controller.signal }, // ✅ Fix Bug #12 — ربط الطلب بالـ controller
+          { signal: controller.signal },
         );
-
-        if (controller.signal.aborted) return; // ✅ Fix Bug #12 — لا تُحدِّث state بعد unmount
-
+        if (controller.signal.aborted) return;
         setData({
           user:        res.user,
           myDonations: res.myDonations ?? [],
           myRequests:  res.myRequests  ?? [],
         });
       } catch (err: unknown) {
-        // ✅ Fix Bug #12 — تجاهل AbortError (طبيعي عند unmount أو re-fetch)
         if (err instanceof Error && err.name === 'AbortError') return;
-
         if (!controller.signal.aborted) {
           if (axios.isAxiosError(err)) {
             const status  = err.response?.status;
             const message = err.response?.data?.msg ?? err.message;
-            console.error('[Dashboard] API Error:', { status, message, url: err.config?.url });
-            setError(`${status ?? 'Network'}: ${message} (${err.config?.url})`);
+            setError(`${status ?? 'Network'}: ${message}`);
           } else {
             setError(String(err));
           }
           setData(null);
         }
       } finally {
-        if (!controller.signal.aborted) { // ✅ Fix Bug #12 — فقط إذا لم يُلغَ
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchData();
 
-    // ✅ Fix Bug #12 + #4 — cleanup شامل عند unmount
     return () => {
       abortControllerRef.current?.abort();
       timeoutIdsRef.current.forEach(clearTimeout);
@@ -106,11 +101,10 @@ export function useDashboard() {
     };
   }, []);
 
-  // ✅ Fix Bug #4 — تسجيل الـ timeout في ref بدل إطلاقه حراً
   const showToast = useCallback((msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
     const id = setTimeout(() => setToast(null), 3500);
-    timeoutIdsRef.current.push(id); // ✅ Fix Bug #4 — يُنظَّف في cleanup
+    timeoutIdsRef.current.push(id);
   }, []);
 
   const handleDelete = useCallback((id: string, status: string) => {
@@ -222,6 +216,36 @@ export function useDashboard() {
     }
   }, [selectedItem, otp, closeOtpModal, showToast]);
 
+  // ── Appeal handlers ────────────────────────────────────────
+
+  const openAppealModal = useCallback((reportId: string) => {
+    appealReportIdRef.current = reportId; // ✅ حفظ في ref لتجنب stale closure
+    setAppealModal({ open: true, reportId });
+  }, []);
+
+  const closeAppealModal = useCallback(() => {
+    setAppealModal({ open: false, reportId: '' });
+  }, []);
+
+  // ✅ يقرأ من ref — لا stale closure مهما كان ترتيب الـ renders
+  const onAppealSuccess = useCallback(() => {
+    const targetReportId = appealReportIdRef.current;
+    setData(prev => {
+      if (!prev) return prev;
+      const clearReport = (items: DashboardItem[]) =>
+        items.map(i =>
+          i.reportId === targetReportId ? { ...i, reportId: undefined } : i
+        );
+      return {
+        ...prev,
+        myDonations: clearReport(prev.myDonations),
+        myRequests:  clearReport(prev.myRequests),
+      };
+    });
+    closeAppealModal();
+    showToast('تم تقديم اعتراضك بنجاح ✅', 'success');
+  }, [closeAppealModal, showToast]);
+
   return {
     data, loading, error,
     activeTab, setActiveTab,
@@ -233,5 +257,6 @@ export function useDashboard() {
     handleDelete, handleCancelBooking, handleDonorCancelBooking,
     handleEdit, handleConfirmDelivery,
     openOtpModal, closeOtpModal,
+    appealModal, openAppealModal, closeAppealModal, onAppealSuccess,
   };
 }

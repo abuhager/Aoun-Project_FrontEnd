@@ -1,17 +1,44 @@
 // src/app/(main)/(protected)/dashboard/page.tsx
 'use client';
 
-import { useState }      from 'react';
-import { useDashboard }  from './hooks/useDashboard';
-import { ActionModal }   from './components/ActionModal';
-import { Toast }         from './components/Toast';
-import { ProfileCard }   from './components/ProfileCard';
-import { StatsGrid }     from './components/StatsGrid';
-import { ItemsTable }    from './components/ItemsTable';
-import { OtpModal }      from './components/OtpModal';
-import ReportModal       from '@/components/ReportModal';
-import AppealModal       from '@/components/AppealModal';  // ✅ إضافة
+import { useState }     from 'react';
+import { useDashboard } from './hooks/useDashboard';
+import { ActionModal }  from './components/ActionModal';
+import { Toast }        from './components/Toast';
+import { ProfileCard }  from './components/ProfileCard';
+import { StatsGrid }    from './components/StatsGrid';
+import { ItemsTable }   from './components/ItemsTable';
+import { OtpModal }     from './components/OtpModal';
+import ReportModal      from '@/components/ReportModal';
+import AppealModal      from '@/components/AppealModal';
 
+// ✅ Skeleton component محلي — بدل spinner
+function DashboardSkeleton() {
+  return (
+    <div className="bg-surface min-h-screen pb-16 pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6" dir="rtl">
+      {/* Profile skeleton */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4 animate-pulse">
+        <div className="w-16 h-16 rounded-full bg-gray-100 flex-shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-5 bg-gray-100 rounded w-40" />
+          <div className="h-3 bg-gray-100 rounded w-56" />
+        </div>
+      </div>
+      {/* Stats skeleton */}
+      <div className="grid grid-cols-3 gap-3 animate-pulse">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 h-20" />
+        ))}
+      </div>
+      {/* Items skeleton */}
+      <div className="space-y-3 animate-pulse">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 h-24" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const {
@@ -21,41 +48,28 @@ export default function DashboardPage() {
     handleDelete, handleCancelBooking, handleDonorCancelBooking,
     handleEdit, handleConfirmDelivery,
     openOtpModal, closeOtpModal,
+    appealModal, openAppealModal, closeAppealModal, onAppealSuccess,
   } = useDashboard();
 
-  // ✅ Report state
   const [reportTarget, setReportTarget] = useState<{
     userId:   string;
     userName: string;
     itemId?:  string;
   } | null>(null);
 
-  // ✅ Appeal state
-  const [appealReportId, setAppealReportId] = useState<string | null>(null);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-surface">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   if (!data) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-surface gap-3 p-8">
-        <p className="text-red-400 text-sm font-bold">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-surface gap-3 p-8" dir="rtl">
+        <span className="material-symbols-outlined text-5xl text-gray-200">error_outline</span>
+        <p className="text-gray-400 text-sm font-bold">
           حدث خطأ في تحميل البيانات، يرجى تحديث الصفحة
         </p>
         {process.env.NODE_ENV === 'development' && error && (
-          <pre className="text-xs text-yellow-400 bg-gray-900 rounded p-4 max-w-lg w-full overflow-auto text-left dir-ltr">
+          <pre className="text-xs text-yellow-400 bg-gray-900 rounded p-4 max-w-lg w-full overflow-auto text-left">
             {error}
           </pre>
-        )}
-        {process.env.NODE_ENV === 'development' && (
-          <p className="text-gray-500 text-xs">
-            API: {process.env.NEXT_PUBLIC_API_URL ?? 'غير معرّف'}
-          </p>
         )}
       </div>
     );
@@ -72,7 +86,7 @@ export default function DashboardPage() {
           message={confirmModal.message}
           isDanger
           onConfirm={confirmModal.onConfirm}
-          onCancel={() => setConfirmModal((p) => ({ ...p, open: false }))}
+          onCancel={() => setConfirmModal(p => ({ ...p, open: false }))}
         />
       )}
 
@@ -92,7 +106,6 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ✅ Report Modal */}
       {reportTarget && (
         <ReportModal
           reportedUserId={reportTarget.userId}
@@ -102,11 +115,11 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ✅ Appeal Modal */}
-      {appealReportId && (
+      {appealModal.open && (
         <AppealModal
-          reportId={appealReportId}
-          onClose={() => setAppealReportId(null)}
+          reportId={appealModal.reportId}
+          onClose={closeAppealModal}
+          onSuccess={onAppealSuccess}
         />
       )}
 
@@ -115,7 +128,7 @@ export default function DashboardPage() {
         <ProfileCard
           name={data.user?.name}
           email={data.user?.email}
-  trustScore={data.user?.gamification?.trustScore}
+          trustScore={data.user?.gamification?.trustScore}
         />
         <StatsGrid
           trustScore={data.user?.gamification?.trustScore}
@@ -124,15 +137,16 @@ export default function DashboardPage() {
         />
 
         <section className="space-y-4">
+          {/* Tabs */}
           <div className="flex gap-4 border-b border-gray-100">
-            {(['donations', 'requests'] as const).map((t) => (
+            {(['donations', 'requests'] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setActiveTab(t)}
                 className={`pb-3 text-sm font-black transition-all ${
                   activeTab === t
                     ? 'text-primary border-b-2 border-primary'
-                    : 'text-gray-400'
+                    : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
                 {t === 'donations'
@@ -151,16 +165,16 @@ export default function DashboardPage() {
             onEdit={handleEdit}
             onOpenOtp={openOtpModal}
             onReport={(item, target) => {
-              const isDonorTarget = target === 'donor';
-              const userId   = isDonorTarget
+              const isDonor  = target === 'donor';
+              const userId   = isDonor
                 ? (item.donor?._id ?? '')
                 : (typeof item.bookedBy === 'object' ? item.bookedBy?._id ?? '' : '');
-              const userName = isDonorTarget
+              const userName = isDonor
                 ? (item.donor?.name ?? 'المتبرع')
                 : (typeof item.bookedBy === 'object' ? item.bookedBy?.name ?? 'المستلم' : 'المستلم');
               setReportTarget({ userId, userName, itemId: item._id });
             }}
-            onAppeal={(reportId) => setAppealReportId(reportId)}  // ✅ إضافة
+            onAppeal={openAppealModal}
           />
         </section>
       </main>

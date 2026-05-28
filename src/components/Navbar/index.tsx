@@ -6,12 +6,12 @@ import { useNavbar } from "./useNavbar";
 import NotificationBell from "@/components/NotificationBell";
 
 const NAV_LINKS = [
-  { href: "/#how-it-works", icon: "help",            label: "كيف نعمل؟",    authRequired: false },
-  { href: "/hubs",          icon: "warehouse",        label: "مراكز التسليم", authRequired: false }, // ✅ إضافة
-  { href: "/leaderboard",   icon: "leaderboard",    label: "المتصدرون",    authRequired: false }, // ✅ جديد
-  { href: "/browse",        icon: "explore",          label: "تصفح الأغراض", authRequired: true  },
-  { href: "/add-item",      icon: "add_box",          label: "تبرع الآن",    authRequired: true  },
-  { href: "/dashboard",     icon: "account_circle",   label: "حسابي",        authRequired: true  },
+  { href: "/#how-it-works", icon: "help",          label: "كيف نعمل؟",    authRequired: false },
+  { href: "/hubs",          icon: "warehouse",      label: "مراكز التسليم", authRequired: false },
+  { href: "/leaderboard",   icon: "leaderboard",    label: "المتصدرون",    authRequired: false },
+  { href: "/browse",        icon: "explore",        label: "تصفح الأغراض", authRequired: true  },
+  { href: "/add-item",      icon: "add_box",        label: "تبرع الآن",    authRequired: true  },
+  { href: "/dashboard",     icon: "account_circle", label: "حسابي",        authRequired: true  },
 ] as const;
 
 export default function Navbar() {
@@ -20,21 +20,43 @@ export default function Navbar() {
     isLoggedIn,
     isMounted,
     firstName,
+    userRole,
+    isLogoOnlyPage,
     isMobileMenuOpen,
     setIsMobileMenuOpen,
     handleLogout,
   } = useNavbar();
+
+  // ✅ Logo فقط في صفحات Auth
+if (isLogoOnlyPage) {
+  return (
+    <nav
+      className="fixed top-0 left-0 right-0 z-100 bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-start"
+      dir="rtl"
+    >
+      <Link href="/" className="flex items-center gap-2 group">
+        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
+          <span className="material-symbols-outlined text-white text-2xl">volunteer_activism</span>
+        </div>
+        <span className="text-xl font-black tracking-tighter text-[#191c1d]">عـون</span>
+      </Link>
+    </nav>
+  );
+}
 
   const visibleLinks = NAV_LINKS.filter((l) => {
     if (!l.authRequired) return true;
     return isMounted ? isLoggedIn : false;
   });
 
+  const isAdmin = isMounted && userRole === "admin";
+
   return (
     <nav
       className="fixed top-0 left-0 right-0 z-100 bg-white/80 backdrop-blur-md border-b border-[#edeeef] px-4 md:px-8 h-16 md:h-20 flex items-center justify-between"
       dir="rtl"
     >
+      {/* ── Logo ── */}
       <div className="flex items-center gap-4 md:gap-10">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
@@ -43,6 +65,7 @@ export default function Navbar() {
           <span className="text-xl font-black tracking-tighter text-[#191c1d]">عـون</span>
         </Link>
 
+        {/* ── Desktop Links ── */}
         <div className="hidden md:flex items-center gap-6">
           {visibleLinks
             .filter((l) => l.href !== "/add-item" && l.href !== "/dashboard")
@@ -51,7 +74,9 @@ export default function Navbar() {
                 key={l.href}
                 href={l.href}
                 className={`flex items-center gap-1.5 text-sm font-black transition-all ${
-                  pathname === l.href ? "text-primary" : "text-on-surface-variant hover:text-primary"
+                  pathname === l.href
+                    ? "text-primary"
+                    : "text-on-surface-variant hover:text-primary"
                 }`}
               >
                 <span className="material-symbols-outlined text-lg">{l.icon}</span>
@@ -61,11 +86,27 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* ── Desktop Actions ── */}
       <div className="hidden md:flex items-center gap-3">
         {!isMounted ? (
           <div className="w-24 h-10 rounded-full bg-gray-100 animate-pulse" />
         ) : isLoggedIn ? (
           <>
+            {/* ✅ زر الأدمن */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all ${
+                  pathname.startsWith("/admin")
+                    ? "bg-red-500 text-white shadow-md"
+                    : "bg-red-50 text-red-600 hover:bg-red-500 hover:text-white"
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
+                لوحة الإدارة
+              </Link>
+            )}
+
             {pathname !== "/add-item" && (
               <Link
                 href="/add-item"
@@ -79,13 +120,17 @@ export default function Navbar() {
             <Link
               href="/dashboard"
               className={`flex items-center gap-2 group px-2 py-1 rounded-xl transition-all ${
-                pathname === "/dashboard" ? "bg-primary/5 ring-1 ring-primary/20" : "hover:bg-gray-50"
+                pathname === "/dashboard"
+                  ? "bg-primary/5 ring-1 ring-primary/20"
+                  : "hover:bg-gray-50"
               }`}
             >
               <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/10">
                 <span className="material-symbols-outlined text-primary text-xl">account_circle</span>
               </div>
-              <span className="text-xs font-black text-[#191c1d] group-hover:text-primary">{firstName}</span>
+              <span className="text-xs font-black text-[#191c1d] group-hover:text-primary">
+                {firstName}
+              </span>
             </Link>
 
             <NotificationBell />
@@ -99,12 +144,16 @@ export default function Navbar() {
             </button>
           </>
         ) : (
-          <Link href="/login" className="bg-primary text-white px-6 py-2 rounded-full text-sm font-bold shadow-md">
+          <Link
+            href="/login"
+            className="bg-primary text-white px-6 py-2 rounded-full text-sm font-bold shadow-md"
+          >
             تسجيل الدخول
           </Link>
         )}
       </div>
 
+      {/* ── Mobile Toggle ── */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         aria-expanded={isMobileMenuOpen}
@@ -116,9 +165,10 @@ export default function Navbar() {
         </span>
       </button>
 
+      {/* ── Mobile Menu ── */}
       <div
         className={`absolute top-full left-0 right-0 bg-white border-b border-[#edeeef] shadow-lg md:hidden transition-all duration-300 overflow-hidden ${
-          isMobileMenuOpen ? "max-h-125 opacity-100 py-4" : "max-h-0 opacity-0 py-0"
+          isMobileMenuOpen ? "max-h-[600px] opacity-100 py-4" : "max-h-0 opacity-0 py-0"
         }`}
       >
         <div className="flex flex-col gap-1 px-6 font-bold text-sm">
@@ -128,7 +178,9 @@ export default function Navbar() {
               href={l.href}
               onClick={() => setIsMobileMenuOpen(false)}
               className={`flex items-center gap-2 p-3 rounded-xl transition-colors ${
-                pathname === l.href ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50"
+                pathname === l.href
+                  ? "bg-primary/10 text-primary"
+                  : "text-gray-600 hover:bg-gray-50"
               }`}
             >
               <span className="material-symbols-outlined text-lg">{l.icon}</span>
@@ -141,6 +193,22 @@ export default function Navbar() {
           ) : isLoggedIn ? (
             <>
               <div className="h-px w-full bg-gray-100 my-1" />
+
+              {/* ✅ Mobile — زر الأدمن */}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-2 p-3 rounded-xl transition-colors ${
+                    pathname.startsWith("/admin")
+                      ? "bg-red-100 text-red-600"
+                      : "text-red-500 hover:bg-red-50"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+                  لوحة الإدارة
+                </Link>
+              )}
 
               <div className="flex items-center gap-2 p-3">
                 <NotificationBell />

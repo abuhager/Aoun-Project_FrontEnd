@@ -3,6 +3,15 @@ import { useState, useCallback, useLayoutEffect, useSyncExternalStore } from "re
 import { usePathname } from "next/navigation";
 import { useAuth }     from "@/context/AuthContext";
 
+// صفحات Auth — يظهر فيها Logo فقط
+const LOGO_ONLY_PAGES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+];
+
 export function useNavbar() {
   const pathname = usePathname();
   const { user, isLoggedIn, isLoading, logout } = useAuth();
@@ -18,7 +27,6 @@ export function useNavbar() {
 
   // ✅ أغلق المنيو عند تغيير الصفحة
   useLayoutEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
@@ -27,7 +35,9 @@ export function useNavbar() {
     await logout();
   }, [logout]);
 
-  const firstName = user?.name?.split(" ")[0] ?? "حسابي";
+  const firstName      = user?.name?.split(" ")[0] ?? "حسابي";
+  const userRole       = user?.role ?? null;
+  const isLogoOnlyPage = LOGO_ONLY_PAGES.some((p) => pathname.startsWith(p));
 
   return {
     pathname,
@@ -35,6 +45,8 @@ export function useNavbar() {
     isLoading,
     isMounted,
     firstName,
+    userRole,
+    isLogoOnlyPage,
     isMobileMenuOpen,
     setIsMobileMenuOpen,
     handleLogout,

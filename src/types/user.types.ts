@@ -6,18 +6,27 @@ export type TrustLevel = 1 | 2;
 // ─── ما يُرجعه /api/auth/login و /api/auth/me ───────────────
 // ✅ متوافق مع authService.js بعد الإصلاح 2 و3
 // ❌ لا phone, لا isBanned, لا totalDonations, لا badges, لا updatedAt
+export interface Gamification {
+  trustScore:    number;
+  totalDonations: number;
+  level:         number;
+  title:         string;
+  badge:         string;
+  progress:      number;
+  pointsToNext:  number | null;
+}
 export interface AuthUser {
   _id:               string;
   name:              string;
   email:             string;
-  avatar?:           string;
+  avatar:            string;
   role:              UserRole;
-  trustScore:        number;
-  trustLevel:        TrustLevel;
+  trustLevel:        1 | 2;
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
   createdAt:         string;
+  gamification:      Gamification; // ✅ أضف
 }
 
 // ─── ما يُرجعه /api/auth/me كاملاً (Dashboard/Profile) ──────
@@ -27,27 +36,25 @@ export interface ProfileUser {
   name:              string;
   email:             string;
   avatar:            string;
-  role:              'user' | 'admin' | 'super_admin';
-  trustScore:        number;
+  role:              UserRole;
   trustLevel:        1 | 2;
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
-  totalDonations:    number;
   badges:            string[];
   createdAt:         string;
+  gamification:      Gamification;   // ✅ أضف
 }
 // ─── مستخدم عام (يُعرض في صفحة item بجانب اسم المتبرع) ─────
 export interface PublicUser {
+  _id:               string;
   name:              string;
   avatar:            string;
-   _id:               string;
-  trustScore:        number;
   trustLevel:        1 | 2;
-  totalDonations:    number;
   isVerifiedStudent: boolean;
   createdAt:         string;
   whatsapp:          string | null;
+  gamification:      Gamification;   // ✅ أضف
 }
 export interface ProfileResponse {
   user:             ProfileUser;
@@ -72,8 +79,7 @@ export interface DonorUser extends PublicUser {
 }
 
 export interface DashboardStats {
-  totalDonations: number;
-  quota:          number;
-  trustScore:     number;
-  trustLevel:     TrustLevel;
+  quota:      number;
+  trustLevel: TrustLevel;
+  gamification: Gamification; // ✅ أضف
 }

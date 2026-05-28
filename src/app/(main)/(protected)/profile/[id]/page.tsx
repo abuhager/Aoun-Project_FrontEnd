@@ -55,7 +55,7 @@ export default function PublicProfilePage() {
             )}
           </h1>
 
-          {trustScore >= 90 && (
+          {trustScore >= 110 && (
             <div className="flex justify-center mt-2 mb-1">
               <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full text-[10px] font-bold border border-blue-100 shadow-sm">
                 <span className="material-symbols-outlined text-[14px]">verified</span>

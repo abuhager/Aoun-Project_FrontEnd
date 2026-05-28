@@ -14,28 +14,30 @@ interface FormData {
 
 interface LoginResponse {
   accessToken: string;
-  msg: string;
+  msg:         string;
   user: {
-    _id?: string;
-    id?: string;
-    name: string;
-    email: string;
-    phone?: string;
-    avatar?: string;
-    role: string;
-    trustScore?: number;
-    trustLevel?: 1 | 2;
-    quota?: number;
-    isVerified?: boolean;
+    _id?:              string;
+    id?:               string;
+    name:              string;
+    email:             string;
+    avatar?:           string;
+    role:              string;
+    trustLevel?:       1 | 2;
+    quota?:            number;
+    isVerified?:       boolean;
     isVerifiedStudent?: boolean;
-    isBanned?: boolean;
-    totalDonations?: number;
-    badges?: string[];
-    createdAt?: string;
-    updatedAt?: string;
+    createdAt?:        string;
+    gamification?: {              // ✅ أضف
+      trustScore:     number;
+      totalDonations: number;
+      level:          number;
+      title:          string;
+      badge:          string;
+      progress:       number;
+      pointsToNext:   number | null;
+    };
   };
 }
-
 interface ErrorResponse {
   msg?: string;
   code?: string;
@@ -76,20 +78,27 @@ export function useLogin() {
 
       setAccessToken(accessToken);
 
-      const authUser: AuthUser = {
-        _id: user._id ?? user.id ?? "",
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        role: user.role as UserRole,
-        trustScore: user.trustScore ?? 0,
-        trustLevel: (user.trustLevel as 1 | 2) ?? 1,
-        quota: user.quota ?? 0,
-        isVerified: user.isVerified ?? false,
-        isVerifiedStudent: user.isVerifiedStudent ?? false,
-        createdAt: user.createdAt ?? "",
-      };
-
+    const authUser: AuthUser = {
+  _id:               user._id ?? user.id ?? "",
+  name:              user.name,
+  email:             user.email,
+  avatar:            user.avatar ?? "",
+  role:              user.role as UserRole,
+  trustLevel:        (user.trustLevel as 1 | 2) ?? 1,
+  quota:             user.quota ?? 0,
+  isVerified:        user.isVerified ?? false,
+  isVerifiedStudent: user.isVerifiedStudent ?? false,
+  createdAt:         user.createdAt ?? "",
+  gamification: {
+    trustScore:     user.gamification?.trustScore     ?? 0,
+    totalDonations: user.gamification?.totalDonations ?? 0,
+    level:          user.gamification?.level          ?? 1,
+    title:          user.gamification?.title          ?? "مبتدئ",
+    badge:          user.gamification?.badge          ?? "🌱",
+    progress:       user.gamification?.progress       ?? 0,
+    pointsToNext:   user.gamification?.pointsToNext   ?? null,
+  },
+};
       setUser(authUser);
 
       const params = new URLSearchParams(window.location.search);

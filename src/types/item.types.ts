@@ -118,10 +118,17 @@ export interface BookItemResponse {
 }
 
 export interface RateItemResponse {
-  msg:        string;
-  trustScore: number;
+  msg:          string;
+  gamification: {        // ← كان trustScore: number
+    trustScore:     number;
+    totalDonations: number;
+    level:          number;
+    title:          string;
+    badge:          string;
+    progress:       number;
+    pointsToNext:   number | null;
+  };
 }
-
 export interface ItemFilters {
   category?: ItemCategory;
   location?: string;

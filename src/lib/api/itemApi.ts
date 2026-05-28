@@ -68,13 +68,6 @@ export async function rateItem(id: string, rating: number): Promise<{ msg: strin
   return data;
 }
 
-// ── تقييم معلق ───────────────────────────────────────────────
-export async function getPendingRating(): Promise<{ pendingRating: Item | null }> {
-  const { data } = await axiosInstance.get<{ pendingRating: Item | null }>(
-    '/api/items/pending-rating'
-  );
-  return data;
-}
 
 // ── تعديل غرض ────────────────────────────────────────────────
 export async function updateItem(

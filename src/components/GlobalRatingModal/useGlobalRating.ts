@@ -49,8 +49,7 @@ export function useGlobalRating() {
     }
 
     try {
-      const res = await axiosInstance.get("/api/items/pending-rating");
-
+const res = await axiosInstance.get('/api/ratings/pending'); // 
       if (res.data?.pendingRating) {
         setSelectedItem(res.data.pendingRating);
         setShowModal(true);

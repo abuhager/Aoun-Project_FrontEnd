@@ -1,6 +1,5 @@
 // src/types/report.types.ts
 
-// ✅ مطابقة Backend بالضبط
 export type ReportReason =
   | 'لم يُسلّم الغرض'
   | 'معلومات مضللة'
@@ -21,9 +20,8 @@ export type ReportStatus = 'pending' | 'reviewed' | 'dismissed' | 'actioned';
 export interface CreateReportPayload {
   reportedUserId: string;
   itemId?:        string;
-  detail?:        string;
   reason:         ReportReason;
-  details?:       string; // ✅ details مش detail — مطابقة Backend
+  details?:       string;  // ✅ details فقط، حذفنا detail المكررة
 }
 
 export interface Report {
@@ -43,5 +41,5 @@ export interface Report {
 }
 
 export interface AppealPayload {
-  appealText: string; // ✅ reportId في الـ URL مش في الـ body
+  appealText: string;  // ✅ مطابق للـ Backend
 }

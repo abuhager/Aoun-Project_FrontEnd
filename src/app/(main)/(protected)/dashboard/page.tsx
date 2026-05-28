@@ -1,6 +1,7 @@
+// src/app/(main)/(protected)/dashboard/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState }      from 'react';
 import { useDashboard }  from './hooks/useDashboard';
 import { ActionModal }   from './components/ActionModal';
 import { Toast }         from './components/Toast';
@@ -9,6 +10,7 @@ import { StatsGrid }     from './components/StatsGrid';
 import { ItemsTable }    from './components/ItemsTable';
 import { OtpModal }      from './components/OtpModal';
 import ReportModal       from '@/components/ReportModal';
+import AppealModal       from '@/components/AppealModal';  // ✅ إضافة
 
 export default function DashboardPage() {
   const {
@@ -20,11 +22,15 @@ export default function DashboardPage() {
     openOtpModal, closeOtpModal,
   } = useDashboard();
 
+  // ✅ Report state
   const [reportTarget, setReportTarget] = useState<{
     userId:   string;
     userName: string;
     itemId?:  string;
   } | null>(null);
+
+  // ✅ Appeal state
+  const [appealReportId, setAppealReportId] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -59,6 +65,7 @@ export default function DashboardPage() {
   return (
     <div className="bg-surface min-h-screen pb-16 text-[#191c1d] font-body" dir="rtl">
 
+      {/* ── Modals ── */}
       {confirmModal.open && (
         <ActionModal
           message={confirmModal.message}
@@ -84,6 +91,7 @@ export default function DashboardPage() {
         />
       )}
 
+      {/* ✅ Report Modal */}
       {reportTarget && (
         <ReportModal
           reportedUserId={reportTarget.userId}
@@ -93,6 +101,15 @@ export default function DashboardPage() {
         />
       )}
 
+      {/* ✅ Appeal Modal */}
+      {appealReportId && (
+        <AppealModal
+          reportId={appealReportId}
+          onClose={() => setAppealReportId(null)}
+        />
+      )}
+
+      {/* ── Main Content ── */}
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6">
         <ProfileCard
           name={data.user?.name}
@@ -132,19 +149,17 @@ export default function DashboardPage() {
             onDonorCancelBooking={handleDonorCancelBooking}
             onEdit={handleEdit}
             onOpenOtp={openOtpModal}
-            onReport={(item, target) => {              // ✅ target: 'donor' | 'receiver'
+            onReport={(item, target) => {
               const isDonorTarget = target === 'donor';
-
-              const userId = isDonorTarget
+              const userId   = isDonorTarget
                 ? (item.donor?._id ?? '')
                 : (typeof item.bookedBy === 'object' ? item.bookedBy?._id ?? '' : '');
-
               const userName = isDonorTarget
-                ? (item.donor?.name   ?? 'المتبرع')
+                ? (item.donor?.name ?? 'المتبرع')
                 : (typeof item.bookedBy === 'object' ? item.bookedBy?.name ?? 'المستلم' : 'المستلم');
-
               setReportTarget({ userId, userName, itemId: item._id });
             }}
+            onAppeal={(reportId) => setAppealReportId(reportId)}  // ✅ إضافة
           />
         </section>
       </main>

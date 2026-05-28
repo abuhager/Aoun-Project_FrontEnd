@@ -34,3 +34,14 @@ export interface RatingPrompt {
   donorId:   string;
   show:      boolean;
 }
+
+export interface PendingRatingResponse {
+  pendingRating: {
+    _id: string;
+    title: string;
+    status: string;
+    isRated: boolean;
+    donor?: { _id: string; name: string; avatar?: string };
+    bookedBy?: { _id: string; name: string };
+  } | null;
+}

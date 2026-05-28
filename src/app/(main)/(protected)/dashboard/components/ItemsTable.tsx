@@ -3,18 +3,22 @@ import Link  from "next/link";
 import Image from "next/image";
 import type { Item } from "../hooks/useDashboard";
 
+// ✅ نوع DashboardItem مستعار من Item
+type DashboardItem = Item;
+
 interface ItemsTableProps {
-  items:                Item[];
+  items:                DashboardItem[];
   activeTab:            "donations" | "requests";
   onDelete:             (id: string, status: string) => void;
   onCancelBooking:      (id: string) => void;
   onDonorCancelBooking: (id: string) => void;
   onEdit:               (id: string) => void;
-  onOpenOtp:            (item: Item) => void;
-  onReport?:            (item: Item, target: 'donor' | 'receiver') => void;  // ✅ target
+  onOpenOtp:            (item: DashboardItem) => void;
+  onReport?:            (item: DashboardItem, target: 'donor' | 'receiver') => void;
+  onAppeal?:            (reportId: string) => void;  // ✅ إضافة
 }
 
-function getBookedByName(bookedBy: Item['bookedBy']): string {
+function getBookedByName(bookedBy: DashboardItem['bookedBy']): string {
   if (!bookedBy) return '';
   if (typeof bookedBy === 'string') return bookedBy;
   return bookedBy.name ?? '';
@@ -29,6 +33,7 @@ export function ItemsTable({
   onEdit,
   onOpenOtp,
   onReport,
+  onAppeal,  // ✅ إضافة
 }: ItemsTableProps) {
   if (items.length === 0) {
     return (
@@ -139,7 +144,7 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* ✅ المستلم يبلّغ على المتبرع */}
+            {/* المستلم يبلّغ على المتبرع */}
             {activeTab === "requests" && item.status === "تم التسليم" && onReport && (
               <button
                 onClick={() => onReport(item, 'donor')}
@@ -150,7 +155,7 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* ✅ المتبرع يبلّغ على المستلم */}
+            {/* المتبرع يبلّغ على المستلم */}
             {activeTab === "donations" && item.status === "تم التسليم" && onReport && (
               <button
                 onClick={() => onReport(item, 'receiver')}
@@ -158,6 +163,17 @@ export function ItemsTable({
               >
                 <span className="material-symbols-outlined text-sm">flag</span>
                 إبلاغ عن المستلم
+              </button>
+            )}
+
+            {/* ✅ المتبرع يعترض على بلاغ — يحتاج reportId من الـ item */}
+            {activeTab === "donations" && item.reportId && onAppeal && (
+              <button
+                onClick={() => onAppeal(item.reportId!)}
+                className="text-xs bg-yellow-50 text-yellow-600 px-3 py-1.5 rounded-xl font-bold hover:bg-yellow-100 transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">gavel</span>
+                اعتراض
               </button>
             )}
 

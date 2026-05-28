@@ -65,10 +65,10 @@ export interface DashboardItem {
   isRated:     boolean;
   rating?:     number | null;
   reportCount: number;
+  reportId?:   string;          // ✅ إضافة — لزر الاعتراض
   bookedAt?:   string | null;
   createdAt:   string;
   updatedAt:   string;
-  // ✅ بدل Pick<PublicUser,...> — نُعرّف الحقول مباشرة
   donor: {
     _id:    string;
     name:   string;
@@ -77,7 +77,6 @@ export interface DashboardItem {
   bookedBy?:  BookedByUser | null;
   waitlist?:  WaitlistEntry[];
 }
-
 // ✅ نوع خاص بـ user object في /api/items/me
 export interface MyItemsUser {
   _id:               string;

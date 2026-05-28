@@ -35,7 +35,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className={`${cairo.variable} ${tajawal.variable} bg-surface min-h-screen flex flex-col`}>
-        {/* ✅ AuthProvider يلف كل شيء */}
         <AuthProvider>
           <GlobalRatingModal />
           <main className="flex-grow">

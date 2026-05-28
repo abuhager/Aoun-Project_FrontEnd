@@ -8,6 +8,7 @@ import NotificationBell from "@/components/NotificationBell";
 const NAV_LINKS = [
   { href: "/#how-it-works", icon: "help",            label: "كيف نعمل؟",    authRequired: false },
   { href: "/hubs",          icon: "warehouse",        label: "مراكز التسليم", authRequired: false }, // ✅ إضافة
+  { href: "/leaderboard",   icon: "leaderboard",    label: "المتصدرون",    authRequired: false }, // ✅ جديد
   { href: "/browse",        icon: "explore",          label: "تصفح الأغراض", authRequired: true  },
   { href: "/add-item",      icon: "add_box",          label: "تبرع الآن",    authRequired: true  },
   { href: "/dashboard",     icon: "account_circle",   label: "حسابي",        authRequired: true  },

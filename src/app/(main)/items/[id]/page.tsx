@@ -140,7 +140,7 @@ export default function ItemDetailsPage() {
               {[
                 { label: "الموقع",    val: item.location,                                        ic: "distance"      },
                 { label: "التاريخ",   val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event"         },
-                { label: "الموثوقية", val: (item.donor?.trustScore || 0) + "%",                  ic: "verified_user" },
+                { label: "الموثوقية", val: (item.donor?.gamification?.trustScore ?? 0) + "%", ic: "verified_user" },
               ].map((s, i) => (
                 <div key={i} className="bg-white p-3 rounded-2xl border border-gray-100 text-center">
                   <span className="material-symbols-outlined text-primary text-xl mb-1">{s.ic}</span>

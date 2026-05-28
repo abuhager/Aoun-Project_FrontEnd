@@ -1,7 +1,7 @@
 // src/app/(main)/(protected)/admin/users/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import axiosInstance from "@/lib/api/axiosInstance";
 
@@ -20,23 +20,24 @@ export default function AdminUsersPage() {
   const [page,    setPage]    = useState(1);
   const [pages,   setPages]   = useState(1);
 
-  const fetch = async () => {
-    setLoading(true);
-    try {
-      const r = await axiosInstance.get("/api/admin/users", { params: { page, search } });
-      setUsers(r.data.users);
-      setPages(r.data.pages);
-    } finally { setLoading(false); }
-  };
+ const loadUsers = useCallback(async () => {
+  setLoading(true);
+  try {
+    const r = await axiosInstance.get("/api/admin/users", { params: { page, search } });
+    setUsers(r.data.users);
+    setPages(r.data.pages);
+  } finally { setLoading(false); }
+}, [page, search]);
 
-  useEffect(() => { fetch(); }, [page, search]);
+useEffect(() => { loadUsers(); }, [loadUsers]);
 
-  const handleBan = async (id: string, banned: boolean) => {
-    await axiosInstance.post(`/api/admin/users/${id}/${banned ? "unban" : "ban"}`,
-      banned ? {} : { reason: "مخالفة قوانين المنصة" }
-    );
-    fetch();
-  };
+const handleBan = async (id: string, banned: boolean) => {
+  await axiosInstance.post(`/api/admin/users/${id}/${banned ? "unban" : "ban"}`,
+    banned ? {} : { reason: "مخالفة قوانين المنصة" }
+  );
+  await loadUsers(); // ✅ يحدّث الجدول فوراً بدون ريفرش
+};
+
 
   const getAvatar = (url?: string) =>
     url ? (url.startsWith("http") ? url : `${apiUrl}/${url}`) : null;

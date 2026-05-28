@@ -1,7 +1,6 @@
-// src/app/(main)/(protected)/admin/reports/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axiosInstance from "@/lib/api/axiosInstance";
 
 interface Report {
@@ -17,19 +16,24 @@ export default function AdminReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetch = async () => {
+  // ✅ اسم مختلف عن window.fetch
+  const loadReports = useCallback(async () => {
     setLoading(true);
     try {
       const r = await axiosInstance.get("/api/admin/reports");
       setReports(r.data.reports);
     } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { loadReports(); }, [loadReports]);
 
   const resolve = async (id: string, action: string) => {
-    await axiosInstance.post(`/api/admin/reports/${id}/resolve`, { action });
-    fetch();
+    try {
+      await axiosInstance.post(`/api/admin/reports/${id}/resolve`, { action });
+      await loadReports(); // ✅ إعادة تحميل فورية
+    } catch (err) {
+      console.error("resolve error:", err);
+    }
   };
 
   return (
@@ -37,6 +41,9 @@ export default function AdminReportsPage() {
       <h1 className="text-xl font-black mb-6 flex items-center gap-2">
         <span className="material-symbols-outlined text-primary">flag</span>
         البلاغات المعلّقة
+        <span className="mr-auto text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">
+          {reports.length} بلاغ
+        </span>
       </h1>
 
       <div className="space-y-3">
@@ -58,19 +65,21 @@ export default function AdminReportsPage() {
                 <span className="text-red-500">{r.reportedUser?.name}</span>
               </p>
               <p className="text-[11px] text-gray-500 mt-1">{r.reason}</p>
-              <p className="text-[10px] text-gray-300 mt-1">{new Date(r.createdAt).toLocaleDateString("ar-EG")}</p>
+              <p className="text-[10px] text-gray-300 mt-1">
+                {new Date(r.createdAt).toLocaleDateString("ar-EG")}
+              </p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => resolve(r._id, "warn")}
-                className="px-3 py-1.5 bg-yellow-50 text-yellow-600 rounded-xl text-[11px] font-black hover:bg-yellow-100">
+                className="px-3 py-1.5 bg-yellow-50 text-yellow-600 rounded-xl text-[11px] font-black hover:bg-yellow-100 transition-all">
                 تحذير
               </button>
               <button onClick={() => resolve(r._id, "ban")}
-                className="px-3 py-1.5 bg-red-50 text-red-600 rounded-xl text-[11px] font-black hover:bg-red-100">
+                className="px-3 py-1.5 bg-red-50 text-red-600 rounded-xl text-[11px] font-black hover:bg-red-100 transition-all">
                 حظر + حل
               </button>
               <button onClick={() => resolve(r._id, "dismiss")}
-                className="px-3 py-1.5 bg-gray-50 text-gray-500 rounded-xl text-[11px] font-black hover:bg-gray-100">
+                className="px-3 py-1.5 bg-gray-50 text-gray-500 rounded-xl text-[11px] font-black hover:bg-gray-100 transition-all">
                 رفض
               </button>
             </div>

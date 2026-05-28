@@ -12,6 +12,7 @@ import { OtpModal }      from './components/OtpModal';
 import ReportModal       from '@/components/ReportModal';
 import AppealModal       from '@/components/AppealModal';  // ✅ إضافة
 
+
 export default function DashboardPage() {
   const {
     data, activeTab, setActiveTab, loading, error,
@@ -114,10 +115,10 @@ export default function DashboardPage() {
         <ProfileCard
           name={data.user?.name}
           email={data.user?.email}
-          trustScore={data.user?.trustScore}
+  trustScore={data.user?.gamification?.trustScore}
         />
         <StatsGrid
-          trustScore={data.user?.trustScore}
+          trustScore={data.user?.gamification?.trustScore}
           quota={data.user?.quota}
           donationsCount={data.myDonations.length}
         />

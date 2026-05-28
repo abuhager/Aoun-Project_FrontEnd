@@ -10,14 +10,22 @@ export interface ProfileItem {
   createdAt: string;
 }
 
+export interface Gamification {
+  level:      number;
+  xp:         number;
+  badges:     string[];
+  trustScore: number;
+}
+
 export interface ProfileData {
   user: {
     name:               string;
     avatar?:            string;
-    trustScore:         number;
+    trustScore?:        number;
     createdAt:          string;
     isVerifiedStudent?: boolean;
-    whatsapp?:          string;  // ✅ رقم منسق جاهز لـ wa.me
+    whatsapp?:          string;
+    gamification?:      Gamification;
   };
   stats: {
     donationsCount: number;
@@ -35,6 +43,7 @@ export function usePublicProfile() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [activeTab,   setActiveTab]   = useState<"donations" | "requests">("donations");
   const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -43,7 +52,7 @@ export function usePublicProfile() {
         const res = await axiosInstance.get(`/api/auth/profile/${id}`);
         setProfileData(res.data);
       } catch {
-        // صامت — لا console.error في Production
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -67,11 +76,18 @@ export function usePublicProfile() {
       ? profileData?.allDonations ?? []
       : profileData?.completedRequests ?? [];
 
-  const trustScore = profileData?.user?.trustScore ?? 85;
+  // ✅ gamification أولاً، ثم user.trustScore، وإلا 0
+  const trustScore =
+    profileData?.user?.gamification?.trustScore ??
+    profileData?.user?.trustScore ??
+    0;
+
+  const gamification = profileData?.user?.gamification ?? null;
 
   return {
     profileData, activeTab, setActiveTab,
-    loading, activeItems, trustScore,
+    loading, error, activeItems,
+    trustScore, gamification,
     getImageUrl, renderStars,
   };
 }

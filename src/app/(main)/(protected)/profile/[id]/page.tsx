@@ -1,25 +1,43 @@
 "use client";
 
-import Link   from "next/link";
-import Image  from "next/image";
+import Link  from "next/link";
+import Image from "next/image";
 import { usePublicProfile } from "./hooks/usePublicProfile";
+
+// ─── خريطة الـ Badges ───────────────────────────────────────
+const BADGE_META: Record<string, { label: string; icon: string; color: string }> = {
+  first_donation: { label: "المتبرع الأول",  icon: "volunteer_activism", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
+  trusted_donor:  { label: "متبرع موثوق",    icon: "verified_user",      color: "text-blue-600   bg-blue-50   border-blue-100"   },
+  super_donor:    { label: "متبرع متميز",    icon: "workspace_premium",  color: "text-purple-600 bg-purple-50 border-purple-100" },
+  quick_receiver: { label: "استلام سريع",    icon: "bolt",               color: "text-yellow-600 bg-yellow-50 border-yellow-100" },
+  community_hero: { label: "بطل المجتمع",    icon: "emoji_events",       color: "text-orange-600 bg-orange-50 border-orange-100" },
+};
 
 export default function PublicProfilePage() {
   const {
     profileData, activeTab, setActiveTab,
-    loading, activeItems, trustScore,
+    loading, error, activeItems,
+    trustScore, gamification,
     getImageUrl, renderStars,
   } = usePublicProfile();
 
+  // ─── Loading ────────────────────────────────────────────────
   if (loading) return (
     <div className="flex justify-center items-center min-h-screen bg-surface">
       <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
-  if (!profileData) return (
+  // ─── Error / Not Found ──────────────────────────────────────
+  if (error || !profileData) return (
     <div className="text-center py-20 bg-surface min-h-screen">
-      <div className="mt-32 font-bold text-red-600">🛑 هذا الحساب غير موجود</div>
+      <div className="mt-32">
+        <span className="material-symbols-outlined text-5xl text-gray-300 block mb-3">person_off</span>
+        <p className="font-bold text-red-500 text-sm">🛑 هذا الحساب غير موجود</p>
+        <Link href="/browse" className="mt-4 inline-block text-xs text-primary font-bold underline">
+          العودة للتصفح
+        </Link>
+      </div>
     </div>
   );
 
@@ -64,6 +82,7 @@ export default function PublicProfilePage() {
             </div>
           )}
 
+          {/* النجوم */}
           <div className="flex flex-col items-center gap-1 mt-1">
             <div className="flex gap-0.5">
               {renderStars(trustScore).map(({ key, filled }) => (
@@ -83,7 +102,7 @@ export default function PublicProfilePage() {
             انضم لعون في {new Date(user.createdAt).getFullYear()}
           </p>
 
-          {/* ✅ زر واتسآب — يظهر فقط إذا عنده رقم */}
+          {/* واتسآب */}
           {user.whatsapp && (
             <div className="mt-5 flex justify-center">
               <a
@@ -102,7 +121,7 @@ export default function PublicProfilePage() {
         </section>
 
         {/* ─── Stats Bento Grid ─── */}
-        <section className="grid grid-cols-3 gap-3 md:gap-6 mb-12">
+        <section className="grid grid-cols-3 gap-3 md:gap-6 mb-8">
           {[
             { value: trustScore,           label: "نقاط الثقة",    color: "text-primary" },
             { value: stats.donationsCount, label: "إجمالي العطاء", color: "text-primary" },
@@ -114,6 +133,57 @@ export default function PublicProfilePage() {
             </div>
           ))}
         </section>
+
+        {/* ─── Gamification — Level + XP + Badges ─── */}
+        {gamification && (
+          <section className="mb-10">
+
+            {/* Level + XP Bar */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-xl">military_tech</span>
+                  <span className="font-black text-sm">المستوى {gamification.level}</span>
+                </div>
+                <span className="text-[10px] font-bold text-gray-400">{gamification.xp} XP</span>
+              </div>
+              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min((gamification.xp % 100), 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Badges */}
+            {(gamification.badges?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-xs font-black text-gray-500 mb-3 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">emoji_events</span>
+                  الإنجازات ({gamification.badges.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {gamification.badges.map((badge) => {
+                    const meta = BADGE_META[badge] ?? {
+                      label: badge,
+                      icon:  "star",
+                      color: "text-gray-600 bg-gray-50 border-gray-200",
+                    };
+                    return (
+                      <span
+                        key={badge}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-bold ${meta.color}`}
+                      >
+                        <span className="material-symbols-outlined text-[13px]">{meta.icon}</span>
+                        {meta.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ─── سجل النشاط ─── */}
         <section className="space-y-6">
@@ -136,15 +206,15 @@ export default function PublicProfilePage() {
                 className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm flex flex-col group hover:shadow-md transition-all"
               >
                 <div className="relative h-40 overflow-hidden bg-gray-50">
-                 <Image
-  src={getImageUrl(item.imageUrl)}
-  alt={item.title}
-  fill
-  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-  className={`object-cover group-hover:scale-110 transition-transform duration-500 ${
-    item.status === "تم التسليم" ? "grayscale-[0.5] opacity-80" : ""
-  }`}
-/>
+                  <Image
+                    src={getImageUrl(item.imageUrl)}
+                    alt={item.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className={`object-cover group-hover:scale-110 transition-transform duration-500 ${
+                      item.status === "تم التسليم" ? "grayscale-[0.5] opacity-80" : ""
+                    }`}
+                  />
                   <div className="absolute top-3 right-3">
                     <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black text-white backdrop-blur-md ${
                       item.status === "تم التسليم" ? "bg-gray-500/80" :
@@ -170,6 +240,7 @@ export default function PublicProfilePage() {
             </div>
           )}
         </section>
+
       </main>
     </div>
   );

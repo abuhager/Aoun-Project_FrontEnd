@@ -79,12 +79,21 @@ export interface DashboardItem {
 }
 // ✅ نوع خاص بـ user object في /api/items/me
 export interface MyItemsUser {
-  _id:               string;
-  name:              string;
-  email:             string;
-  trustScore:        number;
-  quota:             number;
-  isVerifiedStudent: boolean;
+  _id: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+  trustScore?: number;
+  trustLevel?: number;
+  quota?: number;
+  isVerified?: boolean;
+  isVerifiedStudent?: boolean;
+  gamification?: {
+    level: number;
+    xp: number;
+    badges: string[];
+    trustScore: number;
+  };
 }
 
 export interface MyItemsResponse {

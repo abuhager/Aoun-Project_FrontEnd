@@ -1,15 +1,30 @@
-// src/lib/api/donationRequestApi.ts
 import axiosInstance from '@/lib/api/axiosInstance';
 import type {
   DonationRequest,
   CreateDonationRequestPayload,
   DonationRequestsListResponse,
+  GetDonationRequestsParams,
+  MyDonationRequestsResponse,
 } from '@/types/donationRequest.types';
 
-export async function getDonationRequests(params?: { page?: number; category?: string; mine?: boolean }) {
+export async function getDonationRequests(params?: GetDonationRequestsParams) {
+  const queryParams = {
+    ...(params?.page ? { page: params.page } : {}),
+    ...(params?.limit ? { limit: params.limit } : {}),
+    ...(params?.category ? { category: params.category } : {}),
+    ...(params?.location ? { location: params.location } : {}),
+    ...(typeof params?.mine === 'boolean' ? { mine: params.mine } : {}),
+  };
+
   const { data } = await axiosInstance.get<DonationRequestsListResponse>('/api/donation-requests', {
-    params,
+    params: queryParams,
   });
+
+  return data;
+}
+
+export async function getMyDonationRequests() {
+  const { data } = await axiosInstance.get<MyDonationRequestsResponse>('/api/donation-requests/me');
   return data;
 }
 

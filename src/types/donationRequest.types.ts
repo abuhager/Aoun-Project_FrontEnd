@@ -1,4 +1,3 @@
-// src/types/donationRequest.types.ts
 export type DonationRequestStatus = 'active' | 'fulfilled' | 'expired' | 'cancelled';
 
 export interface DonationRequestUser {
@@ -11,7 +10,7 @@ export interface DonationRequestUser {
 
 export interface DonationRequest {
   _id: string;
-  requester: DonationRequestUser;
+  requester?: DonationRequestUser;
   title: string;
   description: string;
   category: string;
@@ -19,6 +18,8 @@ export interface DonationRequest {
   status: DonationRequestStatus;
   createdAt: string;
   expiresAt: string;
+  month?: string;
+  urgency?: 'low' | 'medium' | 'high';
 }
 
 export interface CreateDonationRequestPayload {
@@ -26,6 +27,15 @@ export interface CreateDonationRequestPayload {
   description: string;
   category: string;
   location: string;
+  urgency?: 'low' | 'medium' | 'high';
+}
+
+export interface GetDonationRequestsParams {
+  page?: number;
+  limit?: number;
+  category?: string;
+  location?: string;
+  mine?: boolean;
 }
 
 export interface DonationRequestsListResponse {
@@ -33,4 +43,13 @@ export interface DonationRequestsListResponse {
   total: number;
   page: number;
   pages: number;
+}
+
+export interface MyDonationRequestsResponse {
+  requests: DonationRequest[];
+  quota: {
+    used: number;
+    max: number;
+    remaining: number;
+  };
 }

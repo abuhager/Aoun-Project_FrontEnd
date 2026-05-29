@@ -6,11 +6,11 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 
 const NAV = [
-  { href: "/admin",         icon: "dashboard",   label: "نظرة عامة"    },
-  { href: "/admin/users",   icon: "group",       label: "المستخدمون"   },
-  { href: "/admin/items",   icon: "inventory_2", label: "الأغراض"      },
-  { href: "/admin/reports", icon: "flag",        label: "البلاغات"     },
-  { href: "/admin/logs",    icon: "history",     label: "سجل العمليات" },
+  { href: "/admin", icon: "dashboard", label: "نظرة عامة" },
+  { href: "/admin/users", icon: "group", label: "المستخدمون" },
+  { href: "/admin/items", icon: "inventory_2", label: "الأغراض" },
+  { href: "/admin/reports", icon: "flag", label: "البلاغات" },
+  { href: "/admin/logs", icon: "history", label: "سجل العمليات" },
 ];
 
 export default function AdminLayout({
@@ -27,7 +27,6 @@ export default function AdminLayout({
       router.replace("/");
     }
   }, [user, isLoading, router]);
-  // لا توجد تعليقات داخل useEffect أو بجانب الأقواس
 
   if (isLoading) {
     return (
@@ -46,7 +45,6 @@ export default function AdminLayout({
 
   return (
     <div className="flex min-h-screen bg-[#f7f6f2]" dir="rtl">
-      {/* Sidebar */}
       <aside className="w-56 bg-white border-l border-gray-100 shadow-sm fixed top-0 right-0 h-full pt-16 md:pt-20 flex flex-col z-30">
         <div className="px-4 py-4 border-b border-gray-100">
           <span className="flex items-center gap-2 text-xs font-black text-primary bg-primary/8 px-3 py-2 rounded-xl">
@@ -89,7 +87,6 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* Content */}
       <main className="flex-1 mr-56 pt-16 md:pt-20 px-8 pb-8 min-h-screen overflow-y-auto">
         {children}
       </main>

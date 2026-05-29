@@ -1,9 +1,18 @@
+// src/app/(main)/(protected)/dashboard/components/ItemsTable.tsx
+// ✅ Patched: إزالة onOpenOtp → Double Confirmation Flow
 "use client";
+
 import Link  from "next/link";
 import Image from "next/image";
 import type { Item } from "../hooks/useDashboard";
+import { DeliveryConfirmFlow } from "./DeliveryConfirmFlow";
 
 type DashboardItem = Item;
+
+interface DeliveryState {
+  itemId:          string | null;
+  waitingForDonor: boolean;
+}
 
 interface ItemsTableProps {
   items:                DashboardItem[];
@@ -12,22 +21,30 @@ interface ItemsTableProps {
   onCancelBooking:      (id: string) => void;
   onDonorCancelBooking: (id: string) => void;
   onEdit:               (id: string) => void;
-  onOpenOtp:            (item: DashboardItem) => void;
-  onReport?:            (item: DashboardItem, target: 'donor' | 'receiver') => void;
+  // ✅ Double Confirmation — استبدل onOpenOtp
+  deliveryState:        DeliveryState;
+  deliveryLoading:      boolean;
+  onRecipientConfirm:   (itemId: string) => void;
+  onDonorConfirm:       (itemId: string) => void;
+  onReport?:            (item: DashboardItem, target: "donor" | "receiver") => void;
   onAppeal?:            (reportId: string) => void;
 }
 
-function getBookedByName(bookedBy: DashboardItem['bookedBy']): string {
-  if (!bookedBy) return '';
-  if (typeof bookedBy === 'string') return bookedBy;
-  return bookedBy.name ?? '';
+function getBookedByName(bookedBy: DashboardItem["bookedBy"]): string {
+  if (!bookedBy) return "";
+  if (typeof bookedBy === "string") return bookedBy;
+  return bookedBy.name ?? "";
 }
 
 export function ItemsTable({
   items, activeTab,
   onDelete, onCancelBooking, onDonorCancelBooking,
-  onEdit, onOpenOtp, onReport, onAppeal,
+  onEdit,
+  deliveryState, deliveryLoading,
+  onRecipientConfirm, onDonorConfirm,
+  onReport, onAppeal,
 }: ItemsTableProps) {
+
   if (items.length === 0) {
     return (
       <div className="text-center py-16 text-gray-400">
@@ -47,16 +64,22 @@ export function ItemsTable({
           className="flex items-center gap-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
           dir="rtl"
         >
-          {/* صورة الغرض */}
+          {/* ── صورة الغرض ── */}
           <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
             {item.imageUrl ? (
-              <Image src={item.imageUrl} alt={item.title} fill sizes="64px" className="object-cover" />
+              <Image
+                src={item.imageUrl}
+                alt={item.title}
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
             )}
           </div>
 
-          {/* معلومات الغرض */}
+          {/* ── معلومات الغرض ── */}
           <div className="flex-1 min-w-0">
             <Link
               href={`/items/${item._id}`}
@@ -68,11 +91,19 @@ export function ItemsTable({
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <StatusBadge status={item.status} />
 
+              {/* ✅ Double Confirmation status badge — بدل "رمز التسليم أُرسل لبريدك" */}
               {item.status === "محجوز" && activeTab === "requests" && (
-                <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-xl text-xs border border-blue-100 flex items-center gap-1">
-                  <span>📧</span>
-                  <span>رمز التسليم أُرسل لبريدك</span>
-                </div>
+                item.recipientConfirmed ? (
+                  <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-lg font-semibold">
+                    <span className="material-symbols-outlined text-sm">schedule</span>
+                    في انتظار تأكيد المتبرع
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-lg font-semibold">
+                    <span className="material-symbols-outlined text-sm">touch_app</span>
+                    بانتظار تأكيد استلامك
+                  </span>
+                )
               )}
 
               {item.status === "تم التسليم" && !item.isRated && (
@@ -87,7 +118,7 @@ export function ItemsTable({
                 </span>
               )}
 
-              {/* ✅ badge بلاغ معلّق */}
+              {/* badge بلاغ معلّق */}
               {item.reportId && (
                 <span className="text-xs text-red-500 font-semibold bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 flex items-center gap-1">
                   <span className="material-symbols-outlined text-sm">warning</span>
@@ -100,15 +131,30 @@ export function ItemsTable({
           {/* ── أزرار الإجراءات ── */}
           <div className="flex flex-col gap-2 flex-shrink-0">
 
-            {activeTab === "donations" && item.status === "محجوز" && (
-              <button
-                onClick={() => onOpenOtp(item)}
-                className="text-xs bg-primary text-white px-3 py-1.5 rounded-xl font-bold hover:bg-primary/90 transition-colors"
-              >
-                ✅ تأكيد التسليم
-              </button>
+            {/* ✅ المستلم — تأكيد الاستلام (Double Confirmation) */}
+            {activeTab === "requests" && item.status === "محجوز" && (
+              <DeliveryConfirmFlow
+                item={item}
+                role="recipient"
+                loading={deliveryLoading && deliveryState.itemId === item._id}
+                onConfirm={onRecipientConfirm}
+              />
             )}
 
+            {/* ✅ المتبرع — تأكيد التسليم (Double Confirmation) */}
+            {activeTab === "donations" && item.status === "محجوز" && (
+              <DeliveryConfirmFlow
+                item={item}
+                role="donor"
+                loading={deliveryLoading && deliveryState.itemId === item._id}
+                onConfirm={onDonorConfirm}
+                waitingDonor={
+                  deliveryState.itemId === item._id && deliveryState.waitingForDonor
+                }
+              />
+            )}
+
+            {/* فك الحجز — المتبرع */}
             {activeTab === "donations" && item.status === "محجوز" && (
               <button
                 onClick={() => onDonorCancelBooking(item._id)}
@@ -118,6 +164,7 @@ export function ItemsTable({
               </button>
             )}
 
+            {/* تعديل — فقط إذا متاح أو مخفي */}
             {activeTab === "donations" && ["متاح", "مخفي"].includes(item.status) && (
               <button
                 onClick={() => onEdit(item._id)}
@@ -127,6 +174,7 @@ export function ItemsTable({
               </button>
             )}
 
+            {/* حذف */}
             {activeTab === "donations" && item.status !== "تم التسليم" && (
               <button
                 onClick={() => onDelete(item._id, item.status)}
@@ -136,6 +184,7 @@ export function ItemsTable({
               </button>
             )}
 
+            {/* إلغاء الحجز — المستلم */}
             {activeTab === "requests" && item.status === "محجوز" && (
               <button
                 onClick={() => onCancelBooking(item._id)}
@@ -145,10 +194,10 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* المستلم يبلّغ على المتبرع */}
+            {/* إبلاغ — المستلم يبلّغ على المتبرع */}
             {activeTab === "requests" && item.status === "تم التسليم" && onReport && (
               <button
-                onClick={() => onReport(item, 'donor')}
+                onClick={() => onReport(item, "donor")}
                 className="text-xs bg-red-50 text-red-400 px-3 py-1.5 rounded-xl font-bold hover:bg-red-100 hover:text-red-600 transition-colors flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-sm">flag</span>
@@ -156,10 +205,10 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* المتبرع يبلّغ على المستلم */}
+            {/* إبلاغ — المتبرع يبلّغ على المستلم */}
             {activeTab === "donations" && item.status === "تم التسليم" && onReport && (
               <button
-                onClick={() => onReport(item, 'receiver')}
+                onClick={() => onReport(item, "receiver")}
                 className="text-xs bg-red-50 text-red-400 px-3 py-1.5 rounded-xl font-bold hover:bg-red-100 hover:text-red-600 transition-colors flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-sm">flag</span>
@@ -167,7 +216,7 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* ✅ زر الاعتراض — يظهر في donations و requests كليهما */}
+            {/* اعتراض على البلاغ */}
             {item.reportId && onAppeal && (
               <button
                 onClick={() => onAppeal(item.reportId!)}
@@ -180,22 +229,22 @@ export function ItemsTable({
 
           </div>
         </div>
-      ))}\
+      ))}
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    "متاح":       { label: "متاح",       className: "bg-green-50 text-green-600 border-green-100" },
+    "متاح":       { label: "متاح",       className: "bg-green-50 text-green-600 border-green-100"  },
     "محجوز":      { label: "محجوز",      className: "bg-yellow-50 text-yellow-600 border-yellow-100" },
-    "تم التسليم": { label: "تم التسليم", className: "bg-blue-50 text-blue-600 border-blue-100" },
-    "مخفي":       { label: "مخفي",       className: "bg-gray-50 text-gray-500 border-gray-200" },
+    "تم التسليم": { label: "تم التسليم", className: "bg-blue-50 text-blue-600 border-blue-100"    },
+    "مخفي":       { label: "مخفي",       className: "bg-gray-50 text-gray-500 border-gray-200"    },
   };
-  const config = map[status] ?? { label: status, className: "bg-gray-50 text-gray-500 border-gray-200" };
+  const cfg = map[status] ?? { label: status, className: "bg-gray-50 text-gray-500 border-gray-200" };
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-lg border font-semibold ${config.className}`}>
-      {config.label}
+    <span className={`text-xs px-2 py-0.5 rounded-lg border font-semibold ${cfg.className}`}>
+      {cfg.label}
     </span>
   );
 }

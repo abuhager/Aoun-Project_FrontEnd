@@ -1,22 +1,21 @@
 // src/app/(main)/(protected)/dashboard/page.tsx
+// ✅ Patched: إزالة OtpModal → Double Confirmation Flow
 'use client';
 
-import { useState }     from 'react';
-import { useDashboard } from './hooks/useDashboard';
-import { ActionModal }  from './components/ActionModal';
-import { Toast }        from './components/Toast';
-import { ProfileCard }  from './components/ProfileCard';
-import { StatsGrid }    from './components/StatsGrid';
-import { ItemsTable }   from './components/ItemsTable';
-import { OtpModal }     from './components/OtpModal';
-import ReportModal      from '@/components/ReportModal';
-import AppealModal      from '@/components/AppealModal';
+import { useState }           from 'react';
+import { useDashboard }       from './hooks/useDashboard';
+import { ActionModal }        from './components/ActionModal';
+import { Toast }              from './components/Toast';
+import { ProfileCard }        from './components/ProfileCard';
+import { StatsGrid }          from './components/StatsGrid';
+import { ItemsTable }         from './components/ItemsTable';
+import ReportModal            from '@/components/ReportModal';
+import AppealModal            from '@/components/AppealModal';
+// ✅ استبدل OtpModal بـ DeliveryConfirmFlow (مُضمَّن في ItemsTable)
 
-// ✅ Skeleton component محلي — بدل spinner
 function DashboardSkeleton() {
   return (
     <div className="bg-surface min-h-screen pb-16 pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6" dir="rtl">
-      {/* Profile skeleton */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4 animate-pulse">
         <div className="w-16 h-16 rounded-full bg-gray-100 flex-shrink-0" />
         <div className="flex-1 space-y-2">
@@ -24,17 +23,11 @@ function DashboardSkeleton() {
           <div className="h-3 bg-gray-100 rounded w-56" />
         </div>
       </div>
-      {/* Stats skeleton */}
       <div className="grid grid-cols-3 gap-3 animate-pulse">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 h-20" />
-        ))}
+        {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 h-20" />)}
       </div>
-      {/* Items skeleton */}
       <div className="space-y-3 animate-pulse">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 h-24" />
-        ))}
+        {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 h-24" />)}
       </div>
     </div>
   );
@@ -43,18 +36,16 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const {
     data, activeTab, setActiveTab, loading, error,
-    showOtpModal, confirmModal, setConfirmModal, toast, setToast,
-    selectedItem, otp, setOtp, otpError, otpLoading,
+    confirmModal, setConfirmModal, toast, setToast,
+    deliveryState, deliveryLoading,
+    handleRecipientConfirm, handleDonorConfirm,
     handleDelete, handleCancelBooking, handleDonorCancelBooking,
-    handleEdit, handleConfirmDelivery,
-    openOtpModal, closeOtpModal,
+    handleEdit,
     appealModal, openAppealModal, closeAppealModal, onAppealSuccess,
   } = useDashboard();
 
   const [reportTarget, setReportTarget] = useState<{
-    userId:   string;
-    userName: string;
-    itemId?:  string;
+    userId: string; userName: string; itemId?: string;
   } | null>(null);
 
   if (loading) return <DashboardSkeleton />;
@@ -63,13 +54,9 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen bg-surface gap-3 p-8" dir="rtl">
         <span className="material-symbols-outlined text-5xl text-gray-200">error_outline</span>
-        <p className="text-gray-400 text-sm font-bold">
-          حدث خطأ في تحميل البيانات، يرجى تحديث الصفحة
-        </p>
+        <p className="text-gray-400 text-sm font-bold">حدث خطأ في تحميل البيانات، يرجى تحديث الصفحة</p>
         {process.env.NODE_ENV === 'development' && error && (
-          <pre className="text-xs text-yellow-400 bg-gray-900 rounded p-4 max-w-lg w-full overflow-auto text-left">
-            {error}
-          </pre>
+          <pre className="text-xs text-yellow-400 bg-gray-900 rounded p-4 max-w-lg w-full overflow-auto text-left">{error}</pre>
         )}
       </div>
     );
@@ -80,7 +67,6 @@ export default function DashboardPage() {
   return (
     <div className="bg-surface min-h-screen pb-16 text-[#191c1d] font-body" dir="rtl">
 
-      {/* ── Modals ── */}
       {confirmModal.open && (
         <ActionModal
           message={confirmModal.message}
@@ -90,21 +76,9 @@ export default function DashboardPage() {
         />
       )}
 
-      {toast && (
-        <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />
-      )}
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {showOtpModal && selectedItem && (
-        <OtpModal
-          item={selectedItem}
-          otp={otp}
-          otpError={otpError}
-          otpLoading={otpLoading}
-          onOtpChange={setOtp}
-          onSubmit={handleConfirmDelivery}
-          onClose={closeOtpModal}
-        />
-      )}
+      {/* ✅ حُذف OtpModal — الـ Double Confirmation مُضمَّن في ItemsTable */}
 
       {reportTarget && (
         <ReportModal
@@ -123,7 +97,6 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ── Main Content ── */}
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6">
         <ProfileCard
           name={data.user?.name}
@@ -137,7 +110,6 @@ export default function DashboardPage() {
         />
 
         <section className="space-y-4">
-          {/* Tabs */}
           <div className="flex gap-4 border-b border-gray-100">
             {(['donations', 'requests'] as const).map(t => (
               <button
@@ -156,6 +128,7 @@ export default function DashboardPage() {
             ))}
           </div>
 
+          {/* ✅ مرّر deliveryState و handlers للـ ItemsTable */}
           <ItemsTable
             items={activeItems}
             activeTab={activeTab}
@@ -163,7 +136,11 @@ export default function DashboardPage() {
             onCancelBooking={handleCancelBooking}
             onDonorCancelBooking={handleDonorCancelBooking}
             onEdit={handleEdit}
-            onOpenOtp={openOtpModal}
+            // ✅ Double Confirmation props
+            deliveryState={deliveryState}
+            deliveryLoading={deliveryLoading}
+            onRecipientConfirm={handleRecipientConfirm}
+            onDonorConfirm={handleDonorConfirm}
             onReport={(item, target) => {
               const isDonor  = target === 'donor';
               const userId   = isDonor

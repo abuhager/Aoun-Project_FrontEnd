@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ConfirmModal }    from "./components/ConfirmModal";
-import { CountdownTimer }  from "./components/CountdownTimer";
-import { useItemDetails }  from "./hooks/useItemDetails";
-import LevelGate from "@/components/LevelGate";
+import { ConfirmModal }         from "./components/ConfirmModal";
+import { CountdownTimer }       from "./components/CountdownTimer";
+import { useItemDetails }       from "./hooks/useItemDetails";
+import LevelGate                from "@/components/LevelGate";
+import DeliveryConfirmButton    from "@/components/DeliveryConfirmButton";
+import { useAuth }              from "@/context/AuthContext";
 
 const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 
 export default function ItemDetailsPage() {
+  const { user } = useAuth();
   const {
     item, loading, message, actionLoading,
     confirmModal, setConfirmModal,
@@ -35,6 +38,9 @@ export default function ItemDetailsPage() {
 
   const showCountdown = item.status === "محجوز" && (isBooker || isDonor);
 
+  // ✅ هل المستلم أكّد الاستلام مسبقاً؟ (لإعادة الحالة الصحيحة عند reload)
+  const initialRecipientConfirmed = item.recipientConfirmed === true;
+
   return (
     <div className="bg-surface min-h-screen text-[#191c1d] pb-20" dir="rtl">
 
@@ -42,7 +48,7 @@ export default function ItemDetailsPage() {
         <ConfirmModal
           message={confirmModal.msg}
           isDanger={confirmModal.isDanger}
-          onConfirm={confirmModal.onConfirm} // ✅ مباشرة بدون wrapper
+          onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal((p) => ({ ...p, show: false }))}
         />
       )}
@@ -118,29 +124,12 @@ export default function ItemDetailsPage() {
               )
             )}
 
-            {/* ─── رمز الاستلام ─── */}
-            {isBooker && item.status === "محجوز" && (
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-3 bg-primary/10 border-2 border-dashed border-primary p-5 rounded-3xl hover:bg-primary/15 transition-colors"
-              >
-                <span className="material-symbols-outlined text-primary text-2xl">lock</span>
-                <div className="text-right">
-                  <p className="text-primary text-xs font-black">رمز الاستلام الخاص بك 🔐</p>
-                  <p className="text-[11px] text-primary/70 font-medium mt-0.5">
-                    اذهب إلى لوحة التحكم لعرض الرمز وتأكيد الاستلام
-                  </p>
-                </div>
-                <span className="material-symbols-outlined text-primary mr-auto">chevron_left</span>
-              </Link>
-            )}
-
             {/* ─── معلومات الغرض ─── */}
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: "الموقع",    val: item.location,                                        ic: "distance"      },
                 { label: "التاريخ",   val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event"         },
-                { label: "الموثوقية", val: (item.donor?.gamification?.trustScore ?? 0) + "%", ic: "verified_user" },
+                { label: "الموثوقية", val: (item.donor?.gamification?.trustScore ?? 0) + "%",   ic: "verified_user" },
               ].map((s, i) => (
                 <div key={i} className="bg-white p-3 rounded-2xl border border-gray-100 text-center">
                   <span className="material-symbols-outlined text-primary text-xl mb-1">{s.ic}</span>
@@ -209,37 +198,70 @@ export default function ItemDetailsPage() {
               )}
 
               <div className="flex flex-col gap-3">
+
+                {/* ── المتبرع ── */}
                 {isDonor ? (
                   <div className="space-y-3">
                     <div className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-bold text-center border-2 border-dashed text-sm">
                       هذا التبرع مقدم منك 🎁
                     </div>
+
+                    {/* ✅ زر تأكيد التسليم للمتبرع */}
                     {item.status === "محجوز" && (
-                      <button
-                        onClick={handleCancelAction}
-                        disabled={actionLoading}
-                        className="w-full bg-red-50 text-red-600 border border-red-100 py-3 rounded-xl text-xs font-bold hover:bg-red-100 transition-all"
-                      >
-                        إلغاء حجز المستلم الحالي
-                      </button>
+                      <>
+                        <DeliveryConfirmButton
+                          itemId={item._id}
+                          userRole="donor"
+                          initialRecipientConfirmed={initialRecipientConfirmed}
+                          onSuccess={() => window.location.reload()}
+                          className="w-full py-4 rounded-2xl font-black text-sm"
+                        />
+                        <button
+                          onClick={handleCancelAction}
+                          disabled={actionLoading}
+                          className="w-full bg-red-50 text-red-600 border border-red-100 py-3 rounded-xl text-xs font-bold hover:bg-red-100 transition-all"
+                        >
+                          إلغاء حجز المستلم الحالي
+                        </button>
+                      </>
                     )}
                   </div>
+
+                /* ── تم التسليم ── */
                 ) : item.status === "تم التسليم" ? (
                   <div className="w-full py-4 bg-emerald-50 text-emerald-600 rounded-2xl font-bold text-center text-sm">
                     تم التسليم بنجاح ✅
                   </div>
+
+                /* ── ملغى مسبقاً ── */
                 ) : isCancelledBefore ? (
                   <div className="w-full py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold text-center text-sm">
                     لا يمكنك حجز هذا الغرض مرة أخرى 🚫
                   </div>
+
+                /* ── الحاجز الحالي ── */
                 ) : isBooker ? (
-                  <button
-                    onClick={handleCancelAction}
-                    disabled={actionLoading}
-                    className="w-full bg-red-50 text-red-600 border border-red-200 py-4 rounded-2xl font-black text-sm hover:bg-red-100 transition-all shadow-sm"
-                  >
-                    إلغاء الحجز ⚠️
-                  </button>
+                  <div className="space-y-3">
+                    {/* ✅ زر تأكيد الاستلام للمستلم */}
+                    {item.status === "محجوز" && (
+                      <DeliveryConfirmButton
+                        itemId={item._id}
+                        userRole="recipient"
+                        initialRecipientConfirmed={initialRecipientConfirmed}
+                        onSuccess={() => window.location.reload()}
+                        className="w-full py-4 rounded-2xl font-black text-sm"
+                      />
+                    )}
+                    <button
+                      onClick={handleCancelAction}
+                      disabled={actionLoading}
+                      className="w-full bg-red-50 text-red-600 border border-red-200 py-4 rounded-2xl font-black text-sm hover:bg-red-100 transition-all shadow-sm"
+                    >
+                      إلغاء الحجز ⚠️
+                    </button>
+                  </div>
+
+                /* ── في قائمة الانتظار ── */
                 ) : isWaitlisted ? (
                   <button
                     onClick={handleCancelAction}
@@ -248,6 +270,8 @@ export default function ItemDetailsPage() {
                   >
                     الانسحاب من الانتظار 🚶‍♂️
                   </button>
+
+                /* ── متاح للحجز ── */
                 ) : item.status === "متاح" ? (
                   <LevelGate>
                     <button
@@ -258,6 +282,8 @@ export default function ItemDetailsPage() {
                       احجز هذه القطعة الآن
                     </button>
                   </LevelGate>
+
+                /* ── قائمة الانتظار ── */
                 ) : (
                   <button
                     onClick={handleRequestItem}

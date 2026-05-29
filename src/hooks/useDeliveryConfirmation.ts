@@ -1,11 +1,10 @@
 // src/hooks/useDeliveryConfirmation.ts
-// ✅ Hook يدير Double Confirmation Flow بدون OTP
+'use client';
 
-import { useState, useCallback }  from 'react';
-import { useSocket }               from '@/hooks/useSocket';
-import { useEffect }               from 'react';
-import axiosInstance               from '@/lib/api/axiosInstance';
-import toast                       from 'react-hot-toast';
+import { useState, useCallback, useEffect } from 'react';
+import { useSocket } from '@/hooks/useSocket';
+import axiosInstance from '@/lib/api/axiosInstance';
+import toast from 'react-hot-toast';
 
 type ConfirmationType = 'recipient_confirm' | 'donor_confirm';
 
@@ -18,43 +17,47 @@ type DeliveryStatus =
   | 'error';
 
 interface UseDeliveryConfirmationProps {
-  itemId:    string;
-  userRole:  'donor' | 'recipient';
+  itemId: string;
+  userRole: 'donor' | 'recipient';
+  initialRecipientConfirmed?: boolean; // ✅ جديد — نمرره من الـ item
   onSuccess?: (itemId: string) => void;
 }
 
 interface UseDeliveryConfirmationReturn {
-  status:          DeliveryStatus;
-  isLoading:       boolean;
-  errorMsg:        string | null;
-  confirmReceipt:  () => Promise<void>;   // للمستلم
-  confirmDelivery: () => Promise<void>;   // للمتبرع
-  canConfirm:      boolean;               // هل الزر مفعّل
+  status: DeliveryStatus;
+  isLoading: boolean;
+  errorMsg: string | null;
+  confirmReceipt: () => Promise<void>;
+  confirmDelivery: () => Promise<void>;
+  canConfirm: boolean;
 }
 
 export function useDeliveryConfirmation({
   itemId,
   userRole,
+  initialRecipientConfirmed = false,
   onSuccess,
 }: UseDeliveryConfirmationProps): UseDeliveryConfirmationReturn {
   const socketRef = useSocket();
-  const [status,    setStatus]   = useState<DeliveryStatus>('idle');
-  const [isLoading, setLoading]  = useState(false);
-  const [errorMsg,  setErrorMsg] = useState<string | null>(null);
 
-  // ── استمع لأحداث Socket.io ────────────────────────────────
+  // ✅ إذا المستلم كان قد أكّد مسبقاً (من DB)، نبدأ بـ waiting_donor
+  const [status, setStatus] = useState<DeliveryStatus>(
+    initialRecipientConfirmed ? 'waiting_donor' : 'idle'
+  );
+  const [isLoading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // ── Socket listeners ──────────────────────────────────────
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
 
-    // المتبرع يسمع أن المستلم أكّد
     const onRecipientConfirmed = (data: { itemId: string; message: string }) => {
       if (data.itemId !== itemId) return;
       setStatus('waiting_donor');
       toast.success(data.message ?? 'المستلم أكّد الاستلام — يمكنك الآن تأكيد التسليم ✅');
     };
 
-    // المستلم يسمع أن التسليم اكتمل
     const onCompleted = (data: { itemId: string; message: string }) => {
       if (data.itemId !== itemId) return;
       setStatus('completed');
@@ -63,15 +66,15 @@ export function useDeliveryConfirmation({
     };
 
     socket.on('delivery:recipient_confirmed', onRecipientConfirmed);
-    socket.on('delivery:completed',           onCompleted);
+    socket.on('delivery:completed', onCompleted);
 
     return () => {
       socket.off('delivery:recipient_confirmed', onRecipientConfirmed);
-      socket.off('delivery:completed',           onCompleted);
+      socket.off('delivery:completed', onCompleted);
     };
   }, [socketRef, itemId, onSuccess]);
 
-  // ── API call مشترك ────────────────────────────────────────
+  // ── API call ──────────────────────────────────────────────
   const sendConfirmation = useCallback(
     async (confirmationType: ConfirmationType) => {
       setLoading(true);
@@ -91,11 +94,10 @@ export function useDeliveryConfirmation({
         }
       } catch (err: unknown) {
         const msg =
-          (err as { response?: { data?: { msg?: string; code?: string } } })
-            ?.response?.data?.msg ?? 'حدث خطأ — حاول مرة أخرى';
+          (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ??
+          'حدث خطأ — حاول مرة أخرى';
         const code =
-          (err as { response?: { data?: { code?: string } } })
-            ?.response?.data?.code;
+          (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
 
         setErrorMsg(msg);
         setStatus('error');
@@ -112,16 +114,16 @@ export function useDeliveryConfirmation({
     [itemId, onSuccess]
   );
 
-  const confirmReceipt  = () => sendConfirmation('recipient_confirm');
+  const confirmReceipt = () => sendConfirmation('recipient_confirm');
   const confirmDelivery = () => sendConfirmation('donor_confirm');
 
-  // هل يمكن للمستخدم الضغط؟
+  // ✅ المتبرع يقدر يضغط فقط إذا المستلم أكّد (waiting_donor)
   const canConfirm =
     !isLoading &&
     status !== 'completed' &&
     (
-      (userRole === 'recipient' && status === 'idle') ||
-      (userRole === 'donor'     && (status === 'idle' || status === 'waiting_donor'))
+      (userRole === 'recipient' && (status === 'idle' || status === 'error')) ||
+      (userRole === 'donor' && status === 'waiting_donor')
     );
 
   return { status, isLoading, errorMsg, confirmReceipt, confirmDelivery, canConfirm };

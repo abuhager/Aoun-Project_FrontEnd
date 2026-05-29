@@ -14,28 +14,29 @@ export interface WaitlistEntry {
 }
 
 export interface Item {
-  _id:          string;
-  title:        string;
-  description:  string;
-  category:     ItemCategory;
-  imageUrl:     string;
-  cloudinaryId?: string;
-  location:     string;
-  condition:    string;
-  status:       ItemStatus;
-  handoverMode: HandoverMode;
-  hubId?:       string | null;
-  isRated:      boolean;
-  rating?:      number | null;
-  reportCount:  number;
-  bookedAt?:    string | null;
-  cancelledBy?: string[];
-  createdAt:    string;
-  updatedAt:    string;
-  donor:        PublicUser;
-  bookedBy?:    BookedByUser | null;
-  waitlist?:    WaitlistEntry[];
-   safeHub?: SafeHub;
+  _id:                  string;
+  title:                string;
+  description:          string;
+  category:             ItemCategory;
+  imageUrl:             string;
+  cloudinaryId?:        string;
+  location:             string;
+  condition:            string;
+  status:               ItemStatus;
+  handoverMode:         HandoverMode;
+  hubId?:               string | null;
+  isRated:              boolean;
+  rating?:              number | null;
+  reportCount:          number;
+  bookedAt?:            string | null;
+  cancelledBy?:         string[];
+  createdAt:            string;
+  updatedAt:            string;
+  donor:                PublicUser;
+  bookedBy?:            BookedByUser | null;
+  waitlist?:            WaitlistEntry[];
+  safeHub?:             SafeHub;
+  recipientConfirmed?:  boolean; // ✅ تأكيد الاستلام من المستلم
 }
 
 export interface ItemSummary {

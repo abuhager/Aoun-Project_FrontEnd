@@ -7,12 +7,10 @@ import { CountdownTimer }       from "./components/CountdownTimer";
 import { useItemDetails }       from "./hooks/useItemDetails";
 import LevelGate                from "@/components/LevelGate";
 import DeliveryConfirmButton    from "@/components/DeliveryConfirmButton";
-import { useAuth }              from "@/context/AuthContext";
 
 const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 
 export default function ItemDetailsPage() {
-  const { user } = useAuth();
   const {
     item, loading, message, actionLoading,
     confirmModal, setConfirmModal,

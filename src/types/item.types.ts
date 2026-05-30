@@ -70,6 +70,8 @@ export interface DashboardItem {
   bookedAt?:   string | null;
   createdAt:   string;
   updatedAt:   string;
+  recipientConfirmed?: boolean;
+
   donor: {
     _id:    string;
     name:   string;

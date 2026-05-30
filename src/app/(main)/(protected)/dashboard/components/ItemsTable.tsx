@@ -149,7 +149,7 @@ export function ItemsTable({
                 loading={deliveryLoading && deliveryState.itemId === item._id}
                 onConfirm={onDonorConfirm}
                 waitingDonor={
-                  deliveryState.itemId === item._id && deliveryState.waitingForDonor
+                  item.recipientConfirmed === true ||(deliveryState.itemId === item._id && deliveryState.waitingForDonor)
                 }
               />
             )}

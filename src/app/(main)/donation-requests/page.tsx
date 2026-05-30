@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
-import { useSearchParams } from 'next/navigation';
 import {
   getDonationRequests,
   cancelDonationRequest,
@@ -37,8 +36,6 @@ function RequestStatusBadge({ status }: { status: DonationRequest['status'] }) {
 }
 
 export default function DonationRequestsPage() {
-  const searchParams = useSearchParams();
-
   const [requests, setRequests] = useState<DonationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -88,13 +85,12 @@ export default function DonationRequestsPage() {
   );
 
   useEffect(() => {
-    const mine = searchParams.get('mine');
-    if (mine === 'true') {
-      setMyOnly(true);
-    } else {
-      setMyOnly(false);
-    }
-  }, [searchParams]);
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const mine = params.get('mine');
+    setMyOnly(mine === 'true');
+  }, []);
 
   useEffect(() => {
     axiosInstance

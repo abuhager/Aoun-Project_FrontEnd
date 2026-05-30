@@ -1,17 +1,15 @@
-// src/app/(main)/(protected)/dashboard/page.tsx
-// ✅ Patched: إزالة OtpModal → Double Confirmation Flow
-'use client';
+"use client";
 
-import { useState }           from 'react';
-import { useDashboard }       from './hooks/useDashboard';
-import { ActionModal }        from './components/ActionModal';
-import { Toast }              from './components/Toast';
-import { ProfileCard }        from './components/ProfileCard';
-import { StatsGrid }          from './components/StatsGrid';
-import { ItemsTable }         from './components/ItemsTable';
-import ReportModal            from '@/components/ReportModal';
-import AppealModal            from '@/components/AppealModal';
-// ✅ استبدل OtpModal بـ DeliveryConfirmFlow (مُضمَّن في ItemsTable)
+import { useState }             from 'react';
+import { useDashboard }         from './hooks/useDashboard';
+import { ActionModal }          from './components/ActionModal';
+import { Toast }                from './components/Toast';
+import { ProfileCard }          from './components/ProfileCard';
+import { StatsGrid }            from './components/StatsGrid';
+import { ItemsTable }           from './components/ItemsTable';
+import ReportModal              from '@/components/ReportModal';
+import AppealModal              from '@/components/AppealModal';
+import ChatDrawer               from '@/components/ChatDrawer'; // ✅
 
 function DashboardSkeleton() {
   return (
@@ -48,6 +46,11 @@ export default function DashboardPage() {
     userId: string; userName: string; itemId?: string;
   } | null>(null);
 
+  // ✅ Chat state
+  const [chatTarget, setChatTarget] = useState<{
+    itemId: string; itemTitle: string;
+  } | null>(null);
+
   if (loading) return <DashboardSkeleton />;
 
   if (!data) {
@@ -78,8 +81,6 @@ export default function DashboardPage() {
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* ✅ حُذف OtpModal — الـ Double Confirmation مُضمَّن في ItemsTable */}
-
       {reportTarget && (
         <ReportModal
           reportedUserId={reportTarget.userId}
@@ -94,6 +95,16 @@ export default function DashboardPage() {
           reportId={appealModal.reportId}
           onClose={closeAppealModal}
           onSuccess={onAppealSuccess}
+        />
+      )}
+
+      {/* ✅ Chat Drawer */}
+      {chatTarget && (
+        <ChatDrawer
+          itemId={chatTarget.itemId}
+          itemTitle={chatTarget.itemTitle}
+          isOpen={!!chatTarget}
+          onClose={() => setChatTarget(null)}
         />
       )}
 
@@ -128,7 +139,6 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* ✅ مرّر deliveryState و handlers للـ ItemsTable */}
           <ItemsTable
             items={activeItems}
             activeTab={activeTab}
@@ -136,11 +146,15 @@ export default function DashboardPage() {
             onCancelBooking={handleCancelBooking}
             onDonorCancelBooking={handleDonorCancelBooking}
             onEdit={handleEdit}
-            // ✅ Double Confirmation props
             deliveryState={deliveryState}
             deliveryLoading={deliveryLoading}
             onRecipientConfirm={handleRecipientConfirm}
             onDonorConfirm={handleDonorConfirm}
+            // ✅ فتح الـ Chat من الـ ItemsTable
+            onOpenChat={(item) => setChatTarget({
+              itemId:    item._id,
+              itemTitle: item.title,
+            })}
             onReport={(item, target) => {
               const isDonor  = target === 'donor';
               const userId   = isDonor

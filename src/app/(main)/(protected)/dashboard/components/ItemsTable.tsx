@@ -1,5 +1,4 @@
 // src/app/(main)/(protected)/dashboard/components/ItemsTable.tsx
-// ✅ Patched: إزالة onOpenOtp → Double Confirmation Flow
 "use client";
 
 import Link  from "next/link";
@@ -21,11 +20,11 @@ interface ItemsTableProps {
   onCancelBooking:      (id: string) => void;
   onDonorCancelBooking: (id: string) => void;
   onEdit:               (id: string) => void;
-  // ✅ Double Confirmation — استبدل onOpenOtp
   deliveryState:        DeliveryState;
   deliveryLoading:      boolean;
   onRecipientConfirm:   (itemId: string) => void;
   onDonorConfirm:       (itemId: string) => void;
+  onOpenChat?:          (item: DashboardItem) => void; // ✅
   onReport?:            (item: DashboardItem, target: "donor" | "receiver") => void;
   onAppeal?:            (reportId: string) => void;
 }
@@ -42,6 +41,7 @@ export function ItemsTable({
   onEdit,
   deliveryState, deliveryLoading,
   onRecipientConfirm, onDonorConfirm,
+  onOpenChat,
   onReport, onAppeal,
 }: ItemsTableProps) {
 
@@ -91,7 +91,6 @@ export function ItemsTable({
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <StatusBadge status={item.status} />
 
-              {/* ✅ Double Confirmation status badge — بدل "رمز التسليم أُرسل لبريدك" */}
               {item.status === "محجوز" && activeTab === "requests" && (
                 item.recipientConfirmed ? (
                   <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-lg font-semibold">
@@ -118,7 +117,6 @@ export function ItemsTable({
                 </span>
               )}
 
-              {/* badge بلاغ معلّق */}
               {item.reportId && (
                 <span className="text-xs text-red-500 font-semibold bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 flex items-center gap-1">
                   <span className="material-symbols-outlined text-sm">warning</span>
@@ -131,7 +129,18 @@ export function ItemsTable({
           {/* ── أزرار الإجراءات ── */}
           <div className="flex flex-col gap-2 flex-shrink-0">
 
-            {/* ✅ المستلم — تأكيد الاستلام (Double Confirmation) */}
+            {/* ✅ زر المحادثة — يظهر للطرفين إذا الغرض محجوز */}
+            {item.status === "محجوز" && onOpenChat && (
+              <button
+                onClick={() => onOpenChat(item)}
+                className="text-xs bg-primary/5 text-primary px-3 py-1.5 rounded-xl font-bold hover:bg-primary/10 transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-sm">chat</span>
+                محادثة
+              </button>
+            )}
+
+            {/* المستلم — تأكيد الاستلام */}
             {activeTab === "requests" && item.status === "محجوز" && (
               <DeliveryConfirmFlow
                 item={item}
@@ -141,7 +150,7 @@ export function ItemsTable({
               />
             )}
 
-            {/* ✅ المتبرع — تأكيد التسليم (Double Confirmation) */}
+            {/* المتبرع — تأكيد التسليم */}
             {activeTab === "donations" && item.status === "محجوز" && (
               <DeliveryConfirmFlow
                 item={item}
@@ -149,7 +158,8 @@ export function ItemsTable({
                 loading={deliveryLoading && deliveryState.itemId === item._id}
                 onConfirm={onDonorConfirm}
                 waitingDonor={
-                  item.recipientConfirmed === true ||(deliveryState.itemId === item._id && deliveryState.waitingForDonor)
+                  item.recipientConfirmed === true ||
+                  (deliveryState.itemId === item._id && deliveryState.waitingForDonor)
                 }
               />
             )}
@@ -164,7 +174,7 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* تعديل — فقط إذا متاح أو مخفي */}
+            {/* تعديل */}
             {activeTab === "donations" && ["متاح", "مخفي"].includes(item.status) && (
               <button
                 onClick={() => onEdit(item._id)}
@@ -194,7 +204,7 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* إبلاغ — المستلم يبلّغ على المتبرع */}
+            {/* إبلاغ — المستلم على المتبرع */}
             {activeTab === "requests" && item.status === "تم التسليم" && onReport && (
               <button
                 onClick={() => onReport(item, "donor")}
@@ -205,7 +215,7 @@ export function ItemsTable({
               </button>
             )}
 
-            {/* إبلاغ — المتبرع يبلّغ على المستلم */}
+            {/* إبلاغ — المتبرع على المستلم */}
             {activeTab === "donations" && item.status === "تم التسليم" && onReport && (
               <button
                 onClick={() => onReport(item, "receiver")}
@@ -236,10 +246,10 @@ export function ItemsTable({
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    "متاح":       { label: "متاح",       className: "bg-green-50 text-green-600 border-green-100"  },
+    "متاح":       { label: "متاح",       className: "bg-green-50 text-green-600 border-green-100"   },
     "محجوز":      { label: "محجوز",      className: "bg-yellow-50 text-yellow-600 border-yellow-100" },
-    "تم التسليم": { label: "تم التسليم", className: "bg-blue-50 text-blue-600 border-blue-100"    },
-    "مخفي":       { label: "مخفي",       className: "bg-gray-50 text-gray-500 border-gray-200"    },
+    "تم التسليم": { label: "تم التسليم", className: "bg-blue-50 text-blue-600 border-blue-100"      },
+    "مخفي":       { label: "مخفي",       className: "bg-gray-50 text-gray-500 border-gray-200"      },
   };
   const cfg = map[status] ?? { label: status, className: "bg-gray-50 text-gray-500 border-gray-200" };
   return (

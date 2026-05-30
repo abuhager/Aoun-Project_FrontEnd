@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
+import { useState }             from 'react';
+import Link                     from "next/link";
+import Image                    from "next/image";
 import { ConfirmModal }         from "./components/ConfirmModal";
 import { CountdownTimer }       from "./components/CountdownTimer";
 import { useItemDetails }       from "./hooks/useItemDetails";
 import LevelGate                from "@/components/LevelGate";
 import DeliveryConfirmButton    from "@/components/DeliveryConfirmButton";
+import ChatDrawer               from "@/components/ChatDrawer"; // ✅
 
 const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -17,6 +19,8 @@ export default function ItemDetailsPage() {
     isDonor, isBooker, isWaitlisted, isCancelledBefore,
     handleRequestItem, handleCancelAction,
   } = useItemDetails();
+
+  const [chatOpen, setChatOpen] = useState(false); // ✅
 
   if (loading) {
     return (
@@ -34,10 +38,9 @@ export default function ItemDetailsPage() {
     ? item.imageUrl
     : `${backendUrl}/${item.imageUrl}`;
 
-  const showCountdown = item.status === "محجوز" && (isBooker || isDonor);
-
-  // ✅ هل المستلم أكّد الاستلام مسبقاً؟ (لإعادة الحالة الصحيحة عند reload)
+  const showCountdown          = item.status === "محجوز" && (isBooker || isDonor);
   const initialRecipientConfirmed = item.recipientConfirmed === true;
+  const showChat               = (isDonor || isBooker) && item.status === "محجوز"; // ✅
 
   return (
     <div className="bg-surface min-h-screen text-[#191c1d] pb-20" dir="rtl">
@@ -48,6 +51,16 @@ export default function ItemDetailsPage() {
           isDanger={confirmModal.isDanger}
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal((p) => ({ ...p, show: false }))}
+        />
+      )}
+
+      {/* ✅ Chat Drawer */}
+      {showChat && (
+        <ChatDrawer
+          itemId={item._id}
+          itemTitle={item.title}
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
         />
       )}
 
@@ -203,8 +216,6 @@ export default function ItemDetailsPage() {
                     <div className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-bold text-center border-2 border-dashed text-sm">
                       هذا التبرع مقدم منك 🎁
                     </div>
-
-                    {/* ✅ زر تأكيد التسليم للمتبرع */}
                     {item.status === "محجوز" && (
                       <>
                         <DeliveryConfirmButton
@@ -240,7 +251,6 @@ export default function ItemDetailsPage() {
                 /* ── الحاجز الحالي ── */
                 ) : isBooker ? (
                   <div className="space-y-3">
-                    {/* ✅ زر تأكيد الاستلام للمستلم */}
                     {item.status === "محجوز" && (
                       <DeliveryConfirmButton
                         itemId={item._id}
@@ -291,6 +301,18 @@ export default function ItemDetailsPage() {
                     انضم لقائمة الانتظار 🕒
                   </button>
                 )}
+
+                {/* ✅ زر التواصل — يظهر فقط للطرفين وقت الحجز */}
+                {showChat && (
+                  <button
+                    onClick={() => setChatOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-primary/20 bg-primary/5 text-primary font-black text-sm hover:bg-primary/10 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-base">chat</span>
+                    تواصل مع {isDonor ? 'الحاجز' : 'المتبرع'}
+                  </button>
+                )}
+
               </div>
             </div>
 

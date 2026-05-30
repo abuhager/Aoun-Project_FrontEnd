@@ -247,7 +247,8 @@ const socketRef = useSocket();
     });
   }, [showToast]);
 
-  const handleEdit = useCallback((id: string) => { router.push(`/edit-item/${id}`); }, [router]);
+  const handleEdit = useCallback((id: string) => { router.push(`/items/${id}/edit`);
+; }, [router]);
 
   const openAppealModal  = useCallback((reportId: string) => {
     appealReportIdRef.current = reportId;

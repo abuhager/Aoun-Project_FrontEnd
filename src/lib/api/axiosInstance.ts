@@ -1,7 +1,6 @@
 // src/lib/api/axiosInstance.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-// ── Access Token في الذاكرة فقط ───────────────────────────────
 let accessToken: string | null = null;
 let isRefreshing = false;
 
@@ -12,13 +11,12 @@ type RefreshQueueItem = {
 
 let refreshQueue: RefreshQueueItem[] = [];
 
-// ── Init queue: طلبات جاءت قبل اكتمال تهيئة الجلسة ───────────
 let isInitialized = false;
 let initQueue: Array<() => void> = [];
 let initQueueRejects: Array<(err: Error) => void> = [];
 
-export const setAccessToken = (token: string | null) => {
-  accessToken = token;
+export const setAccessToken = (t: string | null) => {
+  accessToken = t;
 };
 
 export const getAccessToken = () => accessToken;
@@ -61,22 +59,20 @@ function processRefreshQueue(error: Error | null, token: string | null = null) {
 const API_BASE_URL =
   typeof window === "undefined" ? process.env.NEXT_PUBLIC_API_URL : "";
 
-// ─── Axios Instance ───────────────────────────────────────────
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
   withCredentials: true,
 });
 
-// ── Request Interceptor ───────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const url = config.url ?? "";
     const isRefreshRoute = url.includes("/auth/refresh");
-    const isLoginRoute   = url.includes("/auth/login");
-    const isAuthInitSafeRoute = isRefreshRoute || isLoginRoute;
+    const isLoginRoute = url.includes("/auth/login");
+    const isInitSafeRoute = isRefreshRoute || isLoginRoute;
 
-    if (!isInitialized && !isAuthInitSafeRoute) {
+    if (!isInitialized && !isInitSafeRoute) {
       return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {
         initQueue.push(() => resolve(config));
         initQueueRejects.push((err) => reject(err));
@@ -98,7 +94,6 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ── Response Interceptor ──────────────────────────────────────
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -113,13 +108,8 @@ axiosInstance.interceptors.response.use(
     const status = error.response?.status;
     const url = originalRequest.url ?? "";
     const isAuthRoute = url.includes("/auth/");
-    const isRefreshRoute = url.includes("/auth/refresh");
 
-    if (
-      status === 401 &&
-      !isAuthRoute &&
-      !originalRequest._retry
-    ) {
+    if (status === 401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
 
       if (isRefreshing) {
@@ -161,7 +151,7 @@ axiosInstance.interceptors.response.use(
         setAccessToken(null);
         processRefreshQueue(finalError, null);
 
-        if (typeof window !== "undefined" && !isRefreshRoute) {
+        if (typeof window !== "undefined") {
           window.location.replace("/login?expired=true");
         }
 

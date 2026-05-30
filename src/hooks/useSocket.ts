@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { useAuth } from '@/context/AuthContext';
-import { getAccessToken } from '@/lib/api/axiosInstance';
+import { useEffect, useRef, useCallback } from "react";
+import { io, type Socket } from "socket.io-client";
+import { useAuth } from "@/context/AuthContext";
+import { getAccessToken } from "@/lib/api/axiosInstance";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 let socketSingleton: Socket | null = null;
 
@@ -13,13 +13,13 @@ export function useSocket() {
   const { user, isAuthenticated } = useAuth();
   const socketRef = useRef<Socket | null>(null);
 
-  const connect = useCallback(() => {
+  const connectSocket = useCallback(() => {
     const token = getAccessToken();
-    if (!token) return;
+    if (!token) return null;
 
     if (socketSingleton?.connected) {
       socketRef.current = socketSingleton;
-      return;
+      return socketSingleton;
     }
 
     if (socketSingleton) {
@@ -30,13 +30,16 @@ export function useSocket() {
     socketSingleton = io(SOCKET_URL, {
       auth: { token },
       withCredentials: true,
-      transports: ['websocket'],
+      transports: ["websocket"],
+      reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
+      reconnectionDelay: 1500,
       timeout: 8000,
+      autoConnect: true,
     });
 
     socketRef.current = socketSingleton;
+    return socketSingleton;
   }, []);
 
   useEffect(() => {
@@ -49,26 +52,29 @@ export function useSocket() {
       return;
     }
 
-    connect();
+    const socket = connectSocket();
+    if (!socket) return;
 
-    const handleAuthError = ({ code }: { code: string }) => {
-      if (code === 'TOKEN_EXPIRED') {
+    const handleConnectError = (err: Error) => {
+      const message = err?.message || "";
+
+      if (message === "TOKEN_EXPIRED" || message === "INVALID_TOKEN") {
         setTimeout(() => {
           const freshToken = getAccessToken();
-          if (freshToken && socketSingleton) {
-            socketSingleton.auth = { token: freshToken };
-            socketSingleton.disconnect().connect();
-          }
-        }, 1500);
+          if (!freshToken || !socketSingleton) return;
+
+          socketSingleton.auth = { token: freshToken };
+          socketSingleton.connect();
+        }, 1200);
       }
     };
 
-    socketSingleton?.on('auth_error', handleAuthError);
+    socket.on("connect_error", handleConnectError);
 
     return () => {
-      socketSingleton?.off('auth_error', handleAuthError);
+      socket.off("connect_error", handleConnectError);
     };
-  }, [user?._id, isAuthenticated, connect]);
+  }, [user?._id, isAuthenticated, connectSocket]);
 
   return socketRef;
 }

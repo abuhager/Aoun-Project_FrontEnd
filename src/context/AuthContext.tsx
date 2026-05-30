@@ -156,9 +156,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetAuthState();
       setUser(null);
       initialized.current = false;
+      refreshing.current = null;
+
       if (typeof window !== "undefined") {
         window.location.replace("/login");
       }
+
       setTimeout(() => {
         isLoggingOut.current = false;
       }, 1000);
@@ -170,8 +173,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initialized.current = true;
 
     refreshSession()
-      .then((ok) => setInitialized(ok))
-      .finally(() => setIsLoading(false));
+      .then((success) => {
+        setInitialized(success);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [refreshSession]);
 
   return (

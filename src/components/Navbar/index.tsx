@@ -4,7 +4,8 @@
 import Link from "next/link";
 import { useNavbar } from "./useNavbar";
 import NotificationBell from "@/components/NotificationBell";
-import { useEffect, useRef } from "react";
+import ConversationsDrawer from "@/components/ConversationsDrawer";
+import { useEffect, useRef, useState } from "react";
 
 const NAV_LINKS = [
   { href: "/#how-it-works",     icon: "help",              label: "كيف نعمل؟",      authRequired: false },
@@ -31,6 +32,7 @@ export default function Navbar() {
   } = useNavbar();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [chatOpen, setChatOpen] = useState(false);  // ✅ جديد
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -85,8 +87,7 @@ export default function Navbar() {
 
         <div className="hidden md:flex items-center gap-1">
           {visibleLinks.map((l) => {
-            const isActive = pathname === l.href || (l.href !== "/" && pathname.startsWith(l.href));
-            return (
+const isActive = pathname === l.href || pathname.startsWith(l.href + "/");            return (
               <Link
                 key={l.href}
                 href={l.href}
@@ -142,6 +143,16 @@ export default function Navbar() {
               </Link>
             )}
 
+            {/* ✅ زر الرسائل Desktop */}
+            <button
+              onClick={() => setChatOpen(true)}
+              className="relative flex items-center justify-center w-9 h-9 rounded-xl hover:bg-gray-50 transition-colors text-gray-600 hover:text-primary"
+              aria-label="الرسائل"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[22px]">chat</span>
+            </button>
+
             <NotificationBell />
 
             {/* Profile Dropdown */}
@@ -154,7 +165,6 @@ export default function Navbar() {
                     : "hover:bg-gray-50"
                 }`}
               >
-                {/* Avatar */}
                 <div className="relative">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/15 overflow-hidden">
                     {user?.avatar ? (
@@ -185,10 +195,8 @@ export default function Navbar() {
                 </span>
               </button>
 
-              {/* Dropdown */}
               {isProfileDropdownOpen && (
                 <div className="absolute left-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-[#edeeef] overflow-hidden z-50">
-                  {/* Header */}
                   <div className="px-4 py-3 bg-gradient-to-l from-primary/5 to-transparent border-b border-[#edeeef]">
                     <p className="text-xs font-black text-[#191c1d] truncate">{user?.name}</p>
                     <p className="text-[11px] text-gray-400 truncate">{user?.email}</p>
@@ -255,7 +263,20 @@ export default function Navbar() {
 
       {/* ── Mobile: إشعارات + Toggle ── */}
       <div className="md:hidden flex items-center gap-1">
-        {isMounted && isLoggedIn && <NotificationBell />}
+        {isMounted && isLoggedIn && (
+          <>
+            {/* ✅ زر الرسائل Mobile */}
+            <button
+              onClick={() => setChatOpen(true)}
+              className="relative flex items-center justify-center w-9 h-9 rounded-xl hover:bg-gray-50 transition-colors text-gray-600 hover:text-primary"
+              aria-label="الرسائل"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[22px]">chat</span>
+            </button>
+            <NotificationBell />
+          </>
+        )}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-expanded={isMobileMenuOpen}
@@ -276,7 +297,6 @@ export default function Navbar() {
       >
         <div className="flex flex-col gap-0.5 px-4 py-3">
 
-          {/* Profile header — Mobile */}
           {isMounted && isLoggedIn && (
             <div className="flex items-center gap-3 p-3 mb-1 bg-primary/5 rounded-2xl">
               <div className="relative">
@@ -301,10 +321,8 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* روابط */}
           {visibleLinks.map((l) => {
-            const isActive = pathname === l.href || (l.href !== "/" && pathname.startsWith(l.href));
-            return (
+const isActive = pathname === l.href || pathname.startsWith(l.href + "/");            return (
               <Link
                 key={l.href}
                 href={l.href}
@@ -404,6 +422,14 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* ✅ ConversationList Drawer */}
+      {isMounted && isLoggedIn && (
+        <ConversationsDrawer 
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </nav>
   );
 }

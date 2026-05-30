@@ -11,13 +11,12 @@ export function useNotifications() {
   const { user, isLoggedIn } = useAuth();
   const socketRef = useSocket();
 
-  const [notifications,   setNotifications]   = useState<Notification[]>([]);
-  const [unreadCount,     setUnreadCount]     = useState(0);
-  const [isOpen,          setIsOpen]          = useState(false);
-  const [isLoading,       setIsLoading]       = useState(false);
-  const [unreadMessages,  setUnreadMessages]  = useState(0); // ✅ رسائل الـ Chat
+  const [notifications,  setNotifications]  = useState<Notification[]>([]);
+  const [unreadCount,    setUnreadCount]    = useState(0);
+  const [isOpen,         setIsOpen]         = useState(false);
+  const [isLoading,      setIsLoading]      = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
-  // ─── Fetch ────────────────────────────────────────────────────
   const fetchNotifications = useCallback(async () => {
     if (!user?._id || !isLoggedIn) return;
     setIsLoading(true);
@@ -25,6 +24,12 @@ export function useNotifications() {
       const data = await getNotifications();
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
+
+      // ✅ احسب unreadMessages عند التحميل
+      const msgCount = data.notifications.filter(
+        (n: Notification) => n.type === 'new_message' && !n.isRead
+      ).length;
+      setUnreadMessages(msgCount);
     } catch {
       // fail silently
     } finally {
@@ -42,37 +47,31 @@ export function useNotifications() {
     }
   }, [user?._id, isLoggedIn, fetchNotifications]);
 
-  // ─── Real-time ────────────────────────────────────────────────
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
 
-    // إشعارات عامة (item_booked, new_rating, ...)
     const handleNew = (notification: Notification) => {
-      setNotifications(prev => [notification, ...prev]);
+      setNotifications(prev => {
+        if (prev.some(n => n._id === notification._id)) return prev;
+        return [notification, ...prev];
+      });
       setUnreadCount(prev => prev + 1);
-    };
 
-    // ✅ إشعارات الـ Chat (NEW_MESSAGE من socketHandler)
-    const handleChatNotif = ({ type }: { type: string }) => {
-      if (type === 'NEW_MESSAGE') {
+      // ✅ زد عداد الرسائل إذا كان new_message
+      if (notification.type === 'new_message') {
         setUnreadMessages(prev => prev + 1);
       }
     };
 
     socket.on('notification:new', handleNew);
-    socket.on('notification',     handleChatNotif); // ✅
-
-    return () => {
-      socket.off('notification:new', handleNew);
-      socket.off('notification',     handleChatNotif);
-    };
+    return () => { socket.off('notification:new', handleNew); };
   }, [socketRef.current]);
 
-  // ─── Mark all read ────────────────────────────────────────────
   const handleMarkAllRead = useCallback(async () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
+    setUnreadMessages(0); // ✅ صفّر رسائل الـ chat
     try {
       await markAllRead();
     } catch {
@@ -89,7 +88,7 @@ export function useNotifications() {
     isLoading,
     toggleOpen,
     handleMarkAllRead,
-    unreadMessages,       // ✅
-    setUnreadMessages,    // ✅ للـ ChatDrawer يصفّرها عند الفتح
+    unreadMessages,
+    setUnreadMessages,
   };
 }

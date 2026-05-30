@@ -36,13 +36,12 @@ export default function ChatDrawer({
   } = useChat(itemId);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-
   const canSend = useMemo(() => !!text.trim() && !sending, [text, sending]);
 
   useEffect(() => {
     if (isOpen) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-      markRead();
+      markRead(); // ✅ علّم كمقروء عند الفتح
     }
   }, [messages, isOpen, markRead]);
 
@@ -56,12 +55,12 @@ export default function ChatDrawer({
       />
 
       <div className="relative z-10 w-full max-w-sm h-full bg-white shadow-2xl flex flex-col">
+        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white">
           <div>
             <p className="font-black text-sm text-gray-800">محادثة</p>
             <p className="text-xs text-gray-400 truncate max-w-[200px]">{itemTitle}</p>
           </div>
-
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
@@ -72,6 +71,7 @@ export default function ChatDrawer({
           </button>
         </div>
 
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-50">
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => (
@@ -118,6 +118,7 @@ export default function ChatDrawer({
           <div ref={bottomRef} />
         </div>
 
+        {/* Input */}
         <div className="px-3 py-3 border-t border-gray-100 bg-white flex items-center gap-2">
           <input
             type="text"
@@ -137,7 +138,6 @@ export default function ChatDrawer({
             placeholder="اكتب رسالة..."
             className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
           />
-
           <button
             type="button"
             onClick={sendMessage}

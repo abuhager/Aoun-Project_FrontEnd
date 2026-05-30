@@ -11,7 +11,6 @@ import {
 import axios from "axios";
 import axiosInstance, {
   setAccessToken,
-  getAccessToken,
   setInitialized,
 } from "@/lib/api/axiosInstance";
 import type { AuthUser } from "@/types/user.types";
@@ -24,7 +23,6 @@ type CachedUser = Pick<
 
 interface AuthContextType {
   user: CachedUser | null;
-  accessToken: string | null;
   isLoading: boolean;
   isLoggedIn: boolean;
   isAuthenticated: boolean;
@@ -34,29 +32,26 @@ interface AuthContextType {
 }
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
-
 const USER_COOKIE = "aoun_user";
-const SESSION_COOKIE = "session_active";
-
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function toMinimalUser(u: AuthUser): CachedUser {
   return {
-    _id:          u._id,
-    name:         u.name,
-    email:        u.email,
-    avatar:       u.avatar ?? undefined,
-    role:         u.role,
-    trustLevel:   u.trustLevel ?? 1,
-    quota:        u.quota ?? 0,
-    gamification: u.gamification ?? {  
-      trustScore:     0,
+    _id: u._id,
+    name: u.name,
+    email: u.email,
+    avatar: u.avatar ?? undefined,
+    role: u.role,
+    trustLevel: u.trustLevel ?? 1,
+    quota: u.quota ?? 0,
+    gamification: u.gamification ?? {
+      trustScore: 0,
       totalDonations: 0,
-      level:          1,
-      title:          'مبتدئ',
-      badge:          '🌱',
-      progress:       0,
-      pointsToNext:   null,
+      level: 1,
+      title: 'مبتدئ',
+      badge: '🌱',
+      progress: 0,
+      pointsToNext: null,
     },
   };
 }
@@ -73,10 +68,8 @@ function loadUserCookie(): CachedUser | null {
   try {
     const raw = Cookies.get(USER_COOKIE);
     if (!raw) return null;
-
     const parsed = JSON.parse(raw) as Partial<CachedUser>;
     if (!parsed._id) return null;
-
     return parsed as CachedUser;
   } catch {
     return null;
@@ -88,27 +81,6 @@ function clearUserCookie() {
     sameSite: IS_PRODUCTION ? "none" : "lax",
     secure: IS_PRODUCTION,
   });
-}
-
-function setSessionCookie() {
-  Cookies.set(SESSION_COOKIE, "true", {
-    expires: 7,
-    sameSite: "lax",
-    secure: IS_PRODUCTION,
-    path: "/",
-  });
-}
-
-function clearSessionCookie() {
-  Cookies.remove(SESSION_COOKIE, {
-    path: "/",
-    sameSite: "lax",
-    secure: IS_PRODUCTION,
-  });
-}
-
-async function warmUpBackend() {
-  return;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -124,22 +96,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const minimal = toMinimalUser(u);
       setUserState(minimal);
       saveUserCookie(minimal);
-      setSessionCookie();
     } else {
       setUserState(null);
       clearUserCookie();
-      clearSessionCookie();
     }
   }, []);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    if (isLoggingOut.current) {
-      return false;
-    }
-
-    if (refreshing.current) {
-      return refreshing.current;
-    }
+    if (isLoggingOut.current) return false;
+    if (refreshing.current) return refreshing.current;
 
     refreshing.current = (async () => {
       try {
@@ -149,27 +114,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           { withCredentials: true }
         );
 
-        const freshToken = data.accessToken;
-        setAccessToken(freshToken);
+        setAccessToken(data.accessToken);
 
         const meRes = await axiosInstance.get<{ user: AuthUser }>("/api/auth/me", {
-          headers: { Authorization: `Bearer ${freshToken}` },
+          headers: { Authorization: `Bearer ${data.accessToken}` },
           withCredentials: true,
         });
 
-        const fetchedUser =
-          meRes.data.user ?? (meRes.data as unknown as AuthUser);
-
+        const fetchedUser = meRes.data.user ?? (meRes.data as unknown as AuthUser);
         setUser(fetchedUser);
         return true;
       } catch (err) {
-        if (
-          axios.isAxiosError(err) &&
-          err.response?.status !== 401
-        ) {
+        if (axios.isAxiosError(err) && err.response?.status !== 401) {
           console.error("refreshSession error:", err);
         }
-
         setAccessToken(null);
         setUser(null);
         return false;
@@ -185,16 +143,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoggingOut.current = true;
 
     try {
-      await axiosInstance.post(
-        "/api/auth/logout",
-        {},
-        { withCredentials: true }
-      );
+      await axiosInstance.post("/api/auth/logout", {}, { withCredentials: true });
     } catch (err) {
-      if (
-        axios.isAxiosError(err) &&
-        err.response?.status !== 401
-      ) {
+      if (axios.isAxiosError(err) && err.response?.status !== 401) {
         console.error("logout error:", err);
       }
     } finally {
@@ -216,16 +167,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (initialized.current) return;
-
     initialized.current = true;
-    void warmUpBackend();
 
     refreshSession()
       .then((success) => {
         setInitialized(success);
-        if (!success) {
-          clearSessionCookie();
-        }
       })
       .finally(() => {
         setIsLoading(false);
@@ -236,7 +182,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        accessToken: getAccessToken(),
         isLoading,
         isLoggedIn: !!user,
         isAuthenticated: !!user,
@@ -252,11 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-
-  if (!ctx) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
-
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }
 

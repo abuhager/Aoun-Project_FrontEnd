@@ -1,160 +1,227 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { getAccessToken } from "@/lib/api/axiosInstance";
+import axiosInstance from "@/lib/api/axiosInstance";
 import ChatDrawer from "@/components/ChatDrawer";
 
-const API = process.env.NEXT_PUBLIC_API_URL!;
-
-interface ConvSummary {
+interface ConversationItem {
   _id: string;
-  item: { _id: string; title: string; images?: string[] };
-  lastMessage?: { text: string; createdAt: string };
-  unreadCount: number;
+  title: string;
+  imageUrl?: string;
+}
+
+interface Participant {
+  _id: string;
+  name: string;
+  avatar?: string;
+}
+
+interface Conversation {
+  _id: string;
+  item: ConversationItem;
+  participants: Participant[];
+  unread: number;
+  lastActivity: string;
 }
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onUnreadCountChange?: (count: number) => void;
 }
 
-export default function ConversationList({ isOpen, onClose }: Props) {
-  const { user, isLoggedIn } = useAuth();
-  const [convs, setConvs]       = useState<ConvSummary[]>([]);
-  const [loading, setLoading]   = useState(false);
-  const [activeConv, setActiveConv] = useState<ConvSummary | null>(null);
+export default function ConversationsDrawer({
+  isOpen,
+  onClose,
+  onUnreadCountChange,
+}: Props) {
+  const { user } = useAuth();
 
-  const fetchConvs = useCallback(async () => {
-    if (!isLoggedIn || !user?._id) return;
-    setLoading(true);
-    try {
-      const token = getAccessToken();
-      const res = await fetch(`${API}/api/conversations`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (!res.ok) throw new Error("fetch failed");
-      const data = await res.json();
-      setConvs(Array.isArray(data.conversations) ? data.conversations : []);
-    } catch {
-      setConvs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [isLoggedIn, user?._id]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selected, setSelected] = useState<Conversation | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
+
+  const unreadTotal = useMemo(() => {
+    return conversations.reduce((sum, conv) => sum + (conv.unread || 0), 0);
+  }, [conversations]);
 
   useEffect(() => {
-    if (isOpen) fetchConvs();
-  }, [isOpen, fetchConvs]);
+    onUnreadCountChange?.(unreadTotal);
+  }, [unreadTotal, onUnreadCountChange]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
 
-  // ── إذا فتح محادثة معينة ──
-  if (activeConv) {
+    let cancelled = false;
+
+    axiosInstance
+      .get<Conversation[]>("/api/conversations")
+      .then((r) => {
+        if (cancelled) return;
+
+        const data = Array.isArray(r.data) ? r.data : [];
+        setConversations(data);
+        setHasFetched(true);
+      })
+      .catch((err) => {
+        console.error("fetch conversations error", err);
+
+        if (cancelled) return;
+
+        setConversations([]);
+        setHasFetched(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  if (selected) {
     return (
       <ChatDrawer
-        itemId={activeConv.item._id}
-        itemTitle={activeConv.item.title}
+        itemId={selected.item._id}
+        itemTitle={selected.item.title}
         isOpen={true}
-        onClose={() => setActiveConv(null)}
+        onClose={() => {
+          setSelected(null);
+
+          setConversations((prev) =>
+            prev.map((conv) =>
+              conv._id === selected._id ? { ...conv, unread: 0 } : conv
+            )
+          );
+        }}
       />
     );
   }
 
+  if (!isOpen) return null;
+
+  const isLoading = !hasFetched;
+  const isEmpty = hasFetched && conversations.length === 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" dir="rtl">
-      {/* backdrop */}
+    <div className="fixed inset-0 z-110" dir="rtl">
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/35 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-full max-w-sm h-full bg-white shadow-2xl flex flex-col">
+      <aside className="fixed top-0 right-0 left-auto z-111 h-dvh w-full max-w-md border-l border-gray-100 bg-white shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <p className="font-black text-sm text-gray-800">الرسائل</p>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
-            aria-label="إغلاق"
-          >
-            <span className="material-symbols-outlined text-gray-500 text-base">close</span>
-          </button>
+        <div className="shrink-0 border-b border-gray-100 bg-white px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-base font-black text-gray-800">الرسائل</h2>
+              <p className="mt-0.5 text-xs text-gray-400">
+                جميع المحادثات الخاصة بك
+              </p>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100"
+              aria-label="إغلاق"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[22px]">
+                close
+              </span>
+            </button>
+          </div>
         </div>
 
-        {/* List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3">
-                <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4" />
-                  <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+        {/* Content */}
+        <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50">
+          {isLoading ? (
+            <div className="space-y-2 p-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-3 py-3"
+                >
+                  <div className="h-11 w-11 shrink-0 rounded-full bg-gray-200 animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-3/4 rounded bg-gray-200 animate-pulse" />
+                    <div className="h-2 w-1/2 rounded bg-gray-100 animate-pulse" />
+                  </div>
                 </div>
-              </div>
-            ))
-          ) : convs.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-20 text-gray-400">
-              <span className="material-symbols-outlined text-4xl">inbox</span>
-              <p className="text-sm font-semibold">لا توجد محادثات بعد</p>
+              ))}
+            </div>
+          ) : isEmpty ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-gray-400">
+              <span className="material-symbols-outlined text-5xl">
+                chat_bubble_outline
+              </span>
+              <p className="text-sm font-bold text-gray-600">
+                لا توجد محادثات بعد
+              </p>
+              <p className="max-w-55 text-xs leading-6 text-gray-400">
+                عند حجز أي غرض أو بدء محادثة جديدة ستظهر هنا مباشرة
+              </p>
             </div>
           ) : (
-            convs.map((conv) => (
-              <button
-                key={conv._id}
-                onClick={() => setActiveConv(conv)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-right"
-              >
-                {/* صورة الغرض */}
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
-                  {conv.item.images?.[0] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={conv.item.images[0]}
-                      alt={conv.item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="material-symbols-outlined text-primary text-xl">
-                      inventory_2
-                    </span>
-                  )}
-                </div>
+            <div className="space-y-2 p-3">
+              {conversations.map((conv) => {
+                const other = conv.participants.find(
+                  (p) => p._id !== user?._id
+                );
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-sm font-bold text-gray-800 truncate">
-                      {conv.item.title}
-                    </p>
-                    {conv.lastMessage && (
-                      <span className="text-[10px] text-gray-400 shrink-0">
-                        {new Date(conv.lastMessage.createdAt).toLocaleTimeString("ar-JO", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400 truncate mt-0.5">
-                    {conv.lastMessage?.text ?? "ابدأ المحادثة"}
-                  </p>
-                </div>
+                return (
+                  <button
+                    key={conv._id}
+                    onClick={() => setSelected(conv)}
+                    className="w-full rounded-2xl border border-gray-100 bg-white px-3 py-3 text-right shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+                    type="button"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+                        {other?.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={other.avatar}
+                            alt={other.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span
+                            className="material-symbols-outlined text-[24px] text-primary"
+                            style={{ fontVariationSettings: "'FILL' 1" }}
+                          >
+                            account_circle
+                          </span>
+                        )}
+                      </div>
 
-                {conv.unreadCount > 0 && (
-                  <span className="min-w-[18px] h-[18px] bg-primary text-white text-[10px]
-                                   font-black rounded-full flex items-center justify-center px-1 shrink-0">
-                    {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
-                  </span>
-                )}
-              </button>
-            ))
+                      {/* Text */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-sm font-black text-gray-800">
+                            {conv.item.title}
+                          </p>
+
+                          {conv.unread > 0 && (
+                            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-white">
+                              {conv.unread > 9 ? "9+" : conv.unread}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 truncate text-xs text-gray-400">
+                          {other?.name || "مستخدم"}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
-      </div>
+      </aside>
     </div>
   );
 }

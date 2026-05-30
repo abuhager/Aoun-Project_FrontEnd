@@ -30,8 +30,8 @@ export default function ReportModal({
     setLoading(true);
     try {
       await createReport({
-  reportedUser: reportedUserId,
-  relatedItem: itemId,
+  reportedUserId,
+  itemId,
   reason,
   details: details.trim() || undefined,
 });

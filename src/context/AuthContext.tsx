@@ -12,6 +12,7 @@ import axios from "axios";
 import axiosInstance, {
   setAccessToken,
   setInitialized,
+  resetAuthState,
 } from "@/lib/api/axiosInstance";
 import type { AuthUser } from "@/types/user.types";
 import Cookies from "js-cookie";
@@ -33,6 +34,7 @@ interface AuthContextType {
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const USER_COOKIE = "aoun_user";
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function toMinimalUser(u: AuthUser): CachedUser {
@@ -48,8 +50,8 @@ function toMinimalUser(u: AuthUser): CachedUser {
       trustScore: 0,
       totalDonations: 0,
       level: 1,
-      title: 'مبتدئ',
-      badge: '🌱',
+      title: "مبتدئ",
+      badge: "🌱",
       progress: 0,
       pointsToNext: null,
     },
@@ -68,8 +70,10 @@ function loadUserCookie(): CachedUser | null {
   try {
     const raw = Cookies.get(USER_COOKIE);
     if (!raw) return null;
+
     const parsed = JSON.parse(raw) as Partial<CachedUser>;
     if (!parsed._id) return null;
+
     return parsed as CachedUser;
   } catch {
     return null;
@@ -149,16 +153,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("logout error:", err);
       }
     } finally {
-      setAccessToken(null);
+      resetAuthState();
       setUser(null);
-      setInitialized(false);
       initialized.current = false;
-      refreshing.current = null;
-
       if (typeof window !== "undefined") {
         window.location.replace("/login");
       }
-
       setTimeout(() => {
         isLoggingOut.current = false;
       }, 1000);
@@ -170,12 +170,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initialized.current = true;
 
     refreshSession()
-      .then((success) => {
-        setInitialized(success);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      .then((ok) => setInitialized(ok))
+      .finally(() => setIsLoading(false));
   }, [refreshSession]);
 
   return (
@@ -197,7 +193,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  if (!ctx) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
   return ctx;
 }
 

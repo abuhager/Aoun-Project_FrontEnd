@@ -12,16 +12,25 @@ type RefreshQueueItem = {
 
 let refreshQueue: RefreshQueueItem[] = [];
 
-// ── Init queue: طلبات جاءت قبل انتهاء refreshSession ─────────
+// ── Init queue: طلبات جاءت قبل اكتمال تهيئة الجلسة ───────────
 let isInitialized = false;
 let initQueue: Array<() => void> = [];
 let initQueueRejects: Array<(err: Error) => void> = [];
 
-export const setAccessToken = (t: string | null) => {
-  accessToken = t;
+export const setAccessToken = (token: string | null) => {
+  accessToken = token;
 };
 
 export const getAccessToken = () => accessToken;
+
+export const resetAuthState = () => {
+  accessToken = null;
+  isRefreshing = false;
+  refreshQueue = [];
+  isInitialized = false;
+  initQueue = [];
+  initQueueRejects = [];
+};
 
 export const setInitialized = (success = true) => {
   isInitialized = true;
@@ -36,30 +45,6 @@ export const setInitialized = (success = true) => {
   initQueue = [];
   initQueueRejects = [];
 };
-
-// ─── helpers لـ session_active cookie ─────────────────────────
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
-
-function setSessionCookie() {
-  if (typeof document === "undefined") return;
-
-  const secure = IS_PRODUCTION ? "; Secure" : "";
-  const sameSite = "; SameSite=Lax";
-  const expires = new Date(
-    Date.now() + 7 * 24 * 60 * 60 * 1000
-  ).toUTCString();
-
-  document.cookie = `session_active=true; path=/; expires=${expires}${sameSite}${secure}`;
-}
-
-function clearSessionCookie() {
-  if (typeof document === "undefined") return;
-
-  const secure = IS_PRODUCTION ? "; Secure" : "";
-  const sameSite = "; SameSite=Lax";
-
-  document.cookie = `session_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${sameSite}${secure}`;
-}
 
 function processRefreshQueue(error: Error | null, token: string | null = null) {
   refreshQueue.forEach(({ resolve, reject }) => {
@@ -86,9 +71,12 @@ const axiosInstance = axios.create({
 // ── Request Interceptor ───────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const isAuthRoute = config.url?.includes("/auth/");
+    const url = config.url ?? "";
+    const isRefreshRoute = url.includes("/auth/refresh");
+    const isLoginRoute   = url.includes("/auth/login");
+    const isAuthInitSafeRoute = isRefreshRoute || isLoginRoute;
 
-    if (!isInitialized && !isAuthRoute) {
+    if (!isInitialized && !isAuthInitSafeRoute) {
       return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {
         initQueue.push(() => resolve(config));
         initQueueRejects.push((err) => reject(err));
@@ -118,14 +106,20 @@ axiosInstance.interceptors.response.use(
       | (InternalAxiosRequestConfig & { _retry?: boolean })
       | undefined;
 
-    const status = error.response?.status;
-    const isAuthRoute = originalRequest?.url?.includes("/auth/");
-
     if (!originalRequest) {
       return Promise.reject(error);
     }
 
-    if (status === 401 && !isAuthRoute && !originalRequest._retry) {
+    const status = error.response?.status;
+    const url = originalRequest.url ?? "";
+    const isAuthRoute = url.includes("/auth/");
+    const isRefreshRoute = url.includes("/auth/refresh");
+
+    if (
+      status === 401 &&
+      !isAuthRoute &&
+      !originalRequest._retry
+    ) {
       originalRequest._retry = true;
 
       if (isRefreshing) {
@@ -136,9 +130,7 @@ axiosInstance.interceptors.response.use(
               originalRequest.headers.Authorization = `Bearer ${newToken}`;
               resolve(axiosInstance(originalRequest));
             },
-            reject: (queueError: Error) => {
-              reject(queueError);
-            },
+            reject: (queueError: Error) => reject(queueError),
           });
         });
       }
@@ -149,15 +141,11 @@ axiosInstance.interceptors.response.use(
         const { data } = await axiosInstance.post<{ accessToken: string }>(
           "/api/auth/refresh",
           {},
-          {
-            withCredentials: true,
-          }
+          { withCredentials: true }
         );
 
         const newToken = data.accessToken;
         setAccessToken(newToken);
-        setSessionCookie();
-
         processRefreshQueue(null, newToken);
 
         originalRequest.headers = originalRequest.headers ?? {};
@@ -171,10 +159,9 @@ axiosInstance.interceptors.response.use(
             : new Error("REFRESH_FAILED");
 
         setAccessToken(null);
-        clearSessionCookie();
         processRefreshQueue(finalError, null);
 
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && !isRefreshRoute) {
           window.location.replace("/login?expired=true");
         }
 

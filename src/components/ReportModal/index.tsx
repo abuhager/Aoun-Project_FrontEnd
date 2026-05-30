@@ -30,11 +30,11 @@ export default function ReportModal({
     setLoading(true);
     try {
       await createReport({
-        reportedUserId,
-        itemId,
-        reason,
-        details: details.trim() || undefined,
-      });
+  reportedUser: reportedUserId,
+  relatedItem: itemId,
+  reason,
+  details: details.trim() || undefined,
+});
       setSuccess(true);
       setTimeout(onClose, 2000);
     } catch (err: unknown) {

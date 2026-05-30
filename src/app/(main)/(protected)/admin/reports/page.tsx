@@ -1,18 +1,19 @@
 // src/app/(main)/(protected)/admin/reports/page.tsx
-// ✅ Patched: إضافة totalReportsAgainstUser badge + pagination
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import axiosInstance from "@/lib/api/axiosInstance";
+import Link from "next/link";
 
 interface Report {
   _id:        string;
-  reporter?:  { name?: string };
+  reporter?:  { _id?: string; name?: string; email?: string; phone?: string };
   reportedUser?: {
     _id?:     string;
     name?:    string;
-    avatar?:  string;
+    email?:   string;
+    phone?:   string;
     isBanned?: boolean;
   };
   relatedItem?: { title?: string };
@@ -22,7 +23,6 @@ interface Report {
   createdAt:  string;
   appealText?: string;
   appealedAt?: string;
-  // ✅ عداد البلاغات التراكمي — يأتي من الـ Aggregation
   totalReportsAgainstUser?: number;
 }
 
@@ -33,12 +33,12 @@ interface PaginationMeta {
 }
 
 export default function AdminReportsPage() {
-  const [reports, setReports]   = useState<Report[]>([]);
-  const [meta,    setMeta]      = useState<PaginationMeta>({ total: 0, page: 1, pages: 1 });
-  const [loading, setLoading]   = useState(true);
-  const [toast,   setToast]     = useState<{ msg: string; ok: boolean } | null>(null);
-  const [notes,   setNotes]     = useState<Record<string, string>>({});
-  const [busy,    setBusy]      = useState<Record<string, boolean>>({});
+  const [reports, setReports] = useState<Report[]>([]);
+  const [meta,    setMeta]    = useState<PaginationMeta>({ total: 0, page: 1, pages: 1 });
+  const [loading, setLoading] = useState(true);
+  const [toast,   setToast]   = useState<{ msg: string; ok: boolean } | null>(null);
+  const [notes,   setNotes]   = useState<Record<string, string>>({});
+  const [busy,    setBusy]    = useState<Record<string, boolean>>({});
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -82,7 +82,7 @@ export default function AdminReportsPage() {
       await axiosInstance.post(`/api/admin/reports/${id}/resolve`, { action, adminNote });
       showToast(
         action === "warn" ? "✅ تم إرسال التحذير" :
-        action === "ban"  ? "🚫 تم حظر المستخدم" : "✅ تم رفض البلاغ",
+        action === "ban"  ? "🚫 تم حظر المستخدم"  : "✅ تم رفض البلاغ",
         true
       );
       setNotes(p => { const n = { ...p }; delete n[id]; return n; });
@@ -137,7 +137,6 @@ export default function AdminReportsPage() {
             {reports.map((report) => {
               const isBusy     = !!busy[report._id];
               const totalCount = report.totalReportsAgainstUser ?? 0;
-              // ✅ لون العداد حسب الخطورة
               const countColor =
                 totalCount >= 5 ? "bg-red-500 text-white" :
                 totalCount >= 3 ? "bg-orange-400 text-white" :
@@ -154,15 +153,34 @@ export default function AdminReportsPage() {
                       {/* ── رأس البلاغ ── */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-black text-gray-500">المُبلِّغ:</span>
-                        <span className="text-xs font-black text-gray-800">
-                          {report.reporter?.name ?? "—"}
-                        </span>
-                        <span className="material-symbols-outlined text-sm text-gray-300">arrow_back</span>
-                        <span className="text-xs font-black text-red-600">
-                          {report.reportedUser?.name ?? "—"}
-                        </span>
 
-                        {/* ✅ عداد البلاغات التراكمي */}
+                        {/* اسم المُبلِّغ — رابط للبروفايل */}
+                        {report.reporter?._id ? (
+                          <Link href={`/profile/${report.reporter._id}`}
+                            className="text-xs font-black text-primary hover:underline">
+                            {report.reporter.name ?? "—"}
+                          </Link>
+                        ) : (
+                          <span className="text-xs font-black text-gray-800">
+                            {report.reporter?.name ?? "—"}
+                          </span>
+                        )}
+
+                        <span className="material-symbols-outlined text-sm text-gray-300">arrow_back</span>
+
+                        {/* اسم المُبلَّغ عنه — رابط للبروفايل */}
+                        {report.reportedUser?._id ? (
+                          <Link href={`/profile/${report.reportedUser._id}`}
+                            className="text-xs font-black text-red-600 hover:underline">
+                            {report.reportedUser.name ?? "—"}
+                          </Link>
+                        ) : (
+                          <span className="text-xs font-black text-red-600">
+                            {report.reportedUser?.name ?? "—"}
+                          </span>
+                        )}
+
+                        {/* عداد البلاغات التراكمي */}
                         <span className={`flex items-center gap-0.5 text-[10px] font-black
                           px-2 py-0.5 rounded-full ${countColor}`}
                           title={`إجمالي البلاغات على ${report.reportedUser?.name}`}
@@ -185,6 +203,43 @@ export default function AdminReportsPage() {
                             {report.relatedItem.title}
                           </span>
                         )}
+                      </div>
+
+                      {/* ── معلومات المستخدمين ── */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[10px] text-gray-500">
+                        {/* المُبلِّغ */}
+                        <div className="bg-gray-50 rounded-lg px-2 py-1.5 space-y-0.5">
+                          <p className="font-black text-gray-400">المُبلِّغ</p>
+                          {report.reporter?.email && (
+                            <p className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[10px]">mail</span>
+                              {report.reporter.email}
+                            </p>
+                          )}
+                          {report.reporter?.phone && (
+                            <p className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[10px]">phone</span>
+                              {report.reporter.phone}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* المُبلَّغ عنه */}
+                        <div className="bg-red-50/60 rounded-lg px-2 py-1.5 space-y-0.5">
+                          <p className="font-black text-red-400">المُبلَّغ عنه</p>
+                          {report.reportedUser?.email && (
+                            <p className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[10px]">mail</span>
+                              {report.reportedUser.email}
+                            </p>
+                          )}
+                          {report.reportedUser?.phone && (
+                            <p className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[10px]">phone</span>
+                              {report.reportedUser.phone}
+                            </p>
+                          )}
+                        </div>
                       </div>
 
                       {/* السبب + التفاصيل */}

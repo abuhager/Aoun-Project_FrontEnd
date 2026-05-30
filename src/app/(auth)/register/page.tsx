@@ -3,12 +3,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRedirectIfAuth } from "../hooks/useRedirectIfAuth";
-
 import { useRegister } from "./hooks/useRegister";
 
 export default function RegisterPage() {
   useRedirectIfAuth("/browse");
   const { formData, loading, error, success, handleChange, handleSubmit } = useRegister();
+
+  const phoneValid   = formData.phone.length === 9;
+  const phoneTouched = formData.phone.length > 0;
+  const phoneError   = phoneTouched && !phoneValid;
+
+  const phoneBorderClass = phoneError
+    ? "border-red-300 focus:ring-2 focus:ring-red-200"
+    : phoneValid
+    ? "border-green-400 focus:ring-2 focus:ring-green-200"
+    : "border-transparent focus:ring-2 focus:ring-primary/20 focus:bg-white";
 
   return (
     <div className="bg-surface text-on-background min-h-screen flex flex-col overflow-x-hidden">
@@ -118,24 +127,64 @@ export default function RegisterPage() {
 
               {/* رقم الهاتف */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-500 mr-2">رقم الهاتف (للتواصل)</label>
+                <label className="text-xs font-bold text-gray-500 mr-1">رقم الهاتف (للتواصل)</label>
                 <div className="relative group">
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl group-focus-within:text-primary transition-colors z-10">
-                    call
-                  </span>
-                  {/* مفتاح الأردن الثابت */}
-                  <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-[#edeeef] pointer-events-none select-none z-10">
+
+                  {/* مفتاح الأردن — على اليمين */}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5
+                    bg-white px-3 py-1.5 rounded-lg shadow-sm border border-[#edeeef]
+                    pointer-events-none select-none z-10">
                     <span className="text-sm">🇯🇴</span>
-                    <span className="text-sm font-black text-on-surface-variant mt-0.5" dir="ltr">+962</span>
-                    <div className="w-px h-4 bg-gray-200 ml-1" />
+                    <span className="text-sm font-black text-on-surface-variant" dir="ltr">+962</span>
+                    <div className="w-px h-4 bg-gray-200" />
                   </div>
+
                   <input
-                    name="phone" type="tel" required dir="ltr" maxLength={9}
-                    value={formData.phone} onChange={handleChange}
-                    placeholder="790000000"
-                    className="w-full pr-12 pl-[105px] py-3 md:py-4 bg-surface-container-highest rounded-xl border-none outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base font-bold tracking-widest placeholder:tracking-normal placeholder:font-normal"
+                    name="phone"
+                    type="tel"
+                    required
+                    dir="ltr"
+                    inputMode="numeric"
+                    maxLength={9}
+                    value={formData.phone}
+                    onChange={e => {
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                      handleChange({
+                        target: { name: "phone", value: digits },
+                      } as React.ChangeEvent<HTMLInputElement>);
+                    }}
+                    onKeyDown={e => {
+                      const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"];
+                      if (!/^\d$/.test(e.key) && !allowed.includes(e.key)) e.preventDefault();
+                    }}
+                    placeholder="7XXXXXXXX"
+                    className={`w-full pl-10 pr-[115px] py-3 md:py-4 bg-surface-container-highest rounded-xl
+                      border-2 outline-none transition-all text-left text-sm md:text-base
+                      font-bold tracking-[0.2em] placeholder:tracking-normal placeholder:font-normal
+                      ${phoneBorderClass}`}
                   />
+
+                  {/* عداد الأرقام — على اليسار */}
+                  <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black
+                    transition-colors pointer-events-none
+                    ${phoneValid ? "text-green-500" : phoneTouched ? "text-red-400" : "text-gray-300"}`}>
+                    {formData.phone.length}/9
+                  </span>
                 </div>
+
+                {/* رسالة الحالة تحت الحقل */}
+                {phoneError && (
+                  <p className="text-[11px] text-red-500 font-bold mr-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">error</span>
+                    الرقم يجب أن يكون 9 أرقام بالضبط
+                  </p>
+                )}
+                {phoneValid && (
+                  <p className="text-[11px] text-green-500 font-bold flex items-center gap-1 mr-1" dir="ltr">
+                    <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                    +962 {formData.phone}
+                  </p>
+                )}
               </div>
 
               {/* كلمة المرور + تأكيدها */}

@@ -3,7 +3,6 @@ import { useState, useCallback, useLayoutEffect, useSyncExternalStore } from "re
 import { usePathname } from "next/navigation";
 import { useAuth }     from "@/context/AuthContext";
 
-// صفحات Auth — يظهر فيها Logo فقط
 const LOGO_ONLY_PAGES = [
   "/login",
   "/register",
@@ -16,22 +15,23 @@ export function useNavbar() {
   const pathname = usePathname();
   const { user, isLoggedIn, isLoading, logout } = useAuth();
 
-  // ✅ isMounted بدون useEffect
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false
   );
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen]         = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
-  // ✅ أغلق المنيو عند تغيير الصفحة
   useLayoutEffect(() => {
     setIsMobileMenuOpen(false);
+    setIsProfileDropdownOpen(false);
   }, [pathname]);
 
   const handleLogout = useCallback(async () => {
     setIsMobileMenuOpen(false);
+    setIsProfileDropdownOpen(false);
     await logout();
   }, [logout]);
 
@@ -46,9 +46,12 @@ export function useNavbar() {
     isMounted,
     firstName,
     userRole,
+    user,
     isLogoOnlyPage,
     isMobileMenuOpen,
     setIsMobileMenuOpen,
+    isProfileDropdownOpen,
+    setIsProfileDropdownOpen,
     handleLogout,
   };
 }

@@ -1,7 +1,7 @@
+// ✅ src/app/(auth)/forgot-password/hooks/useForgotPassword.ts
 import { useState } from "react";
+import axiosInstance from "@/lib/api/axiosInstance"; // ✅ استخدم المثيل المُهيَّأ
 import axios from "axios";
-
-const API = "https://aoun-project-backend.onrender.com/api/auth/forgot-password";
 
 export function useForgotPassword() {
   const [email,   setEmail]   = useState("");
@@ -16,7 +16,8 @@ export function useForgotPassword() {
     setError("");
 
     try {
-      const res = await axios.post(API, { email });
+      // ✅ لا hardcoded URL — axiosInstance يحمل baseURL من .env
+      const res = await axiosInstance.post("/api/auth/forgot-password", { email });
       setMessage(res.data.msg);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {

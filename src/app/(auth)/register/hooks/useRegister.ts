@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
-
 interface FormData {
   name:            string;
   email:           string;
@@ -37,12 +37,12 @@ export function useRegister() {
 
     try {
       setLoading(true);
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
-        name:     formData.name,
-        email:    formData.email,
-        phone:    "962" + formData.phone,
-        password: formData.password,
-      });
+      await axiosInstance.post("/api/auth/register", {
+  name:     formData.name,
+  email:    formData.email,
+  phone:    "962" + formData.phone,
+  password: formData.password,
+});
 
       setSuccess("تم إنشاء الحساب بنجاح! جاري تحويلك للتفعيل... ⏳");
       router.push(`/verify?email=${formData.email}`);

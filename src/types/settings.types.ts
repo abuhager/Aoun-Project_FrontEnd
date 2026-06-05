@@ -1,10 +1,12 @@
 export interface SystemSettings {
-  categories: string[];
-  reportReasons: string[];
-  defaultQuota: number;
-  level2Quota: number;
+  defaultQuota:              number;
+  level2Quota:               number;
+  level3Quota:               number;   // ✅ مُضاف
   maxActiveRequestsPerMonth: number;
-  requestExpiryDays: number;
-  platformName: string;
-  maintenanceMode: boolean;
+  requestExpiryDays:         number;
+  categories:                string[];
+  reportReasons:             string[];
+  autoReportBanThreshold:    number;   // ✅ مُضاف
+  maintenanceMode:           boolean;
+  platformName:              string;
 }

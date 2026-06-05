@@ -70,10 +70,8 @@ function loadUserCookie(): CachedUser | null {
   try {
     const raw = Cookies.get(USER_COOKIE);
     if (!raw) return null;
-
     const parsed = JSON.parse(raw) as Partial<CachedUser>;
     if (!parsed._id) return null;
-
     return parsed as CachedUser;
   } catch {
     return null;
@@ -112,22 +110,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     refreshing.current = (async () => {
       try {
+        // ─── 1. احصل على accessToken جديد ───────────────────
         const { data } = await axiosInstance.post<{ accessToken: string }>(
           "/api/auth/refresh",
           {},
           { withCredentials: true }
         );
 
-        setAccessToken(data.accessToken);
+        const token = data.accessToken;
+        setAccessToken(token);
 
-        const meRes = await axiosInstance.get<{ user: AuthUser }>("/api/auth/me", {
-          headers: { Authorization: `Bearer ${data.accessToken}` },
+        // ─── 2. أطلق الـ initQueue فوراً ────────────────────
+        // لا تنتظر /me — الطلبات الأخرى تحتاج الـ token الآن
+        setInitialized(true);
+
+        // ─── 3. جلب بيانات المستخدم ─────────────────────────
+        // /api/auth/me يرجع الـ user مباشرة (بدون wrapper)
+        const meRes = await axiosInstance.get<AuthUser>("/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
 
-        const fetchedUser = meRes.data.user ?? (meRes.data as unknown as AuthUser);
-        setUser(fetchedUser);
+        setUser(meRes.data);
         return true;
+
       } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status !== 401) {
           console.error("refreshSession error:", err);
@@ -172,13 +178,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (initialized.current) return;
     initialized.current = true;
 
+    // ─── timeout أمان 8 ثوانٍ ────────────────────────────
+    const safetyTimer = setTimeout(() => {
+      setInitialized(false);
+      setIsLoading(false);
+    }, 8000);
+
     refreshSession()
-      .then((success) => {
-        setInitialized(success);
+      .then(() => clearTimeout(safetyTimer))
+      .catch(() => {
+        clearTimeout(safetyTimer);
+        setInitialized(false);
       })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      .finally(() => setIsLoading(false));
   }, [refreshSession]);
 
   return (

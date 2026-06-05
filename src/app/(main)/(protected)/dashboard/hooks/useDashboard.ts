@@ -1,5 +1,5 @@
 // src/app/(main)/(protected)/dashboard/hooks/useDashboard.ts
-// ✅ Patched: OTP Modal → Double Confirmation Flow (Socket.io)
+"use client";
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter }    from 'next/navigation';
@@ -29,10 +29,9 @@ interface AppealModalState {
   reportId: string;
 }
 
-// حالة التسليم المزدوج
 interface DeliveryState {
   itemId:             string | null;
-  waitingForDonor:    boolean; // المستلم أكّد، ننتظر المتبرع
+  waitingForDonor:    boolean; // المستلم أكّد، وننتظر المتبرع الآن
 }
 
 export function getBookedByName(val: DashboardItem['bookedBy']): string {
@@ -42,7 +41,7 @@ export function getBookedByName(val: DashboardItem['bookedBy']): string {
 
 export function useDashboard() {
   const router = useRouter();
-const socketRef = useSocket();
+  const socketRef = useSocket();
 
   const [data,      setData]      = useState<DashboardData | null>(null);
   const [loading,   setLoading]   = useState(true);
@@ -50,9 +49,10 @@ const socketRef = useSocket();
   const [activeTab, setActiveTab] = useState<'donations' | 'requests'>('donations');
   const [toast,     setToast]     = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  // ✅ Double Confirmation state (استبدل OTP state)
+  // ✅ حالة التأكيد المزدوج للتسليم
   const [deliveryState, setDeliveryState] = useState<DeliveryState>({
-    itemId: null, waitingForDonor: false,
+    itemId: null,
+    waitingForDonor: false,
   });
   const [deliveryLoading, setDeliveryLoading] = useState(false);
 
@@ -65,10 +65,17 @@ const socketRef = useSocket();
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const timeoutIdsRef      = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const timeoutIdsRef      = useRef<ReturnType<typeof setTimeout>>([]);
   const appealReportIdRef  = useRef<string>('');
 
-  // ── Fetch data ──────────────────────────────────────────────
+  // دالة مساعدة لعرض التنبيهات المؤقتة
+  const showToast = useCallback((msg: string, type: 'success' | 'error') => {
+    setToast({ msg, type });
+    const id = setTimeout(() => setToast(null), 3500);
+    timeoutIdsRef.current.push(id);
+  }, []);
+
+  // ─── 1. جلب البيانات واستعادة الحالة عند الـ Refresh ───
   useEffect(() => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
@@ -81,11 +88,27 @@ const socketRef = useSocket();
           { signal: controller.signal },
         );
         if (controller.signal.aborted) return;
+
+        const myDonations = res.myDonations ?? [];
+        const myRequests  = res.myRequests ?? [];
+
         setData({
-          user:        res.user,
-          myDonations: res.myDonations ?? [],
-          myRequests:  res.myRequests  ?? [],
+          user: res.user,
+          myDonations,
+          myRequests,
         });
+
+        // ✅ استعادة حالة التوصيل المزدوج تلقائياً من الـ API (حتى لو أنعش المستخدم الصفحة)
+        const waitingItem = myDonations.find(
+          (item) => item.status === 'محجوز' && item.recipientConfirmed === true
+        );
+        
+        if (waitingItem) {
+          setDeliveryState({
+            itemId: waitingItem._id,
+            waitingForDonor: true,
+          });
+        }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
         if (!controller.signal.aborted) {
@@ -107,58 +130,64 @@ const socketRef = useSocket();
     };
   }, []);
 
-  // ── Socket: المتبرع يستمع لتأكيد المستلم ──────────────────
- useEffect(() => {
-  const socket = socketRef.current;  // ✅ اجلب .current هنا
-  if (!socket) return;
+  // ─── 2. الاستماع لأحداث الـ Socket الحية ───
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
 
-  socket.on('delivery:recipient_confirmed', ({ itemId, itemTitle }) => {
-    showToast(`✅ ${itemTitle} — المستلم أكّد الاستلام، أكّد أنت التسليم الآن`, 'success');
-    setDeliveryState({ itemId, waitingForDonor: true });
-  });
+    // عندما يقوم المستلم بالتأكيد، يظهر تنبيه فوري للمتبرع لتحديث واجهته
+    socket.on('delivery:recipient_confirmed', ({ itemId, itemTitle }) => {
+      showToast(`✅ ${itemTitle} — المستلم أكّد الاستلام، يرجى تأكيد التسليم الآن`, 'success');
+      setDeliveryState({ itemId, waitingForDonor: true });
+      
+      // تحديث الحالة محلياً ليصبح الزر نشطاً للمتبرع
+      setData(prev => prev ? {
+        ...prev,
+        myDonations: prev.myDonations.map(i => 
+          i._id === itemId ? { ...i, recipientConfirmed: true } : i
+        )
+      } : prev);
+    });
 
-  socket.on('delivery:completed', ({ itemId }) => {
-    setData(prev => prev ? {
-      ...prev,
-      myDonations: prev.myDonations.map(i =>
-        i._id === itemId ? { ...i, status: 'تم التسليم' as const } : i
-      ),
-      myRequests: prev.myRequests.map(i =>
-        i._id === itemId ? { ...i, status: 'تم التسليم' as const } : i
-      ),
-    } : prev);
-    setDeliveryState({ itemId: null, waitingForDonor: false });
-    showToast('تم التسليم بنجاح! 💚', 'success');
-  });
+    // عند اكتمال العملية من الطرفين
+    socket.on('delivery:completed', ({ itemId }) => {
+      setData(prev => prev ? {
+        ...prev,
+        myDonations: prev.myDonations.map(i =>
+          i._id === itemId ? { ...i, status: 'تم التسليم' as const } : i
+        ),
+        myRequests: prev.myRequests.map(i =>
+          i._id === itemId ? { ...i, status: 'تم التسليم' as const } : i
+        ),
+      } : prev);
+      
+      setDeliveryState({ itemId: null, waitingForDonor: false });
+      showToast('تم التسليم بنجاح! شكراً لعطائك 💚', 'success');
+    });
 
-  return () => {
-    socket.off('delivery:recipient_confirmed');
-    socket.off('delivery:completed');
-  };
-}, [socketRef.current]); // ✅ اربطه بـ .current مش بالـ ref نفسه// eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      socket.off('delivery:recipient_confirmed');
+      socket.off('delivery:completed');
+    };
+  }, [socketRef, showToast]);
 
-  const showToast = useCallback((msg: string, type: 'success' | 'error') => {
-    setToast({ msg, type });
-    const id = setTimeout(() => setToast(null), 3500);
-    timeoutIdsRef.current.push(id);
-  }, []);
-
-  // ── Double Confirmation: المستلم يضغط "تأكيد الاستلام" ────
+  // ─── 3. إجراءات المستلم (تأكيد الاستلام) ───
   const handleRecipientConfirm = useCallback(async (itemId: string) => {
     setDeliveryLoading(true);
     try {
       const { msg } = await confirmReceipt(itemId);
-      // حدّث الـ UI — في انتظار المتبرع
+      
       setData(prev => prev ? {
         ...prev,
         myRequests: prev.myRequests.map(i =>
           i._id === itemId ? { ...i, recipientConfirmed: true } : i
         ),
       } : prev);
-      showToast(msg || '✅ تم إرسال تأكيدك، في انتظار المتبرع ⏳', 'success');
+      
+      showToast(msg || '✅ تم تسجيل تأكيدك، بانتظار تأكيد المتبرع النهائي ⏳', 'success');
     } catch (err) {
       showToast(
-        axios.isAxiosError(err) ? err.response?.data?.msg ?? 'حدث خطأ' : 'حدث خطأ',
+        axios.isAxiosError(err) ? err.response?.data?.msg ?? 'حدث خطأ أثناء التأكيد' : 'حدث خطأ غير متوقع',
         'error'
       );
     } finally {
@@ -166,22 +195,24 @@ const socketRef = useSocket();
     }
   }, [showToast]);
 
-  // ── Double Confirmation: المتبرع يضغط "تأكيد التسليم" ─────
+  // ─── 4. إجراءات المتبرع (تأكيد التسليم النهائي) ───
   const handleDonorConfirm = useCallback(async (itemId: string) => {
     setDeliveryLoading(true);
     try {
       const { msg } = await confirmDelivery(itemId);
+      
       setData(prev => prev ? {
         ...prev,
         myDonations: prev.myDonations.map(i =>
           i._id === itemId ? { ...i, status: 'تم التسليم' as const } : i
         ),
       } : prev);
+      
       setDeliveryState({ itemId: null, waitingForDonor: false });
-      showToast(msg || 'تم التسليم بنجاح! 💚', 'success');
+      showToast(msg || 'تم التسليم بنجاح واكتملت العملية! 💚', 'success');
     } catch (err) {
       showToast(
-        axios.isAxiosError(err) ? err.response?.data?.msg ?? 'حدث خطأ' : 'حدث خطأ',
+        axios.isAxiosError(err) ? err.response?.data?.msg ?? 'حدث خطأ أثناء التوصيل' : 'حدث خطأ غير متوقع',
         'error'
       );
     } finally {
@@ -189,14 +220,19 @@ const socketRef = useSocket();
     }
   }, [showToast]);
 
-  // ── باقي الـ handlers (بدون تغيير) ─────────────────────────
+  // ─── 5. إجراءات الحذف والإلغاء ───
   const handleDelete = useCallback((id: string, status: string) => {
-    if (status === 'تم التسليم') { showToast('لا يمكن حذف غرض تم تسليمه', 'error'); return; }
+    if (status === 'تم التسليم') { 
+      showToast('لا يمكن حذف غرض تم تسليمه مسبقاً', 'error'); 
+      return; 
+    }
+    
     setConfirmModal({
-      open: true, title: 'حذف الغرض',
+      open: true, 
+      title: 'حذف الغرض',
       message: status === 'محجوز'
-        ? 'هذا الغرض محجوز حالياً. هل أنت متأكد من حذفه؟ سيتم إلغاء الحجز تلقائياً.'
-        : 'هل أنت متأكد من حذف هذا الغرض؟ لا يمكن التراجع.',
+        ? 'هذا الغرض محجوز حالياً. هل أنت متأكد من حذفه؟ سيتم إلغاء الحجز تلقائياً وإرجاع الكوتا للمستلم.'
+        : 'هل أنت متأكد من حذف هذا الغرض نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',
       onConfirm: async () => {
         try {
           await axiosInstance.delete(`/api/items/delete/${id}`);
@@ -204,16 +240,20 @@ const socketRef = useSocket();
             ? { ...prev, myDonations: prev.myDonations.filter(i => i._id !== id) }
             : prev);
           showToast('تم حذف الغرض بنجاح', 'success');
-        } catch { showToast('حدث خطأ أثناء الحذف', 'error'); }
-        finally  { setConfirmModal(p => ({ ...p, open: false })); }
+        } catch { 
+          showToast('حدث خطأ غير متوقع أثناء الحذف', 'error'); 
+        } finally { 
+          setConfirmModal(p => ({ ...p, open: false })); 
+        }
       },
     });
   }, [showToast]);
 
   const handleCancelBooking = useCallback((id: string) => {
     setConfirmModal({
-      open: true, title: 'إلغاء الحجز',
-      message: 'هل أنت متأكد من إلغاء حجزك؟',
+      open: true, 
+      title: 'إلغاء الحجز',
+      message: 'هل أنت متأكد من إلغاء حجزك لهذا الغرض؟',
       onConfirm: async () => {
         try {
           await axiosInstance.put(`/api/items/cancel/${id}`, {});
@@ -221,16 +261,20 @@ const socketRef = useSocket();
             ? { ...prev, myRequests: prev.myRequests.filter(i => i._id !== id) }
             : prev);
           showToast('تم إلغاء الحجز بنجاح', 'success');
-        } catch { showToast('حدث خطأ أثناء الإلغاء', 'error'); }
-        finally  { setConfirmModal(p => ({ ...p, open: false })); }
+        } catch { 
+          showToast('حدث خطأ أثناء إلغاء الحجز', 'error'); 
+        } finally { 
+          setConfirmModal(p => ({ ...p, open: false })); 
+        }
       },
     });
   }, [showToast]);
 
   const handleDonorCancelBooking = useCallback((id: string) => {
     setConfirmModal({
-      open: true, title: 'فك الحجز',
-      message: 'هل تريد فك الحجز عن هذا الغرض وإعادته للقائمة؟',
+      open: true, 
+      title: 'فك الحجز عن الغرض',
+      message: 'هل تريد إلغاء حجز هذا المستخدم وإعادة الغرض متاحاً للجميع؟',
       onConfirm: async () => {
         try {
           await axiosInstance.put(`/api/items/cancel/${id}`, {});
@@ -240,31 +284,42 @@ const socketRef = useSocket();
               i._id === id ? { ...i, status: 'متاح' as const, bookedBy: null } : i
             ),
           } : prev);
-          showToast('تم فك الحجز بنجاح', 'success');
-        } catch { showToast('حدث خطأ أثناء فك الحجز', 'error'); }
-        finally  { setConfirmModal(p => ({ ...p, open: false })); }
+          showToast('تم فك الحجز بنجاح وإعادة الغرض كـ متاح', 'success');
+        } catch { 
+          showToast('حدث خطأ أثناء فك الحجز', 'error'); 
+        } finally { 
+          setConfirmModal(p => ({ ...p, open: false })); 
+        }
       },
     });
   }, [showToast]);
 
-  const handleEdit = useCallback((id: string) => { router.push(`/items/${id}/edit`);
-; }, [router]);
+  const handleEdit = useCallback((id: string) => { 
+    router.push(`/items/${id}/edit`);
+  }, [router]);
 
-  const openAppealModal  = useCallback((reportId: string) => {
+  // ─── 6. نظام الاعتراضات (Appeals) ───
+  const openAppealModal = useCallback((reportId: string) => {
     appealReportIdRef.current = reportId;
     setAppealModal({ open: true, reportId });
   }, []);
+
   const closeAppealModal = useCallback(() => setAppealModal({ open: false, reportId: '' }), []);
-  const onAppealSuccess  = useCallback(() => {
+
+  const onAppealSuccess = useCallback(() => {
     const targetReportId = appealReportIdRef.current;
     setData(prev => {
       if (!prev) return prev;
       const clearReport = (items: DashboardItem[]) =>
         items.map(i => i.reportId === targetReportId ? { ...i, reportId: undefined } : i);
-      return { ...prev, myDonations: clearReport(prev.myDonations), myRequests: clearReport(prev.myRequests) };
+      return { 
+        ...prev, 
+        myDonations: clearReport(prev.myDonations), 
+        myRequests: clearReport(prev.myRequests) 
+      };
     });
     closeAppealModal();
-    showToast('تم تقديم اعتراضك بنجاح ✅', 'success');
+    showToast('تم تقديم اعتراضك بنجاح وجاري مراجعته من قبل الإدارة ✅', 'success');
   }, [closeAppealModal, showToast]);
 
   return {
@@ -278,6 +333,5 @@ const socketRef = useSocket();
     handleDelete, handleCancelBooking, handleDonorCancelBooking,
     handleEdit,
     appealModal, openAppealModal, closeAppealModal, onAppealSuccess,
-    // ✅ محذوف: showOtpModal, selectedItem, otp, otpError, otpLoading, openOtpModal, closeOtpModal, handleConfirmDelivery
   };
 }

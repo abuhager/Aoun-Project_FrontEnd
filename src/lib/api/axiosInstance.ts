@@ -15,6 +15,8 @@ let isInitialized = false;
 let initQueue: Array<() => void> = [];
 let initQueueRejects: Array<(err: Error) => void> = [];
 
+const INIT_TIMEOUT_MS = 10_000;
+
 export const setAccessToken = (t: string | null) => {
   accessToken = t;
 };
@@ -52,12 +54,20 @@ function processRefreshQueue(error: Error | null, token: string | null = null) {
       resolve(token);
     }
   });
-
   refreshQueue = [];
 }
 
-const API_BASE_URL =
-  typeof window === "undefined" ? process.env.NEXT_PUBLIC_API_URL : "";
+// ✅ baseURL ذكي: SSR → URL كامل | Browser → same-origin مع Next.js rewrites
+const API_BASE_URL = (() => {
+  if (typeof window === "undefined") {
+    return process.env.NEXT_PUBLIC_API_URL ?? "";
+  }
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && !envUrl.startsWith("/")) {
+    return envUrl;
+  }
+  return "";
+})();
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -69,13 +79,25 @@ axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const url = config.url ?? "";
     const isRefreshRoute = url.includes("/auth/refresh");
-    const isLoginRoute = url.includes("/auth/login");
+    const isLoginRoute   = url.includes("/auth/login");
     const isInitSafeRoute = isRefreshRoute || isLoginRoute;
 
     if (!isInitialized && !isInitSafeRoute) {
       return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {
-        initQueue.push(() => resolve(config));
-        initQueueRejects.push((err) => reject(err));
+        // ✅ timeout أمان — يمنع تعليق الطلبات لانهائياً
+        const timer = setTimeout(() => {
+          reject(new Error("AUTH_INIT_TIMEOUT"));
+        }, INIT_TIMEOUT_MS);
+
+        initQueue.push(() => {
+          clearTimeout(timer);
+          resolve(config);
+        });
+
+        initQueueRejects.push((err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
       });
     }
 
@@ -105,8 +127,8 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const status = error.response?.status;
-    const url = originalRequest.url ?? "";
+    const status  = error.response?.status;
+    const url     = originalRequest.url ?? "";
     const isAuthRoute = url.includes("/auth/");
 
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {

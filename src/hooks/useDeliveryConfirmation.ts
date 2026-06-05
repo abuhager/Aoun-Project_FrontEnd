@@ -75,44 +75,57 @@ export function useDeliveryConfirmation({
   }, [socketRef, itemId, onSuccess]);
 
   // ── API call ──────────────────────────────────────────────
-  const sendConfirmation = useCallback(
-    async (confirmationType: ConfirmationType) => {
-      setLoading(true);
-      setErrorMsg(null);
-      try {
-        const { data } = await axiosInstance.put(`/api/items/complete/${itemId}`, {
-          confirmationType,
-        });
+  // src/hooks/useDeliveryConfirmation.ts — تحديث sendConfirmation
+const sendConfirmation = useCallback(
+  async (confirmationType: ConfirmationType) => {
+    // ✅ منع الضغط المزدوج — إذا يوجد طلب جارٍ، ارفض الجديد
+    if (isLoading) return;
 
-        if (confirmationType === 'recipient_confirm') {
-          setStatus('waiting_donor');
-          toast.success(data.msg ?? 'تم تأكيد الاستلام ✅');
-        } else {
-          setStatus('completed');
-          toast.success(data.msg ?? 'تم التسليم بنجاح 🎉');
-          onSuccess?.(itemId);
-        }
-      } catch (err: unknown) {
-        const msg =
-          (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ??
-          'حدث خطأ — حاول مرة أخرى';
-        const code =
-          (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+    setLoading(true);
+    setErrorMsg(null);
 
-        setErrorMsg(msg);
-        setStatus('error');
+    // ✅ Optimistic UI — حدّث الحالة فوراً قبل انتظار الـ API
+    const previousStatus = status;
+    if (confirmationType === 'recipient_confirm') {
+      setStatus('recipient_confirming');
+    } else {
+      setStatus('donor_confirming');
+    }
 
-        if (code === 'RECIPIENT_NOT_CONFIRMED') {
-          toast.error('في انتظار تأكيد المستلم أولاً ⏳');
-        } else {
-          toast.error(msg);
-        }
-      } finally {
-        setLoading(false);
+    try {
+      const { data } = await axiosInstance.put(`/api/items/complete/${itemId}`, {
+        confirmationType,
+      });
+
+      if (confirmationType === 'recipient_confirm') {
+        setStatus('waiting_donor');
+        toast.success(data.msg ?? 'تم تأكيد الاستلام ✅');
+      } else {
+        setStatus('completed');
+        toast.success(data.msg ?? 'تم التسليم بنجاح 🎉');
+        onSuccess?.(itemId);
       }
-    },
-    [itemId, onSuccess]
-  );
+    } catch (err: unknown) {
+      // ✅ Rollback الـ Optimistic UI عند الفشل
+      setStatus(previousStatus);
+
+      const msg =
+        (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ??
+        'حدث خطأ — حاول مرة أخرى';
+      const code =
+        (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+
+      setErrorMsg(msg);
+      if (code !== 'ALREADY_DELIVERED') {
+        // لا تُظهر خطأ إذا كان التسليم مكتملاً بالفعل
+        toast.error(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  },
+  [itemId, isLoading, status, onSuccess]
+);
 
   const confirmReceipt = () => sendConfirmation('recipient_confirm');
   const confirmDelivery = () => sendConfirmation('donor_confirm');

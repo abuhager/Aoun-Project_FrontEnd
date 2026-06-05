@@ -1,3 +1,4 @@
+// src/components/LevelGate.tsx
 'use client';
 
 import { useState } from 'react';
@@ -13,43 +14,81 @@ interface LevelGateProps {
 }
 
 export default function LevelGate({
-  requiredLevel = 2,
+  requiredLevel           = 2,
   children,
   fallback,
   unauthenticatedFallback,
 }: LevelGateProps) {
-  const router = useRouter();
-  const { user, isLoading } = useAuth();
-  const [modalOpen, setModalOpen] = useState(false);
+  const { user, isLoading, refreshSession } = useAuth();
+  const [showModal, setShowModal]           = useState(false);
+  const [refreshing, setRefreshing]         = useState(false);
+  const router                              = useRouter();
 
-  // ✅ Skeleton بدل null — يمنع layout shift
-  if (isLoading) return (
-    <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
-  );
+  if (isLoading) return null;
 
   if (!user) {
-    if (unauthenticatedFallback) return <>{unauthenticatedFallback}</>;
-    return (
-      <button onClick={() => router.push('/login')} className="btn-secondary w-full">
+    return unauthenticatedFallback ? (
+      <>{unauthenticatedFallback}</>
+    ) : (
+      <button
+        onClick={() => router.push('/login')}
+        className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 transition"
+      >
         سجّل دخولك للمتابعة
       </button>
     );
   }
 
-  if ((user.trustLevel ?? 1) >= requiredLevel) return <>{children}</>;
+  const userLevel = user.trustLevel ?? 1;
+  if (userLevel >= requiredLevel) return <>{children}</>;
+
+  // ✅ FIX: refreshSession تُجدّد الـ JWT وتحمل trustLevel الجديد
+  const handleRefreshLevel = async () => {
+    setRefreshing(true);
+    const success = await refreshSession();
+    setRefreshing(false);
+    if (!success) router.push('/login');
+  };
 
   if (fallback) return <>{fallback}</>;
 
   return (
     <>
-      <button
-        onClick={() => setModalOpen(true)}
-        className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
-      >
-        🔐 تحتاج لتفعيل حسابك للمتابعة
-      </button>
+      <div className="flex flex-col items-center gap-3 p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
+        <span className="text-3xl">🔐</span>
+        <p className="text-sm text-amber-800 font-medium">
+          يتطلب هذا الإجراء التحقق من الهوية (المستوى {requiredLevel})
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700 transition"
+          >
+            ارفع مستواك الآن 📱
+          </button>
 
-      <PhoneVerifyModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+          {/* ✅ زر إعادة التحقق بعد الترقية */}
+          <button
+            onClick={handleRefreshLevel}
+            disabled={refreshing}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition disabled:opacity-50"
+          >
+            {refreshing ? '...' : 'تحديث ↻'}
+          </button>
+        </div>
+      </div>
+
+      {/* ✅ FIX: تمرير isOpen بدل mount/unmount + onSuccess ليست async */}
+      <PhoneVerifyModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSuccess={() => {
+          setShowModal(false);
+          // PhoneVerifyModal استدعى refreshSession بالفعل داخله عند النجاح
+          // نستدعيها مرة ثانية للتأكد من تحديث الـ LevelGate state
+          handleRefreshLevel();
+        }}
+      />
     </>
   );
 }

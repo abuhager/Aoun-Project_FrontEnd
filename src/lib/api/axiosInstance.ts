@@ -1,6 +1,9 @@
 // src/lib/api/axiosInstance.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
 let accessToken: string | null = null;
 let isRefreshing = false;
 
@@ -17,6 +20,9 @@ let initQueueRejects: Array<(err: Error) => void> = [];
 
 const INIT_TIMEOUT_MS = 5_000;
 
+// ─────────────────────────────────────────────
+// Exports
+// ─────────────────────────────────────────────
 export const setAccessToken = (t: string | null) => {
   accessToken = t;
 };
@@ -24,25 +30,29 @@ export const setAccessToken = (t: string | null) => {
 export const getAccessToken = () => accessToken;
 
 export const resetAuthState = () => {
-  accessToken = null;
-  isRefreshing = false;
-  refreshQueue = [];
-  isInitialized = false;
-  initQueue = [];
-  initQueueRejects = [];
+  accessToken        = null;
+  isRefreshing       = false;
+  refreshQueue       = [];
+  isInitialized      = false;
+  initQueue          = [];
+  initQueueRejects   = [];
 };
 
 export const setInitialized = (success = true) => {
   isInitialized = true;
 
   if (success) {
+    // ✅ حرّر الطلبات المعلّقة — لكن فقط إذا يوجد token
+    // إذا نجح الـ refresh لكن بدون token (حالة غريبة) → ارفض
     initQueue.forEach((cb) => cb());
   } else {
-    const err = new Error("AUTH_INIT_FAILED");
-    initQueueRejects.forEach((rej) => rej(err));
+    // ✅ FIX: عند فشل الـ init، حرّر الطابور بـ resolve (ليس reject)
+    // الطلبات ستُرسَل بدون token → backend يُرجع 401 → تُعالَج بالـ response interceptor
+    // هذا أفضل من AUTH_INIT_FAILED الذي يملأ الـ console بأخطاء غير مفيدة
+    initQueue.forEach((cb) => cb());
   }
 
-  initQueue = [];
+  initQueue        = [];
   initQueueRejects = [];
 };
 
@@ -57,6 +67,10 @@ function processRefreshQueue(error: Error | null, token: string | null = null) {
   refreshQueue = [];
 }
 
+// ─────────────────────────────────────────────
+// Axios Instance
+// ─────────────────────────────────────────────
+
 // ✅ baseURL ذكي: SSR → URL كامل | Browser → same-origin مع Next.js rewrites
 const API_BASE_URL = (() => {
   if (typeof window === "undefined") {
@@ -70,30 +84,60 @@ const API_BASE_URL = (() => {
 })();
 
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 15000,
+  baseURL:         API_BASE_URL,
+  timeout:         15_000,
   withCredentials: true,
 });
 
-// ----------------------------------------------------------------
-// 1. Request Interceptor (طابور الانتظار قبل بدء الـ Auth)
-// ----------------------------------------------------------------
+// ─────────────────────────────────────────────
+// مسارات لا تحتاج auth check
+// ─────────────────────────────────────────────
+const isAuthSafeUrl = (url: string): boolean =>
+  url.includes("/auth/refresh") ||
+  url.includes("/auth/login")   ||
+  url.includes("/auth/register") ||
+  url.includes("/auth/verify")   ||
+  url.includes("/auth/forgot")   ||
+  url.includes("/auth/reset");
+
+// المسارات العامة التي تعمل بدون token
+const isPublicUrl = (url: string, method?: string): boolean =>
+  (url.includes("/items") && method?.toLowerCase() === "get") ||
+  url.includes("/hubs")   ||
+  url.includes("/public");
+
+// ─────────────────────────────────────────────
+// 1. Request Interceptor
+// ─────────────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const url = config.url ?? "";
-    const isRefreshRoute = url.includes("/auth/refresh");
-    const isLoginRoute   = url.includes("/auth/login");
-    const isInitSafeRoute = isRefreshRoute || isLoginRoute;
+    const url    = config.url ?? "";
+    const method = config.method ?? "get";
 
-    if (!isInitialized && !isInitSafeRoute) {
+    const skipInitCheck = isAuthSafeUrl(url) || isPublicUrl(url, method);
+
+    // ✅ إذا لم يكتمل الـ init بعد → علّق الطلب في الطابور
+    if (!isInitialized && !skipInitCheck) {
       return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {
-        // ✅ timeout أمان — يمنع تعليق الطلبات لانهائياً
         const timer = setTimeout(() => {
           reject(new Error("AUTH_INIT_TIMEOUT"));
         }, INIT_TIMEOUT_MS);
 
         initQueue.push(() => {
           clearTimeout(timer);
+
+          // ✅ FIX الجوهري: إذا المستخدم غير مسجّل (لا token) والـ route محمي
+          // → أوقف الطلب صامتاً بدل إرساله للـ backend ليُرجع NO_TOKEN
+          if (!accessToken && !isPublicUrl(url, method)) {
+            reject(new Error("NOT_AUTHENTICATED"));
+            return;
+          }
+
+          // أضف الـ token وأطلق الطلب
+          if (accessToken) {
+            config.headers = config.headers ?? {};
+            config.headers.Authorization = `Bearer ${accessToken}`;
+          }
           resolve(config);
         });
 
@@ -104,6 +148,7 @@ axiosInstance.interceptors.request.use(
       });
     }
 
+    // ✅ Attach token للطلبات العادية بعد اكتمال الـ init
     config.headers = config.headers ?? {};
 
     if (accessToken) {
@@ -119,9 +164,9 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ----------------------------------------------------------------
-// 2. Response Interceptor (معالجة الأخطاء والـ Token Refresh والـ Timeout)
-// ----------------------------------------------------------------
+// ─────────────────────────────────────────────
+// 2. Response Interceptor
+// ─────────────────────────────────────────────
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -129,35 +174,43 @@ axiosInstance.interceptors.response.use(
       | (InternalAxiosRequestConfig & { _retry?: boolean; _initRetry?: boolean })
       | undefined;
 
-    if (!originalRequest) {
-      return Promise.reject(error);
+    if (!originalRequest) return Promise.reject(error);
+
+    // ── NOT_AUTHENTICATED: المستخدم غير مسجّل → تجاهل صامت ──
+    // هذا يمنع ملء الـ console بأخطاء عند زيارة صفحات محمية بدون تسجيل دخول
+    if (error.message === "NOT_AUTHENTICATED") {
+      return Promise.reject(error); // الـ component يتعامل معه بـ isLoading / !user check
     }
 
-    // ✅ إصلاح مشكلة الـ AUTH_INIT_TIMEOUT وإعادة المحاولة مرة واحدة تلقائياً
+    // ── AUTH_INIT_TIMEOUT: أعد المحاولة مرة واحدة بعد 500ms ──
     if (error.message === "AUTH_INIT_TIMEOUT" && !originalRequest._initRetry) {
       originalRequest._initRetry = true;
-      
-      // ننتظر 500ms لإعطاء فرصة للـ Auth Initialization أن تكتمل
+
       await new Promise((resolve) => setTimeout(resolve, 500));
-      
-      // إعادة إطلاق الطلب الأصلي
+
+      // ✅ FIX: لا تعيد المحاولة إذا لا يزال بدون token
+      if (!accessToken && !isPublicUrl(originalRequest.url ?? "", originalRequest.method)) {
+        return Promise.reject(new Error("NOT_AUTHENTICATED"));
+      }
+
       return axiosInstance(originalRequest);
     }
 
-    const status  = error.response?.status;
-    const url     = originalRequest.url ?? "";
-    const isAuthRoute = url.includes("/auth/");
+    const status      = error.response?.status;
+    const url         = originalRequest.url ?? "";
+    const isAuthRoute = isAuthSafeUrl(url);
 
-    // ✅ معالجة خطأ 401 والتجديد التلقائي للـ Token الـ Expired
+    // ── 401: تجديد الـ Token تلقائياً ──
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
 
+      // إذا يوجد refresh جارٍ → انضم للطابور
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           refreshQueue.push({
             resolve: (newToken: string) => {
-              originalRequest.headers = originalRequest.headers ?? {};
-              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              originalRequest.headers                    = originalRequest.headers ?? {};
+              originalRequest.headers.Authorization     = `Bearer ${newToken}`;
               resolve(axiosInstance(originalRequest));
             },
             reject: (queueError: Error) => reject(queueError),
@@ -178,7 +231,7 @@ axiosInstance.interceptors.response.use(
         setAccessToken(newToken);
         processRefreshQueue(null, newToken);
 
-        originalRequest.headers = originalRequest.headers ?? {};
+        originalRequest.headers                = originalRequest.headers ?? {};
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
 
         return axiosInstance(originalRequest);
@@ -191,8 +244,20 @@ axiosInstance.interceptors.response.use(
         setAccessToken(null);
         processRefreshQueue(finalError, null);
 
+        // ✅ redirect للـ login فقط إذا كان المستخدم مسجّلاً أصلاً
+        // (لمنع redirect غير ضروري عند زوار غير مسجّلين)
         if (typeof window !== "undefined") {
-          window.location.replace("/login?reason=session_expired");
+          const currentPath = window.location.pathname;
+          const isProtected =
+            currentPath.startsWith("/dashboard") ||
+            currentPath.startsWith("/profile")   ||
+            currentPath.startsWith("/admin")      ||
+            currentPath.startsWith("/my-items")   ||
+            currentPath.startsWith("/donate");
+
+          if (isProtected) {
+            window.location.replace("/login?reason=session_expired");
+          }
         }
 
         return Promise.reject(finalError);

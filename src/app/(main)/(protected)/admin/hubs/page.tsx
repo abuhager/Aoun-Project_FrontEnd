@@ -1,10 +1,9 @@
 // src/app/(main)/(protected)/admin/hubs/page.tsx
-// ✅ إدارة Safe Hubs — إنشاء / تعديل / تفعيل / تعطيل
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import axios from "axios";
+import { useEffect, useState, useCallback } from "react";
 import axiosInstance from "@/lib/api/axiosInstance";
+import { useToast } from "@/hooks/useToast";
 
 interface SafeHub {
   _id:         string;
@@ -30,27 +29,18 @@ const JORDAN_CITIES = [
 export default function AdminHubsPage() {
   const [hubs,    setHubs]    = useState<SafeHub[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toast,   setToast]   = useState<{ msg:string; ok:boolean }|null>(null);
   const [busy,    setBusy]    = useState<Record<string,boolean>>({});
   const [filter,  setFilter]  = useState<"all"|"active"|"inactive">("all");
   const [search,  setSearch]  = useState("");
 
-  // ── Modal state ──────────────────────────
-  const [modal,     setModal]     = useState<"closed"|"add"|"edit">("closed");
-  const [editTarget,setEditTarget]= useState<SafeHub|null>(null);
-  const [form,      setForm]      = useState(EMPTY_FORM);
-  const [formBusy,  setFormBusy]  = useState(false);
-  const [formErrors,setFormErrors]= useState<string[]>([]);
+  const [modal,      setModal]     = useState<"closed"|"add"|"edit">("closed");
+  const [editTarget, setEditTarget]= useState<SafeHub|null>(null);
+  const [form,       setForm]      = useState(EMPTY_FORM);
+  const [formBusy,   setFormBusy]  = useState(false);
+  const [formErrors, setFormErrors]= useState<string[]>([]);
 
-  const toastRef = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const { show: showToast, ToastComponent } = useToast();
 
-  const showToast = useCallback((msg:string, ok:boolean) => {
-    setToast({ msg, ok });
-    if (toastRef.current) clearTimeout(toastRef.current);
-    toastRef.current = setTimeout(() => setToast(null), 3500);
-  }, []);
-
-  // جلب جميع المراكز (نشطة + معطّلة للأدمن)
   const loadHubs = useCallback(async (loader=true) => {
     if (loader) setLoading(true);
     try {
@@ -58,17 +48,15 @@ export default function AdminHubsPage() {
       setHubs(Array.isArray(r.data) ? r.data : (r.data.hubs ?? []));
     } catch {
       showToast("تعذر تحميل مراكز التسليم", false);
-    } finally {
+    } finally { // ✅ تم إصلاح الإملاء هنا
       if (loader) setLoading(false);
     }
   }, [showToast]);
 
   useEffect(() => {
     loadHubs();
-    return () => { if (toastRef.current) clearTimeout(toastRef.current); };
   }, [loadHubs]);
 
-  // ── فلترة ────────────────────────────────
   const visible = hubs.filter(h => {
     const matchFilter =
       filter === "all" ? true :
@@ -78,7 +66,6 @@ export default function AdminHubsPage() {
     return matchFilter && matchSearch;
   });
 
-  // ── فتح Modal إضافة ──────────────────────
   const openAdd = () => {
     setForm(EMPTY_FORM);
     setFormErrors([]);
@@ -86,22 +73,20 @@ export default function AdminHubsPage() {
     setModal("add");
   };
 
-  // ── فتح Modal تعديل ──────────────────────
   const openEdit = (hub: SafeHub) => {
     setForm({
-      name:        hub.name,
-      address:     hub.address,
-      city:        hub.city,
-      workingHours:hub.workingHours,
-      lat:         hub.coordinates?.lat?.toString() ?? "",
-      lng:         hub.coordinates?.lng?.toString() ?? "",
+      name:         hub.name,
+      address:      hub.address,
+      city:         hub.city,
+      workingHours: hub.workingHours,
+      lat:          hub.coordinates?.lat?.toString() ?? "",
+      lng:          hub.coordinates?.lng?.toString() ?? "",
     });
     setFormErrors([]);
     setEditTarget(hub);
     setModal("edit");
   };
 
-  // ── حفظ (إنشاء أو تحديث) ─────────────────
   const saveForm = async () => {
     const errors: string[] = [];
     if (!form.name.trim())    errors.push("اسم المركز مطلوب");
@@ -113,10 +98,10 @@ export default function AdminHubsPage() {
     setFormErrors([]);
 
     const payload = {
-      name:        form.name.trim(),
-      address:     form.address.trim(),
-      city:        form.city.trim(),
-      workingHours:form.workingHours.trim(),
+      name:         form.name.trim(),
+      address:      form.address.trim(),
+      city:         form.city.trim(),
+      workingHours: form.workingHours.trim(),
       ...(form.lat && form.lng
         ? { coordinates: { lat: parseFloat(form.lat), lng: parseFloat(form.lng) } }
         : {}),
@@ -128,56 +113,48 @@ export default function AdminHubsPage() {
         showToast("✅ تم إضافة المركز بنجاح", true);
       } else {
         await axiosInstance.patch(`/api/hubs/${editTarget!._id}`, payload);
-        showToast("✅ تم تحديث المركز", true);
+        showToast("✅ تم تحديث المركز بنجاح", true);
       }
       setModal("closed");
       await loadHubs(false);
     } catch (err) {
-      showToast(
-        axios.isAxiosError(err) ? err.response?.data?.msg ?? "حدث خطأ" : "حدث خطأ",
-        false
-      );
-    } finally {
+      let msg = "حدث خطأ أثناء حفظ البيانات";
+      if (err && typeof err === "object" && "isAxiosError" in err) {
+        const axiosError = err as { response?: { data?: { msg?: string } } };
+        msg = axiosError.response?.data?.msg || msg;
+      }
+      showToast(msg, false);
+    } finally { // ✅ تم إصلاح الإملاء هنا
       setFormBusy(false);
     }
   };
 
-  // ── تبديل حالة النشاط ────────────────────
   const toggleActive = async (hub: SafeHub) => {
     if (busy[hub._id]) return;
     setBusy(p => ({ ...p, [hub._id]: true }));
     try {
       if (hub.isActive) {
         await axiosInstance.delete(`/api/hubs/${hub._id}`);
-        showToast("⏸ تم تعطيل المركز", true);
+        showToast("⏸ تم تعطيل المركز بنجاح", true);
       } else {
         await axiosInstance.patch(`/api/hubs/${hub._id}`, { isActive: true });
-        showToast("✅ تم تفعيل المركز", true);
+        showToast("✅ تم تفعيل المركز بنجاح", true);
       }
       await loadHubs(false);
     } catch {
-      showToast("حدث خطأ أثناء التحديث", false);
-    } finally {
+      showToast("حدث خطأ أثناء تحديث حالة المركز", false);
+    } finally { // ✅ تم إصلاح الإملاء هنا
       setBusy(p => ({ ...p, [hub._id]: false }));
     }
   };
 
-  // ── إحصائيات سريعة ───────────────────────
   const activeCount   = hubs.filter(h => h.isActive).length;
   const inactiveCount = hubs.filter(h => !h.isActive).length;
   const cities        = [...new Set(hubs.map(h => h.city))].length;
 
   return (
     <div className="space-y-6" dir="rtl">
-
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3
-          rounded-2xl shadow-lg text-sm font-bold text-white transition-all
-          ${toast.ok ? "bg-green-500" : "bg-red-500"}`}>
-          {toast.msg}
-        </div>
-      )}
+      {ToastComponent}
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -191,7 +168,7 @@ export default function AdminHubsPage() {
             rounded-2xl text-sm font-black hover:bg-primary/90 transition-colors shadow-sm"
         >
           <span className="material-symbols-outlined text-base">add_location_alt</span>
-          إضافة مركز جديد
+          إضافة micro-hub جديد
         </button>
       </div>
 
@@ -227,9 +204,7 @@ export default function AdminHubsPage() {
           {(["all","active","inactive"] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-4 py-2.5 rounded-xl text-xs font-black transition-colors
-                ${filter === f
-                  ? "bg-primary text-white"
-                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                ${filter === f ? "bg-primary text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
             >
               {f === "all" ? "الكل" : f === "active" ? "نشط" : "معطّل"}
             </button>
@@ -255,18 +230,14 @@ export default function AdminHubsPage() {
                 ${hub.isActive ? "border-gray-100" : "border-gray-200 bg-gray-50/50 opacity-70"}`}
             >
               <div className="flex items-start justify-between gap-4">
-                {/* معلومات المركز */}
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-black text-gray-900 text-sm">{hub.name}</span>
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full
-                      ${hub.isActive
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-200 text-gray-500"}`}>
+                      ${hub.isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}>
                       {hub.isActive ? "● نشط" : "● معطّل"}
                     </span>
-                    <span className="text-[10px] bg-blue-50 text-blue-600 font-bold
-                      px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded-full">
                       {hub.city}
                     </span>
                   </div>
@@ -286,8 +257,7 @@ export default function AdminHubsPage() {
                       href={`https://maps.google.com/?q=${hub.coordinates.lat},${hub.coordinates.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-primary font-bold flex items-center gap-0.5
-                        hover:underline w-fit"
+                      className="text-[10px] text-primary font-bold flex items-center gap-0.5 hover:underline w-fit"
                     >
                       <span className="material-symbols-outlined text-[12px]">open_in_new</span>
                       عرض على الخريطة
@@ -295,12 +265,10 @@ export default function AdminHubsPage() {
                   )}
                 </div>
 
-                {/* أزرار الإجراءات */}
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => openEdit(hub)}
-                    className="p-2 rounded-xl bg-gray-100 text-gray-500
-                      hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                    className="p-2 rounded-xl bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                     title="تعديل"
                   >
                     <span className="material-symbols-outlined text-base">edit</span>
@@ -310,9 +278,7 @@ export default function AdminHubsPage() {
                     onClick={() => toggleActive(hub)}
                     disabled={!!busy[hub._id]}
                     className={`p-2 rounded-xl transition-colors disabled:opacity-50
-                      ${hub.isActive
-                        ? "bg-red-50 text-red-500 hover:bg-red-100"
-                        : "bg-green-50 text-green-600 hover:bg-green-100"}`}
+                      ${hub.isActive ? "bg-red-50 text-red-500 hover:bg-red-100" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
                     title={hub.isActive ? "تعطيل" : "تفعيل"}
                   >
                     <span className="material-symbols-outlined text-base">
@@ -326,16 +292,10 @@ export default function AdminHubsPage() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════
-          Modal — إضافة / تعديل
-      ══════════════════════════════════════ */}
+      {/* ── Modal ── */}
       {modal !== "closed" && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center
-          justify-center p-4" onClick={e => e.target === e.currentTarget && setModal("closed")}>
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl
-            max-h-[90vh] overflow-y-auto" dir="rtl">
-
-            {/* Header */}
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4" onClick={e => e.target === e.currentTarget && setModal("closed")}>
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
             <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl z-10">
               <h2 className="font-black text-gray-900 flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-lg">
@@ -343,13 +303,11 @@ export default function AdminHubsPage() {
                 </span>
                 {modal === "add" ? "إضافة مركز جديد" : "تعديل المركز"}
               </h2>
-              <button onClick={() => setModal("closed")}
-                className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors">
+              <button onClick={() => setModal("closed")} className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors">
                 <span className="material-symbols-outlined text-gray-400">close</span>
               </button>
             </div>
 
-            {/* Body */}
             <div className="p-5 space-y-4">
               {formErrors.length > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1">
@@ -361,26 +319,22 @@ export default function AdminHubsPage() {
                 </div>
               )}
 
-              {/* اسم المركز */}
               <div className="space-y-1">
                 <label className="text-xs font-black text-gray-700">اسم المركز *</label>
                 <input
                   value={form.name}
                   onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder="مثال: مركز الزرقاء الرئيسي"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm
-                    focus:outline-none focus:border-primary transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
 
-              {/* المدينة */}
               <div className="space-y-1">
                 <label className="text-xs font-black text-gray-700">المدينة *</label>
                 <select
                   value={form.city}
                   onChange={e => setForm(p => ({ ...p, city: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm
-                    focus:outline-none focus:border-primary transition-colors appearance-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary transition-colors appearance-none"
                 >
                   <option value="">اختر المدينة</option>
                   {JORDAN_CITIES.map(c => (
@@ -389,31 +343,26 @@ export default function AdminHubsPage() {
                 </select>
               </div>
 
-              {/* العنوان التفصيلي */}
               <div className="space-y-1">
                 <label className="text-xs font-black text-gray-700">العنوان التفصيلي *</label>
                 <input
                   value={form.address}
                   onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
                   placeholder="مثال: شارع الملك طلال، مقابل البريد"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm
-                    focus:outline-none focus:border-primary transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
 
-              {/* ساعات العمل */}
               <div className="space-y-1">
                 <label className="text-xs font-black text-gray-700">ساعات العمل</label>
                 <input
                   value={form.workingHours}
                   onChange={e => setForm(p => ({ ...p, workingHours: e.target.value }))}
                   placeholder="مثال: 9:00 ص — 5:00 م"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm
-                    focus:outline-none focus:border-primary transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
 
-              {/* الإحداثيات */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-gray-700 flex items-center gap-1">
                   <span className="material-symbols-outlined text-sm text-gray-400">my_location</span>
@@ -426,8 +375,7 @@ export default function AdminHubsPage() {
                     value={form.lat}
                     onChange={e => setForm(p => ({ ...p, lat: e.target.value }))}
                     placeholder="خط العرض"
-                    className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm
-                      focus:outline-none focus:border-primary transition-colors"
+                    className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary transition-colors"
                   />
                   <input
                     type="number"
@@ -435,38 +383,30 @@ export default function AdminHubsPage() {
                     value={form.lng}
                     onChange={e => setForm(p => ({ ...p, lng: e.target.value }))}
                     placeholder="خط الطول"
-                    className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm
-                      focus:outline-none focus:border-primary transition-colors"
+                    className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
-                <p className="text-[10px] text-gray-400">
-                  يستخدم لعرض رابط Google Maps في صفحة المراكز
-                </p>
               </div>
             </div>
 
-            {/* Footer */}
             <div className="p-5 pt-0 flex gap-3">
               <button
                 onClick={() => setModal("closed")}
                 disabled={formBusy}
-                className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-500
-                  text-sm font-black hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-500 text-sm font-black hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 إلغاء
               </button>
               <button
                 onClick={saveForm}
                 disabled={formBusy}
-                className="flex-1 py-3 bg-primary text-white rounded-2xl text-sm font-black
-                  hover:bg-primary/90 transition-colors disabled:opacity-50
-                  flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-primary text-white rounded-2xl text-sm font-black hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {formBusy
-                  ? <><span className="material-symbols-outlined text-sm animate-spin">progress_activity</span> جاري الحفظ...</>
-                  : <><span className="material-symbols-outlined text-sm">save</span>
-                      {modal === "add" ? "إضافة" : "حفظ التعديلات"}</>
-                }
+                {formBusy ? (
+                  <><span className="material-symbols-outlined text-sm animate-spin">progress_activity</span> جاري الحفظ...</>
+                ) : (
+                  <><span className="material-symbols-outlined text-sm">save</span> {modal === "add" ? "إضافة" : "حفظ التعديلات"}</>
+                )}
               </button>
             </div>
           </div>

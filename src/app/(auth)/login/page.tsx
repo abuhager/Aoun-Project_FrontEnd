@@ -1,14 +1,22 @@
+// src/app/(auth)/login/page.tsx
 "use client";
 
 import Link from "next/link";
 import Image from "next/image";
 import { useRedirectIfAuth } from "../hooks/useRedirectIfAuth";
-
 import { useLogin } from "./hooks/useLogin";
+import { useSettings } from "@/hooks/useSettings"; 
 
 export default function LoginPage() {
   useRedirectIfAuth();
   const { formData, loading, error, handleChange, handleSubmit } = useLogin();
+
+  // ✅ جلب الإعدادات الحية
+  const { settings, isLoading: settingsLoading } = useSettings();
+  
+  // ✅ معالجة الـ Type-safety للحقل المغلّف بدون any نهائياً وبطريقة توافق الـ Build
+  const unknownSettings = settings as unknown as { settings?: { platformName?: string } };
+  const platformName = settings?.platformName || unknownSettings?.settings?.platformName || "عون";
 
   return (
     <main className="grow flex flex-row-reverse overflow-hidden min-h-screen bg-background" dir="rtl">
@@ -19,9 +27,12 @@ export default function LoginPage() {
 
           {/* العنوان */}
           <div className="flex flex-col items-start gap-2">
-            <span className="text-3xl font-black text-primary tracking-tight">عون</span>
+            {/* عرض الاسم الحي ديناميكياً بدون مشاكل كاش أو تايب */}
+            <span className="text-3xl font-black text-primary tracking-tight">
+              {settingsLoading ? "..." : platformName}
+            </span>
             <h1 className="text-4xl font-extrabold text-on-background leading-tight">مرحباً بك مجدداً</h1>
-            <p className="text-on-surface-variant">سجل دخولك لتستمر في رحلة العطاء والمساعدة</p>
+            <p className="text-on-surface-variant">سجل دخولك لتستمر in رحلة العطاء والمساعدة</p>
           </div>
 
           {/* رسالة الخطأ */}
@@ -99,7 +110,7 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ─── القسم الأيسر: الصورة (شاشات كبيرة فقط) ─── */}
+      {/* ─── القسم الأيسر: الصورة ─── */}
       <section className="hidden lg:block lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 w-full h-full bg-primary">
           <Image

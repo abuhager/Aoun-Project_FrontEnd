@@ -1,8 +1,8 @@
+// src/app/(main)/donation-requests/new/page.tsx
 "use client";
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import axiosInstance from '@/lib/api/axiosInstance';
 import { createDonationRequest } from '@/lib/api/donationRequestApi';
@@ -32,6 +32,7 @@ export default function NewDonationRequestPage() {
     location: '',
   });
 
+  // ✅ تم التعديل: تفعيل صائد الأخطاء التنبيهي للمستخدم لمنع بلع الاستجابة
   useEffect(() => {
     axiosInstance
       .get('/api/settings')
@@ -39,12 +40,22 @@ export default function NewDonationRequestPage() {
         if (Array.isArray(r.data?.categories) && r.data.categories.length > 0) {
           setSettingsCategories(r.data.categories);
         }
-
         if (Array.isArray(r.data?.locations) && r.data.locations.length > 0) {
           setSettingsLocations(r.data.locations);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        let msg = 'تعذر مزامنة التصنيفات الحية';
+        if (err && typeof err === "object" && "isAxiosError" in err) {
+          const axiosError = err as { response?: { status?: number; data?: { msg?: string } } };
+          if (axiosError.response?.status === 403) {
+            msg = '🔒 خطأ صلاحيات: جلب الإعدادات الحية متاح للأدمن فقط بملف الـ Routes';
+          } else {
+            msg = axiosError.response?.data?.msg || msg;
+          }
+        }
+        setToast({ msg, ok: false });
+      });
   }, []);
 
   useEffect(() => {
@@ -86,10 +97,11 @@ export default function NewDonationRequestPage() {
         router.push('/donation-requests?mine=true');
       }, 700);
     } catch (err) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.msg ?? 'حدث خطأ أثناء إنشاء الطلب'
-        : 'حدث خطأ أثناء إنشاء الطلب';
-
+      let msg = 'حدث خطأ أثناء إنشاء الطلب';
+      if (err && typeof err === "object" && "isAxiosError" in err) {
+        const axiosError = err as { response?: { data?: { msg?: string } } };
+        msg = axiosError.response?.data?.msg || msg;
+      }
       setToast({ msg, ok: false });
     } finally {
       setSubmitting(false);
@@ -99,11 +111,7 @@ export default function NewDonationRequestPage() {
   return (
     <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
       {toast && (
-        <div
-          className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white ${
-            toast.ok ? 'bg-green-500' : 'bg-red-500'
-          }`}
-        >
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white ${toast.ok ? 'bg-green-500' : 'bg-red-500'}`}>
           {toast.msg}
         </div>
       )}
@@ -116,20 +124,14 @@ export default function NewDonationRequestPage() {
           </p>
 
           <div className="flex justify-center">
-            <Link
-              href="/donation-requests"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-gray-200 text-sm font-black text-gray-700 hover:bg-gray-50 transition-all"
-            >
+            <Link href="/donation-requests" className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-gray-200 text-sm font-black text-gray-700 hover:bg-gray-50 transition-all">
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
               العودة إلى الطلبات
             </Link>
           </div>
         </div>
 
-        <form
-          onSubmit={submit}
-          className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 md:p-6 space-y-4"
-        >
+        <form onSubmit={submit} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 md:p-6 space-y-4">
           <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 text-[12px] text-blue-700 font-bold leading-6">
             ملاحظة: النظام قد يفرض حداً أقصى لعدد الطلبات النشطة شهرياً لكل مستخدم، لذلك اكتب طلبك بدقة وتأكد من صحة البيانات قبل النشر.
           </div>
@@ -143,9 +145,7 @@ export default function NewDonationRequestPage() {
               placeholder="مثال: أحتاج لابتوب للدراسة"
               className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
             />
-            <p className="text-[11px] text-gray-400 text-left">
-              {form.title.length} / 120
-            </p>
+            <p className="text-[11px] text-gray-400 text-left">{form.title.length} / 120</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
@@ -158,9 +158,7 @@ export default function NewDonationRequestPage() {
               >
                 <option value="">اختر التصنيف</option>
                 {settingsCategories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
@@ -174,9 +172,7 @@ export default function NewDonationRequestPage() {
               >
                 <option value="">اختر المنطقة</option>
                 {settingsLocations.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
+                  <option key={loc} value={loc}>{loc}</option>
                 ))}
               </select>
             </div>
@@ -192,9 +188,7 @@ export default function NewDonationRequestPage() {
               placeholder="اشرح حاجتك بشكل واضح ومختصر"
               className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary resize-none"
             />
-            <p className="text-[11px] text-gray-400 text-left">
-              {form.description.length} / 600
-            </p>
+            <p className="text-[11px] text-gray-400 text-left">{form.description.length} / 600</p>
           </div>
 
           <button

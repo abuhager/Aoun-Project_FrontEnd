@@ -2,15 +2,14 @@
 
 import { useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import axiosInstance, { setAccessToken } from "@/lib/api/axiosInstance"; // ✅ استيراد دالة حفظ التوكن
-import { useAuth } from "@/context/AuthContext"; // ✅ استيراد سياق المصادقة للحصول على setUser
+import axiosInstance, { setAccessToken } from "@/lib/api/axiosInstance"; 
+import { useAuth } from "@/context/AuthContext"; 
 
 export function useVerifyEmail() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
   
-  // ✅ جلب دالة تعيين المستخدم لتسجيل الدخول الفوري
   const { setUser } = useAuth(); 
 
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
@@ -56,23 +55,20 @@ export function useVerifyEmail() {
       setLoading(true);
       setError("");
 
-      // ✅ التقاط استجابة الخادم للاستفادة من بيانات الجلسة الممررة
       const res = await axiosInstance.post("/api/auth/verify-email", { email, otp: otpCode });
 
-      // ✅ التحقق الفوري: إذا أرجع الخادم accessToken - احفظه وسجل دخول المستخدم فوراً
       if (res.data?.accessToken) {
-        setAccessToken(res.data.accessToken); // حفظ التوكن في الـ Instance وفي الذاكرة
-        setUser(res.data.user);              // تحديث حالة المستخدم في التطبيق بالكامل
-        router.push("/browse");              // التوجيه المباشر للمنصة
+        setAccessToken(res.data.accessToken); 
+        setUser(res.data.user);              
+        router.push("/browse");              
       } else {
-        // الخيار الاحتياطي في حال لم يرسل الخادم التوكن عند التفعيل
         router.push("/login?verified=true");
       }
     } catch (err: unknown) {
-      // 👈 استخدام الفحص الذكي الـ Type-safe كـ any دون استيراد مكتبة axios بالكامل
-      const errorObj = err as any;
-      if (errorObj.isAxiosError) {
-        setError(errorObj.response?.data?.msg || "حدث خطأ أثناء التحقق من الرمز ❌");
+      // ✅ التعديل الآمن: التحقق من هيكل الخطأ برمجياً دون any ودون استيراد أكسيوس
+      if (err && typeof err === "object" && "isAxiosError" in err) {
+        const axiosError = err as { response?: { data?: { msg?: string } } };
+        setError(axiosError.response?.data?.msg || "حدث خطأ أثناء التحقق من الرمز ❌");
       } else {
         setError("حدث خطأ غير متوقع ❌");
       }

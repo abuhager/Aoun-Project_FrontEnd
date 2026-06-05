@@ -15,7 +15,7 @@ let isInitialized = false;
 let initQueue: Array<() => void> = [];
 let initQueueRejects: Array<(err: Error) => void> = [];
 
-const INIT_TIMEOUT_MS = 10_000;
+const INIT_TIMEOUT_MS = 5_000;
 
 export const setAccessToken = (t: string | null) => {
   accessToken = t;

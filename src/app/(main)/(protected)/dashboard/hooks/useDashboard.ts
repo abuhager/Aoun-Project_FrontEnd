@@ -5,7 +5,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter }    from 'next/navigation';
 import axiosInstance    from '@/lib/api/axiosInstance';
 import { confirmReceipt, confirmDelivery } from '@/lib/api/itemApi';
-import axios            from 'axios';
 import { useSocket }    from '@/hooks/useSocket';
 import type { DashboardItem, MyItemsResponse } from '@/types/item.types';
 
@@ -31,7 +30,7 @@ interface AppealModalState {
 
 interface DeliveryState {
   itemId:             string | null;
-  waitingForDonor:    boolean; // المستلم أكّد، وننتظر المتبرع الآن
+  waitingForDonor:    boolean;
 }
 
 export function getBookedByName(val: DashboardItem['bookedBy']): string {
@@ -49,7 +48,6 @@ export function useDashboard() {
   const [activeTab, setActiveTab] = useState<'donations' | 'requests'>('donations');
   const [toast,     setToast]     = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  // ✅ حالة التأكيد المزدوج للتسليم
   const [deliveryState, setDeliveryState] = useState<DeliveryState>({
     itemId: null,
     waitingForDonor: false,
@@ -65,10 +63,11 @@ export function useDashboard() {
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const timeoutIdsRef      = useRef<ReturnType<typeof setTimeout>>([]);
+  
+  // ✅ تم الإصلاح هنا: إضافة [] لتعريف مصفوفة المؤقتات بشكل صحيح
+  const timeoutIdsRef      = useRef<ReturnType<typeof setTimeout>[]>([]);
   const appealReportIdRef  = useRef<string>('');
 
-  // دالة مساعدة لعرض التنبيهات المؤقتة
   const showToast = useCallback((msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
     const id = setTimeout(() => setToast(null), 3500);
@@ -98,7 +97,6 @@ export function useDashboard() {
           myRequests,
         });
 
-        // ✅ استعادة حالة التوصيل المزدوج تلقائياً من الـ API (حتى لو أنعش المستخدم الصفحة)
         const waitingItem = myDonations.find(
           (item) => item.status === 'محجوز' && item.recipientConfirmed === true
         );
@@ -112,10 +110,13 @@ export function useDashboard() {
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
         if (!controller.signal.aborted) {
-          setError(axios.isAxiosError(err)
-            ? `${err.response?.status ?? 'Network'}: ${err.response?.data?.msg ?? err.message}`
-            : String(err)
-          );
+          // ✅ فحص الخطأ بطريقة هيكلية آمنة لمنع استيراد أكسيوس العادي
+          let errorMsg = String(err);
+          if (err && typeof err === "object" && "isAxiosError" in err) {
+            const axiosError = err as { response?: { status?: number; data?: { msg?: string } }; message?: string };
+            errorMsg = axiosError.response?.data?.msg || axiosError.message || errorMsg;
+          }
+          setError(errorMsg);
           setData(null);
         }
       } finally {
@@ -126,7 +127,7 @@ export function useDashboard() {
     return () => {
       abortControllerRef.current?.abort();
       timeoutIdsRef.current.forEach(clearTimeout);
-      timeoutIdsRef.current = [];
+      timeoutIdsRef.current = []; // ✅ ستعمل الآن بدون أي أخطاء
     };
   }, []);
 
@@ -135,12 +136,10 @@ export function useDashboard() {
     const socket = socketRef.current;
     if (!socket) return;
 
-    // عندما يقوم المستلم بالتأكيد، يظهر تنبيه فوري للمتبرع لتحديث واجهته
     socket.on('delivery:recipient_confirmed', ({ itemId, itemTitle }) => {
       showToast(`✅ ${itemTitle} — المستلم أكّد الاستلام، يرجى تأكيد التسليم الآن`, 'success');
       setDeliveryState({ itemId, waitingForDonor: true });
       
-      // تحديث الحالة محلياً ليصبح الزر نشطاً للمتبرع
       setData(prev => prev ? {
         ...prev,
         myDonations: prev.myDonations.map(i => 
@@ -149,7 +148,6 @@ export function useDashboard() {
       } : prev);
     });
 
-    // عند اكتمال العملية من الطرفين
     socket.on('delivery:completed', ({ itemId }) => {
       setData(prev => prev ? {
         ...prev,
@@ -186,10 +184,12 @@ export function useDashboard() {
       
       showToast(msg || '✅ تم تسجيل تأكيدك، بانتظار تأكيد المتبرع النهائي ⏳', 'success');
     } catch (err) {
-      showToast(
-        axios.isAxiosError(err) ? err.response?.data?.msg ?? 'حدث خطأ أثناء التأكيد' : 'حدث خطأ غير متوقع',
-        'error'
-      );
+      let msg = 'حدث خطأ غير متوقع';
+      if (err && typeof err === "object" && "isAxiosError" in err) {
+        const axiosError = err as { response?: { data?: { msg?: string } } };
+        msg = axiosError.response?.data?.msg || msg;
+      }
+      showToast(msg, 'error');
     } finally {
       setDeliveryLoading(false);
     }
@@ -211,10 +211,12 @@ export function useDashboard() {
       setDeliveryState({ itemId: null, waitingForDonor: false });
       showToast(msg || 'تم التسليم بنجاح واكتملت العملية! 💚', 'success');
     } catch (err) {
-      showToast(
-        axios.isAxiosError(err) ? err.response?.data?.msg ?? 'حدث خطأ أثناء التوصيل' : 'حدث خطأ غير متوقع',
-        'error'
-      );
+      let msg = 'حدث خطأ غير متوقع';
+      if (err && typeof err === "object" && "isAxiosError" in err) {
+        const axiosError = err as { response?: { data?: { msg?: string } } };
+        msg = axiosError.response?.data?.msg || msg;
+      }
+      showToast(msg, 'error');
     } finally {
       setDeliveryLoading(false);
     }

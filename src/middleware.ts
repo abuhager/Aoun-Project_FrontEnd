@@ -24,36 +24,35 @@ export async function middleware(request: NextRequest) {
   const isProtected = PROTECTED_PREFIXES.some(p => pathname.startsWith(p));
   const isAuthOnly  = AUTH_ONLY_PREFIXES.some(p => pathname.startsWith(p));
 
-  // ✅ يعمل صح الآن بعد إصلاح path:'/' في REFRESH_COOKIE_OPTIONS
-  // Edge Runtime يقرأ الـ cookie في كل المسارات
-  const hasSession = !!request.cookies.get('refreshToken')?.value;
+  const refreshCookie = request.cookies.get('refreshToken');
+  const hasSession    = !!refreshCookie?.value;
+  
+  // ✅ التحقق من وجود القيمة وصحتها المبدئية (JWT length protection)
+  const isValidToken  = hasSession && refreshCookie.value.length > 50;
 
-  if (isProtected && !hasSession) {
+  // ❌ حالة 1: يحاول الدخول لصفحة محمية وجلسته منتهية أو غير موجودة
+  if (isProtected && !isValidToken) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    
+    // إذا كان الطلب عبارة عن Fetch/API داخلي من Next.js، نرجع 401 بدل الـ Redirect الكامل لتجنب مشاكل الـ CORS بالفرونت
+    if (request.headers.get('accept')?.includes('text/html')) {
+      return NextResponse.redirect(loginUrl);
+    }
+    return new NextResponse(JSON.stringify({ message: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } });
   }
 
-  // ✅ المستخدم المسجل لا يذهب لصفحات المصادقة
-  if (isAuthOnly && hasSession) {
+  // 🔄 حالة 2: المستخدم مسجل بالفعل ويحاول دخول صفحات Auth (مثل /login)
+  if (isAuthOnly && isValidToken) {
     return NextResponse.redirect(new URL('/browse', request.url));
   }
 
   return NextResponse.next();
 }
 
+// ✅ الـ Matcher الموحد لمنع تشغيل الـ Middleware على ملفات الـ Assets والـ Static
 export const config = {
   matcher: [
-    '/dashboard/:path*',
-    '/profile/:path*',
-    '/add-item/:path*',
-    '/admin/:path*',
-    '/donate/:path*',
-    '/my-items/:path*',
-    '/login',
-    '/register',
-    '/verify',
-    '/forgot-password',
-    '/reset-password/:path*',
+    '/((?!api|_next/static|_next/image|favicon.ico|images|assets).*)',
   ],
 };

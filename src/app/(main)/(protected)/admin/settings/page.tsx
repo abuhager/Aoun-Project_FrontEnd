@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/useToast";
 interface SystemSettings {
   defaultQuota:              number;
   level2Quota:               number;
-  level3Quota:               number;
   maxBookingsPerUser:        number; // 🧠 مضاف
   maxActiveRequestsPerMonth: number;
   requestExpiryDays:         number;
@@ -139,7 +138,7 @@ export default function AdminSettingsPage() {
     try {
       // 1. حصر الحقول المسموح بتعديلها فقط والمطابقة تماماً للـ Backend
       const editableFields = [
-        'defaultQuota', 'level2Quota', 'level3Quota', 'maxBookingsPerUser',
+        'defaultQuota', 'level2Quota', 'maxBookingsPerUser',
         'maxActiveRequestsPerMonth', 'requestExpiryDays', 'categories',
         'reportReasons', 'autoReportBanThreshold', 'universityEmailDomains',
         'requireHubForBooking', 'maintenanceMode', 'platformName',
@@ -269,10 +268,7 @@ export default function AdminSettingsPage() {
             label="كوتا مستوى 2" value={settings.level2Quota}
             onChange={v => update("level2Quota", v)} min={1} max={15} hint="جامعي أو هاتف"
           />
-          <NumberField
-            label="كوتا مستوى 3+" value={settings.level3Quota}
-            onChange={v => update("level3Quota", v)} min={1} max={20} hint="موثق بالكامل"
-          />
+          
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-50">
           <NumberField

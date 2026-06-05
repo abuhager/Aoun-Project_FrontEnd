@@ -1,3 +1,4 @@
+// src/context/AuthContext.tsx
 "use client";
 
 import {
@@ -17,13 +18,18 @@ import axiosInstance, {
 import type { AuthUser } from "@/types/user.types";
 import Cookies from "js-cookie";
 
+// ─────────────────────────────────────────────────────────────
+// CachedUser — بيانات العرض فقط (بدون حقول حساسة)
+// role / trustLevel / quota محذوفة من الـ cookie
+// ─────────────────────────────────────────────────────────────
 type CachedUser = Pick<
   AuthUser,
-  "_id" | "name" | "email" | "avatar" | "role" | "trustLevel" | "quota" | "gamification"
+  "_id" | "name" | "email" | "avatar" | "gamification"
 >;
 
 interface AuthContextType {
   user: CachedUser | null;
+  fullUser: AuthUser | null;
   isLoading: boolean;
   isLoggedIn: boolean;
   isAuthenticated: boolean;
@@ -33,36 +39,33 @@ interface AuthContextType {
 }
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
-const USER_COOKIE = "aoun_user";
+const USER_COOKIE   = "aoun_user";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function toMinimalUser(u: AuthUser): CachedUser {
   return {
-    _id: u._id,
-    name: u.name,
-    email: u.email,
+    _id:    u._id,
+    name:   u.name,
+    email:  u.email,
     avatar: u.avatar ?? undefined,
-    role: u.role,
-    trustLevel: u.trustLevel ?? 1,
-    quota: u.quota ?? 0,
     gamification: u.gamification ?? {
-      trustScore: 0,
+      trustScore:     0,
       totalDonations: 0,
-      level: 1,
-      title: "مبتدئ",
-      badge: "🌱",
-      progress: 0,
-      pointsToNext: null,
+      level:          1,
+      title:          "مبتدئ",
+      badge:          "🌱",
+      progress:       0,
+      pointsToNext:   null,
     },
   };
 }
 
 function saveUserCookie(u: CachedUser) {
   Cookies.set(USER_COOKIE, JSON.stringify(u), {
-    expires: 7,
+    expires:  7,
     sameSite: IS_PRODUCTION ? "none" : "lax",
-    secure: IS_PRODUCTION,
+    secure:   IS_PRODUCTION,
   });
 }
 
@@ -72,7 +75,22 @@ function loadUserCookie(): CachedUser | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<CachedUser>;
     if (!parsed._id) return null;
-    return parsed as CachedUser;
+    // تنظيف أي حقل حساس من cookieات قديمة
+    return {
+      _id:          parsed._id,
+      name:         parsed.name   ?? "",
+      email:        parsed.email  ?? "",
+      avatar:       parsed.avatar ?? "",
+      gamification: parsed.gamification ?? {
+        trustScore:     0,
+        totalDonations: 0,
+        level:          1,
+        title:          "مبتدئ",
+        badge:          "🌱",
+        progress:       0,
+        pointsToNext:   null,
+      },
+    };
   } catch {
     return null;
   }
@@ -81,25 +99,31 @@ function loadUserCookie(): CachedUser | null {
 function clearUserCookie() {
   Cookies.remove(USER_COOKIE, {
     sameSite: IS_PRODUCTION ? "none" : "lax",
-    secure: IS_PRODUCTION,
+    secure:   IS_PRODUCTION,
   });
 }
 
+// ─────────────────────────────────────────────────────────────
+// AuthProvider
+// ─────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState] = useState<CachedUser | null>(loadUserCookie);
+  const [user,      setUserState] = useState<CachedUser | null>(loadUserCookie);
+  const [fullUser,  setFullUser]  = useState<AuthUser   | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const initialized = useRef(false);
-  const refreshing = useRef<Promise<boolean> | null>(null);
+  const initialized  = useRef(false);
+  const refreshing   = useRef<Promise<boolean> | null>(null);
   const isLoggingOut = useRef(false);
 
   const setUser = useCallback((u: AuthUser | null) => {
     if (u) {
       const minimal = toMinimalUser(u);
       setUserState(minimal);
+      setFullUser(u);
       saveUserCookie(minimal);
     } else {
       setUserState(null);
+      setFullUser(null);
       clearUserCookie();
     }
   }, []);
@@ -110,30 +134,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     refreshing.current = (async () => {
       try {
-        // ─── 1. احصل على accessToken جديد ───────────────────
         const { data } = await axiosInstance.post<{ accessToken: string }>(
           "/api/auth/refresh",
           {},
           { withCredentials: true }
         );
-
         const token = data.accessToken;
         setAccessToken(token);
-
-        // ─── 2. أطلق الـ initQueue فوراً ────────────────────
-        // لا تنتظر /me — الطلبات الأخرى تحتاج الـ token الآن
         setInitialized(true);
 
-        // ─── 3. جلب بيانات المستخدم ─────────────────────────
-        // /api/auth/me يرجع الـ user مباشرة (بدون wrapper)
         const meRes = await axiosInstance.get<AuthUser>("/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers:         { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
-
         setUser(meRes.data);
         return true;
-
       } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status !== 401) {
           console.error("refreshSession error:", err);
@@ -151,7 +166,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     isLoggingOut.current = true;
-
     try {
       await axiosInstance.post("/api/auth/logout", {}, { withCredentials: true });
     } catch (err) {
@@ -162,15 +176,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetAuthState();
       setUser(null);
       initialized.current = false;
-      refreshing.current = null;
-
+      refreshing.current  = null;
       if (typeof window !== "undefined") {
         window.location.replace("/login");
       }
-
-      setTimeout(() => {
-        isLoggingOut.current = false;
-      }, 1000);
+      setTimeout(() => { isLoggingOut.current = false; }, 1000);
     }
   }, [setUser]);
 
@@ -178,18 +188,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (initialized.current) return;
     initialized.current = true;
 
-    // ─── timeout أمان 8 ثوانٍ ────────────────────────────
     const safetyTimer = setTimeout(() => {
       setInitialized(false);
       setIsLoading(false);
     }, 8000);
 
     refreshSession()
-      .then(() => clearTimeout(safetyTimer))
-      .catch(() => {
-        clearTimeout(safetyTimer);
-        setInitialized(false);
-      })
+      .then(()   => clearTimeout(safetyTimer))
+      .catch(()  => { clearTimeout(safetyTimer); setInitialized(false); })
       .finally(() => setIsLoading(false));
   }, [refreshSession]);
 
@@ -197,8 +203,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        fullUser,
         isLoading,
-        isLoggedIn: !!user,
+        isLoggedIn:      !!user,
         isAuthenticated: !!user,
         setUser,
         refreshSession,
@@ -210,12 +217,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// ✅ الحل الذكي: useAuth يُرجع fullUser تحت اسم user
+// كل الـ components تبقى كما هي — user.role / user.quota يشتغلوا
+// القيمة تأتي من الذاكرة (fullUser) وليس الـ cookie
+// ─────────────────────────────────────────────────────────────
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
-  return ctx;
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+
+  return {
+    ...ctx,
+    // fullUser من الذاكرة إذا موجود، وإلا الـ cookie كـ fallback أثناء التحميل
+    user: (ctx.fullUser ?? ctx.user) as AuthUser | null,
+  };
 }
 
 export type { CachedUser };

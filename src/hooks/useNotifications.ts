@@ -1,33 +1,33 @@
 // src/hooks/useNotifications.ts
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { useSocket }          from './useSocket';
-import { useAuth }            from '@/context/AuthContext';
-import { getNotifications, markAllRead } from '@/lib/api/notificationApi';
-import type { Notification }  from '@/types/notification.types';
+import { useState, useEffect, useCallback } from "react";
+import { useSocket } from "./useSocket";
+import { useAuth } from "@/context/AuthContext";
+import { getNotifications, markAllRead } from "@/lib/api/notificationApi";
+import type { Notification } from "@/types/notification.types";
 
 export function useNotifications() {
   const { user, isLoggedIn } = useAuth();
   const socketRef = useSocket();
 
-  const [notifications,  setNotifications]  = useState<Notification[]>([]);
-  const [unreadCount,    setUnreadCount]    = useState(0);
-  const [isOpen,         setIsOpen]         = useState(false);
-  const [isLoading,      setIsLoading]      = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   const fetchNotifications = useCallback(async () => {
     if (!user?._id || !isLoggedIn) return;
+
     setIsLoading(true);
     try {
       const data = await getNotifications();
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
 
-      // ✅ احسب unreadMessages عند التحميل
       const msgCount = data.notifications.filter(
-        (n: Notification) => n.type === 'new_message' && !n.isRead
+        (n: Notification) => n.type === "new_message" && !n.isRead
       ).length;
       setUnreadMessages(msgCount);
     } catch {
@@ -48,30 +48,67 @@ export function useNotifications() {
   }, [user?._id, isLoggedIn, fetchNotifications]);
 
   useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
+    if (!user?._id || !isLoggedIn) return;
 
-    const handleNew = (notification: Notification) => {
-      setNotifications(prev => {
-        if (prev.some(n => n._id === notification._id)) return prev;
-        return [notification, ...prev];
-      });
-      setUnreadCount(prev => prev + 1);
+    let detach: (() => void) | undefined;
+    let stopped = false;
 
-      // ✅ زد عداد الرسائل إذا كان new_message
-      if (notification.type === 'new_message') {
-        setUnreadMessages(prev => prev + 1);
-      }
+    const tryAttach = () => {
+      const socket = socketRef.current;
+      if (!socket) return false;
+
+      const handleNew = (notification: Notification) => {
+        setNotifications((prev) => {
+          if (prev.some((n) => n._id === notification._id)) return prev;
+          return [notification, ...prev];
+        });
+
+        setUnreadCount((prev) => prev + 1);
+
+        if (notification.type === "new_message") {
+          setUnreadMessages((prev) => prev + 1);
+        }
+      };
+
+      socket.on("notification:new", handleNew);
+      socket.on("connect", fetchNotifications);
+
+      detach = () => {
+        socket.off("notification:new", handleNew);
+        socket.off("connect", fetchNotifications);
+      };
+
+      return true;
     };
 
-    socket.on('notification:new', handleNew);
-    return () => { socket.off('notification:new', handleNew); };
-  }, [socketRef.current]);
+    if (tryAttach()) {
+      return () => {
+        stopped = true;
+        detach?.();
+      };
+    }
+
+    const pollId = window.setInterval(() => {
+      if (stopped) return;
+
+      const attached = tryAttach();
+      if (attached) {
+        window.clearInterval(pollId);
+      }
+    }, 300);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(pollId);
+      detach?.();
+    };
+  }, [user?._id, isLoggedIn, fetchNotifications, socketRef]);
 
   const handleMarkAllRead = useCallback(async () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
-    setUnreadMessages(0); // ✅ صفّر رسائل الـ chat
+    setUnreadMessages(0);
+
     try {
       await markAllRead();
     } catch {
@@ -79,7 +116,9 @@ export function useNotifications() {
     }
   }, [fetchNotifications]);
 
-  const toggleOpen = useCallback(() => setIsOpen(prev => !prev), []);
+  const toggleOpen = useCallback(() => {
+    setIsOpen((prev) => !prev);
+  }, []);
 
   return {
     notifications,

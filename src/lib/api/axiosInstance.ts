@@ -75,6 +75,9 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
+// ----------------------------------------------------------------
+// 1. Request Interceptor (طابور الانتظار قبل بدء الـ Auth)
+// ----------------------------------------------------------------
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const url = config.url ?? "";
@@ -116,21 +119,36 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ----------------------------------------------------------------
+// 2. Response Interceptor (معالجة الأخطاء والـ Token Refresh والـ Timeout)
+// ----------------------------------------------------------------
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as
-      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | (InternalAxiosRequestConfig & { _retry?: boolean; _initRetry?: boolean })
       | undefined;
 
     if (!originalRequest) {
       return Promise.reject(error);
     }
 
+    // ✅ إصلاح مشكلة الـ AUTH_INIT_TIMEOUT وإعادة المحاولة مرة واحدة تلقائياً
+    if (error.message === "AUTH_INIT_TIMEOUT" && !originalRequest._initRetry) {
+      originalRequest._initRetry = true;
+      
+      // ننتظر 500ms لإعطاء فرصة للـ Auth Initialization أن تكتمل
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      
+      // إعادة إطلاق الطلب الأصلي
+      return axiosInstance(originalRequest);
+    }
+
     const status  = error.response?.status;
     const url     = originalRequest.url ?? "";
     const isAuthRoute = url.includes("/auth/");
 
+    // ✅ معالجة خطأ 401 والتجديد التلقائي للـ Token الـ Expired
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -174,7 +192,7 @@ axiosInstance.interceptors.response.use(
         processRefreshQueue(finalError, null);
 
         if (typeof window !== "undefined") {
-          window.location.replace("/login?expired=true");
+          window.location.replace("/login?reason=session_expired");
         }
 
         return Promise.reject(finalError);

@@ -15,8 +15,7 @@ export default function LoginPage() {
   const { settings, isLoading: settingsLoading } = useSettings();
   
   // ✅ معالجة الـ Type-safety للحقل المغلّف بدون any نهائياً وبطريقة توافق الـ Build
-  const unknownSettings = settings as unknown as { settings?: { platformName?: string } };
-  const platformName = settings?.platformName || unknownSettings?.settings?.platformName || "عون";
+  const platformName = settings?.platformName ?? "عون";
 
   return (
     <main className="grow flex flex-row-reverse overflow-hidden min-h-screen bg-background" dir="rtl">

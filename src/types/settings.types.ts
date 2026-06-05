@@ -1,7 +1,6 @@
 export interface SystemSettings {
   defaultQuota:              number;
   level2Quota:               number;
-  level3Quota:               number;   // ✅ مُضاف
   maxActiveRequestsPerMonth: number;
   requestExpiryDays:         number;
   categories:                string[];

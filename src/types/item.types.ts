@@ -36,6 +36,7 @@ export interface Item {
   bookedBy?:            BookedByUser | null;
   waitlist?:            WaitlistEntry[];
   safeHub?:             SafeHub;
+  donorConfirmed?:      boolean;
   recipientConfirmed?:  boolean; // ✅ تأكيد الاستلام من المستلم
 }
 
@@ -70,6 +71,7 @@ export interface DashboardItem {
   bookedAt?:   string | null;
   createdAt:   string;
   updatedAt:   string;
+  donorConfirmed?:      boolean;
   recipientConfirmed?: boolean;
 
   donor: {
@@ -147,3 +149,5 @@ export interface ItemFilters {
   page?:     number;
   limit?:    number;
 }
+
+export type ConfirmationType = 'recipient_confirm' | 'donor_confirm';

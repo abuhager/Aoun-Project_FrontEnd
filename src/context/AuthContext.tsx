@@ -16,7 +16,7 @@ import axiosInstance, {
   setInitialized,
   resetAuthState,
 } from "@/lib/api/axiosInstance";
-import type { AuthUser } from "@/types/user.types";
+import type { AuthUser , TrustLevel, UserRole} from "@/types/user.types";
 import Cookies from "js-cookie";
 
 // ─────────────────────────────────────────────
@@ -24,7 +24,7 @@ import Cookies from "js-cookie";
 // ─────────────────────────────────────────────
 type CachedUser = Pick<
   AuthUser,
-  "_id" | "name" | "email" | "avatar" | "gamification"
+  "_id" | "name" | "email" | "avatar" | "gamification" | "trustLevel" | "role"
 >;
 
 interface AuthContextType {
@@ -76,6 +76,8 @@ function toMinimalUser(u: AuthUser): CachedUser {
     name:   u.name,
     email:  u.email,
     avatar: u.avatar ?? undefined,
+    trustLevel: u.trustLevel ?? 1,
+    role:       u.role ?? "user",
     gamification: u.gamification ?? {
       trustScore:     0,
       totalDonations: 0,
@@ -130,6 +132,8 @@ function loadUserCookie(): CachedUser | null {
       name:         decoded.name,
       email:        decoded.email,
       avatar:       decoded.avatar ?? "",
+      trustLevel: ((decoded.trustLevel as number) === 2 ? 2 : 1) as TrustLevel,
+      role:       (['user','admin','super_admin'].includes(decoded.role as string)? decoded.role: 'user') as UserRole,
       gamification: decoded.gamification ?? {
         trustScore:     0,
         totalDonations: 0,

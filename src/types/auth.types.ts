@@ -41,7 +41,7 @@ export interface RegisterResponse {
 
 export interface VerifyOtpResponse {
   accessToken?: string;
-  user?:        AuthUser;
+  user?:        AuthUser| null;
   msg?:         string;
 }
 

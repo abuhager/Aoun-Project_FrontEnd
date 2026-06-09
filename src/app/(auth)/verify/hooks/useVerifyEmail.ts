@@ -86,7 +86,7 @@ export function useVerifyEmail() {
       const data = await verifyOtp({ email, otp: otpCode });
 
       if (data.accessToken) {
-        setUser(data.user);
+        setUser(data.user??null); // ✅ تحديث الـ context بالمستخدم الجديد بعد التحقق
         router.push("/browse");
       } else {
         router.push("/login?verified=true");

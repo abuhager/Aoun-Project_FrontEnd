@@ -77,26 +77,41 @@ export default function Navbar() {
     };
   }, [isProfileDropdownOpen, setIsProfileDropdownOpen]);
 
-  useEffect(() => {
-    if (!isReadyForUserData) return;
+ useEffect(() => {
+  if (!isReadyForUserData) return;
 
-    let cancelled = false;
+  let cancelled = false;
 
-    fetchUnreadCount()
-      .then((total) => {
-        if (cancelled) return;
-        setServerChatUnreadCount(total);
-      })
-      .catch((err) => {
-        console.error("fetch navbar unread count error", err);
-        if (cancelled) return;
-        setServerChatUnreadCount(0);
-      });
+  fetchUnreadCount()
+    .then((total) => {
+      if (cancelled) return;
+      setServerChatUnreadCount(total);
+    })
+    .catch((error: unknown) => {
+      if (cancelled) return;
+      setServerChatUnreadCount(0);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [isReadyForUserData, fetchUnreadCount]);
+      // ✅ بعد التعديل الجذري لمنع تلوث الـ Console بأخطاء المصادقة الطبيعية للزوار
+      // استخراج الرسالة أياً كان هيكل الخطأ (Axios Error أو Custom Error)
+      let msg = "";
+      if (error && typeof error === "object") {
+        if ("message" in error) {
+          msg = (error as { message: string }).message;
+        } else if ("code" in error) {
+          msg = (error as { code: string }).code;
+        }
+      }
+
+      // كتم الأخطاء الطبيعية الخاصة بالزوار أو انتهاء مهلة فحص الجلسة برمجياً
+      if (msg !== "NOT_AUTHENTICATED" && msg !== "AUTH_INIT_TIMEOUT") {
+        console.error("fetch navbar unread count error", error);
+      }
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, [isReadyForUserData, fetchUnreadCount]);
 
   if (isLogoOnlyPage) {
     return (

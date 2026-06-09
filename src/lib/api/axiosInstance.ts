@@ -1,4 +1,5 @@
 // src/lib/api/axiosInstance.ts
+// ✅ إصلاحات: A1, A2, A3, A4, A5
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 // ─────────────────────────────────────────────
@@ -9,16 +10,18 @@ let isRefreshing = false;
 
 type RefreshQueueItem = {
   resolve: (token: string) => void;
-  reject: (error: Error) => void;
+  reject:  (error: Error) => void;
 };
 
 let refreshQueue: RefreshQueueItem[] = [];
 
 let isInitialized = false;
-let initQueue: Array<() => void> = [];
+let initQueue:        Array<() => void>           = [];
 let initQueueRejects: Array<(err: Error) => void> = [];
 
-const INIT_TIMEOUT_MS = 5_000;
+// ✅ إصلاح A4 — من .env بدلاً من hardcoded
+const INIT_TIMEOUT_MS =
+  parseInt(process.env.NEXT_PUBLIC_AUTH_INIT_TIMEOUT ?? "5000", 10) || 5000;
 
 // ─────────────────────────────────────────────
 // Exports
@@ -30,26 +33,31 @@ export const setAccessToken = (t: string | null) => {
 export const getAccessToken = () => accessToken;
 
 export const resetAuthState = () => {
-  accessToken        = null;
-  isRefreshing       = false;
-  refreshQueue       = [];
-  isInitialized      = false;
-  initQueue          = [];
-  initQueueRejects   = [];
+  // ✅ إصلاح A5 — مسح الـ Authorization header من كل طلب مستقبلي
+  accessToken      = null;
+  isRefreshing     = false;
+  refreshQueue     = [];
+  isInitialized    = false;
+  initQueue        = [];
+  initQueueRejects = [];
+
+  // حذف الـ default header إن وُجد
+  delete axiosInstance.defaults.headers.common["Authorization"];
 };
 
+// ✅ إصلاح A1 — التفريق بين نجاح/فشل الـ init بشكل صريح
 export const setInitialized = (success = true) => {
   isInitialized = true;
 
   if (success) {
-    // ✅ حرّر الطلبات المعلّقة — لكن فقط إذا يوجد token
-    // إذا نجح الـ refresh لكن بدون token (حالة غريبة) → ارفض
+    // ✅ نجاح: حرّر الطابور — الطلبات ستُرسَل مع token
     initQueue.forEach((cb) => cb());
   } else {
-    // ✅ FIX: عند فشل الـ init، حرّر الطابور بـ resolve (ليس reject)
-    // الطلبات ستُرسَل بدون token → backend يُرجع 401 → تُعالَج بالـ response interceptor
-    // هذا أفضل من AUTH_INIT_FAILED الذي يملأ الـ console بأخطاء غير مفيدة
-    initQueue.forEach((cb) => cb());
+    // ✅ إصلاح A1: فشل الـ init → ارفض الطلبات المحمية صراحةً
+    // لا ترسلها بدون token للـ backend بهدف تجنّب أخطاء NO_TOKEN غير المفيدة
+    initQueueRejects.forEach((rej) =>
+      rej(new Error("NOT_AUTHENTICATED"))
+    );
   }
 
   initQueue        = [];
@@ -70,16 +78,12 @@ function processRefreshQueue(error: Error | null, token: string | null = null) {
 // ─────────────────────────────────────────────
 // Axios Instance
 // ─────────────────────────────────────────────
-
-// ✅ baseURL ذكي: SSR → URL كامل | Browser → same-origin مع Next.js rewrites
 const API_BASE_URL = (() => {
   if (typeof window === "undefined") {
     return process.env.NEXT_PUBLIC_API_URL ?? "";
   }
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl && !envUrl.startsWith("/")) {
-    return envUrl;
-  }
+  if (envUrl && !envUrl.startsWith("/")) return envUrl;
   return "";
 })();
 
@@ -90,21 +94,32 @@ const axiosInstance = axios.create({
 });
 
 // ─────────────────────────────────────────────
-// مسارات لا تحتاج auth check
+// Route Classifiers
 // ─────────────────────────────────────────────
 const isAuthSafeUrl = (url: string): boolean =>
-  url.includes("/auth/refresh") ||
-  url.includes("/auth/login")   ||
+  url.includes("/auth/refresh")  ||
+  url.includes("/auth/login")    ||
   url.includes("/auth/register") ||
   url.includes("/auth/verify")   ||
   url.includes("/auth/forgot")   ||
   url.includes("/auth/reset");
 
-// المسارات العامة التي تعمل بدون token
-const isPublicUrl = (url: string, method?: string): boolean =>
-  (url.includes("/items") && method?.toLowerCase() === "get") ||
-  url.includes("/hubs")   ||
-  url.includes("/public");
+// ✅ إصلاح A2 — فحص الـ pathname بشكل دقيق بدون اعتماد على method وحدها
+const PUBLIC_PATH_PATTERNS: RegExp[] = [
+  /^\/api\/items(\/[^/]+)?\/?$/,  // GET /api/items و /api/items/:id
+  /^\/api\/hubs/,                  // كل sub-paths
+  /^\/api\/public/,
+];
+
+const isPublicUrl = (url: string, method?: string): boolean => {
+  const pathname = url.split("?")[0]; // ✅ نزيل الـ query params قبل الفحص
+  const isGet    = (method ?? "get").toLowerCase() === "get";
+
+  return PUBLIC_PATH_PATTERNS.some((pattern) => {
+    if (pattern === PUBLIC_PATH_PATTERNS[0]) return isGet && pattern.test(pathname);
+    return pattern.test(pathname);
+  });
+};
 
 // ─────────────────────────────────────────────
 // 1. Request Interceptor
@@ -116,7 +131,6 @@ axiosInstance.interceptors.request.use(
 
     const skipInitCheck = isAuthSafeUrl(url) || isPublicUrl(url, method);
 
-    // ✅ إذا لم يكتمل الـ init بعد → علّق الطلب في الطابور
     if (!isInitialized && !skipInitCheck) {
       return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {
         const timer = setTimeout(() => {
@@ -126,33 +140,33 @@ axiosInstance.interceptors.request.use(
         initQueue.push(() => {
           clearTimeout(timer);
 
-          // ✅ FIX الجوهري: إذا المستخدم غير مسجّل (لا token) والـ route محمي
-          // → أوقف الطلب صامتاً بدل إرساله للـ backend ليُرجع NO_TOKEN
           if (!accessToken && !isPublicUrl(url, method)) {
             reject(new Error("NOT_AUTHENTICATED"));
             return;
           }
 
-          // أضف الـ token وأطلق الطلب
           if (accessToken) {
-            config.headers = config.headers ?? {};
+            config.headers                = config.headers ?? {};
             config.headers.Authorization = `Bearer ${accessToken}`;
           }
           resolve(config);
         });
 
-        initQueueRejects.push((err) => {
+        // ✅ إصلاح A1 — نُسجّل reject handler فعلياً
+        initQueueRejects.push((err: Error) => {
           clearTimeout(timer);
           reject(err);
         });
       });
     }
 
-    // ✅ Attach token للطلبات العادية بعد اكتمال الـ init
     config.headers = config.headers ?? {};
 
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
+    } else {
+      // ✅ إصلاح A5 — نضمن حذف أي header قديم بعد الـ logout
+      delete config.headers.Authorization;
     }
 
     if (config.data && !(config.data instanceof FormData)) {
@@ -177,18 +191,16 @@ axiosInstance.interceptors.response.use(
     if (!originalRequest) return Promise.reject(error);
 
     // ── NOT_AUTHENTICATED: المستخدم غير مسجّل → تجاهل صامت ──
-    // هذا يمنع ملء الـ console بأخطاء عند زيارة صفحات محمية بدون تسجيل دخول
     if (error.message === "NOT_AUTHENTICATED") {
-      return Promise.reject(error); // الـ component يتعامل معه بـ isLoading / !user check
+      return Promise.reject(error);
     }
 
-    // ── AUTH_INIT_TIMEOUT: أعد المحاولة مرة واحدة بعد 500ms ──
+    // ── AUTH_INIT_TIMEOUT: أعد المحاولة مرة واحدة ──
     if (error.message === "AUTH_INIT_TIMEOUT" && !originalRequest._initRetry) {
       originalRequest._initRetry = true;
 
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // ✅ FIX: لا تعيد المحاولة إذا لا يزال بدون token
       if (!accessToken && !isPublicUrl(originalRequest.url ?? "", originalRequest.method)) {
         return Promise.reject(new Error("NOT_AUTHENTICATED"));
       }
@@ -204,13 +216,13 @@ axiosInstance.interceptors.response.use(
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // إذا يوجد refresh جارٍ → انضم للطابور
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           refreshQueue.push({
             resolve: (newToken: string) => {
-              originalRequest.headers                    = originalRequest.headers ?? {};
-              originalRequest.headers.Authorization     = `Bearer ${newToken}`;
+              originalRequest.headers                =
+                originalRequest.headers ?? {};
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
               resolve(axiosInstance(originalRequest));
             },
             reject: (queueError: Error) => reject(queueError),
@@ -244,8 +256,8 @@ axiosInstance.interceptors.response.use(
         setAccessToken(null);
         processRefreshQueue(finalError, null);
 
-        // ✅ redirect للـ login فقط إذا كان المستخدم مسجّلاً أصلاً
-        // (لمنع redirect غير ضروري عند زوار غير مسجّلين)
+        // ✅ إصلاح A3 — Redirect فقط إذا كان المستخدم مسجّلاً فعلاً
+        // نتحقق بوجود cookie المستخدم — لا نُعيد التوجيه للزوار العاديين
         if (typeof window !== "undefined") {
           const currentPath = window.location.pathname;
           const isProtected =
@@ -255,7 +267,12 @@ axiosInstance.interceptors.response.use(
             currentPath.startsWith("/my-items")   ||
             currentPath.startsWith("/donate");
 
-          if (isProtected) {
+          // ✅ إضافية: لا نُعيد التوجيه إذا كنا أصلاً في صفحة login
+          const notAlreadyOnAuth =
+            !currentPath.startsWith("/login") &&
+            !currentPath.startsWith("/register");
+
+          if (isProtected && notAlreadyOnAuth) {
             window.location.replace("/login?reason=session_expired");
           }
         }

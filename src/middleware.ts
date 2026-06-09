@@ -1,4 +1,4 @@
-// src/middleware.ts — النسخة المُصلَحة
+// src/middleware.ts ✅ مصحّح
 import { NextResponse, type NextRequest } from 'next/server';
 
 const PROTECTED_PREFIXES = [
@@ -11,13 +11,15 @@ const AUTH_ONLY_PREFIXES = [
   '/forgot-password', '/reset-password',
 ];
 
-// ✅ JWT structure validation — 3 parts مفصولة بنقاط، كل جزء Base64url
-const isJwtShaped = (value: string): boolean => {
-  if (!value || value.length < 20) return false;
-  const parts = value.split('.');
-  if (parts.length !== 3) return false;
-  // كل جزء يجب أن يكون Base64url صالحاً وليس فارغاً
-  return parts.every(p => p.length > 0 && /^[A-Za-z0-9\-_]+$/.test(p));
+// ✅ الإصلاح الجوهري:
+// refreshToken = httpOnly → غير قابل للقراءة هنا في Edge Runtime
+// الحل: نستخدم "session_active" cookie غير httpOnly كـ presence signal فقط
+// لا يحتوي على بيانات حساسة — مجرد "1" أو "true"
+// الـ Backend يضبطه مع كل /auth/refresh ناجح
+const hasSession = (request: NextRequest): boolean => {
+  const signal = request.cookies.get('session_active')?.value;
+  // نتحقق فقط من الوجود — القيمة "1" أو "true"
+  return signal === '1' || signal === 'true';
 };
 
 export async function middleware(request: NextRequest) {
@@ -25,25 +27,25 @@ export async function middleware(request: NextRequest) {
 
   const isProtected = PROTECTED_PREFIXES.some(p => pathname.startsWith(p));
   const isAuthOnly  = AUTH_ONLY_PREFIXES.some(p  => pathname.startsWith(p));
+  const loggedIn    = hasSession(request);
 
-  const refreshCookie = request.cookies.get('refreshToken');
-  // ✅ FIX: JWT structure validation بدل length check
-  const hasValidSession = !!refreshCookie?.value && isJwtShaped(refreshCookie.value);
-
-  if (isProtected && !hasValidSession) {
+  // ── محمي وغير مسجّل → توجيه للـ login ──
+  if (isProtected && !loggedIn) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
 
+    // ✅ طلبات HTML → redirect | طلبات API/Fetch → 401 JSON
     if (request.headers.get('accept')?.includes('text/html')) {
       return NextResponse.redirect(loginUrl);
     }
     return new NextResponse(
-      JSON.stringify({ message: 'Unauthorized' }),
+      JSON.stringify({ message: 'Unauthorized', code: 'NOT_AUTHENTICATED' }),
       { status: 401, headers: { 'content-type': 'application/json' } }
     );
   }
 
-  if (isAuthOnly && hasValidSession) {
+  // ── صفحات Auth ومسجّل → توجيه للـ browse ──
+  if (isAuthOnly && loggedIn) {
     return NextResponse.redirect(new URL('/browse', request.url));
   }
 

@@ -1,7 +1,13 @@
+// src/app/(auth)/verify/page.tsx
+// ✅ إضافة: عرض زر "إعادة إرسال الرمز" عند shouldResend = true
+// ✅ باقي الكود كما هو — فقط إضافة حالة shouldResend
+
 "use client";
 
 import { Suspense } from "react";
 import { useVerifyEmail } from "./hooks/useVerifyEmail";
+import axiosInstance from "@/lib/api/axiosInstance";
+import { useState } from "react";
 
 interface OtpInputProps {
   digit: string;
@@ -38,11 +44,30 @@ function VerifyContent() {
     error,
     loading,
     isComplete,
+    shouldResend, // ✅ جديد
     inputRefs,
     handleChange,
     handleKeyDown,
     handleSubmit,
   } = useVerifyEmail();
+
+  // ✅ حالة لإعادة إرسال الـ OTP
+  const [resending,    setResending]    = useState(false);
+  const [resendMsg,    setResendMsg]    = useState("");
+
+  const handleResend = async () => {
+    if (!email) return;
+    try {
+      setResending(true);
+      setResendMsg("");
+      await axiosInstance.post("/api/auth/resend-otp", { email });
+      setResendMsg("تم إرسال رمز جديد إلى بريدك 📧");
+    } catch {
+      setResendMsg("فشل الإرسال، حاول مرة أخرى بعد قليل");
+    } finally {
+      setResending(false);
+    }
+  };
 
   return (
     <div
@@ -69,8 +94,25 @@ function VerifyContent() {
         </p>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-bold mb-6 border border-red-100">
+          <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-bold mb-4 border border-red-100">
             {error}
+          </div>
+        )}
+
+        {/* ✅ جديد — زر إعادة الإرسال يظهر فقط عند shouldResend */}
+        {shouldResend && (
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending}
+              className="text-primary font-bold text-sm underline underline-offset-2 hover:text-primary/80 disabled:opacity-50 transition-all"
+            >
+              {resending ? "جاري الإرسال..." : "إعادة إرسال رمز جديد 🔄"}
+            </button>
+            {resendMsg && (
+              <p className="text-xs text-green-600 mt-2 font-bold">{resendMsg}</p>
+            )}
           </div>
         )}
 

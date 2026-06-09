@@ -1,9 +1,6 @@
 // src/types/auth.types.ts
-// ✅ PHASE 1 — محدّث: أضيف RefreshTokenResponse + LogoutResponse
+// ✅ إضافة code field لاستقبال OTP_ATTEMPTS_EXCEEDED و OTP_EXPIRED
 
-import type { AuthUser } from './user.types';
-
-// ── Requests ──────────────────────────────────────────────────
 export interface LoginRequest {
   email:    string;
   password: string;
@@ -21,40 +18,35 @@ export interface VerifyOtpRequest {
   otp:   string;
 }
 
-// ── Responses ────────────────────────────────────────────────
+export interface AuthUser {
+  _id:              string;
+  name:             string;
+  email:            string;
+  trustLevel:       1 | 2 | 3 | 4;  // ✅ إصلاح #7 — يدعم 4 مستويات
+  isVerified:       boolean;
+  isVerifiedStudent: boolean;
+  avatar?:          string;
+  phone?:           string;
+  role:             "user" | "admin";
+}
+
 export interface LoginResponse {
-  msg:         string;
   accessToken: string;
   user:        AuthUser;
 }
 
 export interface RegisterResponse {
-  msg:   string;
-  email: string;
-}
-
-export interface VerifyOtpResponse {
-  accessToken:   string;     // ✅ نفس التغيير هنا
-  user?:         AuthUser;
-  msg?:          string;
-}
-// ✅ Phase 1 — جديد
-export interface RefreshTokenResponse {
-  accessToken: string;
-}
-
-export interface LogoutResponse {
   msg: string;
 }
 
-// ── JWT Decoded Payload ───────────────────────────────────
-export interface JwtPayload {
-  user: {
-    id:         string;
-    role:       string;
-    trustLevel: 1 | 2;
-    isBanned:   boolean;   // ← مُضاف — موجود في tokenUtils.js
-  };
-  iat: number;
-  exp: number;
+export interface VerifyOtpResponse {
+  accessToken?: string;
+  user?:        AuthUser;
+  msg?:         string;
+}
+
+// ✅ جديد — شكل الخطأ القادم من الـ Backend
+export interface ApiErrorResponse {
+  msg:   string;
+  code?: "OTP_ATTEMPTS_EXCEEDED" | "OTP_EXPIRED" | "EMAIL_NOT_VERIFIED" | "ACCOUNT_BANNED" | string;
 }

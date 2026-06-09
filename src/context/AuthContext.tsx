@@ -1,4 +1,5 @@
 // src/context/AuthContext.tsx
+// ✅ إصلاحات: B1, B2, B3, B4, B5
 "use client";
 
 import {
@@ -18,31 +19,60 @@ import axiosInstance, {
 import type { AuthUser } from "@/types/user.types";
 import Cookies from "js-cookie";
 
-// ─────────────────────────────────────────────────────────────
-// CachedUser — بيانات العرض فقط (بدون حقول حساسة)
-// role / trustLevel / quota محذوفة من الـ cookie
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
 type CachedUser = Pick<
   AuthUser,
   "_id" | "name" | "email" | "avatar" | "gamification"
 >;
 
 interface AuthContextType {
-  user: CachedUser | null;
-  fullUser: AuthUser | null;
-  isLoading: boolean;
-  isLoggedIn: boolean;
+  user:            CachedUser | null;
+  fullUser:        AuthUser   | null;
+  isLoading:       boolean;
+  isLoggedIn:      boolean;
   isAuthenticated: boolean;
-  setUser: (u: AuthUser | null) => void;
-  refreshSession: () => Promise<boolean>;
-  logout: () => Promise<void>;
+  setUser:         (u: AuthUser | null) => void;
+  refreshSession:  () => Promise<boolean>;
+  logout:          () => Promise<void>;
 }
 
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const USER_COOKIE   = "aoun_user";
 
+// ✅ إصلاح B5 — من .env بدلاً من hardcoded
+const SAFETY_TIMEOUT_MS =
+  parseInt(process.env.NEXT_PUBLIC_AUTH_SAFETY_TIMEOUT ?? "8000", 10) || 8000;
+
+// ─────────────────────────────────────────────
+// ✅ إصلاح B2 — Schema Validator للـ Cookie
+// يمنع injection أي بيانات خارجية غير متوقعة
+// ─────────────────────────────────────────────
+const REQUIRED_CACHED_FIELDS: (keyof CachedUser)[] = ["_id", "name", "email"];
+
+function isValidCachedUser(obj: unknown): obj is CachedUser {
+  if (!obj || typeof obj !== "object") return false;
+  const u = obj as Record<string, unknown>;
+  // كل الـ required fields يجب أن تكون strings غير فارغة
+  for (const field of REQUIRED_CACHED_FIELDS) {
+    if (typeof u[field] !== "string" || !(u[field] as string).trim()) {
+      return false;
+    }
+  }
+  // _id يجب أن يكون MongoDB ObjectId (24 hex chars)
+  if (!/^[a-f\d]{24}$/i.test(u._id as string)) return false;
+  return true;
+}
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
 function toMinimalUser(u: AuthUser): CachedUser {
   return {
     _id:    u._id,
@@ -61,11 +91,35 @@ function toMinimalUser(u: AuthUser): CachedUser {
   };
 }
 
+// ✅ إصلاح B1 — تشفير بيانات الـ cookie بـ Base64
+// ليست تشفيراً حقيقياً لكنها تمنع القراءة المباشرة وتُصعّب التلاعب
+// (التشفير الحقيقي يحتاج Web Crypto API — يُضاف لاحقاً)
+function encodeCookieValue(obj: CachedUser): string {
+  try {
+    return btoa(encodeURIComponent(JSON.stringify(obj)));
+  } catch {
+    return "";
+  }
+}
+
+function decodeCookieValue(raw: string): unknown {
+  try {
+    return JSON.parse(decodeURIComponent(atob(raw)));
+  } catch {
+    return null;
+  }
+}
+
 function saveUserCookie(u: CachedUser) {
-  Cookies.set(USER_COOKIE, JSON.stringify(u), {
+  const encoded = encodeCookieValue(u);
+  if (!encoded) return;
+
+  Cookies.set(USER_COOKIE, encoded, {
     expires:  7,
     sameSite: IS_PRODUCTION ? "none" : "lax",
     secure:   IS_PRODUCTION,
+    // ✅ إضافة: httpOnly غير ممكن من JS — لكن نُقيّد الـ path
+    path:     "/",
   });
 }
 
@@ -73,15 +127,23 @@ function loadUserCookie(): CachedUser | null {
   try {
     const raw = Cookies.get(USER_COOKIE);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<CachedUser>;
-    if (!parsed._id) return null;
-    // تنظيف أي حقل حساس من cookieات قديمة
+
+    // ✅ إصلاح B1 — فكّ التشفير
+    const decoded = decodeCookieValue(raw);
+
+    // ✅ إصلاح B2 — تحقق من الـ schema قبل الاستخدام
+    if (!isValidCachedUser(decoded)) {
+      clearUserCookie(); // نحذف الـ cookie الفاسد فوراً
+      return null;
+    }
+
+    // تنظيف أي حقل حساس (للتوافق مع cookies قديمة)
     return {
-      _id:          parsed._id,
-      name:         parsed.name   ?? "",
-      email:        parsed.email  ?? "",
-      avatar:       parsed.avatar ?? "",
-      gamification: parsed.gamification ?? {
+      _id:          decoded._id,
+      name:         decoded.name,
+      email:        decoded.email,
+      avatar:       decoded.avatar ?? "",
+      gamification: decoded.gamification ?? {
         trustScore:     0,
         totalDonations: 0,
         level:          1,
@@ -92,6 +154,7 @@ function loadUserCookie(): CachedUser | null {
       },
     };
   } catch {
+    clearUserCookie();
     return null;
   }
 }
@@ -100,12 +163,13 @@ function clearUserCookie() {
   Cookies.remove(USER_COOKIE, {
     sameSite: IS_PRODUCTION ? "none" : "lax",
     secure:   IS_PRODUCTION,
+    path:     "/",
   });
 }
 
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // AuthProvider
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user,      setUserState] = useState<CachedUser | null>(loadUserCookie);
   const [fullUser,  setFullUser]  = useState<AuthUser   | null>(null);
@@ -128,12 +192,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // ✅ إصلاح B3 — معالجة فشل /api/auth/me بعد نجاح الـ refresh
   const refreshSession = useCallback(async (): Promise<boolean> => {
     if (isLoggingOut.current) return false;
-    if (refreshing.current) return refreshing.current;
+    if (refreshing.current)   return refreshing.current;
 
     refreshing.current = (async () => {
       try {
+        // الخطوة 1: تجديد الـ access token
         const { data } = await axiosInstance.post<{ accessToken: string }>(
           "/api/auth/refresh",
           {},
@@ -141,20 +207,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
         const token = data.accessToken;
         setAccessToken(token);
-        setInitialized(true);
 
-        const meRes = await axiosInstance.get<AuthUser>("/api/auth/me", {
-          headers:         { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        });
-        setUser(meRes.data);
-        return true;
+        // الخطوة 2: جلب بيانات المستخدم الكاملة
+        try {
+          const meRes = await axiosInstance.get<AuthUser>("/api/auth/me", {
+            headers:         { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+          });
+          setUser(meRes.data);
+          setInitialized(true);
+          return true;
+        } catch (meError) {
+          // ✅ إصلاح B3 — refresh نجح لكن /me فشل
+          // نُنهي الـ session بشكل نظيف بدلاً من الاستمرار بدون fullUser
+          console.error("[AuthContext] /api/auth/me failed after refresh:", meError);
+          setAccessToken(null);
+          setUser(null);
+          setInitialized(false);
+          return false;
+        }
       } catch (err) {
+        // refresh فشل — المستخدم غير مسجّل
         if (axios.isAxiosError(err) && err.response?.status !== 401) {
-          console.error("refreshSession error:", err);
+          console.error("[AuthContext] refreshSession error:", err);
         }
         setAccessToken(null);
         setUser(null);
+        setInitialized(false);
         return false;
       } finally {
         refreshing.current = null;
@@ -166,21 +245,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     isLoggingOut.current = true;
+
     try {
       await axiosInstance.post("/api/auth/logout", {}, { withCredentials: true });
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status !== 401) {
-        console.error("logout error:", err);
+        console.error("[AuthContext] logout error:", err);
       }
     } finally {
       resetAuthState();
       setUser(null);
       initialized.current = false;
       refreshing.current  = null;
+
       if (typeof window !== "undefined") {
         window.location.replace("/login");
       }
-      setTimeout(() => { isLoggingOut.current = false; }, 1000);
+
+      // ✅ إصلاح B4 — نُصفّر isLoggingOut بعد اكتمال الـ redirect
+      // استخدام 2000ms بدلاً من 1000ms لضمان اكتمال الـ navigation
+      setTimeout(() => {
+        isLoggingOut.current = false;
+      }, 2000);
     }
   }, [setUser]);
 
@@ -188,14 +274,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (initialized.current) return;
     initialized.current = true;
 
+    // ✅ إصلاح B5 — SAFETY_TIMEOUT_MS من .env
     const safetyTimer = setTimeout(() => {
       setInitialized(false);
       setIsLoading(false);
-    }, 8000);
+    }, SAFETY_TIMEOUT_MS);
 
     refreshSession()
       .then(()   => clearTimeout(safetyTimer))
-      .catch(()  => { clearTimeout(safetyTimer); setInitialized(false); })
+      .catch(()  => {
+        clearTimeout(safetyTimer);
+        setInitialized(false);
+      })
       .finally(() => setIsLoading(false));
   }, [refreshSession]);
 
@@ -217,11 +307,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// ✅ الحل الذكي: useAuth يُرجع fullUser تحت اسم user
-// كل الـ components تبقى كما هي — user.role / user.quota يشتغلوا
-// القيمة تأتي من الذاكرة (fullUser) وليس الـ cookie
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// useAuth Hook
+// ─────────────────────────────────────────────
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");

@@ -1,6 +1,6 @@
 // src/lib/api/authApi.ts
 // ✅ PHASE 1 — Centralized Auth API Layer
-// ✅ Fix — إضافة session_active cookie عند Login / VerifyOtp / Logout
+// ✅ Fix — إضافة session_active cookie وتصحيح SameSite في Production لـ Cross-Origin
 
 import axiosInstance, { setAccessToken } from './axiosInstance';
 import type {
@@ -18,16 +18,23 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 function setSessionCookie() {
   if (typeof document === 'undefined') return; // SSR guard
-  const secure   = IS_PRODUCTION ? '; Secure' : '';
-  const sameSite = '; SameSite=Lax';
+
+  // ✅ تم الإصلاح: استخدام SameSite=None و Secure في الـ Production للسماح بـ Cross-Origin requests
+  const secure   = IS_PRODUCTION ? '; Secure'         : '';
+  const sameSite = IS_PRODUCTION ? '; SameSite=None'  : '; SameSite=Lax';
   const expires  = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `session_active=true; path=/; expires=${expires}${sameSite}${secure}`;
+
+  // مواءمة القيمة لتكون '1' لتطابق فحص الـ Backend والـ Middleware بسهولة
+  document.cookie = `session_active=1; path=/; expires=${expires}${sameSite}${secure}`;
 }
 
 function clearSessionCookie() {
   if (typeof document === 'undefined') return; // SSR guard
-  const secure   = IS_PRODUCTION ? '; Secure' : '';
-  const sameSite = '; SameSite=Lax';
+
+  // ✅ تم الإصلاح: يجب أن تتطابق الخصائص (SameSite/Secure) تماماً عند حذف الكوكي
+  const secure   = IS_PRODUCTION ? '; Secure'        : '';
+  const sameSite = IS_PRODUCTION ? '; SameSite=None' : '; SameSite=Lax';
+  
   document.cookie = `session_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${sameSite}${secure}`;
 }
 

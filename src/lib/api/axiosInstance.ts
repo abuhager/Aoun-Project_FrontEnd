@@ -1,6 +1,7 @@
 // src/lib/api/axiosInstance.ts
-// ✅ إصلاحات: A1, A2, A3, A4, A5, A6
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+// ✅ استيراد دالة التحقق المشتركة لتوحيد منطق الحماية
+import { isProtectedPath, isAuthOnlyPath } from "@/config/routes";
 
 // ─────────────────────────────────────────────
 // State
@@ -18,7 +19,6 @@ let isInitialized                                  = false;
 let initQueue:        Array<() => void>            = [];
 let initQueueRejects: Array<(err: Error) => void>  = [];
 
-// ✅ إصلاح A4 — من .env بدلاً من hardcoded
 const INIT_TIMEOUT_MS =
   parseInt(process.env.NEXT_PUBLIC_AUTH_INIT_TIMEOUT ?? "5000", 10) || 5000;
 
@@ -38,16 +38,13 @@ export const resetAuthState = () => {
   delete axiosInstance.defaults.headers.common["Authorization"];
 };
 
-// ✅ إصلاح A1 — التفريق بين نجاح/فشل الـ init بشكل صريح
 export const setInitialized = (success = true) => {
   isInitialized = true;
-
   if (success) {
     initQueue.forEach((cb) => cb());
   } else {
     initQueueRejects.forEach((rej) => rej(new Error("NOT_AUTHENTICATED")));
   }
-
   initQueue        = [];
   initQueueRejects = [];
 };
@@ -79,10 +76,6 @@ const axiosInstance = axios.create({
 // ─────────────────────────────────────────────
 // Route Classifiers
 // ─────────────────────────────────────────────
-
-// ✅ إصلاح A6 — إضافة /auth/me هنا يكسر الـ Deadlock
-// /auth/me يُرسَل أثناء التهيئة مع token مُمرَّر يدوياً في الـ header
-// لذا لا يحتاج لانتظار الـ initQueue
 const isAuthSafeUrl = (url: string): boolean =>
   url.includes("/auth/refresh")  ||
   url.includes("/auth/login")    ||
@@ -90,9 +83,8 @@ const isAuthSafeUrl = (url: string): boolean =>
   url.includes("/auth/verify")   ||
   url.includes("/auth/forgot")   ||
   url.includes("/auth/reset")    ||
-  url.includes("/auth/me");      // ✅ A6: كسر الـ Deadlock
+  url.includes("/auth/me");
 
-// ✅ إصلاح A2 — فحص الـ pathname بشكل دقيق
 const PUBLIC_PATH_PATTERNS: RegExp[] = [
   /^\/api\/items(\/[^/]+)?\/?$/,
   /^\/api\/hubs/,
@@ -147,7 +139,6 @@ axiosInstance.interceptors.request.use(
 
     config.headers = config.headers ?? {};
 
-    // ✅ لا نتجاوز Authorization إذا كان مُمرَّراً يدوياً (مثل /auth/me أثناء التهيئة)
     if (!config.headers.Authorization) {
       if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
@@ -176,17 +167,21 @@ axiosInstance.interceptors.response.use(
       | undefined;
 
     if (!originalRequest) return Promise.reject(error);
-
     if (error.message === "NOT_AUTHENTICATED") return Promise.reject(error);
 
+    // ─── تطبيق الإصلاح المصلح لـ AUTH_INIT_TIMEOUT ───────────────────
     if (error.message === "AUTH_INIT_TIMEOUT" && !originalRequest._initRetry) {
       originalRequest._initRetry = true;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      if (!accessToken && !isPublicUrl(originalRequest.url ?? "", originalRequest.method)) {
+
+      // ✅ إذا لا يوجد accessToken بعد التهيئة ← المستخدم زائر ← رفض فوري ودون تأخير عشوائي
+      if (!accessToken) {
         return Promise.reject(new Error("NOT_AUTHENTICATED"));
       }
+
+      // فقط لو يوجد token (حالة نادرة: race condition حقيقي) نُعيد المحاولة
       return axiosInstance(originalRequest);
     }
+    // ─────────────────────────────────────────────────────────────
 
     const status      = error.response?.status;
     const url         = originalRequest.url ?? "";
@@ -232,16 +227,11 @@ axiosInstance.interceptors.response.use(
         processRefreshQueue(finalError, null);
 
         if (typeof window !== "undefined") {
-          const currentPath    = window.location.pathname;
-          const isProtected    =
-            currentPath.startsWith("/dashboard") ||
-            currentPath.startsWith("/profile")   ||
-            currentPath.startsWith("/admin")      ||
-            currentPath.startsWith("/my-items")   ||
-            currentPath.startsWith("/donate");
-          const notOnAuthPage  =
-            !currentPath.startsWith("/login") &&
-            !currentPath.startsWith("/register");
+          const currentPath = window.location.pathname;
+
+          // ✅ استدعاء الفلاتر الموحدة بدلاً من القائمة المكررة
+          const isProtected = isProtectedPath(currentPath);
+          const notOnAuthPage = !isAuthOnlyPath(currentPath);
 
           if (isProtected && notOnAuthPage) {
             window.location.replace("/login?reason=session_expired");

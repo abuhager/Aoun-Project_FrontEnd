@@ -295,11 +295,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // ─────────────────────────────────────────────
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
 
+  // ✅ نُعيد fullUser إذا متاح — وإلا CachedUser مع علامة واضحة
+  // المكوّنات التي تحتاج trustLevel أو role يجب أن تنتظر isLoading=false
   return {
     ...ctx,
-    user: (ctx.fullUser ?? ctx.user) as AuthUser | null,
+    user:           ctx.fullUser ?? ctx.user,   // AuthUser | CachedUser | null
+    isFullyLoaded:  !!ctx.fullUser,             // ✅ Guard صريح للمكوّنات الحساسة
   };
 }
 

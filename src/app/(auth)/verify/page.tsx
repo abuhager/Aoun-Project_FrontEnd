@@ -1,12 +1,11 @@
 // src/app/(auth)/verify/page.tsx
-// ✅ إضافة: عرض زر "إعادة إرسال الرمز" عند shouldResend = true
-// ✅ باقي الكود كما هو — فقط إضافة حالة shouldResend
+// ✅ النسخة المصححة والمؤمنة بالكامل باستخدام authApi واستخراج الأخطاء ديناميكيًا
 
 "use client";
 
 import { Suspense } from "react";
 import { useVerifyEmail } from "./hooks/useVerifyEmail";
-import axiosInstance from "@/lib/api/axiosInstance";
+import { resendOtp } from "@/lib/api/authApi";
 import { useState } from "react";
 
 interface OtpInputProps {
@@ -44,26 +43,32 @@ function VerifyContent() {
     error,
     loading,
     isComplete,
-    shouldResend, // ✅ جديد
+    shouldResend,
     inputRefs,
     handleChange,
     handleKeyDown,
     handleSubmit,
   } = useVerifyEmail();
 
-  // ✅ حالة لإعادة إرسال الـ OTP
-  const [resending,    setResending]    = useState(false);
-  const [resendMsg,    setResendMsg]    = useState("");
+  // حالتي إدارة عملية إعادة إرسال الـ OTP والرسائل الصادرة عنها
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
 
   const handleResend = async () => {
     if (!email) return;
     try {
       setResending(true);
       setResendMsg("");
-      await axiosInstance.post("/api/auth/resend-otp", { email });
-      setResendMsg("تم إرسال رمز جديد إلى بريدك 📧");
-    } catch {
-      setResendMsg("فشل الإرسال، حاول مرة أخرى بعد قليل");
+      
+      // استخدام طبقة الـ API المركزية بدلًا من axiosInstance المباشر
+      const res = await resendOtp({ email });
+      setResendMsg(res.msg || "تم إرسال رمز جديد إلى بريدك 📧");
+    } catch (err: unknown) {
+      // استخراج رسالة الخطأ القادمة من الـ Backend بشكل آمن وديناميكي
+      const msg =
+        (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ??
+        'فشل الإرسال، حاول مرة أخرى بعد قليل ⚠️';
+      setResendMsg(msg);
     } finally {
       setResending(false);
     }
@@ -99,7 +104,7 @@ function VerifyContent() {
           </div>
         )}
 
-        {/* ✅ جديد — زر إعادة الإرسال يظهر فقط عند shouldResend */}
+        {/* زر إعادة الإرسال يظهر بشكل مشروط */}
         {shouldResend && (
           <div className="mb-6">
             <button

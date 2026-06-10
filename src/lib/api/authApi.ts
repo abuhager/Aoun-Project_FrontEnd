@@ -10,6 +10,8 @@ import type {
   RegisterResponse,
   VerifyOtpRequest,
   VerifyOtpResponse,
+  ResendOtpRequest,     // ✅ جديد
+  ResendOtpResponse,    // ✅ جديد
 } from '@/types/auth.types';
 
 // ─── helpers لـ session_active cookie ────────────────────────
@@ -81,6 +83,13 @@ export async function verifyOtp(payload: VerifyOtpRequest): Promise<VerifyOtpRes
     setSessionCookie();
   }
 
+  return data;
+}
+export async function resendOtp(payload: ResendOtpRequest): Promise<ResendOtpResponse> {
+  const { data } = await axiosInstance.post<ResendOtpResponse>(
+    '/api/auth/resend-otp',
+    payload
+  );
   return data;
 }
 

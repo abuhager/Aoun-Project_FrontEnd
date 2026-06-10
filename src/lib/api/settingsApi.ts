@@ -4,7 +4,7 @@ import type { SystemSettings } from "@/types/settings.types";
 
 // هذا المسار يجب أن يكون متاحاً للجميع (Public)
 export const getPublicSettings = async (): Promise<SystemSettings> => {
-  const { data } = await axiosInstance.get<SystemSettings>("/api/settings/public");
+  const { data } = await axiosInstance.get<SystemSettings>("/api/settings");
   return data;
 };
 

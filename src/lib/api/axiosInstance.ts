@@ -23,6 +23,19 @@ const INIT_TIMEOUT_MS =
   parseInt(process.env.NEXT_PUBLIC_AUTH_INIT_TIMEOUT ?? "5000", 10) || 5000;
 
 // ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+// ✅ دالة تجديد الكوكي لتوحيد مؤشر الجلسة ومنع التناقض بعد الـ Refresh
+function refreshSessionCookie() {
+  if (typeof document === 'undefined') return;
+  const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+  const secure   = IS_PRODUCTION ? '; Secure'        : '';
+  const sameSite = IS_PRODUCTION ? '; SameSite=None' : '; SameSite=Lax';
+  const expires  = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `session_active=1; path=/; expires=${expires}${sameSite}${secure}`;
+}
+
+// ─────────────────────────────────────────────
 // Exports
 // ─────────────────────────────────────────────
 export const setAccessToken = (t: string | null) => { accessToken = t; };
@@ -214,6 +227,7 @@ axiosInstance.interceptors.response.use(
 
         const newToken = data.accessToken;
         setAccessToken(newToken);
+        refreshSessionCookie(); // ✅ استدعاء تجديد الكوكي هنا لمنع عدم التزامن مع الـ Rotation
         processRefreshQueue(null, newToken);
 
         originalRequest.headers                = originalRequest.headers ?? {};

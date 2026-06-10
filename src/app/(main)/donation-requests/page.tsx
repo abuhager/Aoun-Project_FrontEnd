@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   getDonationRequests,
   cancelDonationRequest,
-  respondToDonationRequest, // تم استيراد الدالة المطلوبة
+  respondToDonationRequest,
 } from '@/lib/api/donationRequestApi';
 import axiosInstance from '@/lib/api/axiosInstance';
 import type { DonationRequest } from '@/types/donationRequest.types';
@@ -37,25 +38,62 @@ function RequestStatusBadge({ status }: { status: DonationRequest['status'] }) {
 }
 
 export default function DonationRequestsPage() {
+  const router = useRouter();
+
+  // ✅ قراءة mine من URL مباشرة في useState — لا useEffect منفصل
+  const [myOnly, setMyOnly] = useState<boolean>(() =>
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('mine') === 'true'
+      : false
+  );
+
   const [requests,           setRequests]           = useState<DonationRequest[]>([]);
   const [loading,            setLoading]            = useState(true);
   const [cancelingId,        setCancelingId]        = useState<string | null>(null);
   const [toast,              setToast]              = useState<{ msg: string; ok: boolean } | null>(null);
   const [page,               setPage]               = useState(1);
   const [pages,              setPages]              = useState(1);
-  const [myOnly,             setMyOnly]             = useState(false);
   const [selectedCategory,   setSelectedCategory]   = useState('');
   const [selectedLocation,   setSelectedLocation]   = useState('');
   const [settingsCategories, setSettingsCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [settingsLocations,  setSettingsLocations]  = useState<string[]>(DEFAULT_LOCATIONS);
+  const [respondingTo,       setRespondingTo]       = useState<DonationRequest | null>(null);
+  const [respondForm,        setRespondForm]        = useState({ condition: 'مستعمل جيد', safeHub: '' });
+  const [hubs,               setHubs]               = useState<{ _id: string; name: string; city: string }[]>([]);
+  const [submitting,         setSubmitting]         = useState(false);
 
-  // 1. حالة الـ Modal والبيانات الجديدة
-  const [respondingTo, setRespondingTo] = useState<DonationRequest | null>(null);
-  const [respondForm, setRespondForm]   = useState({ condition: 'مستعمل جيد', safeHub: '' });
-  const [hubs,        setHubs]          = useState<{ _id: string; name: string; city: string }[]>([]);
-  const [submitting,  setSubmitting]    = useState(false);
+  // ✅ useRef يحمل أحدث القيم — بدون deps في useCallback
+  const stateRef = useRef({ myOnly, selectedCategory, selectedLocation, page });
+  useEffect(() => {
+    stateRef.current = { myOnly, selectedCategory, selectedLocation, page };
+  });
 
-  // ── دالة الاستجابة 3 ──
+  const load = useCallback(async (
+    targetPage = 1,
+    category   = stateRef.current.selectedCategory,
+    mine       = stateRef.current.myOnly,
+    location   = stateRef.current.selectedLocation,
+  ) => {
+    setLoading(true);
+    try {
+      const data = await getDonationRequests({
+        page:     targetPage,
+        limit:    10,
+        category: category || undefined,
+        location: location || undefined,
+        mine:     mine === true ? true : undefined,
+      });
+      setRequests(data.requests ?? []);
+      setPage(data.page   ?? 1);
+      setPages(data.pages ?? 1);
+    } catch (err) {
+      setToast({ msg: extractErrorMsg(err, 'تعذر تحميل طلبات التبرع'), ok: false });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ✅ الإصلاح الرئيسي — بعد الاستجابة نوجّه المستخدم لصفحة الغرض الجديد
   const handleRespond = async () => {
     if (!respondingTo || !respondForm.safeHub) return;
     setSubmitting(true);
@@ -64,8 +102,17 @@ export default function DonationRequestsPage() {
         condition: respondForm.condition as 'جديد' | 'مستعمل ممتاز' | 'مستعمل جيد',
         safeHub:   respondForm.safeHub,
       });
-      setToast({ msg: res.msg, ok: true });
+
       setRespondingTo(null);
+      setToast({ msg: res.msg ?? 'تم التبرع بنجاح! جارٍ التحويل...', ok: true });
+
+      // ✅ توجيه للغرض الجديد بعد 1.2 ثانية (حتى يرى المستخدم رسالة النجاح)
+      if (res.item?._id) {
+        setTimeout(() => router.push(`/items/${res.item._id}`), 1200);
+      } else {
+        // fallback إذا الـ API ما أرجع item._id
+        load(1);
+      }
     } catch (err) {
       setToast({ msg: extractErrorMsg(err, 'تعذر الاستجابة للطلب'), ok: false });
     } finally {
@@ -73,43 +120,13 @@ export default function DonationRequestsPage() {
     }
   };
 
-  // ── جلب الطلبات ──────────────────────────────────────────────────────────────
-  const load = useCallback(
-    async (
-      targetPage = 1,
-      category   = selectedCategory,
-      mine       = myOnly,
-      location   = selectedLocation
-    ) => {
-      setLoading(true);
-      try {
-        const data = await getDonationRequests({
-          page:    targetPage,
-          limit:    10,
-          category: category || undefined,
-          location: location || undefined,
-          mine:    mine === true ? true : undefined,
-        });
-        setRequests(data.requests ?? []);
-        setPage(data.page  ?? 1);
-        setPages(data.pages ?? 1);
-      } catch (err) {
-        setToast({ msg: extractErrorMsg(err, 'تعذر تحميل طلبات التبرع'), ok: false });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [myOnly, selectedCategory, selectedLocation]
-  );
-
-  // ── إلغاء طلب ────────────────────────────────────────────────────────────────
   const cancel = async (id: string) => {
     if (cancelingId) return;
     setCancelingId(id);
     try {
       const res = await cancelDonationRequest(id);
       setToast({ msg: res.msg ?? 'تم إلغاء الطلب بنجاح', ok: true });
-      await load(page, selectedCategory, myOnly, selectedLocation);
+      load(stateRef.current.page);
     } catch (err) {
       setToast({ msg: extractErrorMsg(err, 'تعذر إلغاء الطلب'), ok: false });
     } finally {
@@ -117,35 +134,24 @@ export default function DonationRequestsPage() {
     }
   };
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mine = new URLSearchParams(window.location.search).get('mine');
-    setMyOnly(mine === 'true');
-  }, []);
-
-  // ── جلب التصنيفات والمناطق والـ Hubs ──────────────────────────────────────────
-  useEffect(() => {
-    axiosInstance
-      .get('/api/settings')
-      .then((r) => {
-        if (Array.isArray(r.data?.categories) && r.data.categories.length > 0)
-          setSettingsCategories(r.data.categories);
-        if (Array.isArray(r.data?.locations) && r.data.locations.length > 0)
-          setSettingsLocations(r.data.locations);
-      })
-      .catch((err) => {
-        setToast({ msg: extractErrorMsg(err, 'فشل جلب الإعدادات'), ok: false });
-      });
-
-    // 2. جلب الـ Hubs
-    axiosInstance.get('/api/hubs').then((r) => {  
-      if (Array.isArray(r.data?.hubs)) setHubs(r.data.hubs);
-    }).catch(() => {});
-  }, []);
-
+  // ✅ useEffect واحد فقط للـ filters
   useEffect(() => {
     load(1, selectedCategory, myOnly, selectedLocation);
   }, [load, selectedCategory, myOnly, selectedLocation]);
+
+  // جلب الإعدادات والـ Hubs مرة واحدة
+  useEffect(() => {
+    axiosInstance.get('/api/settings').then((r) => {
+      if (Array.isArray(r.data?.categories) && r.data.categories.length > 0)
+        setSettingsCategories(r.data.categories);
+      if (Array.isArray(r.data?.locations) && r.data.locations.length > 0)
+        setSettingsLocations(r.data.locations);
+    }).catch(() => {});
+
+    axiosInstance.get('/api/hubs').then((r) => {
+      if (Array.isArray(r.data)) setHubs(r.data);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -161,23 +167,84 @@ export default function DonationRequestsPage() {
   return (
     <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
       {toast && (
-        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white ${toast.ok ? 'bg-green-500' : 'bg-red-500'}`}>
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white transition-all ${toast.ok ? 'bg-green-500' : 'bg-red-500'}`}>
           {toast.msg}
         </div>
       )}
 
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6">
-        {/* Header... (تم اختصار الكود هنا للحفاظ على التنسيق) */}
-        
-        <section className="space-y-4 max-w-4xl mx-auto">
-          {/* Filters Bar... */}
 
+        {/* ✅ Header */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900">طلبات التبرع</h1>
+            <p className="text-xs text-gray-500 font-bold mt-1">
+              {myOnly
+                ? `لديك ${activeMineCount} طلب نشط`
+                : 'تصفح الطلبات وساهم بتبرع'}
+            </p>
+          </div>
+          <Link
+            href="/donation-requests/new"
+            className="px-5 py-2.5 bg-primary text-white rounded-2xl text-xs font-black hover:bg-primary/90 transition-all flex items-center gap-2 shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            اطلب تبرعاً
+          </Link>
+        </div>
+
+        {/* ✅ Tab — كل الطلبات / طلباتي */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setMyOnly(false)}
+            className={`px-4 py-2 rounded-2xl text-xs font-black transition-all ${
+              !myOnly ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            كل الطلبات
+          </button>
+          <button
+            onClick={() => setMyOnly(true)}
+            className={`px-4 py-2 rounded-2xl text-xs font-black transition-all ${
+              myOnly ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            طلباتي فقط
+          </button>
+        </div>
+
+        {/* ✅ Filters */}
+        <div className="flex flex-wrap gap-3">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-4 py-2 rounded-2xl border border-gray-200 text-xs font-black bg-white focus:outline-none focus:border-primary"
+          >
+            <option value="">كل التصنيفات</option>
+            {settingsCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          <select
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+            className="px-4 py-2 rounded-2xl border border-gray-200 text-xs font-black bg-white focus:outline-none focus:border-primary"
+          >
+            <option value="">كل المناطق</option>
+            {settingsLocations.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+
+        <section className="space-y-4 max-w-4xl mx-auto">
           {loading ? (
-            <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            <div className="flex justify-center py-16">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
           ) : requests.length === 0 ? (
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-10 text-center">
               <span className="material-symbols-outlined text-5xl text-gray-300 block mb-2">inbox</span>
-              <p className="text-gray-400 text-sm font-bold">لا توجد طلبات حالياً</p>
+              <p className="text-gray-400 text-sm font-bold">
+                {myOnly ? 'لا توجد طلبات بعد — اضغط "اطلب تبرعاً"' : 'لا توجد طلبات حالياً'}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -188,20 +255,26 @@ export default function DonationRequestsPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-black text-gray-900 text-sm">{request.title}</h3>
                         <RequestStatusBadge status={request.status} />
-                        <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">{request.category}</span>
+                        <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                          {request.category}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-500 font-bold">بواسطة: {request.requester?.name ?? 'مستخدم'}</p>
+                      <p className="text-xs text-gray-500 font-bold">
+                        بواسطة: {request.requester?.name ?? 'مستخدم'}
+                      </p>
                     </div>
                   </div>
 
                   <p className="text-sm text-gray-600 leading-7">{request.description}</p>
 
-                  {/* 4. زر الاستجابة */}
                   <div className="pt-2 border-t border-gray-50 flex justify-end gap-2">
                     {!myOnly && request.status === 'active' && (
                       <button
                         type="button"
-                        onClick={() => setRespondingTo(request)}
+                        onClick={() => {
+                          setRespondForm({ condition: 'مستعمل جيد', safeHub: '' });
+                          setRespondingTo(request);
+                        }}
                         className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1"
                       >
                         <span className="material-symbols-outlined text-[16px]">volunteer_activism</span>
@@ -213,9 +286,9 @@ export default function DonationRequestsPage() {
                         type="button"
                         onClick={() => cancel(request._id)}
                         disabled={cancelingId === request._id}
-                        className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-red-50 text-red-600 hover:bg-red-100"
+                        className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
                       >
-                        إلغاء الطلب
+                        {cancelingId === request._id ? 'جاري الإلغاء...' : 'إلغاء الطلب'}
                       </button>
                     )}
                   </div>
@@ -223,33 +296,125 @@ export default function DonationRequestsPage() {
               ))}
             </div>
           )}
+
+          {/* ✅ Pagination */}
+          {pages > 1 && (
+            <div className="flex justify-center gap-2 pt-4">
+              <button
+                onClick={() => load(page - 1)}
+                disabled={page <= 1 || loading}
+                className="px-4 py-2 rounded-2xl text-xs font-black bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+              >
+                السابق
+              </button>
+              <span className="px-4 py-2 text-xs font-black text-gray-500">
+                {page} / {pages}
+              </span>
+              <button
+                onClick={() => load(page + 1)}
+                disabled={page >= pages || loading}
+                className="px-4 py-2 rounded-2xl text-xs font-black bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+              >
+                التالي
+              </button>
+            </div>
+          )}
         </section>
       </main>
 
-      {/* 5. Modal الاستجابة */}
+      {/* ✅ Modal الاستجابة */}
       {respondingTo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setRespondingTo(null)}>
-          <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-base font-black text-gray-900">الاستجابة لطلب: {respondingTo.title}</h2>
-            <p className="text-xs text-gray-500">سيُنشأ غرض ويُحجز تلقائياً لصاحب الطلب. توجّها معاً للنقطة الآمنة لإتمام التسليم.</p>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => !submitting && setRespondingTo(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-gray-900">
+                  الاستجابة لطلب: {respondingTo.title}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  سيُنشأ غرض ويُحجز تلقائياً لصاحب الطلب.
+                  توجّها معاً للنقطة الآمنة لإتمام التسليم.
+                </p>
+              </div>
+              <button
+                onClick={() => setRespondingTo(null)}
+                disabled={submitting}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
             <div>
               <label className="block text-xs font-black text-gray-700 mb-1">حالة الغرض</label>
-              <select value={respondForm.condition} onChange={(e) => setRespondForm({ ...respondForm, condition: e.target.value })} className="w-full px-4 py-2 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary">
-                {['جديد', 'مستعمل ممتاز', 'مستعمل جيد'].map((c) => <option key={c} value={c}>{c}</option>)}
+              <select
+                value={respondForm.condition}
+                onChange={(e) => setRespondForm({ ...respondForm, condition: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+              >
+                {['جديد', 'مستعمل ممتاز', 'مستعمل جيد'].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
               </select>
             </div>
+
             <div>
               <label className="block text-xs font-black text-gray-700 mb-1">نقطة التسليم الآمنة</label>
-              <select value={respondForm.safeHub} onChange={(e) => setRespondForm({ ...respondForm, safeHub: e.target.value })} className="w-full px-4 py-2 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary">
-                <option value="">اختر نقطة...</option>
-                {hubs.map((h) => <option key={h._id} value={h._id}>{h.name} — {h.city}</option>)}
-              </select>
+              {hubs.length === 0 ? (
+                <div className="w-full px-4 py-2.5 rounded-2xl border border-orange-200 bg-orange-50 text-xs text-orange-600 font-bold">
+                  ⚠️ لا توجد نقاط تسليم متاحة — تواصل مع الإدارة
+                </div>
+              ) : (
+                <select
+                  value={respondForm.safeHub}
+                  onChange={(e) => setRespondForm({ ...respondForm, safeHub: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+                >
+                  <option value="">اختر نقطة...</option>
+                  {hubs.map((h) => (
+                    <option key={h._id} value={h._id}>{h.name} — {h.city}</option>
+                  ))}
+                </select>
+              )}
             </div>
+
+            {/* ✅ معلومة للمستخدم — ماذا سيحدث بعد التأكيد */}
+            {respondForm.safeHub && (
+              <div className="p-3 rounded-2xl bg-primary/5 border border-primary/10 text-xs text-primary font-bold">
+                ✅ بعد التأكيد ستُوجَّه لصفحة الغرض مباشرة لمتابعة عملية التسليم
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={handleRespond} disabled={submitting || !respondForm.safeHub} className="flex-1 py-2.5 rounded-2xl text-sm font-black text-white bg-primary hover:bg-primary/90 disabled:opacity-50 transition-all">
-                {submitting ? 'جاري الإرسال...' : 'تأكيد التبرع 🎁'}
+              <button
+                type="button"
+                onClick={handleRespond}
+                disabled={submitting || !respondForm.safeHub}
+                className="flex-1 py-2.5 rounded-2xl text-sm font-black text-white bg-primary hover:bg-primary/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    جاري الإرسال...
+                  </>
+                ) : (
+                  'تأكيد التبرع 🎁'
+                )}
               </button>
-              <button type="button" onClick={() => setRespondingTo(null)} className="px-5 py-2.5 rounded-2xl text-sm font-black text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all">إلغاء</button>
+              <button
+                type="button"
+                onClick={() => setRespondingTo(null)}
+                disabled={submitting}
+                className="px-5 py-2.5 rounded-2xl text-sm font-black text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50"
+              >
+                إلغاء
+              </button>
             </div>
           </div>
         </div>

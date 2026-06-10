@@ -1,7 +1,7 @@
 // src/types/auth.types.ts
-import type { AuthUser } from '@/types/user.types'; // ✅ استورد بدل تعريف ثانٍ
+import type { AuthUser } from '@/types/user.types';
 
-export type { AuthUser }; // ✅ re-export لو في كود يستورده من هنا
+export type { AuthUser };
 
 export interface LoginRequest {
   email:    string;
@@ -20,6 +20,11 @@ export interface VerifyOtpRequest {
   otp:   string;
 }
 
+// ✅ إضافة: مستخدم في authApi.ts → resendOtp()
+export interface ResendOtpRequest {
+  email: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   user:        AuthUser;
@@ -31,8 +36,13 @@ export interface RegisterResponse {
 
 export interface VerifyOtpResponse {
   accessToken?: string;
-  user:         AuthUser | null; // ✅ أزلنا الـ ?
+  user:         AuthUser | null;
   msg?:         string;
+}
+
+// ✅ إضافة: مستخدم في authApi.ts → resendOtp()
+export interface ResendOtpResponse {
+  msg: string;
 }
 
 export interface ApiErrorResponse {

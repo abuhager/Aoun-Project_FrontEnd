@@ -10,7 +10,7 @@ export interface DonationRequest {
   title: string; description: string; category: string; location: string;
   status: DonationRequestStatus; createdAt: string; expiresAt: string;
   month?: string;
-  urgency?: 'low' | 'medium' | 'high'; // [FIX-6]
+  urgency?: 'low' | 'medium' | 'high';
 }
 
 export interface CreateDonationRequestPayload {
@@ -19,14 +19,17 @@ export interface CreateDonationRequestPayload {
 }
 
 export interface GetDonationRequestsParams {
-  page?: number; limit?: number; category?: string; location?: string;
+  page?:     number;
+  limit?:    number;
+  category?: string;
+  location?: string;
+  mine?:     boolean;   // ✅ إضافة mine — مستخدم في donation-requests/page.tsx
 }
 
 export interface DonationRequestsListResponse {
   requests: DonationRequest[]; total: number; page: number; pages: number;
 }
 
-// [FIX-1] نتيجة /api/donation-requests/me
 export interface MyDonationRequestsResponse {
   requests: DonationRequest[];
   quota: { used: number; max: number; remaining: number; };

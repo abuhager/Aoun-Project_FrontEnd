@@ -1,14 +1,10 @@
 // src/app/(main)/items/[id]/hooks/useItemDetails.ts
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// [FIX-7] تصدير fetchItem من الـ hook حتى تستطيع الـ page
-//         استدعاءها مباشرة بعد تأكيد التسليم بدلاً من reload
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
 import { useParams }   from 'next/navigation';
 import axiosInstance   from '@/lib/api/axiosInstance';
-import { useAuth } from "@/context/AuthContext";
+import { useAuth }     from '@/context/AuthContext';
 import type { Item }   from '@/types/item.types';
 
 type Msg = { type: 'success' | 'error'; text: string } | { type: ''; text: '' };
@@ -32,7 +28,6 @@ export function useItemDetails() {
     show: false, msg: '', isDanger: false, onConfirm: () => {},
   });
 
-  // ── [FIX-7] fetchItem مُعرَّفة بـ useCallback وتُصدَّر ─────────
   const fetchItem = useCallback(async () => {
     if (!id) return;
     try {
@@ -49,11 +44,19 @@ export function useItemDetails() {
     fetchItem();
   }, [fetchItem]);
 
-  const isDonor      = Boolean(user && item?.donor?._id === user._id);
-  const isBooker     = Boolean(user && item?.bookedBy === user._id);
-  const isWaitlisted = Boolean(user && item?.waitlist?.includes(user._id));
+  const isDonor = Boolean(user && item?.donor?._id === user._id);
+
+  // ✅ إصلاح السطر 53: bookedBy هو BookedByUser | null | undefined — نقارن _id وليس الـ object نفسه
+  const isBooker = Boolean(user && item?.bookedBy?._id === user._id);
+
+  // ✅ إصلاح السطر 54: waitlist هو WaitlistEntry[] — كل عنصر { user: string, joinedAt: string }
+  const isWaitlisted = Boolean(
+    user && item?.waitlist?.some((w) => w.user === user._id)
+  );
+
+  // ✅ إصلاح السطر 56: cancelledUsers غير موجود — الاسم الصحيح في Item هو cancelledBy: string[]
   const isCancelledBefore = Boolean(
-    user && item?.cancelledUsers?.includes(user._id)
+    user && item?.cancelledBy?.includes(user._id)
   );
 
   const showMsg = (type: 'success' | 'error', text: string, duration = 4000) => {
@@ -99,7 +102,7 @@ export function useItemDetails() {
 
   const handleCancelAction = () => {
     if (!item) return;
-    let msg = '';
+    let msg      = '';
     let endpoint = '';
 
     if (isBooker) {
@@ -136,6 +139,6 @@ export function useItemDetails() {
     confirmModal, setConfirmModal,
     isDonor, isBooker, isWaitlisted, isCancelledBefore,
     handleRequestItem, handleCancelAction,
-    fetchItem,  // [FIX-7] ← مُصدَّر
+    fetchItem,
   };
 }

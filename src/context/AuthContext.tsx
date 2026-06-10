@@ -132,8 +132,8 @@ function loadUserCookie(): CachedUser | null {
       name:         decoded.name,
       email:        decoded.email,
       avatar:       decoded.avatar ?? "",
-      trustLevel: ((decoded.trustLevel as number) === 2 ? 2 : 1) as TrustLevel,
-      role:       (['user','admin','super_admin'].includes(decoded.role as string)? decoded.role: 'user') as UserRole,
+      trustLevel: ([1, 2, 3, 4].includes(decoded.trustLevel as number) ? decoded.trustLevel : 1) as TrustLevel,
+      role: (['user','admin','super_admin'].includes(decoded.role as string)? decoded.role: 'user') as UserRole,
       gamification: decoded.gamification ?? {
         trustScore:     0,
         totalDonations: 0,

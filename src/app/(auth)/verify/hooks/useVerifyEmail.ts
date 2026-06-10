@@ -1,25 +1,22 @@
 // src/app/(auth)/verify/hooks/useVerifyEmail.ts
-// ✅ إضافة: عرض رسالة OTP_ATTEMPTS_EXCEEDED + OTP_EXPIRED بشكل واضح
-// ✅ إضافة: إعادة تعيين الـ OTP inputs عند الخطأ لتحسين UX
-// ✅ استخدام authApi.verifyOtp المركزي بدلاً من axiosInstance مباشرة
-
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { verifyOtp } from "@/lib/api/authApi"; // ✅ API layer المركزي
+import { verifyOtp, resendOtp } from "@/lib/api/authApi";
 
-// رموز الأخطاء المعروفة من الـ Backend
-type OtpErrorCode = "OTP_ATTEMPTS_EXCEEDED" | "OTP_EXPIRED" | string;
+type OtpErrorCode = "OTP_ATTEMPTS_EXCEEDED" | "OTP_EXPIRED" | "RESEND_TOO_FAST" | string;
 
 interface ApiErrorShape {
   response?: {
-    data?: { msg?: string; code?: OtpErrorCode };
+    data?:   { msg?: string; code?: OtpErrorCode };
     status?: number;
   };
   isAxiosError?: boolean;
 }
+
+const COOLDOWN_SECONDS = 60; // ✅ يطابق COOLDOWN_MS في الـ Backend
 
 export function useVerifyEmail() {
   const router       = useRouter();
@@ -30,20 +27,45 @@ export function useVerifyEmail() {
   const [otp,     setOtp]     = useState<string[]>(["", "", "", "", "", ""]);
   const [error,   setError]   = useState("");
   const [loading, setLoading] = useState(false);
-  // ✅ جديد — لإظهار زر "إعادة إرسال" عند انتهاء الصلاحية أو تجاوز المحاولات
   const [shouldResend, setShouldResend] = useState(false);
+
+  // ✅ إصلاح #4: Cooldown Timer State
+  const [cooldown,    setCooldown]    = useState(0);  // ثوانٍ متبقية
+  const [resending,   setResending]   = useState(false);
+  const [resendMsg,   setResendMsg]   = useState("");
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // ✅ تشغيل عداد تنازلي عند بدء Cooldown
+  const startCooldown = useCallback(() => {
+    setCooldown(COOLDOWN_SECONDS);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // تنظيف الـ interval عند unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
   const handleChange = useCallback(
     (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value.replace(/\D/g, "");
+      const value  = e.target.value.replace(/\D/g, "");
       const newOtp = [...otp];
       newOtp[index] = value.slice(-1);
       setOtp(newOtp);
-      if (value && index < 5) {
-        inputRefs.current[index + 1]?.focus();
-      }
+      if (value && index < 5) inputRefs.current[index + 1]?.focus();
     },
     [otp]
   );
@@ -57,7 +79,6 @@ export function useVerifyEmail() {
     [otp]
   );
 
-  // ✅ إعادة تعيين كامل لـ OTP inputs
   const resetOtpInputs = useCallback(() => {
     setOtp(["", "", "", "", "", ""]);
     setTimeout(() => inputRefs.current[0]?.focus(), 50);
@@ -66,10 +87,7 @@ export function useVerifyEmail() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email) {
-      setError("لا يوجد بريد إلكتروني للتحقق");
-      return;
-    }
+    if (!email) { setError("لا يوجد بريد إلكتروني للتحقق"); return; }
 
     const otpCode = otp.join("");
     if (otpCode.length !== 6) {
@@ -82,11 +100,10 @@ export function useVerifyEmail() {
       setError("");
       setShouldResend(false);
 
-      // ✅ يستخدم authApi.verifyOtp المركزي الذي يضبط session_active cookie
       const data = await verifyOtp({ email, otp: otpCode });
 
       if (data.accessToken) {
-        setUser(data.user??null); // ✅ تحديث الـ context بالمستخدم الجديد بعد التحقق
+        setUser(data.user ?? null);
         router.push("/browse");
       } else {
         router.push("/login?verified=true");
@@ -100,12 +117,10 @@ export function useVerifyEmail() {
 
         setError(message);
 
-        // ✅ عرض زر "إعادة إرسال" عند هذه الحالات تحديداً
         if (code === "OTP_ATTEMPTS_EXCEEDED" || code === "OTP_EXPIRED") {
           setShouldResend(true);
         }
 
-        // ✅ أعِد تعيين الـ inputs دائماً عند أي خطأ للسماح بإعادة المحاولة
         resetOtpInputs();
       } else {
         setError("حدث خطأ غير متوقع ❌");
@@ -116,6 +131,36 @@ export function useVerifyEmail() {
     }
   };
 
+  // ✅ إصلاح #3 + #4: handleResend مع Cooldown مرئي
+  const handleResend = useCallback(async () => {
+    if (!email || cooldown > 0 || resending) return;
+
+    try {
+      setResending(true);
+      setResendMsg("");
+
+      await resendOtp({ email });
+
+      setResendMsg("✅ تم إرسال رمز جديد إلى بريدك 📧");
+      setShouldResend(false);
+      resetOtpInputs();
+      startCooldown(); // ✅ بدء العداد بعد الإرسال الناجح
+    } catch (err: unknown) {
+      const axiosErr = err as ApiErrorShape;
+      const code     = axiosErr?.response?.data?.code;
+      const msg      = axiosErr?.response?.data?.msg ?? "فشل الإرسال، حاول بعد قليل ⚠️";
+
+      setResendMsg(msg);
+
+      // ✅ إذا Backend أعاد RESEND_TOO_FAST → شغّل العداد في الـ Frontend أيضاً
+      if (code === "RESEND_TOO_FAST") {
+        startCooldown();
+      }
+    } finally {
+      setResending(false);
+    }
+  }, [email, cooldown, resending, resetOtpInputs, startCooldown]);
+
   const isComplete = otp.every((d) => d !== "");
 
   return {
@@ -124,10 +169,14 @@ export function useVerifyEmail() {
     error,
     loading,
     isComplete,
-    shouldResend, // ✅ جديد — يُستخدم في الـ UI
+    shouldResend,
+    cooldown,      // ✅ جديد — الثوانٍ المتبقية للعداد
+    resending,     // ✅ نُعيد resending من هنا
+    resendMsg,     // ✅ نُعيد resendMsg من هنا
     inputRefs,
     handleChange,
     handleKeyDown,
     handleSubmit,
+    handleResend,  // ✅ نُعيد handleResend موحداً من الـ hook
   };
 }

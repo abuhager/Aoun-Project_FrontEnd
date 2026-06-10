@@ -1,18 +1,14 @@
 // src/app/(auth)/verify/page.tsx
-// ✅ النسخة المصححة والمؤمنة بالكامل باستخدام authApi واستخراج الأخطاء ديناميكيًا
-
 "use client";
 
 import { Suspense } from "react";
 import { useVerifyEmail } from "./hooks/useVerifyEmail";
-import { resendOtp } from "@/lib/api/authApi";
-import { useState } from "react";
 
 interface OtpInputProps {
-  digit: string;
-  index: number;
+  digit:    string;
+  index:    number;
   inputRef: (el: HTMLInputElement | null) => void;
-  onChange: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange:  (index: number, e: React.ChangeEvent<HTMLInputElement>) => void;
   onKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
@@ -44,35 +40,15 @@ function VerifyContent() {
     loading,
     isComplete,
     shouldResend,
+    cooldown,
+    resending,
+    resendMsg,
     inputRefs,
     handleChange,
     handleKeyDown,
     handleSubmit,
+    handleResend,
   } = useVerifyEmail();
-
-  // حالتي إدارة عملية إعادة إرسال الـ OTP والرسائل الصادرة عنها
-  const [resending, setResending] = useState(false);
-  const [resendMsg, setResendMsg] = useState("");
-
-  const handleResend = async () => {
-    if (!email) return;
-    try {
-      setResending(true);
-      setResendMsg("");
-      
-      // استخدام طبقة الـ API المركزية بدلًا من axiosInstance المباشر
-      const res = await resendOtp({ email });
-      setResendMsg(res.msg || "تم إرسال رمز جديد إلى بريدك 📧");
-    } catch (err: unknown) {
-      // استخراج رسالة الخطأ القادمة من الـ Backend بشكل آمن وديناميكي
-      const msg =
-        (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ??
-        'فشل الإرسال، حاول مرة أخرى بعد قليل ⚠️';
-      setResendMsg(msg);
-    } finally {
-      setResending(false);
-    }
-  };
 
   return (
     <div
@@ -104,22 +80,45 @@ function VerifyContent() {
           </div>
         )}
 
-        {/* زر إعادة الإرسال يظهر بشكل مشروط */}
-        {shouldResend && (
-          <div className="mb-6">
+        {/* ✅ إصلاح #3: زر Resend دائم الظهور، مقيّد بالـ Cooldown */}
+        <div className="mb-6 min-h-[40px] flex flex-col items-center gap-1">
+          {cooldown > 0 ? (
+            // ✅ إصلاح #4: عداد تنازلي مرئي
+            <p className="text-sm text-gray-400 font-bold">
+              يمكنك إعادة الإرسال بعد{" "}
+              <span className="text-primary font-black tabular-nums">
+                {cooldown}
+              </span>{" "}
+              ثانية
+            </p>
+          ) : (
             <button
               type="button"
               onClick={handleResend}
               disabled={resending}
               className="text-primary font-bold text-sm underline underline-offset-2 hover:text-primary/80 disabled:opacity-50 transition-all"
             >
-              {resending ? "جاري الإرسال..." : "إعادة إرسال رمز جديد 🔄"}
+              {resending ? "جاري الإرسال..." : "لم تستلم الرمز؟ إعادة إرسال 🔄"}
             </button>
-            {resendMsg && (
-              <p className="text-xs text-green-600 mt-2 font-bold">{resendMsg}</p>
-            )}
-          </div>
-        )}
+          )}
+
+          {resendMsg && (
+            <p
+              className={`text-xs font-bold ${
+                resendMsg.startsWith("✅") ? "text-green-600" : "text-red-500"
+              }`}
+            >
+              {resendMsg}
+            </p>
+          )}
+
+          {/* ✅ زر إعادة إرسال إضافي عند OTP_ATTEMPTS_EXCEEDED أو OTP_EXPIRED */}
+          {shouldResend && cooldown === 0 && (
+            <p className="text-xs text-orange-500 font-bold mt-1">
+              انتهت صلاحية الرمز أو تجاوزت عدد المحاولات — اطلب رمزاً جديداً 👆
+            </p>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="flex justify-center gap-2" dir="ltr">
@@ -128,9 +127,7 @@ function VerifyContent() {
                 key={index}
                 digit={digit}
                 index={index}
-                inputRef={(el) => {
-                  inputRefs.current[index] = el;
-                }}
+                inputRef={(el) => { inputRefs.current[index] = el; }}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
               />

@@ -1,39 +1,39 @@
 // src/types/admin.types.ts
-// Phase 6 — Admin Dashboard types
+import type { TrustLevel } from './user.types'; // ✅ استيراد المصدر الواحد للحقيقة
 
 export type AdminTab = 'users' | 'items' | 'reports' | 'audit';
 
 export interface AdminUser {
-  _id:            string;
-  name:           string;
-  email:          string;
-  role:           'user' | 'admin';
-  trustLevel:     1 | 2;
-  trustScore:     number;
-  isVerified:     boolean;
+  _id:               string;
+  name:              string;
+  email:             string;
+  role:              'user' | 'admin';
+  trustLevel:        TrustLevel;  // ✅ بدل 1 | 2
+  trustScore:        number;
+  isVerified:        boolean;
   isVerifiedStudent: boolean;
-  totalDonations: number;
-  quota:          number;
-  createdAt:      string;
+  totalDonations:    number;
+  quota:             number;
+  createdAt:         string;
 }
 
 export interface AuditLog {
-  _id:       string;
-  action:    string;
-  adminId:   string;
-  adminName: string;
-  targetId?: string;
+  _id:         string;
+  action:      string;
+  adminId:     string;
+  adminName:   string;
+  targetId?:   string;
   targetType?: 'user' | 'item' | 'report';
-  details?:  string;
-  createdAt: string;
+  details?:    string;
+  createdAt:   string;
 }
 
 export interface AdminStats {
-  totalUsers:    number;
-  totalItems:    number;
+  totalUsers:     number;
+  totalItems:     number;
   totalDonations: number;
   pendingReports: number;
-  activeHubs:    number;
+  activeHubs:     number;
 }
 
 export interface AdminReport {

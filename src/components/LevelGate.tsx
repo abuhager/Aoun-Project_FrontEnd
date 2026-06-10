@@ -4,10 +4,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import type { TrustLevel } from '@/types/user.types'; // ✅ استيراد
 import PhoneVerifyModal from './PhoneVerifyModal';
 
 interface LevelGateProps {
-  requiredLevel?:           1 | 2;
+  requiredLevel?:           TrustLevel; // ✅ بدل 1 | 2 — يقبل الآن 1 | 2 | 3 | 4
   children:                 React.ReactNode;
   fallback?:                React.ReactNode;
   unauthenticatedFallback?: React.ReactNode;
@@ -20,7 +21,7 @@ export default function LevelGate({
   unauthenticatedFallback,
 }: LevelGateProps) {
   const { user, isLoading, refreshSession } = useAuth();
-  const [showModal, setShowModal]           = useState(false);
+  const [showModal,  setShowModal]          = useState(false);
   const [refreshing, setRefreshing]         = useState(false);
   const router                              = useRouter();
 
@@ -42,7 +43,6 @@ export default function LevelGate({
   const userLevel = user.trustLevel ?? 1;
   if (userLevel >= requiredLevel) return <>{children}</>;
 
-  // ✅ FIX: refreshSession تُجدّد الـ JWT وتحمل trustLevel الجديد
   const handleRefreshLevel = async () => {
     setRefreshing(true);
     const success = await refreshSession();
@@ -57,7 +57,8 @@ export default function LevelGate({
       <div className="flex flex-col items-center gap-3 p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
         <span className="text-3xl">🔐</span>
         <p className="text-sm text-amber-800 font-medium">
-          يتطلب هذا الإجراء التحقق من الهوية (المستوى {requiredLevel})
+          {/* ✅ الرسالة ديناميكية تعكس المستوى الفعلي المطلوب */}
+          يتطلب هذا الإجراء مستوى الثقة {requiredLevel} أو أعلى
         </p>
         <div className="flex gap-2">
           <button
@@ -66,8 +67,6 @@ export default function LevelGate({
           >
             ارفع مستواك الآن 📱
           </button>
-
-          {/* ✅ زر إعادة التحقق بعد الترقية */}
           <button
             onClick={handleRefreshLevel}
             disabled={refreshing}
@@ -78,14 +77,11 @@ export default function LevelGate({
         </div>
       </div>
 
-      {/* ✅ FIX: تمرير isOpen بدل mount/unmount + onSuccess ليست async */}
       <PhoneVerifyModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSuccess={() => {
           setShowModal(false);
-          // PhoneVerifyModal استدعى refreshSession بالفعل داخله عند النجاح
-          // نستدعيها مرة ثانية للتأكد من تحديث الـ LevelGate state
           handleRefreshLevel();
         }}
       />

@@ -1,61 +1,63 @@
 // src/types/user.types.ts
 import type { DashboardItem } from './item.types';
 export type UserRole   = 'user' | 'admin' | 'super_admin';
-export type TrustLevel = 1 | 2;
+
+// ✅ إصلاح: يعكس الـ Backend بالضبط → User.js: { min: 1, max: 4 }
+export type TrustLevel = 1 | 2 | 3 | 4;
 
 // ─── ما يُرجعه /api/auth/login و /api/auth/me ───────────────
-// ✅ متوافق مع authService.js بعد الإصلاح 2 و3
-// ❌ لا phone, لا isBanned, لا totalDonations, لا badges, لا updatedAt
 export interface Gamification {
-  trustScore:    number;
+  trustScore:     number;
   totalDonations: number;
-  level:         number;
-  title:         string;
-  badge:         string;
-  progress:      number;
-  pointsToNext:  number | null;
+  level:          number;
+  title:          string;
+  badge:          string;
+  progress:       number;
+  pointsToNext:   number | null;
 }
+
 export interface AuthUser {
   _id:               string;
   name:              string;
   email:             string;
   avatar:            string;
   role:              UserRole;
-  trustLevel:        1 | 2;
+  trustLevel:        TrustLevel; // ✅ بدل 1 | 2
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
   createdAt:         string;
-  gamification:      Gamification; // ✅ أضف
+  gamification:      Gamification;
 }
 
 // ─── ما يُرجعه /api/auth/me كاملاً (Dashboard/Profile) ──────
-// يحتوي على حقول إضافية للعرض في صفحة الملف الشخصي
 export interface ProfileUser {
   _id:               string;
   name:              string;
   email:             string;
   avatar:            string;
   role:              UserRole;
-  trustLevel:        1 | 2;
+  trustLevel:        TrustLevel; // ✅ بدل 1 | 2
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
   badges:            string[];
   createdAt:         string;
-  gamification:      Gamification;   // ✅ أضف
+  gamification:      Gamification;
 }
+
 // ─── مستخدم عام (يُعرض في صفحة item بجانب اسم المتبرع) ─────
 export interface PublicUser {
   _id:               string;
   name:              string;
   avatar:            string;
-  trustLevel:        1 | 2;
+  trustLevel:        TrustLevel; // ✅ بدل 1 | 2
   isVerifiedStudent: boolean;
   createdAt:         string;
   whatsapp:          string | null;
-  gamification:      Gamification;   // ✅ أضف
+  gamification:      Gamification;
 }
+
 export interface ProfileResponse {
   user:             ProfileUser;
   stats: {
@@ -67,6 +69,7 @@ export interface ProfileResponse {
   allDonations:      DashboardItem[];
   completedRequests: DashboardItem[];
 }
+
 export interface BookedByUser {
   _id:    string;
   name:   string;
@@ -79,7 +82,7 @@ export interface DonorUser extends PublicUser {
 }
 
 export interface DashboardStats {
-  quota:      number;
-  trustLevel: TrustLevel;
-  gamification: Gamification; // ✅ أضف
+  quota:        number;
+  trustLevel:   TrustLevel; // ✅ بدل TrustLevel المحصور بـ 1|2
+  gamification: Gamification;
 }

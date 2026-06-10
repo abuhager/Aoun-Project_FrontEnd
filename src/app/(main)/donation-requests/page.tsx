@@ -7,9 +7,9 @@ import {
   getDonationRequests,
   cancelDonationRequest,
 } from '@/lib/api/donationRequestApi';
-import axiosInstance from '@/lib/api/axiosInstance';                // ✅ مباشر — settingsService محذوف
+import axiosInstance from '@/lib/api/axiosInstance';
 import type { DonationRequest } from '@/types/donationRequest.types';
-import { extractErrorMsg } from '@/lib/api/extractErrorMsg';        // ✅ الملف الجديد
+import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
 
 const DEFAULT_CATEGORIES = ['كتب', 'إلكترونيات', 'أثاث', 'ملابس', 'أخرى'];
 const DEFAULT_LOCATIONS  = ['عمان', 'الزرقاء', 'إربد', 'العقبة', 'السلط', 'مادبا'];
@@ -37,15 +37,15 @@ function RequestStatusBadge({ status }: { status: DonationRequest['status'] }) {
 }
 
 export default function DonationRequestsPage() {
-  const [requests,         setRequests]         = useState<DonationRequest[]>([]);
-  const [loading,          setLoading]          = useState(true);
-  const [cancelingId,      setCancelingId]      = useState<string | null>(null);
-  const [toast,            setToast]            = useState<{ msg: string; ok: boolean } | null>(null);
-  const [page,             setPage]             = useState(1);
-  const [pages,            setPages]            = useState(1);
-  const [myOnly,           setMyOnly]           = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState('');
+  const [requests,           setRequests]           = useState<DonationRequest[]>([]);
+  const [loading,            setLoading]            = useState(true);
+  const [cancelingId,        setCancelingId]        = useState<string | null>(null);
+  const [toast,              setToast]              = useState<{ msg: string; ok: boolean } | null>(null);
+  const [page,               setPage]               = useState(1);
+  const [pages,              setPages]              = useState(1);
+  const [myOnly,             setMyOnly]             = useState(false);
+  const [selectedCategory,   setSelectedCategory]   = useState('');
+  const [selectedLocation,   setSelectedLocation]   = useState('');
   const [settingsCategories, setSettingsCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [settingsLocations,  setSettingsLocations]  = useState<string[]>(DEFAULT_LOCATIONS);
 
@@ -62,9 +62,11 @@ export default function DonationRequestsPage() {
         const data = await getDonationRequests({
           page:     targetPage,
           limit:    10,
-          category: category  || undefined,
-          location: location  || undefined,
-          mine:     mine      || undefined,
+          category: category || undefined,
+          location: location || undefined,
+          // ✅ إصلاح: mine || undefined يُعطي undefined حتى عند mine=true أحياناً
+          //    الصواب: تمرير true صريحاً أو undefined — لا نمرر false أبداً
+          mine:     mine === true ? true : undefined,
         });
         setRequests(data.requests ?? []);
         setPage(data.page  ?? 1);
@@ -111,7 +113,6 @@ export default function DonationRequestsPage() {
           setSettingsLocations(r.data.locations);
       })
       .catch((err) => {
-        // تخصيص رسالة 401/403 ثم تمريرها لـ extractErrorMsg
         const e = err as { response?: { status?: number } };
         const is401or403 =
           e?.response?.status === 401 || e?.response?.status === 403;

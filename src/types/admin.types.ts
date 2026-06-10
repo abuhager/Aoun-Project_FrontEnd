@@ -1,5 +1,5 @@
 // src/types/admin.types.ts
-import type { TrustLevel } from './user.types'; // ✅ استيراد المصدر الواحد للحقيقة
+import type { TrustLevel } from './user.types';
 
 export type AdminTab = 'users' | 'items' | 'reports' | 'audit';
 
@@ -8,10 +8,12 @@ export interface AdminUser {
   name:              string;
   email:             string;
   role:              'user' | 'admin';
-  trustLevel:        TrustLevel;  // ✅ بدل 1 | 2
+  trustLevel:        TrustLevel;
   trustScore:        number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
+  isBanned:          boolean;   // ✅ موجود في page.tsx لكن ناقص من الـ interface
+  avatar?:           string;    // ✅ إضافة avatar — مستخدم في page.tsx السطر 236
   totalDonations:    number;
   quota:             number;
   createdAt:         string;

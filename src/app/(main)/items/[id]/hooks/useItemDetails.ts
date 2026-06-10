@@ -1,21 +1,19 @@
 // src/app/(main)/items/[id]/hooks/useItemDetails.ts
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter }             from "next/navigation";
-import { getItemById, bookItem, cancelBooking } from "@/lib/api/itemApi";
-import { Item }                             from "@/types/item.types";
-import { useAuth }                          from "@/context/AuthContext";
-import axios                                from "axios";
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [FIX-7] تصدير fetchItem من الـ hook حتى تستطيع الـ page
+//         استدعاءها مباشرة بعد تأكيد التسليم بدلاً من reload
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+'use client';
 
-const getId = (field: unknown): string | null => {
-  if (!field) return null;
-  if (typeof field === "string") return field;
-  if (typeof field === "object" && field !== null && "_id" in field) {
-    return String((field as { _id: unknown })._id);
-  }
-  return null;
-};
+import { useState, useCallback, useEffect } from 'react';
+import { useParams }   from 'next/navigation';
+import axiosInstance   from '@/lib/api/axiosInstance';
+import { useAuth } from "@/context/AuthContext";
+import type { Item }   from '@/types/item.types';
 
-interface ConfirmModalState {
+type Msg = { type: 'success' | 'error'; text: string } | { type: ''; text: '' };
+
+interface ConfirmModal {
   show:      boolean;
   msg:       string;
   isDanger:  boolean;
@@ -23,113 +21,121 @@ interface ConfirmModalState {
 }
 
 export function useItemDetails() {
-  const { id }   = useParams();
-  const router   = useRouter();
-  const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+  const { id }       = useParams<{ id: string }>();
+  const { user }     = useAuth();
 
-  const [item,          setItem]          = useState<Item | null>(null);
-  const [loading,       setLoading]       = useState(true);
-  const [message,       setMessage]       = useState({ type: "", text: "" });
-  const [actionLoading, setActionLoading] = useState(false);
-  const [confirmModal,  setConfirmModal]  = useState<ConfirmModalState>({
-    show: false, msg: "", isDanger: false, onConfirm: () => {},
+  const [item,          setItem]         = useState<Item | null>(null);
+  const [loading,       setLoading]      = useState(true);
+  const [message,       setMessage]      = useState<Msg>({ type: '', text: '' });
+  const [actionLoading, setActionLoading]= useState(false);
+  const [confirmModal,  setConfirmModal] = useState<ConfirmModal>({
+    show: false, msg: '', isDanger: false, onConfirm: () => {},
   });
 
-  const currentUserId     = user?._id ?? null;
-  const isDonor           = !!currentUserId && getId(item?.donor)    === currentUserId;
-  const isBooker          = !!currentUserId && getId(item?.bookedBy) === currentUserId;
-  const isWaitlisted      = !!currentUserId && !!item?.waitlist?.some((w) => getId(w.user) === currentUserId);
-  const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid) => getId(uid) === currentUserId);
-
-  const fetchItem = useCallback(async (isMounted = true) => {
+  // ── [FIX-7] fetchItem مُعرَّفة بـ useCallback وتُصدَّر ─────────
+  const fetchItem = useCallback(async () => {
+    if (!id) return;
     try {
-      setLoading(true);
-      const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-      const data   = await getItemById(itemId);
-      if (isMounted) setItem(data);
+      const { data } = await axiosInstance.get<{ item: Item }>(`/api/items/${id}`);
+      setItem(data.item);
     } catch {
-      if (isMounted) setMessage({ type: "error", text: "حدث خطأ أثناء تحميل بيانات الطلب" });
+      setMessage({ type: 'error', text: 'تعذّر جلب تفاصيل الغرض' });
     } finally {
-      if (isMounted) setLoading(false);
+      setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    let isMounted = true;
-    fetchItem(isMounted);
-    return () => { isMounted = false; };
+    fetchItem();
   }, [fetchItem]);
 
-  const handleRequestItem = useCallback(async () => {
-    if (authLoading) return;
-    if (!isLoggedIn) {
-      router.push(`/login?redirect=/items/${id}`);
-      return;
-    }
-    setConfirmModal({
-      show:     true,
-      // ✅ [FIX-A] رسائل بدون أي ذكر لـ OTP
-      msg:      item?.status === "متاح"
-        ? "هل تريد حجز هذا الغرض؟ ستحتاج للتوجه إلى مركز التسليم وتأكيد الاستلام."
-        : "هل تريد الانضمام لقائمة الانتظار؟",
-      isDanger: false,
-      onConfirm: async () => {
-        setConfirmModal((prev) => ({ ...prev, show: false }));
+  const isDonor      = Boolean(user && item?.donor?._id === user._id);
+  const isBooker     = Boolean(user && item?.bookedBy === user._id);
+  const isWaitlisted = Boolean(user && item?.waitlist?.includes(user._id));
+  const isCancelledBefore = Boolean(
+    user && item?.cancelledUsers?.includes(user._id)
+  );
+
+  const showMsg = (type: 'success' | 'error', text: string, duration = 4000) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage({ type: '', text: '' }), duration);
+  };
+
+  const openConfirm = (
+    msg: string, isDanger: boolean, onConfirm: () => void
+  ) => {
+    setConfirmModal({ show: true, msg, isDanger, onConfirm });
+  };
+
+  const handleRequestItem = () => {
+    if (!item) return;
+    const isAvailable = item.status === 'متاح';
+    openConfirm(
+      isAvailable
+        ? '🛒 هل تريد حجز هذا الغرض؟'
+        : '⏳ هل تريد الانضمام لقائمة الانتظار؟',
+      false,
+      async () => {
+        setConfirmModal((p) => ({ ...p, show: false }));
         setActionLoading(true);
         try {
-          const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-          const res    = await bookItem(itemId);
-          setMessage({ type: "success", text: res.message ?? "تم طلبك بنجاح" });
-          fetchItem();
+          const endpoint = isAvailable
+            ? `/api/items/${id}/book`
+            : `/api/items/${id}/waitlist`;
+          const { data } = await axiosInstance.post(endpoint);
+          showMsg('success', data.msg);
+          await fetchItem();
         } catch (err: unknown) {
-          const msg = axios.isAxiosError(err)
-            ? err.response?.data?.msg ?? "حدث خطأ أثناء الطلب"
-            : "حدث خطأ أثناء الطلب";
-          setMessage({ type: "error", text: msg });
+          const msg =
+            (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ??
+            'فشل الطلب';
+          showMsg('error', msg);
         } finally {
           setActionLoading(false);
         }
-      },
-    });
-  }, [authLoading, isLoggedIn, id, router, fetchItem, item?.status]);
+      }
+    );
+  };
 
-  const handleCancelAction = useCallback(() => {
-    const isDanger   = isBooker || isDonor;
-    const confirmMsg = isBooker
-      ? "⚠️ تنبيه: إلغاء الحجز سيمنعك من حجز هذه القطعة مجدداً للأبد!\nهل أنت متأكد؟"
-      : isDonor
-      ? "هل تريد إلغاء حجز المستلم وتمرير الدور؟"
-      : "هل تريد الانسحاب من قائمة الانتظار؟";
+  const handleCancelAction = () => {
+    if (!item) return;
+    let msg = '';
+    let endpoint = '';
 
-    setConfirmModal({
-      show:     true,
-      msg:      confirmMsg,
-      isDanger,
-      onConfirm: async () => {
-        setConfirmModal((prev) => ({ ...prev, show: false }));
-        setActionLoading(true);
-        try {
-          const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-          const res    = await cancelBooking(itemId);
-          setMessage({ type: "success", text: res.msg ?? "تم الإلغاء بنجاح" });
-          fetchItem();
-        } catch (err: unknown) {
-          const msg = axios.isAxiosError(err)
-            ? err.response?.data?.msg ?? "حدث خطأ أثناء الإلغاء"
-            : "حدث خطأ أثناء الإلغاء";
-          setMessage({ type: "error", text: msg });
-        } finally {
-          setActionLoading(false);
-        }
-      },
+    if (isBooker) {
+      msg      = '⚠️ هل أنت متأكد من إلغاء الحجز؟';
+      endpoint = `/api/items/${id}/cancel-booking`;
+    } else if (isWaitlisted) {
+      msg      = '🚶‍♂️ هل تريد الانسحاب من قائمة الانتظار؟';
+      endpoint = `/api/items/${id}/leave-waitlist`;
+    } else if (isDonor && item.status === 'محجوز') {
+      msg      = '🔄 هل تريد إلغاء الحجز الحالي والسماح لحاجز آخر؟';
+      endpoint = `/api/items/${id}/cancel-booker`;
+    } else return;
+
+    openConfirm(msg, true, async () => {
+      setConfirmModal((p) => ({ ...p, show: false }));
+      setActionLoading(true);
+      try {
+        const { data } = await axiosInstance.post(endpoint);
+        showMsg('success', data.msg);
+        await fetchItem();
+      } catch (err: unknown) {
+        const errMsg =
+          (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ??
+          'فشل الإلغاء';
+        showMsg('error', errMsg);
+      } finally {
+        setActionLoading(false);
+      }
     });
-  }, [id, isBooker, isDonor, fetchItem]);
+  };
 
   return {
-    item, loading, message, setMessage,
-    actionLoading, currentUserId,
-    isDonor, isBooker, isWaitlisted, isCancelledBefore,
+    item, loading, message, actionLoading,
     confirmModal, setConfirmModal,
-    handleRequestItem, handleCancelAction, fetchItem,
+    isDonor, isBooker, isWaitlisted, isCancelledBefore,
+    handleRequestItem, handleCancelAction,
+    fetchItem,  // [FIX-7] ← مُصدَّر
   };
 }

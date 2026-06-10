@@ -160,7 +160,11 @@ axiosInstance.interceptors.request.use(
       }
     }
 
-    if (config.data && !(config.data instanceof FormData)) {
+    // ✅ [BUG FIX] FormData — احذف Content-Type كلياً ليضعه الـ browser مع الـ boundary
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+      delete (config.headers as Record<string, unknown>)["content-type"];
+    } else if (config.data) {
       config.headers["Content-Type"] = "application/json";
     }
 

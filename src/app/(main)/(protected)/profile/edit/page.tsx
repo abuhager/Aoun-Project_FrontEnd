@@ -60,29 +60,29 @@ export default function EditProfilePage() {
 
   // ── حفظ المعلومات ──
   const handleSaveInfo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim()) { setError("الاسم مطلوب"); return; }
-    setLoading(true); setError(""); setSuccess("");
-    try {
-      const fd = new FormData();
-      fd.append("name", form.name.trim());
-      if (form.phone.trim()) fd.append("phone", form.phone.trim());
-      if (avatarFile) fd.append("avatar", avatarFile);
-      const { data } = await axiosInstance.put("/api/auth/me", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-        withCredentials: true,
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setUser(data.user ?? data);
-      setSuccess("تم تحديث المعلومات بنجاح ✓");
-      setAvatarFile(null);
-    } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setError((err as any)?.response?.data?.message ?? "حدث خطأ، حاول مجدداً");
-    } finally {
-      setLoading(false);
-    }
-  };
+  e.preventDefault();
+  if (!form.name.trim()) { setError("الاسم مطلوب"); return; }
+  setLoading(true); setError(""); setSuccess("");
+  try {
+    const fd = new FormData();
+    fd.append("name", form.name.trim());
+    if (form.phone.trim()) fd.append("phone", form.phone.trim());
+    if (avatarFile) fd.append("avatar", avatarFile);
+
+    // ✅ لا تُحدد Content-Type — Axios يضعه تلقائياً مع الـ boundary
+    const { data } = await axiosInstance.put("/api/auth/me", fd, {
+  withCredentials: true,
+});
+
+    setUser(data.user ?? data);
+    setSuccess("تم تحديث المعلومات بنجاح ✓");
+    setAvatarFile(null);
+  } catch (err: unknown) {
+    setError((err as any)?.response?.data?.message ?? "حدث خطأ، حاول مجدداً");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ── تغيير كلمة المرور ──
   const handleChangePassword = async (e: React.FormEvent) => {

@@ -41,3 +41,28 @@ export async function cancelDonationRequest(requestId: string) {
   );
   return data;
 }
+
+export async function respondToDonationRequest(
+  requestId: string,
+  data: {
+    condition: 'جديد' | 'مستعمل ممتاز' | 'مستعمل جيد';
+    safeHub:   string;
+    description?: string;
+    location?:    string;
+  },
+  imageFile?: File
+): Promise<{ msg: string; item: { _id: string; title: string; safeHub: { name: string; city: string } } }> {
+  const formData = new FormData();
+  formData.append('condition',   data.condition);
+  formData.append('safeHub',     data.safeHub);
+  if (data.description) formData.append('description', data.description);
+  if (data.location)    formData.append('location',    data.location);
+  if (imageFile)        formData.append('image',       imageFile);
+
+  const res = await axiosInstance.post(
+    `/api/donation-requests/${requestId}/respond`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  );
+  return res.data;
+}

@@ -34,3 +34,10 @@ export interface MyDonationRequestsResponse {
   requests: DonationRequest[];
   quota: { used: number; max: number; remaining: number; };
 }
+
+export interface RespondToRequestPayload {
+  condition:    'جديد' | 'مستعمل ممتاز' | 'مستعمل جيد';
+  safeHub:      string;
+  description?: string;
+  location?:    string;
+}

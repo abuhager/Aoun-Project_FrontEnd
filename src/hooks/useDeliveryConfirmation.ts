@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useSocket } from '@/hooks/useSocket';
-import axiosInstance from '@/lib/api/axiosInstance';
+import { completeDelivery } from '@/lib/api/itemApi'; // ✅ [ARCH-3] استيراد مركزي
 import toast from 'react-hot-toast';
 
 type ConfirmationType = 'recipient_confirm' | 'donor_confirm';
@@ -19,7 +19,7 @@ type DeliveryStatus =
 interface UseDeliveryConfirmationProps {
   itemId: string;
   userRole: 'donor' | 'recipient';
-  initialRecipientConfirmed?: boolean; // ✅ جديد — نمرره من الـ item
+  initialRecipientConfirmed?: boolean; 
   onSuccess?: (itemId: string) => void;
 }
 
@@ -40,7 +40,6 @@ export function useDeliveryConfirmation({
 }: UseDeliveryConfirmationProps): UseDeliveryConfirmationReturn {
   const socketRef = useSocket();
 
-  // ✅ إذا المستلم كان قد أكّد مسبقاً (من DB)، نبدأ بـ waiting_donor
   const [status, setStatus] = useState<DeliveryStatus>(
     initialRecipientConfirmed ? 'waiting_donor' : 'idle'
   );
@@ -75,62 +74,51 @@ export function useDeliveryConfirmation({
   }, [socketRef, itemId, onSuccess]);
 
   // ── API call ──────────────────────────────────────────────
-  // src/hooks/useDeliveryConfirmation.ts — تحديث sendConfirmation
-const sendConfirmation = useCallback(
-  async (confirmationType: ConfirmationType) => {
-    // ✅ منع الضغط المزدوج — إذا يوجد طلب جارٍ، ارفض الجديد
-    if (isLoading) return;
+  const sendConfirmation = useCallback(
+    async (confirmationType: ConfirmationType) => {
+      if (isLoading) return;
 
-    setLoading(true);
-    setErrorMsg(null);
+      setLoading(true);
+      setErrorMsg(null);
 
-    // ✅ Optimistic UI — حدّث الحالة فوراً قبل انتظار الـ API
-    const previousStatus = status;
-    if (confirmationType === 'recipient_confirm') {
-      setStatus('recipient_confirming');
-    } else {
-      setStatus('donor_confirming');
-    }
+      const previousStatus = status;
+      setStatus(confirmationType === 'recipient_confirm' ? 'recipient_confirming' : 'donor_confirming');
 
-    try {
-      const { data } = await axiosInstance.put(`/api/items/complete/${itemId}`, {
-        confirmationType,
-      });
+      try {
+        // ✅ [ARCH-3] استخدام الدالة المركزية بدلاً من الاستدعاء المباشر لـ axiosInstance
+        const data = await completeDelivery(itemId, confirmationType);
 
-      if (confirmationType === 'recipient_confirm') {
-        setStatus('waiting_donor');
-        toast.success(data.msg ?? 'تم تأكيد الاستلام ✅');
-      } else {
-        setStatus('completed');
-        toast.success(data.msg ?? 'تم التسليم بنجاح 🎉');
-        onSuccess?.(itemId);
+        if (confirmationType === 'recipient_confirm') {
+          setStatus('waiting_donor');
+          toast.success(data.msg ?? 'تم تأكيد الاستلام ✅');
+        } else {
+          setStatus('completed');
+          toast.success(data.msg ?? 'تم التسليم بنجاح 🎉');
+          onSuccess?.(itemId);
+        }
+      } catch (err: unknown) {
+        setStatus(previousStatus);
+
+        const msg =
+          (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ??
+          'حدث خطأ — حاول مرة أخرى';
+        const code =
+          (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+
+        setErrorMsg(msg);
+        if (code !== 'ALREADY_DELIVERED') {
+          toast.error(msg);
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (err: unknown) {
-      // ✅ Rollback الـ Optimistic UI عند الفشل
-      setStatus(previousStatus);
-
-      const msg =
-        (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ??
-        'حدث خطأ — حاول مرة أخرى';
-      const code =
-        (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
-
-      setErrorMsg(msg);
-      if (code !== 'ALREADY_DELIVERED') {
-        // لا تُظهر خطأ إذا كان التسليم مكتملاً بالفعل
-        toast.error(msg);
-      }
-    } finally {
-      setLoading(false);
-    }
-  },
-  [itemId, isLoading, status, onSuccess]
-);
+    },
+    [itemId, isLoading, status, onSuccess]
+  );
 
   const confirmReceipt = () => sendConfirmation('recipient_confirm');
   const confirmDelivery = () => sendConfirmation('donor_confirm');
 
-  // ✅ المتبرع يقدر يضغط فقط إذا المستلم أكّد (waiting_donor)
   const canConfirm =
     !isLoading &&
     status !== 'completed' &&

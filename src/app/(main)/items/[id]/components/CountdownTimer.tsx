@@ -2,36 +2,39 @@
 import { useEffect, useState } from "react";
 
 interface CountdownTimerProps {
-  bookedAt: string;
-  isBooker: boolean;
-  isDonor: boolean;
+  bookedAt:    string;
+  isBooker:    boolean;
+  isDonor:     boolean;
+  // ✅ [FIX-6] expiryHours ديناميكي من Admin Settings — لا hardcoded 72
+  expiryHours: number;
 }
 
-export function CountdownTimer({ bookedAt, isBooker, isDonor }: CountdownTimerProps) {
+export function CountdownTimer({ bookedAt, isBooker, isDonor, expiryHours }: CountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState("");
   const [isUrgent, setIsUrgent] = useState(false);
 
   useEffect(() => {
     const calc = () => {
-      const deadline = new Date(bookedAt).getTime() + 72 * 60 * 60 * 1000;
+      const deadline = new Date(bookedAt).getTime() + expiryHours * 60 * 60 * 1000;
       const diff = deadline - Date.now();
       if (diff <= 0) {
         setTimeLeft("انتهى الوقت ⛔");
+        setIsUrgent(false);
         return;
       }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       const s = Math.floor((diff % 60000) / 1000);
-      setIsUrgent(h < 6);
+      // حد الإلحاح = 10% من المهلة الكاملة
+      setIsUrgent(h < Math.ceil(expiryHours * 0.1));
       setTimeLeft(`${h}س ${String(m).padStart(2, "0")}د ${String(s).padStart(2, "0")}ث`);
     };
 
     calc();
     const t = setInterval(calc, 1000);
     return () => clearInterval(t);
-  }, [bookedAt]);
+  }, [bookedAt, expiryHours]);
 
-  // ─── النصوص حسب نوع المستخدم ───
   const title = isBooker
     ? isUrgent ? "⚠️ وقتك ينفد!" : "⏱️ مهلة استلامك للغرض"
     : isDonor

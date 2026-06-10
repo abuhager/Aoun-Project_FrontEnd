@@ -1,8 +1,7 @@
 // src/types/item.types.ts
 
-// ✅ حذف AuthUser من الـ import — لم يعد مستخدماً
 import type { PublicUser, BookedByUser } from './user.types';
-import { SafeHub } from "./hub.types"; // ✅ استيراد النوع
+import { SafeHub } from "./hub.types";
 
 export type ItemStatus   = 'متاح' | 'محجوز' | 'تم التسليم' | 'مخفي';
 export type ItemCategory = 'كتب' | 'إلكترونيات' | 'أثاث' | 'أخرى' | 'ملابس';
@@ -36,8 +35,11 @@ export interface Item {
   bookedBy?:            BookedByUser | null;
   waitlist?:            WaitlistEntry[];
   safeHub?:             SafeHub;
-  donorConfirmed?:      boolean;
-  recipientConfirmed?:  boolean; // ✅ تأكيد الاستلام من المستلم
+  // ✅ [FIX-A] حُذف deliveryOtp بالكامل
+  recipientConfirmed?:  boolean;
+  recipientConfirmedAt?: string | null;
+  donorConfirmedAt?:    string | null;
+  deliveredAt?:         string | null;
 }
 
 export interface ItemSummary {
@@ -48,7 +50,6 @@ export interface ItemSummary {
   category:  ItemCategory;
   location:  string;
   createdAt: string;
-  // ✅ بدل Pick<PublicUser,...> — نُعرّف الحقول مباشرة لتجنب خطأ الـ keyof
   donor: {
     _id:    string;
     name:   string;
@@ -67,13 +68,12 @@ export interface DashboardItem {
   isRated:     boolean;
   rating?:     number | null;
   reportCount: number;
-  reportId?:   string;          // ✅ إضافة — لزر الاعتراض
+  reportId?:   string;
   bookedAt?:   string | null;
   createdAt:   string;
   updatedAt:   string;
-  donorConfirmed?:      boolean;
   recipientConfirmed?: boolean;
-
+  donorConfirmed?:     boolean;
   donor: {
     _id:    string;
     name:   string;
@@ -82,7 +82,7 @@ export interface DashboardItem {
   bookedBy?:  BookedByUser | null;
   waitlist?:  WaitlistEntry[];
 }
-// ✅ نوع خاص بـ user object في /api/items/me
+
 export interface MyItemsUser {
   _id: string;
   name: string;
@@ -94,9 +94,9 @@ export interface MyItemsUser {
   isVerified?: boolean;
   isVerifiedStudent?: boolean;
   gamification?: {
-    level: number;
-    xp: number;
-    badges: string[];
+    level:      number;
+    xp:         number;
+    badges:     string[];
     trustScore: number;
   };
 }
@@ -132,8 +132,8 @@ export interface BookItemResponse {
 }
 
 export interface RateItemResponse {
-  msg:          string;
-  gamification: {        // ← كان trustScore: number
+  msg: string;
+  gamification: {
     trustScore:     number;
     totalDonations: number;
     level:          number;
@@ -143,6 +143,7 @@ export interface RateItemResponse {
     pointsToNext:   number | null;
   };
 }
+
 export interface ItemFilters {
   category?: ItemCategory;
   location?: string;

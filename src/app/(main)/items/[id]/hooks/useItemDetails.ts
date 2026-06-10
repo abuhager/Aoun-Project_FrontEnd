@@ -1,9 +1,10 @@
+// src/app/(main)/items/[id]/hooks/useItemDetails.ts
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter }             from "next/navigation";
 import { getItemById, bookItem, cancelBooking } from "@/lib/api/itemApi";
-import { Item } from "@/types/item.types";
-import { useAuth } from "@/context/AuthContext";
-import axios from "axios"; // ✅ إضافة
+import { Item }                             from "@/types/item.types";
+import { useAuth }                          from "@/context/AuthContext";
+import axios                                from "axios";
 
 const getId = (field: unknown): string | null => {
   if (!field) return null;
@@ -22,8 +23,8 @@ interface ConfirmModalState {
 }
 
 export function useItemDetails() {
-  const { id } = useParams();
-  const router  = useRouter();
+  const { id }   = useParams();
+  const router   = useRouter();
   const { user, isLoading: authLoading, isLoggedIn } = useAuth();
 
   const [item,          setItem]          = useState<Item | null>(null);
@@ -66,8 +67,11 @@ export function useItemDetails() {
       return;
     }
     setConfirmModal({
-      show: true,
-      msg:  "هل تريد الانضمام لهذا الطابور؟",
+      show:     true,
+      // ✅ [FIX-A] رسائل بدون أي ذكر لـ OTP
+      msg:      item?.status === "متاح"
+        ? "هل تريد حجز هذا الغرض؟ ستحتاج للتوجه إلى مركز التسليم وتأكيد الاستلام."
+        : "هل تريد الانضمام لقائمة الانتظار؟",
       isDanger: false,
       onConfirm: async () => {
         setConfirmModal((prev) => ({ ...prev, show: false }));
@@ -78,7 +82,6 @@ export function useItemDetails() {
           setMessage({ type: "success", text: res.message ?? "تم طلبك بنجاح" });
           fetchItem();
         } catch (err: unknown) {
-          // ✅ axios type-safe error handling
           const msg = axios.isAxiosError(err)
             ? err.response?.data?.msg ?? "حدث خطأ أثناء الطلب"
             : "حدث خطأ أثناء الطلب";
@@ -88,7 +91,7 @@ export function useItemDetails() {
         }
       },
     });
-  }, [authLoading, isLoggedIn, id, router, fetchItem]);
+  }, [authLoading, isLoggedIn, id, router, fetchItem, item?.status]);
 
   const handleCancelAction = useCallback(() => {
     const isDanger   = isBooker || isDonor;
@@ -111,7 +114,6 @@ export function useItemDetails() {
           setMessage({ type: "success", text: res.msg ?? "تم الإلغاء بنجاح" });
           fetchItem();
         } catch (err: unknown) {
-          // ✅ axios type-safe error handling
           const msg = axios.isAxiosError(err)
             ? err.response?.data?.msg ?? "حدث خطأ أثناء الإلغاء"
             : "حدث خطأ أثناء الإلغاء";
@@ -124,21 +126,10 @@ export function useItemDetails() {
   }, [id, isBooker, isDonor, fetchItem]);
 
   return {
-    item,
-    loading,
-    message,
-    setMessage,
-    actionLoading,
-    currentUserId,
-    isDonor,
-    isBooker,
-    isWaitlisted,
-    isCancelledBefore,
-    confirmModal,
-    setConfirmModal,
-    handleRequestItem,
-    handleCancelAction,
-    fetchItem,
-    // ✅ حذف onConfirm — استخدم confirmModal.onConfirm مباشرة
+    item, loading, message, setMessage,
+    actionLoading, currentUserId,
+    isDonor, isBooker, isWaitlisted, isCancelledBefore,
+    confirmModal, setConfirmModal,
+    handleRequestItem, handleCancelAction, fetchItem,
   };
 }

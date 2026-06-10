@@ -8,7 +8,8 @@ import { CountdownTimer }       from "./components/CountdownTimer";
 import { useItemDetails }       from "./hooks/useItemDetails";
 import LevelGate                from "@/components/LevelGate";
 import DeliveryConfirmButton    from "@/components/DeliveryConfirmButton";
-import ChatDrawer               from "@/components/ChatDrawer"; // ✅
+import ChatDrawer               from "@/components/ChatDrawer";
+import { useSettings }          from "@/hooks/useSettings"; // ✅ [FIX-6]
 
 const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -20,7 +21,11 @@ export default function ItemDetailsPage() {
     handleRequestItem, handleCancelAction,
   } = useItemDetails();
 
-  const [chatOpen, setChatOpen] = useState(false); // ✅
+  // ✅ [FIX-6] مهلة الحجز من Admin Settings — لا hardcoded
+  const { settings } = useSettings();
+  const expiryHours = settings?.bookingExpiryHours ?? 72;
+
+  const [chatOpen, setChatOpen] = useState(false);
 
   if (loading) {
     return (
@@ -38,9 +43,9 @@ export default function ItemDetailsPage() {
     ? item.imageUrl
     : `${backendUrl}/${item.imageUrl}`;
 
-  const showCountdown          = item.status === "محجوز" && (isBooker || isDonor);
+  const showCountdown           = item.status === "محجوز" && (isBooker || isDonor);
   const initialRecipientConfirmed = item.recipientConfirmed === true;
-  const showChat               = (isDonor || isBooker) && item.status === "محجوز"; // ✅
+  const showChat                = (isDonor || isBooker) && item.status === "محجوز";
 
   return (
     <div className="bg-surface min-h-screen text-[#191c1d] pb-20" dir="rtl">
@@ -54,7 +59,6 @@ export default function ItemDetailsPage() {
         />
       )}
 
-      {/* ✅ Chat Drawer */}
       {showChat && (
         <ChatDrawer
           itemId={item._id}
@@ -66,7 +70,6 @@ export default function ItemDetailsPage() {
 
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-5xl mx-auto">
 
-        {/* ─── Breadcrumb ─── */}
         <nav className="mb-6 flex items-center gap-2 text-on-surface-variant text-xs font-medium">
           <Link href="/browse" className="hover:text-primary transition-colors">تصفح التبرعات</Link>
           <span className="material-symbols-outlined text-[10px]">chevron_left</span>
@@ -75,7 +78,6 @@ export default function ItemDetailsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
 
-          {/* ─── صورة الغرض ─── */}
           <div className="relative rounded-3xl overflow-hidden bg-white aspect-square border border-[#edeeef] shadow-sm">
             <Image
               src={imageUrl}
@@ -87,10 +89,8 @@ export default function ItemDetailsPage() {
             />
           </div>
 
-          {/* ─── تفاصيل الغرض ─── */}
           <div className="flex flex-col gap-6">
 
-            {/* Tags والعنوان */}
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold">
@@ -114,10 +114,15 @@ export default function ItemDetailsPage() {
               </p>
             </div>
 
-            {/* ─── Countdown Timer ─── */}
+            {/* ── Countdown Timer ✅ [FIX-6] expiryHours ديناميكي ── */}
             {showCountdown && (
               item.bookedAt ? (
-                <CountdownTimer bookedAt={item.bookedAt} isBooker={isBooker} isDonor={isDonor} />
+                <CountdownTimer
+                  bookedAt={item.bookedAt}
+                  isBooker={isBooker}
+                  isDonor={isDonor}
+                  expiryHours={expiryHours}
+                />
               ) : (
                 <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl">
                   <span className="material-symbols-outlined text-amber-600 text-xl">timer</span>
@@ -127,15 +132,14 @@ export default function ItemDetailsPage() {
                     </p>
                     <p className="text-[11px] text-amber-700 font-medium mt-1 leading-relaxed">
                       {isBooker
-                        ? "يجب إتمام الاستلام خلال 72 ساعة كحد أقصى."
-                        : "في حال لم يستلم الحاجز خلال 72 ساعة، سيعود الغرض متاحاً."}
+                        ? `يجب إتمام الاستلام خلال ${expiryHours} ساعة كحد أقصى.`
+                        : `في حال لم يستلم الحاجز خلال ${expiryHours} ساعة، سيعود الغرض متاحاً.`}
                     </p>
                   </div>
                 </div>
               )
             )}
 
-            {/* ─── معلومات الغرض ─── */}
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: "الموقع",    val: item.location,                                        ic: "distance"      },
@@ -150,7 +154,6 @@ export default function ItemDetailsPage() {
               ))}
             </div>
 
-            {/* ─── بطاقة المتبرع ─── */}
             <Link
               href={`/profile/${item.donor?._id}`}
               className="bg-white p-4 rounded-2xl flex items-center justify-between border border-gray-100 shadow-sm hover:ring-2 ring-primary/10 transition-all group"
@@ -175,7 +178,6 @@ export default function ItemDetailsPage() {
               </span>
             </Link>
 
-            {/* ─── مركز التسليم ─── */}
             {item.safeHub && (
               <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-2">
                 <div className="flex items-center gap-2 mb-1">
@@ -196,7 +198,6 @@ export default function ItemDetailsPage() {
               </div>
             )}
 
-            {/* ─── رسائل الحالة والأزرار ─── */}
             <div className="space-y-4">
               {message.text && (
                 <div className={`p-4 rounded-2xl text-center text-xs font-bold border ${
@@ -210,7 +211,6 @@ export default function ItemDetailsPage() {
 
               <div className="flex flex-col gap-3">
 
-                {/* ── المتبرع ── */}
                 {isDonor ? (
                   <div className="space-y-3">
                     <div className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-bold text-center border-2 border-dashed text-sm">
@@ -218,6 +218,7 @@ export default function ItemDetailsPage() {
                     </div>
                     {item.status === "محجوز" && (
                       <>
+                        {/* ✅ [FIX-A] Double Confirmation بدون OTP */}
                         <DeliveryConfirmButton
                           itemId={item._id}
                           userRole="donor"
@@ -236,19 +237,16 @@ export default function ItemDetailsPage() {
                     )}
                   </div>
 
-                /* ── تم التسليم ── */
                 ) : item.status === "تم التسليم" ? (
                   <div className="w-full py-4 bg-emerald-50 text-emerald-600 rounded-2xl font-bold text-center text-sm">
                     تم التسليم بنجاح ✅
                   </div>
 
-                /* ── ملغى مسبقاً ── */
                 ) : isCancelledBefore ? (
                   <div className="w-full py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold text-center text-sm">
                     لا يمكنك حجز هذا الغرض مرة أخرى 🚫
                   </div>
 
-                /* ── الحاجز الحالي ── */
                 ) : isBooker ? (
                   <div className="space-y-3">
                     {item.status === "محجوز" && (
@@ -269,7 +267,6 @@ export default function ItemDetailsPage() {
                     </button>
                   </div>
 
-                /* ── في قائمة الانتظار ── */
                 ) : isWaitlisted ? (
                   <button
                     onClick={handleCancelAction}
@@ -279,7 +276,6 @@ export default function ItemDetailsPage() {
                     الانسحاب من الانتظار 🚶‍♂️
                   </button>
 
-                /* ── متاح للحجز ── */
                 ) : item.status === "متاح" ? (
                   <LevelGate>
                     <button
@@ -291,7 +287,6 @@ export default function ItemDetailsPage() {
                     </button>
                   </LevelGate>
 
-                /* ── قائمة الانتظار ── */
                 ) : (
                   <button
                     onClick={handleRequestItem}
@@ -302,7 +297,6 @@ export default function ItemDetailsPage() {
                   </button>
                 )}
 
-                {/* ✅ زر التواصل — يظهر فقط للطرفين وقت الحجز */}
                 {showChat && (
                   <button
                     onClick={() => setChatOpen(true)}

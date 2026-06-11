@@ -60,40 +60,80 @@ export default function DonationRequestDetailPage() {
   }, [fetchRequest, fetchOffers]);
 
   // ── قبول عرض ─────────────────────────────────────────────
-  const handleAcceptOffer = async (offerId: string) => {
-    setAccepting(offerId);
-    try {
-      const r = await axiosInstance.post(
-        `/api/donation-requests/${id}/offers/${offerId}/accept`
-      );
-      showToast('🎉 تم اختيار المتبرع بنجاح!', true);
-      await fetchRequest();
-      setOffers([]);
-      router.push(`/items/${r.data.itemId}`);
-    } catch (err) {
-      showToast(extractErrorMsg(err, 'تعذر قبول العرض'), false);
-    } finally {
-      setAccepting(null);
+  // في handleAcceptOffer — أضف console مؤقت للتشخيص
+const handleAcceptOffer = async (offerId: string) => {
+  setAccepting(offerId);
+  try {
+    const r = await axiosInstance.post(
+      `/api/donation-requests/${id}/offers/${offerId}/accept`
+    );
+
+    // ✅ استخرج الـ ID بشكل آمن — جرّب كل الاحتمالات
+    const itemId = r.data?.itemId ?? r.data?.item?._id ?? r.data?.item?.id;
+
+    showToast('🎉 تم اختيار المتبرع بنجاح!', true);
+    await fetchRequest();
+    setOffers([]);
+
+    if (itemId) {
+      router.push(`/items/${itemId}`);
+    } else {
+      // ✅ fallback: ابقَ في نفس الصفحة إذا ما وصل الـ ID
+      showToast('🎉 تم الاختيار! راجع تفاصيل التسليم أدناه', true);
     }
-  };
+  } catch (err) {
+    showToast(extractErrorMsg(err, 'تعذر قبول العرض'), false);
+  } finally {
+    setAccepting(null);
+  }
+};
 
   // ── تأكيد استلام الغرض ───────────────────────────────────
-  const handleConfirmReceipt = async () => {
-    if (!request?.fulfilledByItem?._id) return;
-    setConfirming(true);
-    try {
-      await axiosInstance.put(
-        `/api/items/complete/${request.fulfilledByItem._id}`,
-        { confirmationType: 'recipient_confirm' }
-      );
-      showToast('✅ تم تأكيدك — في انتظار تأكيد المتبرع', true);
+const handleConfirmReceipt = async () => {
+  if (!request?.fulfilledByItem?._id) return;
+  setConfirming(true);
+  try {
+    await axiosInstance.put(
+      `/api/items/complete/${request.fulfilledByItem._id}`,
+      { confirmationType: 'recipient_confirm' }
+    );
+
+    // ✅ Optimistic Update أولاً — فوري بدون انتظار
+    setRequest((prev) => {
+      if (!prev?.fulfilledByItem) return prev;
+      return {
+        ...prev,
+        fulfilledByItem: {
+          ...prev.fulfilledByItem,
+          recipientConfirmed: true,
+        },
+      };
+    });
+
+    showToast('✅ تم تأكيدك — في انتظار تأكيد المتبرع', true);
+
+    // ✅ fetch بعد 800ms — يعطي الـ DB وقت يكتمل قبل ما نجلب
+    setTimeout(async () => {
       await fetchRequest();
-    } catch (err) {
-      showToast(extractErrorMsg(err, 'تعذر تأكيد الاستلام'), false);
-    } finally {
-      setConfirming(false);
-    }
-  };
+    }, 800);
+
+  } catch (err) {
+    // ✅ Rollback الـ optimistic update لو فشل
+    setRequest((prev) => {
+      if (!prev?.fulfilledByItem) return prev;
+      return {
+        ...prev,
+        fulfilledByItem: {
+          ...prev.fulfilledByItem,
+          recipientConfirmed: false,
+        },
+      };
+    });
+    showToast(extractErrorMsg(err, 'تعذر تأكيد الاستلام'), false);
+  } finally {
+    setConfirming(false);
+  }
+};
 
   // ── Guards ────────────────────────────────────────────────
   if (loading) return (
@@ -276,7 +316,10 @@ export default function DonationRequestDetailPage() {
             )}
 
             <button
-              onClick={() => router.push(`/items/${respondedItem._id}`)}
+              onClick={() => {
+  if (respondedItem._id) 
+    router.push(`/items/${respondedItem._id}?ref=donation-request`);
+}}
               className="w-full py-2.5 rounded-2xl text-xs font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all"
             >
               عرض صفحة الغرض كاملة ←

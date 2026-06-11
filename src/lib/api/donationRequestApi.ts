@@ -104,7 +104,7 @@ export async function respondToDonationRequest(
   }
 
   const { data } = await axiosInstance.post<RespondResponse>(
-    `/api/donation-requests/${requestId}/respond`,
+    `/api/donation-requests/${requestId}/offer`,
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } }
   );

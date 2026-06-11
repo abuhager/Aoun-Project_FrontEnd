@@ -35,9 +35,8 @@ export interface GetOffersResponse {
   offers: DonationOffer[];
 }
 
-export interface AcceptOfferPayload {
-  // لا يحتاج body — requestId و offerId في الـ URL
-}
+export type AcceptOfferPayload = Record<string, never>;
+
 
 // ── طلب التبرع (DonationRequest) ────────────────────────────
 export interface DonationRequest {

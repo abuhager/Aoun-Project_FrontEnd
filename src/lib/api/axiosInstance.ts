@@ -25,7 +25,6 @@ const INIT_TIMEOUT_MS =
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
-// ✅ دالة تجديد الكوكي لتوحيد مؤشر الجلسة ومنع التناقض بعد الـ Refresh
 function refreshSessionCookie() {
   if (typeof document === 'undefined') return;
   const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -89,14 +88,20 @@ const axiosInstance = axios.create({
 // ─────────────────────────────────────────────
 // Route Classifiers
 // ─────────────────────────────────────────────
+
+// ✅ [FIX] حُذف /auth/me من هنا — كان يتخطى initQueue فيُرسل بدون Bearer token
+// Routes هنا = لا تحتاج token أصلاً (login, register, refresh...)
 const isAuthSafeUrl = (url: string): boolean =>
   url.includes("/auth/refresh")  ||
   url.includes("/auth/login")    ||
   url.includes("/auth/register") ||
   url.includes("/auth/verify")   ||
   url.includes("/auth/forgot")   ||
-  url.includes("/auth/reset")    ||
-  url.includes("/auth/me");
+  url.includes("/auth/reset");
+
+// ✅ [FIX] /auth/me يحتاج token لكن عند 401 لا نُعيد redirect (زائر = طبيعي)
+// مُنفصلة عن isAuthSafeUrl لأنها تحتاج انتظار initQueue لتحصل على الـ token
+const isAuthMeUrl = (url: string): boolean => url.includes("/auth/me");
 
 const PUBLIC_PATH_PATTERNS: RegExp[] = [
   /^\/api\/items(\/[^/]+)?\/?$/,
@@ -122,6 +127,7 @@ axiosInstance.interceptors.request.use(
     const url    = config.url    ?? "";
     const method = config.method ?? "get";
 
+    // ✅ isAuthMeUrl لا تُضاف هنا — تدخل initQueue عشان تاخذ token
     const skipInitCheck = isAuthSafeUrl(url) || isPublicUrl(url, method);
 
     if (!isInitialized && !skipInitCheck) {
@@ -133,6 +139,7 @@ axiosInstance.interceptors.request.use(
         initQueue.push(() => {
           clearTimeout(timer);
           if (!accessToken && !isPublicUrl(url, method)) {
+            // زائر = لا token = رفض هادئ بدون redirect
             reject(new Error("NOT_AUTHENTICATED"));
             return;
           }
@@ -186,23 +193,22 @@ axiosInstance.interceptors.response.use(
     if (!originalRequest) return Promise.reject(error);
     if (error.message === "NOT_AUTHENTICATED") return Promise.reject(error);
 
-    // ─── تطبيق الإصلاح المصلح لـ AUTH_INIT_TIMEOUT ───────────────────
+    // ─── AUTH_INIT_TIMEOUT handler ─────────────────────────────────────
     if (error.message === "AUTH_INIT_TIMEOUT" && !originalRequest._initRetry) {
       originalRequest._initRetry = true;
 
-      // ✅ إذا لا يوجد accessToken بعد التهيئة ← المستخدم زائر ← رفض فوري ودون تأخير عشوائي
       if (!accessToken) {
         return Promise.reject(new Error("NOT_AUTHENTICATED"));
       }
 
-      // فقط لو يوجد token (حالة نادرة: race condition حقيقي) نُعيد المحاولة
       return axiosInstance(originalRequest);
     }
-    // ─────────────────────────────────────────────────────────────
 
     const status      = error.response?.status;
     const url         = originalRequest.url ?? "";
-    const isAuthRoute = isAuthSafeUrl(url);
+
+    // ✅ [FIX] isAuthMeUrl مُضافة هنا لمنع refresh loop عند 401 للزائر
+    const isAuthRoute = isAuthSafeUrl(url) || isAuthMeUrl(url);
 
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -231,7 +237,7 @@ axiosInstance.interceptors.response.use(
 
         const newToken = data.accessToken;
         setAccessToken(newToken);
-        refreshSessionCookie(); // ✅ استدعاء تجديد الكوكي هنا لمنع عدم التزامن مع الـ Rotation
+        refreshSessionCookie();
         processRefreshQueue(null, newToken);
 
         originalRequest.headers                = originalRequest.headers ?? {};
@@ -247,8 +253,7 @@ axiosInstance.interceptors.response.use(
         if (typeof window !== "undefined") {
           const currentPath = window.location.pathname;
 
-          // ✅ استدعاء الفلاتر الموحدة بدلاً من القائمة المكررة
-          const isProtected = isProtectedPath(currentPath);
+          const isProtected   = isProtectedPath(currentPath);
           const notOnAuthPage = !isAuthOnlyPath(currentPath);
 
           if (isProtected && notOnAuthPage) {

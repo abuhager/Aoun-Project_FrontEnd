@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
-import axiosInstance from '@/lib/api/axiosInstance';
-import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
-import { useSocket } from '@/hooks/useSocket';
-import ChatDrawer from '@/components/ChatDrawer';
-import type { DonationRequest, DonationOffer } from '@/types/donationRequest.types';
+import { useParams, useRouter }                     from 'next/navigation';
+import Image                                         from 'next/image';
+import axiosInstance                                 from '@/lib/api/axiosInstance';
+import { extractErrorMsg }                           from '@/lib/api/extractErrorMsg';
+import { useSocket }                                 from '@/hooks/useSocket';
+import ChatDrawer                                    from '@/components/ChatDrawer';
+import type { DonationRequest, DonationOffer }       from '@/types/donationRequest.types';
 
+// ─────────────────────────────────────────────────────────────
 export default function DonationRequestDetailPage() {
   const { id }    = useParams<{ id: string }>();
   const router    = useRouter();
@@ -17,6 +18,7 @@ export default function DonationRequestDetailPage() {
   const [request,       setRequest]       = useState<DonationRequest | null>(null);
   const [offers,        setOffers]        = useState<DonationOffer[]>([]);
   const [loading,       setLoading]       = useState(true);
+  const [authLoading,   setAuthLoading]   = useState(true);
   const [accepting,     setAccepting]     = useState<string | null>(null);
   const [confirming,    setConfirming]    = useState(false);
   const [toast,         setToast]         = useState<{ msg: string; ok: boolean } | null>(null);
@@ -26,22 +28,28 @@ export default function DonationRequestDetailPage() {
     itemId: string; itemTitle: string;
   } | null>(null);
 
+  // ✅ ref لتجنب stale closure في Socket listeners
   const requestRef = useRef<DonationRequest | null>(null);
   useEffect(() => { requestRef.current = request; }, [request]);
 
-  const showToast = (msg: string, ok: boolean) => {
+  // ── Toast helper ───────────────────────────────────────────
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((msg: string, ok: boolean) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3500);
-  };
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  }, []);
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   // ── جلب المستخدم الحالي ────────────────────────────────────
   useEffect(() => {
     axiosInstance.get('/api/auth/me')
       .then((r) => setCurrentUserId(r.data?.user?._id ?? r.data?._id ?? null))
-      .catch(() => {});
+      .catch(() => setCurrentUserId(null))
+      .finally(() => setAuthLoading(false));
   }, []);
 
-  // ── جلب البيانات ──────────────────────────────────────────
+  // ── جلب بيانات الطلب ──────────────────────────────────────
   const fetchRequest = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -53,15 +61,16 @@ export default function DonationRequestDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, showToast]);
 
+  // ── جلب العروض (لصاحب الطلب فقط) ─────────────────────────
   const fetchOffers = useCallback(async () => {
     if (!id) return;
     try {
       const r = await axiosInstance.get(`/api/donation-requests/${id}/offers`);
       setOffers(r.data?.offers ?? []);
     } catch {
-      // ليس صاحب الطلب — لا يرى العروض، هذا طبيعي
+      // زائر عادي — طبيعي أن يُرفض الطلب
     }
   }, [id]);
 
@@ -76,22 +85,15 @@ export default function DonationRequestDetailPage() {
     if (!socket || !id) return;
 
     const handleRecipientConfirmed = (data: { itemId: string }) => {
-      const current = requestRef.current;
-      if (!current?.fulfilledByItem) return;
-      if (current.fulfilledByItem._id !== data.itemId) return;
+      if (requestRef.current?.fulfilledByItem?._id !== data.itemId) return;
       setRequest((prev) => {
         if (!prev?.fulfilledByItem) return prev;
-        return {
-          ...prev,
-          fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: true },
-        };
+        return { ...prev, fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: true } };
       });
     };
 
     const handleDeliveryCompleted = (data: { itemId: string }) => {
-      const current = requestRef.current;
-      if (!current?.fulfilledByItem) return;
-      if (current.fulfilledByItem._id !== data.itemId) return;
+      if (requestRef.current?.fulfilledByItem?._id !== data.itemId) return;
       setRequest((prev) => {
         if (!prev?.fulfilledByItem) return prev;
         return {
@@ -110,28 +112,29 @@ export default function DonationRequestDetailPage() {
 
     socket.on('recipient:confirmed', handleRecipientConfirmed);
     socket.on('delivery:completed',  handleDeliveryCompleted);
-
     return () => {
       socket.off('recipient:confirmed', handleRecipientConfirmed);
       socket.off('delivery:completed',  handleDeliveryCompleted);
     };
-  }, [id, socketRef]);
+  }, [id, socketRef, showToast]);
 
   // ── قبول عرض ──────────────────────────────────────────────
+  // ✅ [FIX] يقرأ itemId من الـ response ويعمل redirect بعد fetchRequest
   const handleAcceptOffer = async (offerId: string) => {
     setAccepting(offerId);
     try {
-      await axiosInstance.post(
+      const res = await axiosInstance.post(
         `/api/donation-requests/${id}/offers/${offerId}/accept`
       );
-
-      showToast('🎉 تم اختيار المتبرع! راجع تفاصيل التسليم أدناه', true);
-
-      // ✅ [FIX-2 & FIX-3] أخفِ العروض وأعد جلب الطلب فقط
-      // لا ترسل المستخدم لصفحة الـ item — ابقه هنا ليرى CASE C
+      // ✅ backend يرجع itemId بعد Transaction ناجحة
+      const itemId = res.data?.itemId as string | undefined;
+      showToast('🎉 تم اختيار المتبرع وحجز الغرض! راجع تفاصيل التسليم أدناه', true);
       setOffers([]);
       await fetchRequest();
-
+      // ✅ انتقل لصفحة الغرض فوراً
+      if (itemId) {
+        router.push(`/items/${itemId}?ref=donation-request`);
+      }
     } catch (err) {
       showToast(extractErrorMsg(err, 'تعذر قبول العرض'), false);
     } finally {
@@ -139,37 +142,29 @@ export default function DonationRequestDetailPage() {
     }
   };
 
-  // ── تأكيد استلام الغرض ────────────────────────────────────
+  // ── تأكيد استلام الغرض (Optimistic Update + Rollback) ─────
   const handleConfirmReceipt = async () => {
     if (!request?.fulfilledByItem?._id) return;
     setConfirming(true);
+
+    // Optimistic update
+    setRequest((prev) => {
+      if (!prev?.fulfilledByItem) return prev;
+      return { ...prev, fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: true } };
+    });
+
     try {
       await axiosInstance.put(
         `/api/items/complete/${request.fulfilledByItem._id}`,
         { confirmationType: 'recipient_confirm' }
       );
-
-      // ✅ تحديث optimistic
-      setRequest((prev) => {
-        if (!prev?.fulfilledByItem) return prev;
-        return {
-          ...prev,
-          fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: true },
-        };
-      });
-
       showToast('✅ تم تأكيدك — في انتظار تأكيد المتبرع', true);
-      // ✅ Refresh حقيقي بعد ثانية لمزامنة الـ DB
       setTimeout(() => fetchRequest(), 800);
-
     } catch (err) {
-      // ✅ Rollback عند الفشل
+      // Rollback عند الفشل
       setRequest((prev) => {
         if (!prev?.fulfilledByItem) return prev;
-        return {
-          ...prev,
-          fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: false },
-        };
+        return { ...prev, fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: false } };
       });
       showToast(extractErrorMsg(err, 'تعذر تأكيد الاستلام'), false);
     } finally {
@@ -178,27 +173,28 @@ export default function DonationRequestDetailPage() {
   };
 
   // ── Guards ─────────────────────────────────────────────────
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
+  if (loading || authLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-surface">
       <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   if (!request) return (
-    <div className="min-h-screen flex items-center justify-center text-gray-400 font-bold">
+    <div className="min-h-screen flex items-center justify-center text-gray-400 font-bold bg-surface">
       الطلب غير موجود
     </div>
   );
 
+  // ── القيم المشتقة ──────────────────────────────────────────
   const isOwner       = currentUserId === request.requester._id;
-  const respondedItem = request.fulfilledByItem;
+  const respondedItem = request.fulfilledByItem ?? null;
   const recipientDone = respondedItem?.recipientConfirmed ?? false;
   const donorDone     = respondedItem?.donorConfirmed     ?? false;
   const fullyDone     = recipientDone && donorDone;
+  const showCaseB     = request.status === 'active' && !isOwner && !respondedItem;
+  const showChat      = !!respondedItem?._id && !fullyDone;
 
-  // ✅ [FIX-1] زر المحادثة يظهر فقط بعد تأكيد المستلم
-  const showChat = !!respondedItem?._id && !fullyDone && recipientDone;
-
+  // ─────────────────────────────────────────────────────────
   return (
     <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
 
@@ -207,7 +203,7 @@ export default function DonationRequestDetailPage() {
         <ChatDrawer
           itemId={chatTarget.itemId}
           itemTitle={chatTarget.itemTitle}
-          isOpen={!!chatTarget}
+          isOpen
           onClose={() => setChatTarget(null)}
         />
       )}
@@ -232,7 +228,7 @@ export default function DonationRequestDetailPage() {
           رجوع
         </button>
 
-        {/* بطاقة الطلب */}
+        {/* ── بطاقة الطلب ── */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <h1 className="text-lg font-black text-gray-900">{request.title}</h1>
@@ -257,35 +253,33 @@ export default function DonationRequestDetailPage() {
           </p>
         </div>
 
-        {/* CASE A: الطلب نشط + صاحب الطلب */}
-        {request.status === 'active' && isOwner && (
-          <>
-            {offers.length === 0 ? (
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 text-center space-y-2">
-                <span className="material-symbols-outlined text-4xl text-gray-300 block">hourglass_empty</span>
-                <p className="text-gray-400 text-sm font-bold">لا أحد عرض التبرع بعد</p>
-                <p className="text-gray-300 text-xs">ستصلك إشعارات فور تقديم أي شخص عرضاً 🔔</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <h2 className="text-base font-black text-gray-800 px-1">
-                  العروض المقدمة ({offers.length})
-                </h2>
-                {offers.map((offer) => (
-                  <OfferCard
-                    key={offer._id}
-                    offer={offer}
-                    onAccept={() => handleAcceptOffer(offer._id)}
-                    isAccepting={accepting === offer._id}
-                  />
-                ))}
-              </div>
-            )}
-          </>
+        {/* ── CASE A: صاحب الطلب + نشط ── */}
+        {request.status === 'active' && isOwner && !respondedItem && (
+          offers.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 text-center space-y-2">
+              <span className="material-symbols-outlined text-4xl text-gray-300 block">hourglass_empty</span>
+              <p className="text-gray-400 text-sm font-bold">لا أحد عرض التبرع بعد</p>
+              <p className="text-gray-300 text-xs">ستصلك إشعارات فور تقديم أي شخص عرضاً 🔔</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <h2 className="text-base font-black text-gray-800 px-1">
+                العروض المقدمة ({offers.length})
+              </h2>
+              {offers.map((offer) => (
+                <OfferCard
+                  key={offer._id}
+                  offer={offer}
+                  onAccept={() => handleAcceptOffer(offer._id)}
+                  isAccepting={accepting === offer._id}
+                />
+              ))}
+            </div>
+          )
         )}
 
-        {/* CASE B: الطلب نشط + زائر متبرع */}
-        {request.status === 'active' && !isOwner && (
+        {/* ── CASE B: زائر يريد التبرع ── */}
+        {showCaseB && (
           <div className="bg-white rounded-3xl border border-primary/20 shadow-sm p-6 text-center space-y-3">
             <span className="material-symbols-outlined text-3xl text-primary block">volunteer_activism</span>
             <p className="text-sm font-bold text-gray-700">هل تريد التبرع بهذا الغرض؟</p>
@@ -298,7 +292,7 @@ export default function DonationRequestDetailPage() {
           </div>
         )}
 
-        {/* CASE C: مرحلة التسليم */}
+        {/* ── CASE C: مرحلة التسليم ── */}
         {respondedItem && (
           <div className="bg-white rounded-3xl border border-primary/20 shadow-sm p-6 space-y-4">
             <div className="flex items-center gap-2">
@@ -308,31 +302,18 @@ export default function DonationRequestDetailPage() {
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-2 gap-3">
               <InfoRow label="المتبرع"    value={respondedItem.donor?.name ?? '—'} />
               <InfoRow label="حالة الغرض" value={respondedItem.condition} />
             </div>
 
             {/* مؤشر التأكيد المزدوج */}
             <div className="flex gap-3">
-              <div className={`flex-1 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-black ${
-                recipientDone ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'
-              }`}>
-                <span className="material-symbols-outlined text-[16px]">
-                  {recipientDone ? 'check_circle' : 'radio_button_unchecked'}
-                </span>
-                تأكيد المستلم
-              </div>
-              <div className={`flex-1 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-black ${
-                donorDone ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'
-              }`}>
-                <span className="material-symbols-outlined text-[16px]">
-                  {donorDone ? 'check_circle' : 'radio_button_unchecked'}
-                </span>
-                تأكيد المتبرع
-              </div>
+              <ConfirmIndicator label="تأكيد المستلم" done={recipientDone} />
+              <ConfirmIndicator label="تأكيد المتبرع" done={donorDone} />
             </div>
 
+            {/* نقطة التسليم الآمنة */}
             {!fullyDone && respondedItem.safeHub && (
               <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-1">
                 <p className="text-xs font-black text-primary">📍 نقطة التسليم الآمنة</p>
@@ -345,7 +326,7 @@ export default function DonationRequestDetailPage() {
               </div>
             )}
 
-            {/* أزرار التأكيد لصاحب الطلب */}
+            {/* أزرار التأكيد — لصاحب الطلب فقط */}
             {isOwner && (
               <div className="pt-2">
                 {!recipientDone ? (
@@ -373,13 +354,10 @@ export default function DonationRequestDetailPage() {
               </div>
             )}
 
-            {/* ✅ [FIX-1] زر المحادثة — بعد تأكيد المستلم فقط */}
+            {/* زر المحادثة */}
             {showChat && (
               <button
-                onClick={() => setChatTarget({
-                  itemId:    respondedItem._id,
-                  itemTitle: request.title,
-                })}
+                onClick={() => setChatTarget({ itemId: respondedItem._id, itemTitle: request.title })}
                 className="w-full py-2.5 rounded-2xl text-sm font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">chat</span>
@@ -387,14 +365,12 @@ export default function DonationRequestDetailPage() {
               </button>
             )}
 
-            {respondedItem._id && (
-              <button
-                onClick={() => router.push(`/items/${respondedItem._id}?ref=donation-request`)}
-                className="w-full py-2.5 rounded-2xl text-xs font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all"
-              >
-                عرض صفحة الغرض كاملة ←
-              </button>
-            )}
+            <button
+              onClick={() => router.push(`/items/${respondedItem._id}?ref=donation-request`)}
+              className="w-full py-2.5 rounded-2xl text-xs font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all"
+            >
+              عرض صفحة الغرض كاملة ←
+            </button>
           </div>
         )}
 
@@ -403,11 +379,26 @@ export default function DonationRequestDetailPage() {
   );
 }
 
-// ── مكوّن بطاقة العرض ─────────────────────────────────────────
-function OfferCard({
-  offer, onAccept, isAccepting,
-}: {
-  offer: DonationOffer; onAccept: () => void; isAccepting: boolean;
+// ── مكوّنات مساعدة داخلية ──────────────────────────────────────
+
+function ConfirmIndicator({ label, done }: { label: string; done: boolean }) {
+  return (
+    <div className={`flex-1 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-black ${
+      done ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'
+    }`}>
+      <span className="material-symbols-outlined text-[16px]">
+        {done ? 'check_circle' : 'radio_button_unchecked'}
+      </span>
+      {label}
+    </div>
+  );
+}
+
+// ✅ [FIX] أُزيل الـ redirect من OfferCard — المنطق كله في handleAcceptOffer
+function OfferCard({ offer, onAccept, isAccepting }: {
+  offer:       DonationOffer;
+  onAccept:    () => void;
+  isAccepting: boolean;
 }) {
   return (
     <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-3">
@@ -463,22 +454,18 @@ function OfferCard({
   );
 }
 
-// ── مكوّنات مساعدة ─────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
+  const styles: Record<string, string> = {
     active:    'bg-green-50 text-green-700 border-green-100',
     fulfilled: 'bg-blue-50 text-blue-700 border-blue-100',
     expired:   'bg-orange-50 text-orange-700 border-orange-100',
     cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
   };
   const labels: Record<string, string> = {
-    active:    'نشط',
-    fulfilled: 'تمت تلبيته',
-    expired:   'منتهي',
-    cancelled: 'ملغي',
+    active: 'نشط', fulfilled: 'تمت تلبيته', expired: 'منتهي', cancelled: 'ملغي',
   };
   return (
-    <span className={`text-[11px] font-black px-2.5 py-1 rounded-full border ${map[status] ?? ''}`}>
+    <span className={`text-[11px] font-black px-2.5 py-1 rounded-full border ${styles[status] ?? ''}`}>
       {labels[status] ?? status}
     </span>
   );

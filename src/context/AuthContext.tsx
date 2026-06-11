@@ -184,55 +184,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    if (isLoggingOut.current) return false;
-    if (refreshing.current)   return refreshing.current;
+  if (isLoggingOut.current) return false;
+  if (refreshing.current)   return refreshing.current;
 
-    refreshing.current = (async () => {
+  refreshing.current = (async () => {
+    try {
+      const { data } = await axiosInstance.post<{ accessToken: string }>(
+        "/api/auth/refresh",
+        {},
+        { withCredentials: true }
+      );
+      const token = data.accessToken;
+      setAccessToken(token);
+
+      // ✅ [FIX] حرّر الـ initQueue أولاً قبل /me
+      // لأن /me محمية وتحتاج token — بعد setInitialized(true)
+      // الـ interceptor سيرى accessToken ويُرفقه تلقائياً
+      setInitialized(true);
+
       try {
-        const { data } = await axiosInstance.post<{ accessToken: string }>(
-          "/api/auth/refresh",
-          {},
-          { withCredentials: true }
-        );
-        const token = data.accessToken;
-        setAccessToken(token);
-
-        try {
-          const meRes = await axiosInstance.get<AuthUser>("/api/auth/me", {
-            headers:         { Authorization: `Bearer ${token}` },
-            withCredentials: true,
-          });
-          setUser(meRes.data);
-          setInitialized(true);  // ✅ نجاح كامل
-          return true;
-        } catch (meError) {
-          // ✅ إصلاح B3 — refresh نجح لكن /me فشل
-          console.error("[AuthContext] /api/auth/me failed after refresh:", meError);
-          setAccessToken(null);
-          setUser(null);
-          // ✅ إصلاح B6 — نحرّر الـ queue حتى لا تتجمّد طلبات الزوار
-          setInitialized(false);
-          return false;
-        }
-      } catch (err) {
-        // refresh فشل — المستخدم زائر غير مسجّل (طبيعي تماماً)
-        if (axios.isAxiosError(err) && err.response?.status !== 401) {
-          console.error("[AuthContext] refreshSession error:", err);
-        }
+        const meRes = await axiosInstance.get<AuthUser>("/api/auth/me", {
+          withCredentials: true,
+          // ✅ لا حاجة لتمرير Authorization يدوياً — الـ interceptor يضيفه الآن
+        });
+        setUser(meRes.data);
+        return true;
+      } catch (meError) {
+        console.error("[AuthContext] /api/auth/me failed after refresh:", meError);
         setAccessToken(null);
         setUser(null);
-        // ✅ إصلاح B6 — حرّر الـ initQueue للزوار فوراً بدل تجميد الـ Navbar
-        // setInitialized(false) يُطلق initQueueRejects → NOT_AUTHENTICATED
-        // وهذا صحيح: الزوار لا يحتاجون token
         setInitialized(false);
         return false;
-      } finally {
-        refreshing.current = null;
       }
-    })();
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status !== 401) {
+        console.error("[AuthContext] refreshSession error:", err);
+      }
+      setAccessToken(null);
+      setUser(null);
+      setInitialized(false);
+      return false;
+    } finally {
+      refreshing.current = null;
+    }
+  })();
 
-    return refreshing.current;
-  }, [setUser]);
+  return refreshing.current;
+}, [setUser]);
 
   const logout = useCallback(async () => {
     isLoggingOut.current = true;

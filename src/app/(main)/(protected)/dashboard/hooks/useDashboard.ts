@@ -20,7 +20,7 @@ interface ConfirmModalState {
   open:      boolean;
   title:     string;
   message:   string;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
 }
 
 interface AppealModalState {
@@ -133,41 +133,42 @@ export function useDashboard() {
 
   // ─── 2. الاستماع لأحداث الـ Socket الحية ───
   useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
+  const socket = socketRef.current;
+  if (!socket) return;
 
-    socket.on('delivery:recipient_confirmed', ({ itemId, itemTitle }) => {
-      showToast(`✅ ${itemTitle} — المستلم أكّد الاستلام، يرجى تأكيد التسليم الآن`, 'success');
-      setDeliveryState({ itemId, waitingForDonor: true });
-      
-      setData(prev => prev ? {
-        ...prev,
-        myDonations: prev.myDonations.map(i => 
-          i._id === itemId ? { ...i, recipientConfirmed: true } : i
-        )
-      } : prev);
-    });
+  const handleRecipientConfirmed = ({ itemId, itemTitle }: { itemId: string; itemTitle: string }) => {
+    showToast(`✅ ${itemTitle} — المستلم أكّد الاستلام، يرجى تأكيد التسليم الآن`, 'success');
+    setDeliveryState({ itemId, waitingForDonor: true });
+    setData(prev => prev ? {
+      ...prev,
+      myDonations: prev.myDonations.map(i =>
+        i._id === itemId ? { ...i, recipientConfirmed: true } : i
+      )
+    } : prev);
+  };
 
-    socket.on('delivery:completed', ({ itemId }) => {
-      setData(prev => prev ? {
-        ...prev,
-        myDonations: prev.myDonations.map(i =>
-          i._id === itemId ? { ...i, status: 'تم التسليم' as const } : i
-        ),
-        myRequests: prev.myRequests.map(i =>
-          i._id === itemId ? { ...i, status: 'تم التسليم' as const } : i
-        ),
-      } : prev);
-      
-      setDeliveryState({ itemId: null, waitingForDonor: false });
-      showToast('تم التسليم بنجاح! شكراً لعطائك 💚', 'success');
-    });
+  const handleDeliveryCompleted = ({ itemId }: { itemId: string }) => {
+    setData(prev => prev ? {
+      ...prev,
+      myDonations: prev.myDonations.map(i =>
+        i._id === itemId ? { ...i, status: 'تم التسليم' as const } : i
+      ),
+      myRequests: prev.myRequests.map(i =>
+        i._id === itemId ? { ...i, status: 'تم التسليم' as const } : i
+      ),
+    } : prev);
+    setDeliveryState({ itemId: null, waitingForDonor: false });
+    showToast('تم التسليم بنجاح! شكراً لعطائك 💚', 'success');
+  };
 
-    return () => {
-      socket.off('delivery:recipient_confirmed');
-      socket.off('delivery:completed');
-    };
-  }, [socketRef, showToast]);
+  socket.on('delivery:recipient_confirmed', handleRecipientConfirmed);
+  socket.on('delivery:completed', handleDeliveryCompleted);
+
+  return () => {
+    socket.off('delivery:recipient_confirmed', handleRecipientConfirmed);
+    socket.off('delivery:completed', handleDeliveryCompleted);
+  };
+}, [socketRef, showToast]);
 
   // ─── 3. إجراءات المستلم (تأكيد الاستلام) ───
   const handleRecipientConfirm = useCallback(async (itemId: string) => {

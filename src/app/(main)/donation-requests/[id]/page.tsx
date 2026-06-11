@@ -1,36 +1,49 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import axiosInstance from '@/lib/api/axiosInstance';
 import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
+import { useSocket } from '@/hooks/useSocket';
+import ChatDrawer from '@/components/ChatDrawer'; // ✅ أضفناه
 import type { DonationRequest, DonationOffer } from '@/types/donationRequest.types';
+
 
 export default function DonationRequestDetailPage() {
   const { id }  = useParams<{ id: string }>();
   const router  = useRouter();
+  const socketRef = useSocket();
 
   const [request,       setRequest]       = useState<DonationRequest | null>(null);
   const [offers,        setOffers]        = useState<DonationOffer[]>([]);
   const [loading,       setLoading]       = useState(true);
-  const [accepting,     setAccepting]     = useState<string | null>(null); // offerId جاري القبول
+  const [accepting,     setAccepting]     = useState<string | null>(null);
   const [confirming,    setConfirming]    = useState(false);
   const [toast,         setToast]         = useState<{ msg: string; ok: boolean } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // ✅ Chat state — بدل router.push
+  const [chatTarget, setChatTarget] = useState<{
+    itemId: string; itemTitle: string;
+  } | null>(null);
+
+  const requestRef = useRef<DonationRequest | null>(null);
+  useEffect(() => { requestRef.current = request; }, [request]);
 
   const showToast = (msg: string, ok: boolean) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── جلب البيانات ─────────────────────────────────────────
+  // ── جلب المستخدم الحالي ────────────────────────────────────
   useEffect(() => {
     axiosInstance.get('/api/auth/me')
       .then((r) => setCurrentUserId(r.data?.user?._id ?? r.data?._id ?? null))
       .catch(() => {});
   }, []);
 
+  // ── جلب البيانات ─────────────────────────────────────────
   const fetchRequest = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -59,81 +72,114 @@ export default function DonationRequestDetailPage() {
     fetchOffers();
   }, [fetchRequest, fetchOffers]);
 
+  // ── Socket Listeners ──────────────────────────────────────
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !id) return;
+
+    const handleRecipientConfirmed = (data: { itemId: string }) => {
+      const current = requestRef.current;
+      if (!current?.fulfilledByItem) return;
+      if (current.fulfilledByItem._id !== data.itemId) return;
+
+      setRequest((prev) => {
+        if (!prev?.fulfilledByItem) return prev;
+        return {
+          ...prev,
+          fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: true },
+        };
+      });
+    };
+
+    const handleDeliveryCompleted = (data: { itemId: string }) => {
+      const current = requestRef.current;
+      if (!current?.fulfilledByItem) return;
+      if (current.fulfilledByItem._id !== data.itemId) return;
+
+      setRequest((prev) => {
+        if (!prev?.fulfilledByItem) return prev;
+        return {
+          ...prev,
+          status: 'fulfilled',
+          fulfilledByItem: {
+            ...prev.fulfilledByItem,
+            donorConfirmed: true,
+            recipientConfirmed: true,
+            status: 'تم التسليم',
+          },
+        };
+      });
+      showToast('🎉 تم التسليم بنجاح!', true);
+    };
+
+    socket.on('recipient:confirmed', handleRecipientConfirmed);
+    socket.on('delivery:completed',  handleDeliveryCompleted);
+
+    return () => {
+      socket.off('recipient:confirmed', handleRecipientConfirmed);
+      socket.off('delivery:completed',  handleDeliveryCompleted);
+    };
+  }, [id, socketRef]);
+
   // ── قبول عرض ─────────────────────────────────────────────
-  // في handleAcceptOffer — أضف console مؤقت للتشخيص
-const handleAcceptOffer = async (offerId: string) => {
-  setAccepting(offerId);
-  try {
-    const r = await axiosInstance.post(
-      `/api/donation-requests/${id}/offers/${offerId}/accept`
-    );
+  const handleAcceptOffer = async (offerId: string) => {
+    setAccepting(offerId);
+    try {
+      const r = await axiosInstance.post(
+        `/api/donation-requests/${id}/offers/${offerId}/accept`
+      );
+      const itemId = r.data?.itemId ?? r.data?.item?._id ?? r.data?.item?.id;
 
-    // ✅ استخرج الـ ID بشكل آمن — جرّب كل الاحتمالات
-    const itemId = r.data?.itemId ?? r.data?.item?._id ?? r.data?.item?.id;
+      showToast('🎉 تم اختيار المتبرع بنجاح!', true);
+      await fetchRequest();
+      setOffers([]);
 
-    showToast('🎉 تم اختيار المتبرع بنجاح!', true);
-    await fetchRequest();
-    setOffers([]);
-
-    if (itemId) {
-      router.push(`/items/${itemId}`);
-    } else {
-      // ✅ fallback: ابقَ في نفس الصفحة إذا ما وصل الـ ID
-      showToast('🎉 تم الاختيار! راجع تفاصيل التسليم أدناه', true);
+      if (itemId) {
+        router.push(`/items/${itemId}`);
+      } else {
+        showToast('🎉 تم الاختيار! راجع تفاصيل التسليم أدناه', true);
+      }
+    } catch (err) {
+      showToast(extractErrorMsg(err, 'تعذر قبول العرض'), false);
+    } finally {
+      setAccepting(null);
     }
-  } catch (err) {
-    showToast(extractErrorMsg(err, 'تعذر قبول العرض'), false);
-  } finally {
-    setAccepting(null);
-  }
-};
+  };
 
   // ── تأكيد استلام الغرض ───────────────────────────────────
-const handleConfirmReceipt = async () => {
-  if (!request?.fulfilledByItem?._id) return;
-  setConfirming(true);
-  try {
-    await axiosInstance.put(
-      `/api/items/complete/${request.fulfilledByItem._id}`,
-      { confirmationType: 'recipient_confirm' }
-    );
+  const handleConfirmReceipt = async () => {
+    if (!request?.fulfilledByItem?._id) return;
+    setConfirming(true);
+    try {
+      await axiosInstance.put(
+        `/api/items/complete/${request.fulfilledByItem._id}`,
+        { confirmationType: 'recipient_confirm' }
+      );
 
-    // ✅ Optimistic Update أولاً — فوري بدون انتظار
-    setRequest((prev) => {
-      if (!prev?.fulfilledByItem) return prev;
-      return {
-        ...prev,
-        fulfilledByItem: {
-          ...prev.fulfilledByItem,
-          recipientConfirmed: true,
-        },
-      };
-    });
+      setRequest((prev) => {
+        if (!prev?.fulfilledByItem) return prev;
+        return {
+          ...prev,
+          fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: true },
+        };
+      });
 
-    showToast('✅ تم تأكيدك — في انتظار تأكيد المتبرع', true);
+      showToast('✅ تم تأكيدك — في انتظار تأكيد المتبرع', true);
+      setTimeout(() => { fetchRequest(); }, 800);
 
-    // ✅ fetch بعد 800ms — يعطي الـ DB وقت يكتمل قبل ما نجلب
-    setTimeout(async () => {
-      await fetchRequest();
-    }, 800);
-
-  } catch (err) {
-    // ✅ Rollback الـ optimistic update لو فشل
-    setRequest((prev) => {
-      if (!prev?.fulfilledByItem) return prev;
-      return {
-        ...prev,
-        fulfilledByItem: {
-          ...prev.fulfilledByItem,
-          recipientConfirmed: false,
-        },
-      };
-    });
-    showToast(extractErrorMsg(err, 'تعذر تأكيد الاستلام'), false);
-  } finally {
-    setConfirming(false);
-  }
-};
+    } catch (err) {
+      setRequest((prev) => {
+        if (!prev?.fulfilledByItem) return prev;
+        return {
+          ...prev,
+          fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: false },
+        };
+      });
+      showToast(extractErrorMsg(err, 'تعذر تأكيد الاستلام'), false);
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   // ── Guards ────────────────────────────────────────────────
   if (loading) return (
@@ -156,6 +202,16 @@ const handleConfirmReceipt = async () => {
 
   return (
     <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
+
+      {/* ✅ ChatDrawer — يُفتح بـ itemId مباشرة */}
+      {chatTarget && (
+        <ChatDrawer
+          itemId={chatTarget.itemId}
+          itemTitle={chatTarget.itemTitle}
+          isOpen={!!chatTarget}
+          onClose={() => setChatTarget(null)}
+        />
+      )}
 
       {/* Toast */}
       {toast && (
@@ -200,9 +256,7 @@ const handleConfirmReceipt = async () => {
           </p>
         </div>
 
-        {/* ════════════════════════════════════════════════
-            CASE A: الطلب نشط + صاحب الطلب يشوف العروض
-        ════════════════════════════════════════════════ */}
+        {/* CASE A: الطلب نشط + صاحب الطلب */}
         {request.status === 'active' && isOwner && (
           <>
             {offers.length === 0 ? (
@@ -229,11 +283,7 @@ const handleConfirmReceipt = async () => {
           </>
         )}
 
-        {/* ════════════════════════════════════════════════
-            CASE B: الطلب نشط + الزائر متبرع (ليس صاحب الطلب)
-            — هذا الـ section تتحكم فيه صفحة قائمة الطلبات
-              عبر زر "أريد التبرع" — هنا نعرض فقط رسالة
-        ════════════════════════════════════════════════ */}
+        {/* CASE B: الطلب نشط + زائر متبرع */}
         {request.status === 'active' && !isOwner && (
           <div className="bg-white rounded-3xl border border-primary/20 shadow-sm p-6 text-center space-y-3">
             <span className="material-symbols-outlined text-3xl text-primary block">volunteer_activism</span>
@@ -247,9 +297,7 @@ const handleConfirmReceipt = async () => {
           </div>
         )}
 
-        {/* ════════════════════════════════════════════════
-            CASE C: الطلب fulfilled — مرحلة التسليم
-        ════════════════════════════════════════════════ */}
+        {/* CASE C: مرحلة التسليم */}
         {respondedItem && (
           <div className="bg-white rounded-3xl border border-primary/20 shadow-sm p-6 space-y-4">
             <div className="flex items-center gap-2">
@@ -262,6 +310,26 @@ const handleConfirmReceipt = async () => {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <InfoRow label="المتبرع"    value={respondedItem.donor?.name ?? '—'} />
               <InfoRow label="حالة الغرض" value={respondedItem.condition} />
+            </div>
+
+            {/* مؤشر التأكيد المزدوج */}
+            <div className="flex gap-3">
+              <div className={`flex-1 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-black ${
+                recipientDone ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'
+              }`}>
+                <span className="material-symbols-outlined text-[16px]">
+                  {recipientDone ? 'check_circle' : 'radio_button_unchecked'}
+                </span>
+                تأكيد المستلم
+              </div>
+              <div className={`flex-1 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-black ${
+                donorDone ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'
+              }`}>
+                <span className="material-symbols-outlined text-[16px]">
+                  {donorDone ? 'check_circle' : 'radio_button_unchecked'}
+                </span>
+                تأكيد المتبرع
+              </div>
             </div>
 
             {!fullyDone && respondedItem.safeHub && (
@@ -304,10 +372,13 @@ const handleConfirmReceipt = async () => {
               </div>
             )}
 
-            {/* زر المحادثة — بعد الاختيار مباشرة (لا تنتظر التسليم) */}
-            {respondedItem.donor?._id && !fullyDone && (
+            {/* ✅ زر المحادثة — مُصلح */}
+            {respondedItem._id && !fullyDone && (
               <button
-                onClick={() => router.push(`/chat/${respondedItem.donor!._id}`)}
+                onClick={() => setChatTarget({
+                  itemId:    respondedItem._id,
+                  itemTitle: request.title,
+                })}
                 className="w-full py-2.5 rounded-2xl text-sm font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">chat</span>
@@ -315,15 +386,14 @@ const handleConfirmReceipt = async () => {
               </button>
             )}
 
-            <button
-              onClick={() => {
-  if (respondedItem._id) 
-    router.push(`/items/${respondedItem._id}?ref=donation-request`);
-}}
-              className="w-full py-2.5 rounded-2xl text-xs font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all"
-            >
-              عرض صفحة الغرض كاملة ←
-            </button>
+            {respondedItem._id && (
+              <button
+                onClick={() => router.push(`/items/${respondedItem._id}?ref=donation-request`)}
+                className="w-full py-2.5 rounded-2xl text-xs font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all"
+              >
+                عرض صفحة الغرض كاملة ←
+              </button>
+            )}
           </div>
         )}
 
@@ -334,17 +404,12 @@ const handleConfirmReceipt = async () => {
 
 // ── مكوّن بطاقة العرض ────────────────────────────────────────
 function OfferCard({
-  offer,
-  onAccept,
-  isAccepting,
+  offer, onAccept, isAccepting,
 }: {
-  offer:       DonationOffer;
-  onAccept:    () => void;
-  isAccepting: boolean;
+  offer: DonationOffer; onAccept: () => void; isAccepting: boolean;
 }) {
   return (
     <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-3">
-      {/* معلومات المتبرع */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-base">
           {offer.donor.name.charAt(0)}
@@ -360,7 +425,6 @@ function OfferCard({
         </span>
       </div>
 
-      {/* صورة الغرض إن وجدت */}
       {offer.imageUrl && (
         <div className="relative w-full h-40 rounded-2xl overflow-hidden">
           <Image
@@ -373,18 +437,15 @@ function OfferCard({
         </div>
       )}
 
-      {/* وصف المتبرع */}
       {offer.description && (
         <p className="text-sm text-gray-600 leading-6">{offer.description}</p>
       )}
 
-      {/* نقطة التسليم */}
       <div className="flex items-center gap-2 text-xs text-gray-500 font-bold">
         <span className="material-symbols-outlined text-[14px] text-primary">location_on</span>
         {offer.safeHub.name} — {offer.safeHub.city}
       </div>
 
-      {/* زر الاختيار */}
       <button
         onClick={onAccept}
         disabled={isAccepting}

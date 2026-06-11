@@ -35,11 +35,12 @@ export interface Item {
   bookedBy?:            BookedByUser | null;
   waitlist?:            WaitlistEntry[];
   safeHub?:             SafeHub;
-  // ✅ [FIX-A] حُذف deliveryOtp بالكامل
   recipientConfirmed?:  boolean;
   recipientConfirmedAt?: string | null;
+  donorConfirmed?:      boolean;        // ✅ مضاف — كان موجوداً في DashboardItem فقط
   donorConfirmedAt?:    string | null;
   deliveredAt?:         string | null;
+  expiryHours?:         number;         // ✅ مضاف — يأتي من Backend settings
 }
 
 export interface ItemSummary {

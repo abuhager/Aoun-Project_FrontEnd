@@ -9,10 +9,12 @@ import { useItemDetails }       from "./hooks/useItemDetails";
 import LevelGate                from "@/components/LevelGate";
 import DeliveryConfirmButton    from "@/components/DeliveryConfirmButton";
 import ChatDrawer               from "@/components/ChatDrawer"; // ✅
+import { useRouter } from 'next/navigation';
 
 const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 
 export default function ItemDetailsPage() {
+  const router = useRouter();
   const {
     item, loading, message, actionLoading,
     confirmModal, setConfirmModal,
@@ -117,7 +119,7 @@ export default function ItemDetailsPage() {
             {/* ─── Countdown Timer ─── */}
             {showCountdown && (
               item.bookedAt ? (
-                <CountdownTimer bookedAt={item.bookedAt} isBooker={isBooker} isDonor={isDonor} />
+                <CountdownTimer bookedAt={item.bookedAt} isBooker={isBooker} isDonor={isDonor} expiryHours={item.expiryHours ?? 72} />
               ) : (
                 <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl">
                   <span className="material-symbols-outlined text-amber-600 text-xl">timer</span>
@@ -221,7 +223,8 @@ export default function ItemDetailsPage() {
                           itemId={item._id}
                           userRole="donor"
                           initialRecipientConfirmed={initialRecipientConfirmed}
-                          onSuccess={() => window.location.reload()}
+                          onSuccess={() => router.refresh()}
+
                           className="w-full py-4 rounded-2xl font-black text-sm"
                         />
                         <button
@@ -255,7 +258,7 @@ export default function ItemDetailsPage() {
                         itemId={item._id}
                         userRole="recipient"
                         initialRecipientConfirmed={initialRecipientConfirmed}
-                        onSuccess={() => window.location.reload()}
+                        onSuccess={() => router.refresh()}
                         className="w-full py-4 rounded-2xl font-black text-sm"
                       />
                     )}

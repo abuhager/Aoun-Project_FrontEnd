@@ -11,3 +11,4 @@ export * from './hub.types';
 export * from './phone.types';
 export * from './report.types';
 export * from './rating.types';
+export * from './donationRequest.types';

@@ -42,8 +42,9 @@ export default function ItemDetailsPage() {
 
   const showCountdown          = item.status === "محجوز" && (isBooker || isDonor);
   const initialRecipientConfirmed = item.recipientConfirmed === true;
-  const showChat               = (isDonor || isBooker) && item.status === "محجوز"; // ✅
-
+const showChat = (isDonor || isBooker) 
+  && item.status === "محجوز"
+  && item.recipientConfirmed === true; 
   return (
     <div className="bg-surface min-h-screen text-[#191c1d] pb-20" dir="rtl">
 

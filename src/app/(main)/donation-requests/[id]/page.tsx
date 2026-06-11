@@ -6,13 +6,12 @@ import Image from 'next/image';
 import axiosInstance from '@/lib/api/axiosInstance';
 import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
 import { useSocket } from '@/hooks/useSocket';
-import ChatDrawer from '@/components/ChatDrawer'; // ✅ أضفناه
+import ChatDrawer from '@/components/ChatDrawer';
 import type { DonationRequest, DonationOffer } from '@/types/donationRequest.types';
 
-
 export default function DonationRequestDetailPage() {
-  const { id }  = useParams<{ id: string }>();
-  const router  = useRouter();
+  const { id }    = useParams<{ id: string }>();
+  const router    = useRouter();
   const socketRef = useSocket();
 
   const [request,       setRequest]       = useState<DonationRequest | null>(null);
@@ -23,7 +22,6 @@ export default function DonationRequestDetailPage() {
   const [toast,         setToast]         = useState<{ msg: string; ok: boolean } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // ✅ Chat state — بدل router.push
   const [chatTarget, setChatTarget] = useState<{
     itemId: string; itemTitle: string;
   } | null>(null);
@@ -43,7 +41,7 @@ export default function DonationRequestDetailPage() {
       .catch(() => {});
   }, []);
 
-  // ── جلب البيانات ─────────────────────────────────────────
+  // ── جلب البيانات ──────────────────────────────────────────
   const fetchRequest = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -72,7 +70,7 @@ export default function DonationRequestDetailPage() {
     fetchOffers();
   }, [fetchRequest, fetchOffers]);
 
-  // ── Socket Listeners ──────────────────────────────────────
+  // ── Socket Listeners ───────────────────────────────────────
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket || !id) return;
@@ -81,7 +79,6 @@ export default function DonationRequestDetailPage() {
       const current = requestRef.current;
       if (!current?.fulfilledByItem) return;
       if (current.fulfilledByItem._id !== data.itemId) return;
-
       setRequest((prev) => {
         if (!prev?.fulfilledByItem) return prev;
         return {
@@ -95,7 +92,6 @@ export default function DonationRequestDetailPage() {
       const current = requestRef.current;
       if (!current?.fulfilledByItem) return;
       if (current.fulfilledByItem._id !== data.itemId) return;
-
       setRequest((prev) => {
         if (!prev?.fulfilledByItem) return prev;
         return {
@@ -103,9 +99,9 @@ export default function DonationRequestDetailPage() {
           status: 'fulfilled',
           fulfilledByItem: {
             ...prev.fulfilledByItem,
-            donorConfirmed: true,
+            donorConfirmed:     true,
             recipientConfirmed: true,
-            status: 'تم التسليم',
+            status:             'تم التسليم',
           },
         };
       });
@@ -121,24 +117,21 @@ export default function DonationRequestDetailPage() {
     };
   }, [id, socketRef]);
 
-  // ── قبول عرض ─────────────────────────────────────────────
+  // ── قبول عرض ──────────────────────────────────────────────
   const handleAcceptOffer = async (offerId: string) => {
     setAccepting(offerId);
     try {
-      const r = await axiosInstance.post(
+      await axiosInstance.post(
         `/api/donation-requests/${id}/offers/${offerId}/accept`
       );
-      const itemId = r.data?.itemId ?? r.data?.item?._id ?? r.data?.item?.id;
 
-      showToast('🎉 تم اختيار المتبرع بنجاح!', true);
-      await fetchRequest();
+      showToast('🎉 تم اختيار المتبرع! راجع تفاصيل التسليم أدناه', true);
+
+      // ✅ [FIX-2 & FIX-3] أخفِ العروض وأعد جلب الطلب فقط
+      // لا ترسل المستخدم لصفحة الـ item — ابقه هنا ليرى CASE C
       setOffers([]);
+      await fetchRequest();
 
-      if (itemId) {
-        router.push(`/items/${itemId}`);
-      } else {
-        showToast('🎉 تم الاختيار! راجع تفاصيل التسليم أدناه', true);
-      }
     } catch (err) {
       showToast(extractErrorMsg(err, 'تعذر قبول العرض'), false);
     } finally {
@@ -146,7 +139,7 @@ export default function DonationRequestDetailPage() {
     }
   };
 
-  // ── تأكيد استلام الغرض ───────────────────────────────────
+  // ── تأكيد استلام الغرض ────────────────────────────────────
   const handleConfirmReceipt = async () => {
     if (!request?.fulfilledByItem?._id) return;
     setConfirming(true);
@@ -156,6 +149,7 @@ export default function DonationRequestDetailPage() {
         { confirmationType: 'recipient_confirm' }
       );
 
+      // ✅ تحديث optimistic
       setRequest((prev) => {
         if (!prev?.fulfilledByItem) return prev;
         return {
@@ -165,9 +159,11 @@ export default function DonationRequestDetailPage() {
       });
 
       showToast('✅ تم تأكيدك — في انتظار تأكيد المتبرع', true);
-      setTimeout(() => { fetchRequest(); }, 800);
+      // ✅ Refresh حقيقي بعد ثانية لمزامنة الـ DB
+      setTimeout(() => fetchRequest(), 800);
 
     } catch (err) {
+      // ✅ Rollback عند الفشل
       setRequest((prev) => {
         if (!prev?.fulfilledByItem) return prev;
         return {
@@ -181,7 +177,7 @@ export default function DonationRequestDetailPage() {
     }
   };
 
-  // ── Guards ────────────────────────────────────────────────
+  // ── Guards ─────────────────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -200,10 +196,13 @@ export default function DonationRequestDetailPage() {
   const donorDone     = respondedItem?.donorConfirmed     ?? false;
   const fullyDone     = recipientDone && donorDone;
 
+  // ✅ [FIX-1] زر المحادثة يظهر فقط بعد تأكيد المستلم
+  const showChat = !!respondedItem?._id && !fullyDone && recipientDone;
+
   return (
     <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
 
-      {/* ✅ ChatDrawer — يُفتح بـ itemId مباشرة */}
+      {/* ChatDrawer */}
       {chatTarget && (
         <ChatDrawer
           itemId={chatTarget.itemId}
@@ -215,7 +214,9 @@ export default function DonationRequestDetailPage() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white transition-all ${toast.ok ? 'bg-green-500' : 'bg-red-500'}`}>
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white transition-all ${
+          toast.ok ? 'bg-green-500' : 'bg-red-500'
+        }`}>
           {toast.msg}
         </div>
       )}
@@ -243,7 +244,7 @@ export default function DonationRequestDetailPage() {
             <span className={`px-3 py-1 rounded-full ${
               request.urgency === 'high'   ? 'bg-red-50 text-red-600' :
               request.urgency === 'medium' ? 'bg-yellow-50 text-yellow-700' :
-              'bg-green-50 text-green-700'
+                                             'bg-green-50 text-green-700'
             }`}>
               {request.urgency === 'high' ? '🔴 عاجل' : request.urgency === 'medium' ? '🟡 متوسط' : '🟢 عادي'}
             </span>
@@ -372,8 +373,8 @@ export default function DonationRequestDetailPage() {
               </div>
             )}
 
-            {/* ✅ زر المحادثة — مُصلح */}
-            {respondedItem._id && !fullyDone && (
+            {/* ✅ [FIX-1] زر المحادثة — بعد تأكيد المستلم فقط */}
+            {showChat && (
               <button
                 onClick={() => setChatTarget({
                   itemId:    respondedItem._id,
@@ -402,7 +403,7 @@ export default function DonationRequestDetailPage() {
   );
 }
 
-// ── مكوّن بطاقة العرض ────────────────────────────────────────
+// ── مكوّن بطاقة العرض ─────────────────────────────────────────
 function OfferCard({
   offer, onAccept, isAccepting,
 }: {
@@ -462,7 +463,7 @@ function OfferCard({
   );
 }
 
-// ── مكوّنات مساعدة ────────────────────────────────────────────
+// ── مكوّنات مساعدة ─────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     active:    'bg-green-50 text-green-700 border-green-100',

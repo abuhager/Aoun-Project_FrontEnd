@@ -40,7 +40,6 @@ function RequestStatusBadge({ status }: { status: DonationRequest['status'] }) {
 export default function DonationRequestsPage() {
   const router = useRouter();
 
-  // ✅ قراءة mine من URL مباشرة في useState — لا useEffect منفصل
   const [myOnly, setMyOnly] = useState<boolean>(() =>
     typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('mine') === 'true'
@@ -62,7 +61,6 @@ export default function DonationRequestsPage() {
   const [hubs,               setHubs]               = useState<{ _id: string; name: string; city: string }[]>([]);
   const [submitting,         setSubmitting]         = useState(false);
 
-  // ✅ useRef يحمل أحدث القيم — بدون deps في useCallback
   const stateRef = useRef({ myOnly, selectedCategory, selectedLocation, page });
   useEffect(() => {
     stateRef.current = { myOnly, selectedCategory, selectedLocation, page };
@@ -93,7 +91,6 @@ export default function DonationRequestsPage() {
     }
   }, []);
 
-  // ✅ الإصلاح الرئيسي — بعد الاستجابة نوجّه المستخدم لصفحة الغرض الجديد
   const handleRespond = async () => {
     if (!respondingTo || !respondForm.safeHub) return;
     setSubmitting(true);
@@ -106,11 +103,9 @@ export default function DonationRequestsPage() {
       setRespondingTo(null);
       setToast({ msg: res.msg ?? 'تم التبرع بنجاح! جارٍ التحويل...', ok: true });
 
-      // ✅ توجيه للغرض الجديد بعد 1.2 ثانية (حتى يرى المستخدم رسالة النجاح)
       if (res.item?._id) {
         setTimeout(() => router.push(`/items/${res.item._id}`), 1200);
       } else {
-        // fallback إذا الـ API ما أرجع item._id
         load(1);
       }
     } catch (err) {
@@ -134,12 +129,10 @@ export default function DonationRequestsPage() {
     }
   };
 
-  // ✅ useEffect واحد فقط للـ filters
   useEffect(() => {
     load(1, selectedCategory, myOnly, selectedLocation);
   }, [load, selectedCategory, myOnly, selectedLocation]);
 
-  // جلب الإعدادات والـ Hubs مرة واحدة
   useEffect(() => {
     axiosInstance.get('/api/settings').then((r) => {
       if (Array.isArray(r.data?.categories) && r.data.categories.length > 0)
@@ -174,7 +167,7 @@ export default function DonationRequestsPage() {
 
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6">
 
-        {/* ✅ Header */}
+        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-black text-gray-900">طلبات التبرع</h1>
@@ -193,7 +186,7 @@ export default function DonationRequestsPage() {
           </Link>
         </div>
 
-        {/* ✅ Tab — كل الطلبات / طلباتي */}
+        {/* Tabs */}
         <div className="flex gap-2">
           <button
             onClick={() => setMyOnly(false)}
@@ -213,7 +206,7 @@ export default function DonationRequestsPage() {
           </button>
         </div>
 
-        {/* ✅ Filters */}
+        {/* Filters */}
         <div className="flex flex-wrap gap-3">
           <select
             value={selectedCategory}
@@ -267,37 +260,73 @@ export default function DonationRequestsPage() {
 
                   <p className="text-sm text-gray-600 leading-7">{request.description}</p>
 
-                  <div className="pt-2 border-t border-gray-50 flex justify-end gap-2">
-                    {!myOnly && request.status === 'active' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRespondForm({ condition: 'مستعمل جيد', safeHub: '' });
-                          setRespondingTo(request);
-                        }}
-                        className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">volunteer_activism</span>
-                        سأتبرع بهذا 🎁
-                      </button>
-                    )}
-                    {myOnly && request.status === 'active' && (
-                      <button
-                        type="button"
-                        onClick={() => cancel(request._id)}
-                        disabled={cancelingId === request._id}
-                        className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
-                      >
-                        {cancelingId === request._id ? 'جاري الإلغاء...' : 'إلغاء الطلب'}
-                      </button>
-                    )}
+                  {/* ✅ التعديل الرئيسي — قسم الأزرار */}
+                  <div className="pt-2 border-t border-gray-50 flex items-center justify-between gap-2 flex-wrap">
+
+                    {/* ✅ الجانب الأيسر: زر "شخص استجاب" أو "عرض التفاصيل" لصاحب الطلب */}
+                    <div className="flex gap-2">
+                      {myOnly && request.fulfilledByItem && request.status !== 'cancelled' && (
+                        // ✅ بادج متحرك — يظهر لما يكون في مستجيب
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/donation-requests/${request._id}`)}
+                          className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-green-50 text-green-700 hover:bg-green-100 flex items-center gap-1 animate-pulse"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">notifications_active</span>
+                          شخص استجاب! اضغط هنا 🎁
+                        </button>
+                      )}
+
+                      {myOnly && !request.fulfilledByItem && (
+                        // زر التفاصيل العادي — لما ما في أحد استجاب بعد
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/donation-requests/${request._id}`)}
+                          className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                          عرض التفاصيل
+                        </button>
+                      )}
+                    </div>
+
+                    {/* الجانب الأيمن: أزرار الإجراءات */}
+                    <div className="flex gap-2">
+                      {/* زر التبرع — للزوار فقط (ليسوا أصحاب الطلب) */}
+                      {!myOnly && request.status === 'active' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRespondForm({ condition: 'مستعمل جيد', safeHub: '' });
+                            setRespondingTo(request);
+                          }}
+                          className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">volunteer_activism</span>
+                          سأتبرع بهذا 🎁
+                        </button>
+                      )}
+
+                      {/* زر الإلغاء — لصاحب الطلب فقط إذا نشط */}
+                      {myOnly && request.status === 'active' && (
+                        <button
+                          type="button"
+                          onClick={() => cancel(request._id)}
+                          disabled={cancelingId === request._id}
+                          className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
+                        >
+                          {cancelingId === request._id ? 'جاري الإلغاء...' : 'إلغاء الطلب'}
+                        </button>
+                      )}
+                    </div>
+
                   </div>
                 </article>
               ))}
             </div>
           )}
 
-          {/* ✅ Pagination */}
+          {/* Pagination */}
           {pages > 1 && (
             <div className="flex justify-center gap-2 pt-4">
               <button
@@ -322,7 +351,7 @@ export default function DonationRequestsPage() {
         </section>
       </main>
 
-      {/* ✅ Modal الاستجابة */}
+      {/* Modal الاستجابة */}
       {respondingTo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
@@ -384,7 +413,6 @@ export default function DonationRequestsPage() {
               )}
             </div>
 
-            {/* ✅ معلومة للمستخدم — ماذا سيحدث بعد التأكيد */}
             {respondForm.safeHub && (
               <div className="p-3 rounded-2xl bg-primary/5 border border-primary/10 text-xs text-primary font-bold">
                 ✅ بعد التأكيد ستُوجَّه لصفحة الغرض مباشرة لمتابعة عملية التسليم

@@ -23,7 +23,7 @@ export default function NewDonationRequestPage() {
 
   // [FIX-2] جلب التصنيفات من endpoint العام
   useEffect(() => {
-    axiosInstance.get('/api/settings/public')
+    axiosInstance.get('/api/settings')
       .then((r) => {
         if (Array.isArray(r.data?.categories) && r.data.categories.length) setCategories(r.data.categories);
         if (Array.isArray(r.data?.locations)  && r.data.locations.length)  setLocations(r.data.locations);

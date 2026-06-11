@@ -1,3 +1,4 @@
+// src/app/(main)/donation-requests/page.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -7,6 +8,7 @@ import {
   getDonationRequests,
   cancelDonationRequest,
   respondToDonationRequest,
+  getPublicSettings,           // ✅ بدل axiosInstance.get('/api/settings')
 } from '@/lib/api/donationRequestApi';
 import axiosInstance from '@/lib/api/axiosInstance';
 import type { DonationRequest } from '@/types/donationRequest.types';
@@ -14,6 +16,7 @@ import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
 
 const DEFAULT_CATEGORIES = ['كتب', 'إلكترونيات', 'أثاث', 'ملابس', 'أخرى'];
 const DEFAULT_LOCATIONS  = ['عمان', 'الزرقاء', 'إربد', 'العقبة', 'السلط', 'مادبا'];
+const CONDITIONS         = ['جديد', 'مستعمل ممتاز', 'مستعمل جيد'] as const;
 
 function RequestStatusBadge({ status }: { status: DonationRequest['status'] }) {
   const styles = {
@@ -57,9 +60,24 @@ export default function DonationRequestsPage() {
   const [settingsCategories, setSettingsCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [settingsLocations,  setSettingsLocations]  = useState<string[]>(DEFAULT_LOCATIONS);
   const [respondingTo,       setRespondingTo]       = useState<DonationRequest | null>(null);
-  const [respondForm,        setRespondForm]        = useState({ condition: 'مستعمل جيد', safeHub: '' });
   const [hubs,               setHubs]               = useState<{ _id: string; name: string; city: string }[]>([]);
   const [submitting,         setSubmitting]         = useState(false);
+
+  // ✅ respondForm معدّل — أضفنا description و imageFile
+  const [respondForm, setRespondForm] = useState<{
+    condition:   typeof CONDITIONS[number];
+    safeHub:     string;
+    description: string;
+    imageFile:   File | null;
+  }>({
+    condition:   'مستعمل جيد',
+    safeHub:     '',
+    description: '',
+    imageFile:   null,
+  });
+
+  // ✅ preview URL للصورة المختارة
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const stateRef = useRef({ myOnly, selectedCategory, selectedLocation, page });
   useEffect(() => {
@@ -96,11 +114,14 @@ export default function DonationRequestsPage() {
     setSubmitting(true);
     try {
       const res = await respondToDonationRequest(respondingTo._id, {
-        condition: respondForm.condition as 'جديد' | 'مستعمل ممتاز' | 'مستعمل جيد',
-        safeHub:   respondForm.safeHub,
+        condition:   respondForm.condition,
+        safeHub:     respondForm.safeHub,
+        description: respondForm.description || undefined,   // ✅ اختياري
+        imageFile:   respondForm.imageFile   || undefined,   // ✅ اختياري
       });
 
       setRespondingTo(null);
+      setImagePreview(null);
       setToast({ msg: res.msg ?? 'تم التبرع بنجاح! جارٍ التحويل...', ok: true });
 
       if (res.item?._id) {
@@ -134,12 +155,16 @@ export default function DonationRequestsPage() {
   }, [load, selectedCategory, myOnly, selectedLocation]);
 
   useEffect(() => {
-    axiosInstance.get('/api/settings').then((r) => {
-      if (Array.isArray(r.data?.categories) && r.data.categories.length > 0)
-        setSettingsCategories(r.data.categories);
-      if (Array.isArray(r.data?.locations) && r.data.locations.length > 0)
-        setSettingsLocations(r.data.locations);
-    }).catch(() => {});
+    // ✅ إصلاح المشكلة الرئيسية — بدل '/api/settings' اللي يطلب Admin
+    //    نستخدم getPublicSettings() → GET /api/settings/public (بدون auth)
+    getPublicSettings()
+      .then((s) => {
+        if (s.categories?.length) setSettingsCategories(s.categories);
+        if (s.locations?.length)  setSettingsLocations(s.locations);
+      })
+      .catch(() => {
+        // ✅ عند الفشل نبقى على الـ defaults — لا نوقف الصفحة
+      });
 
     axiosInstance.get('/api/hubs').then((r) => {
       if (Array.isArray(r.data)) setHubs(r.data);
@@ -152,10 +177,30 @@ export default function DonationRequestsPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // ✅ تنظيف الـ object URL عند إغلاق الـ Modal أو تغيير الصورة
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
   const activeMineCount = useMemo(
     () => requests.filter((r) => r.status === 'active').length,
     [requests]
   );
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setRespondForm((prev) => ({ ...prev, imageFile: file }));
+    setImagePreview(file ? URL.createObjectURL(file) : null);
+  };
+
+  const resetRespondForm = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    setRespondForm({ condition: 'مستعمل جيد', safeHub: '', description: '', imageFile: null });
+  };
 
   return (
     <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
@@ -260,13 +305,9 @@ export default function DonationRequestsPage() {
 
                   <p className="text-sm text-gray-600 leading-7">{request.description}</p>
 
-                  {/* ✅ التعديل الرئيسي — قسم الأزرار */}
                   <div className="pt-2 border-t border-gray-50 flex items-center justify-between gap-2 flex-wrap">
-
-                    {/* ✅ الجانب الأيسر: زر "شخص استجاب" أو "عرض التفاصيل" لصاحب الطلب */}
                     <div className="flex gap-2">
                       {myOnly && request.fulfilledByItem && request.status !== 'cancelled' && (
-                        // ✅ بادج متحرك — يظهر لما يكون في مستجيب
                         <button
                           type="button"
                           onClick={() => router.push(`/donation-requests/${request._id}`)}
@@ -276,9 +317,7 @@ export default function DonationRequestsPage() {
                           شخص استجاب! اضغط هنا 🎁
                         </button>
                       )}
-
                       {myOnly && !request.fulfilledByItem && (
-                        // زر التفاصيل العادي — لما ما في أحد استجاب بعد
                         <button
                           type="button"
                           onClick={() => router.push(`/donation-requests/${request._id}`)}
@@ -290,14 +329,12 @@ export default function DonationRequestsPage() {
                       )}
                     </div>
 
-                    {/* الجانب الأيمن: أزرار الإجراءات */}
                     <div className="flex gap-2">
-                      {/* زر التبرع — للزوار فقط (ليسوا أصحاب الطلب) */}
                       {!myOnly && request.status === 'active' && (
                         <button
                           type="button"
                           onClick={() => {
-                            setRespondForm({ condition: 'مستعمل جيد', safeHub: '' });
+                            resetRespondForm();
                             setRespondingTo(request);
                           }}
                           className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1"
@@ -306,8 +343,6 @@ export default function DonationRequestsPage() {
                           سأتبرع بهذا 🎁
                         </button>
                       )}
-
-                      {/* زر الإلغاء — لصاحب الطلب فقط إذا نشط */}
                       {myOnly && request.status === 'active' && (
                         <button
                           type="button"
@@ -319,7 +354,6 @@ export default function DonationRequestsPage() {
                         </button>
                       )}
                     </div>
-
                   </div>
                 </article>
               ))}
@@ -351,14 +385,14 @@ export default function DonationRequestsPage() {
         </section>
       </main>
 
-      {/* Modal الاستجابة */}
+      {/* ✅ Modal الاستجابة — معدّل بإضافة حقل الوصف والصورة */}
       {respondingTo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          onClick={() => !submitting && setRespondingTo(null)}
+          onClick={() => !submitting && (resetRespondForm(), setRespondingTo(null))}
         >
           <div
-            className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md space-y-4"
+            className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
@@ -372,7 +406,7 @@ export default function DonationRequestsPage() {
                 </p>
               </div>
               <button
-                onClick={() => setRespondingTo(null)}
+                onClick={() => { resetRespondForm(); setRespondingTo(null); }}
                 disabled={submitting}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -380,19 +414,85 @@ export default function DonationRequestsPage() {
               </button>
             </div>
 
+            {/* حالة الغرض */}
             <div>
               <label className="block text-xs font-black text-gray-700 mb-1">حالة الغرض</label>
               <select
                 value={respondForm.condition}
-                onChange={(e) => setRespondForm({ ...respondForm, condition: e.target.value })}
+                onChange={(e) => setRespondForm({ ...respondForm, condition: e.target.value as typeof CONDITIONS[number] })}
                 className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
               >
-                {['جديد', 'مستعمل ممتاز', 'مستعمل جيد'].map((c) => (
+                {CONDITIONS.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
 
+            {/* ✅ وصف اختياري */}
+            <div>
+              <label className="block text-xs font-black text-gray-700 mb-1">
+                وصف الغرض
+                <span className="text-gray-400 font-normal mr-1">(اختياري)</span>
+              </label>
+              <textarea
+                value={respondForm.description}
+                onChange={(e) => setRespondForm({ ...respondForm, description: e.target.value })}
+                placeholder="مثلاً: كتاب رياضيات صف عاشر، حالة ممتازة، لم يُستخدم كثيراً..."
+                rows={3}
+                maxLength={500}
+                className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary resize-none"
+              />
+              <p className="text-[10px] text-gray-400 text-left mt-1">
+                {respondForm.description.length}/500
+              </p>
+            </div>
+
+            {/* ✅ صورة اختيارية */}
+            <div>
+              <label className="block text-xs font-black text-gray-700 mb-1">
+                صورة الغرض
+                <span className="text-gray-400 font-normal mr-1">(اختيارية)</span>
+              </label>
+              <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all relative overflow-hidden">
+                {imagePreview ? (
+                  // ✅ Preview للصورة المختارة
+                  <>
+                    <img
+                      src={imagePreview}
+                      alt="معاينة الصورة"
+                      className="w-full h-full object-cover rounded-2xl"
+                    />
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-2xl">
+                      <span className="text-white text-xs font-black">تغيير الصورة</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-gray-400">
+                    <span className="material-symbols-outlined text-3xl">add_photo_alternate</span>
+                    <span className="text-xs font-bold">اضغط لإضافة صورة</span>
+                    <span className="text-[10px]">JPG, PNG, WebP — بحد أقصى 5MB</span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+              </label>
+              {/* ✅ زر إزالة الصورة */}
+              {respondForm.imageFile && (
+                <button
+                  type="button"
+                  onClick={() => { if (imagePreview) URL.revokeObjectURL(imagePreview); setImagePreview(null); setRespondForm((prev) => ({ ...prev, imageFile: null })); }}
+                  className="mt-1 text-[10px] text-red-500 font-bold hover:text-red-700 transition-colors"
+                >
+                  ✕ إزالة الصورة
+                </button>
+              )}
+            </div>
+
+            {/* نقطة التسليم */}
             <div>
               <label className="block text-xs font-black text-gray-700 mb-1">نقطة التسليم الآمنة</label>
               {hubs.length === 0 ? (
@@ -437,7 +537,7 @@ export default function DonationRequestsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setRespondingTo(null)}
+                onClick={() => { resetRespondForm(); setRespondingTo(null); }}
                 disabled={submitting}
                 className="px-5 py-2.5 rounded-2xl text-sm font-black text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50"
               >

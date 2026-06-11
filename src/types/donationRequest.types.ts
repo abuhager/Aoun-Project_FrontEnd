@@ -6,11 +6,34 @@ export interface DonationRequestUser {
 }
 
 export interface DonationRequest {
-  _id: string; requester?: DonationRequestUser;
-  title: string; description: string; category: string; location: string;
-  status: DonationRequestStatus; createdAt: string; expiresAt: string;
-  month?: string;
-  urgency?: 'low' | 'medium' | 'high';
+  _id:         string;
+  title:       string;
+  description: string;
+  category:    string;
+  location:    string;
+  urgency:     'low' | 'medium' | 'high';
+  status:      'active' | 'fulfilled' | 'expired' | 'cancelled';
+  requester: {
+    _id:  string;
+    name: string;
+  };
+  // ✅ أضف هاد
+  fulfilledByItem?: {
+    _id:       string;
+    condition: string;
+    status:    string;
+    safeHub?: {
+      name:    string;
+      city:    string;
+      address: string;
+    };
+    donor?: {
+      _id:  string;
+      name: string;
+    };
+  } | null;
+  expiresAt?: string;
+  createdAt:  string;
 }
 
 export interface CreateDonationRequestPayload {

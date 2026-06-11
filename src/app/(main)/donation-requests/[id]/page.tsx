@@ -73,8 +73,11 @@ export default function DonationRequestDetailPage() {
     if (!request?.fulfilledByItem?._id) return;
     setConfirming(true);
     try {
-      await axiosInstance.post(`/api/items/${request.fulfilledByItem._id}/confirm-receipt`);
-      setToast({ msg: '✅ تم تأكيد استلامك — في انتظار تأكيد المتبرع', ok: true });
+        // في handleConfirmReceipt  
+    await axiosInstance.post(
+        `/api/items/${request.fulfilledByItem._id}/confirm-receipt`,
+       { confirmationType: 'recipient_confirm' }  // ← أضف هذا
+    );      setToast({ msg: '✅ تم تأكيد استلامك — في انتظار تأكيد المتبرع', ok: true });
       // أعد تحميل الطلب
       const r = await axiosInstance.get(`/api/donation-requests/${id}`);
       setRequest(r.data?.request ?? r.data);

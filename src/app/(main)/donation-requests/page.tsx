@@ -3,12 +3,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   getDonationRequests,
   cancelDonationRequest,
   respondToDonationRequest,
-  getPublicSettings,           // ✅ بدل axiosInstance.get('/api/settings')
+  getPublicSettings,
 } from '@/lib/api/donationRequestApi';
 import axiosInstance from '@/lib/api/axiosInstance';
 import type { DonationRequest } from '@/types/donationRequest.types';
@@ -41,13 +41,18 @@ function RequestStatusBadge({ status }: { status: DonationRequest['status'] }) {
 }
 
 export default function DonationRequestsPage() {
-  const router = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams(); // ✅ بدل window.location.search
 
-  const [myOnly, setMyOnly] = useState<boolean>(() =>
-    typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('mine') === 'true'
-      : false
-  );
+  // ✅ الإصلاح الجذري: false دائماً على السيرفر، نقرأ searchParams بعد mount
+  const [myOnly, setMyOnly] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // ✅ نقرأ الـ query param فقط بعد mount على الـ Client
+    setMyOnly(searchParams.get('mine') === 'true');
+  }, [searchParams]);
 
   const [requests,           setRequests]           = useState<DonationRequest[]>([]);
   const [loading,            setLoading]            = useState(true);
@@ -63,7 +68,6 @@ export default function DonationRequestsPage() {
   const [hubs,               setHubs]               = useState<{ _id: string; name: string; city: string }[]>([]);
   const [submitting,         setSubmitting]         = useState(false);
 
-  // ✅ respondForm معدّل — أضفنا description و imageFile
   const [respondForm, setRespondForm] = useState<{
     condition:   typeof CONDITIONS[number];
     safeHub:     string;
@@ -76,7 +80,6 @@ export default function DonationRequestsPage() {
     imageFile:   null,
   });
 
-  // ✅ preview URL للصورة المختارة
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const stateRef = useRef({ myOnly, selectedCategory, selectedLocation, page });
@@ -116,8 +119,8 @@ export default function DonationRequestsPage() {
       const res = await respondToDonationRequest(respondingTo._id, {
         condition:   respondForm.condition,
         safeHub:     respondForm.safeHub,
-        description: respondForm.description || undefined,   // ✅ اختياري
-        imageFile:   respondForm.imageFile   || undefined,   // ✅ اختياري
+        description: respondForm.description || undefined,
+        imageFile:   respondForm.imageFile   || undefined,
       });
 
       setRespondingTo(null);
@@ -150,21 +153,19 @@ export default function DonationRequestsPage() {
     }
   };
 
+  // ✅ نشغّل الـ load فقط بعد mount لتجنب mismatch
   useEffect(() => {
+    if (!mounted) return;
     load(1, selectedCategory, myOnly, selectedLocation);
-  }, [load, selectedCategory, myOnly, selectedLocation]);
+  }, [load, selectedCategory, myOnly, selectedLocation, mounted]);
 
   useEffect(() => {
-    // ✅ إصلاح المشكلة الرئيسية — بدل '/api/settings' اللي يطلب Admin
-    //    نستخدم getPublicSettings() → GET /api/settings/public (بدون auth)
     getPublicSettings()
       .then((s) => {
         if (s.categories?.length) setSettingsCategories(s.categories);
         if (s.locations?.length)  setSettingsLocations(s.locations);
       })
-      .catch(() => {
-        // ✅ عند الفشل نبقى على الـ defaults — لا نوقف الصفحة
-      });
+      .catch(() => {});
 
     axiosInstance.get('/api/hubs').then((r) => {
       if (Array.isArray(r.data)) setHubs(r.data);
@@ -177,13 +178,13 @@ export default function DonationRequestsPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // ✅ تنظيف الـ object URL عند إغلاق الـ Modal أو تغيير الصورة
   useEffect(() => {
     return () => {
       if (imagePreview) URL.revokeObjectURL(imagePreview);
     };
   }, [imagePreview]);
 
+  // ✅ فقط بعد mount نحسب الـ count — على السيرفر نعرض نص ثابت
   const activeMineCount = useMemo(
     () => requests.filter((r) => r.status === 'active').length,
     [requests]
@@ -216,8 +217,11 @@ export default function DonationRequestsPage() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-black text-gray-900">طلبات التبرع</h1>
+            {/* ✅ الإصلاح: نص ثابت على السيرفر، dynamic فقط بعد mount */}
             <p className="text-xs text-gray-500 font-bold mt-1">
-              {myOnly
+              {!mounted
+                ? 'تصفح الطلبات وساهم بتبرع'
+                : myOnly
                 ? `لديك ${activeMineCount} طلب نشط`
                 : 'تصفح الطلبات وساهم بتبرع'}
             </p>
@@ -385,7 +389,7 @@ export default function DonationRequestsPage() {
         </section>
       </main>
 
-      {/* ✅ Modal الاستجابة — معدّل بإضافة حقل الوصف والصورة */}
+      {/* Modal الاستجابة */}
       {respondingTo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
@@ -428,7 +432,7 @@ export default function DonationRequestsPage() {
               </select>
             </div>
 
-            {/* ✅ وصف اختياري */}
+            {/* وصف اختياري */}
             <div>
               <label className="block text-xs font-black text-gray-700 mb-1">
                 وصف الغرض
@@ -447,7 +451,7 @@ export default function DonationRequestsPage() {
               </p>
             </div>
 
-            {/* ✅ صورة اختيارية */}
+            {/* صورة اختيارية */}
             <div>
               <label className="block text-xs font-black text-gray-700 mb-1">
                 صورة الغرض
@@ -455,7 +459,6 @@ export default function DonationRequestsPage() {
               </label>
               <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all relative overflow-hidden">
                 {imagePreview ? (
-                  // ✅ Preview للصورة المختارة
                   <>
                     <img
                       src={imagePreview}
@@ -480,11 +483,14 @@ export default function DonationRequestsPage() {
                   onChange={handleImageChange}
                 />
               </label>
-              {/* ✅ زر إزالة الصورة */}
               {respondForm.imageFile && (
                 <button
                   type="button"
-                  onClick={() => { if (imagePreview) URL.revokeObjectURL(imagePreview); setImagePreview(null); setRespondForm((prev) => ({ ...prev, imageFile: null })); }}
+                  onClick={() => {
+                    if (imagePreview) URL.revokeObjectURL(imagePreview);
+                    setImagePreview(null);
+                    setRespondForm((prev) => ({ ...prev, imageFile: null }));
+                  }}
                   className="mt-1 text-[10px] text-red-500 font-bold hover:text-red-700 transition-colors"
                 >
                   ✕ إزالة الصورة

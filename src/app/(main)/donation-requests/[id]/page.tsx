@@ -18,9 +18,11 @@ interface RequestDetail {
     name: string;
   };
   fulfilledByItem?: {
-    _id:       string;
-    condition: string;
-    status:    string;
+    _id:                string;
+    condition:          string;
+    status:             string;
+    recipientConfirmed: boolean;
+    donorConfirmed:     boolean; // ✅ أضف هذا
     safeHub: {
       name:    string;
       city:    string;
@@ -31,36 +33,40 @@ interface RequestDetail {
       name: string;
     };
   } | null;
-  expiresAt:  string;
-  createdAt:  string;
+  expiresAt: string;
+  createdAt: string;
 }
 
 export default function DonationRequestDetailPage() {
-  const { id }   = useParams<{ id: string }>();
-  const router   = useRouter();
+  const { id } = useParams<{ id: string }>();
+  const router  = useRouter();
 
-  const [request,    setRequest]    = useState<RequestDetail | null>(null);
-  const [loading,    setLoading]    = useState(true);
-  const [confirming, setConfirming] = useState(false);
-  const [toast,      setToast]      = useState<{ msg: string; ok: boolean } | null>(null);
+  const [request,       setRequest]       = useState<RequestDetail | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [confirming,    setConfirming]    = useState(false);
+  const [toast,         setToast]         = useState<{ msg: string; ok: boolean } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // جلب المستخدم الحالي
   useEffect(() => {
     axiosInstance.get('/api/auth/me')
       .then((r) => setCurrentUserId(r.data?.user?._id ?? r.data?._id ?? null))
       .catch(() => {});
   }, []);
 
-  // جلب تفاصيل الطلب
-  useEffect(() => {
+  const fetchRequest = async () => {
     if (!id) return;
     setLoading(true);
-    axiosInstance.get(`/api/donation-requests/${id}`)
-      .then((r) => setRequest(r.data?.request ?? r.data))
-      .catch(() => setToast({ msg: 'تعذر تحميل الطلب', ok: false }))
-      .finally(() => setLoading(false));
-  }, [id]);
+    try {
+      const r = await axiosInstance.get(`/api/donation-requests/${id}`);
+      setRequest(r.data?.request ?? r.data);
+    } catch {
+      setToast({ msg: 'تعذر تحميل الطلب', ok: false });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchRequest(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!toast) return;
@@ -68,19 +74,17 @@ export default function DonationRequestDetailPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // ✅ صاحب الطلب يضغط "تأكيد الاستلام" — الخطوة 1 من التأكيد المزدوج
   const handleConfirmReceipt = async () => {
     if (!request?.fulfilledByItem?._id) return;
     setConfirming(true);
     try {
-        // في handleConfirmReceipt  
-    await axiosInstance.post(
-        `/api/items/${request.fulfilledByItem._id}/confirm-receipt`,
-       { confirmationType: 'recipient_confirm' }  // ← أضف هذا
-    );      setToast({ msg: '✅ تم تأكيد استلامك — في انتظار تأكيد المتبرع', ok: true });
-      // أعد تحميل الطلب
-      const r = await axiosInstance.get(`/api/donation-requests/${id}`);
-      setRequest(r.data?.request ?? r.data);
+      // ✅ الإصلاح: PUT /complete/:id بدل POST /confirm-receipt
+      await axiosInstance.put(
+        `/api/items/complete/${request.fulfilledByItem._id}`,
+        { confirmationType: 'recipient_confirm' }
+      );
+      setToast({ msg: '✅ تم تأكيدك — في انتظار تأكيد المتبرع', ok: true });
+      await fetchRequest();
     } catch (err) {
       setToast({ msg: extractErrorMsg(err, 'تعذر تأكيد الاستلام'), ok: false });
     } finally {
@@ -100,13 +104,17 @@ export default function DonationRequestDetailPage() {
     </div>
   );
 
-  const isOwner     = currentUserId === request.requester._id;
+  const isOwner       = currentUserId === request.requester._id;
   const respondedItem = request.fulfilledByItem;
   const itemStatus    = respondedItem?.status ?? '';
 
+  // ✅ اعتمد على الـ flags مباشرة بدل نص الـ status العربي
+  const recipientDone = respondedItem?.recipientConfirmed ?? false;
+  const donorDone     = respondedItem?.donorConfirmed     ?? false;
+  const fullyDone     = recipientDone && donorDone;
+
   return (
     <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
-
       {toast && (
         <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white transition-all ${toast.ok ? 'bg-green-500' : 'bg-red-500'}`}>
           {toast.msg}
@@ -115,7 +123,6 @@ export default function DonationRequestDetailPage() {
 
       <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-2xl mx-auto space-y-5">
 
-        {/* رجوع */}
         <button
           onClick={() => router.back()}
           className="flex items-center gap-1 text-xs font-black text-gray-500 hover:text-primary transition-colors"
@@ -153,36 +160,40 @@ export default function DonationRequestDetailPage() {
           </p>
         </div>
 
-        {/* ✅ قسم الاستجابة — يظهر فقط لو في غرض مرتبط */}
+        {/* قسم الاستجابة */}
         {respondedItem ? (
           <div className="bg-white rounded-3xl border border-primary/20 shadow-sm p-6 space-y-4">
 
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-[22px]">volunteer_activism</span>
-              <h2 className="text-base font-black text-gray-900">شخص استجاب لطلبك! 🎁</h2>
+              <h2 className="text-base font-black text-gray-900">
+                {fullyDone ? 'تم استلام الغرض 🎉' : 'شخص استجاب لطلبك! 🎁'}
+              </h2>
             </div>
 
-            {/* معلومات المتبرع والغرض */}
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <InfoRow label="المتبرع"   value={respondedItem.donor?.name ?? '—'} />
+              <InfoRow label="المتبرع"    value={respondedItem.donor?.name ?? '—'} />
               <InfoRow label="حالة الغرض" value={respondedItem.condition} />
             </div>
 
-            {/* نقطة التسليم */}
-            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-1">
-              <p className="text-xs font-black text-primary">📍 نقطة التسليم الآمنة</p>
-              <p className="text-sm font-bold text-gray-800">
-                {respondedItem.safeHub?.name} — {respondedItem.safeHub?.city}
-              </p>
-              {respondedItem.safeHub?.address && (
-                <p className="text-xs text-gray-500">{respondedItem.safeHub.address}</p>
-              )}
-            </div>
+            {/* نقطة التسليم — تختفي بعد اكتمال التسليم */}
+            {!fullyDone && (
+              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-1">
+                <p className="text-xs font-black text-primary">📍 نقطة التسليم الآمنة</p>
+                <p className="text-sm font-bold text-gray-800">
+                  {respondedItem.safeHub?.name} — {respondedItem.safeHub?.city}
+                </p>
+                {respondedItem.safeHub?.address && (
+                  <p className="text-xs text-gray-500">{respondedItem.safeHub.address}</p>
+                )}
+              </div>
+            )}
 
-            {/* ✅ زر تأكيد الاستلام — لصاحب الطلب فقط */}
+            {/* أزرار التأكيد — لصاحب الطلب فقط */}
             {isOwner && (
               <div className="pt-2">
-                {itemStatus === 'محجوز' ? (
+                {!recipientDone ? (
+                  // ✅ لم يؤكد بعد — أظهر الزر
                   <button
                     onClick={handleConfirmReceipt}
                     disabled={confirming}
@@ -197,19 +208,32 @@ export default function DonationRequestDetailPage() {
                       '✅ تأكيد استلام الغرض'
                     )}
                   </button>
-                ) : itemStatus === 'في انتظار تأكيد المتبرع' ? (
+                ) : !donorDone ? (
+                  // ✅ أكّد المستلم — ينتظر المتبرع
                   <div className="w-full py-3 rounded-2xl text-sm font-black text-center bg-yellow-50 text-yellow-700 border border-yellow-100">
                     ⏳ تم تأكيدك — في انتظار تأكيد المتبرع
                   </div>
-                ) : itemStatus === 'مُسلَّم' ? (
+                ) : (
+                  // ✅ كلاهما أكّد
                   <div className="w-full py-3 rounded-2xl text-sm font-black text-center bg-green-50 text-green-700 border border-green-100">
                     🎉 تم التسليم بنجاح!
                   </div>
-                ) : null}
+                )}
               </div>
             )}
 
-            {/* رابط لصفحة الغرض للمزيد من التفاصيل */}
+            {/* ✅ زر المحادثة — يظهر فقط بعد تأكيد الطرفين */}
+            {respondedItem.donor?._id && fullyDone && (
+              <button
+                onClick={() => router.push(`/chat/${respondedItem.donor._id}`)}
+                className="w-full py-2.5 rounded-2xl text-sm font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">chat</span>
+                محادثة مع المتبرع
+              </button>
+            )}
+
+            {/* رابط صفحة الغرض */}
             <button
               onClick={() => router.push(`/items/${respondedItem._id}`)}
               className="w-full py-2.5 rounded-2xl text-xs font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all"
@@ -219,7 +243,6 @@ export default function DonationRequestDetailPage() {
 
           </div>
         ) : request.status === 'active' ? (
-          // لا أحد استجاب بعد
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 text-center space-y-2">
             <span className="material-symbols-outlined text-4xl text-gray-300 block">hourglass_empty</span>
             <p className="text-gray-400 text-sm font-bold">لا أحد استجاب لطلبك بعد</p>
@@ -231,8 +254,6 @@ export default function DonationRequestDetailPage() {
     </div>
   );
 }
-
-// ── مكونات مساعدة ──────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {

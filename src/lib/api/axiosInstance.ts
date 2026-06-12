@@ -104,7 +104,7 @@ const isAuthSafeUrl = (url: string): boolean =>
 const isAuthMeUrl = (url: string): boolean => url.includes("/auth/me");
 
 const PUBLIC_PATH_PATTERNS: RegExp[] = [
-  /^\/api\/items(\/[^/]+)?\/?$/,
+/^\/api\/items(\/(?!me|complete|waitlist)[^/]+)?\/?$/,
   /^\/api\/hubs/,
   /^\/api\/public/,
 ];

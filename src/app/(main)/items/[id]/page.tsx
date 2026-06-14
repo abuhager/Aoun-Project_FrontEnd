@@ -44,7 +44,7 @@ export default function ItemDetailsPage() {
 const showChat = (isDonor || isBooker) 
   && item.status === "محجوز"
   && item.recipientConfirmed === true; 
-  return (
+ return (
     <div className="bg-surface min-h-screen text-[#191c1d] pb-20" dir="rtl">
 
       {confirmModal.show && (
@@ -140,8 +140,8 @@ const showChat = (isDonor || isBooker)
             {/* ─── معلومات الغرض ─── */}
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: "الموقع",    val: item.location,                                        ic: "distance"      },
-                { label: "التاريخ",   val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event"         },
+                { label: "الموقع",    val: item.location,                                         ic: "distance"      },
+                { label: "التاريخ",   val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event"          },
               ].map((s, i) => (
                 <div key={i} className="bg-white p-3 rounded-2xl border border-gray-100 text-center">
                   <span className="material-symbols-outlined text-primary text-xl mb-1">{s.ic}</span>
@@ -224,7 +224,6 @@ const showChat = (isDonor || isBooker)
                           userRole="donor"
                           initialRecipientConfirmed={initialRecipientConfirmed}
                           onSuccess={() => router.refresh()}
-
                           className="w-full py-4 rounded-2xl font-black text-sm"
                         />
                         <button
@@ -295,13 +294,22 @@ const showChat = (isDonor || isBooker)
 
                 /* ── قائمة الانتظار ── */
                 ) : (
-                  <button
-                    onClick={handleRequestItem}
-                    disabled={actionLoading}
-                    className="w-full bg-[#005a8c] text-white py-4 rounded-2xl font-black text-sm shadow-lg hover:bg-[#004a75] transition-all"
+                  // ✅ تم تطبيق الحماية هنا بإضافة الـ fallback المناسب لتوضيح سبب الحظر للمستخدم
+                  <LevelGate
+                    fallback={
+                      <div className="w-full py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold text-center text-sm">
+                        🔐 يجب رفع مستوى الثقة للانضمام لقائمة الانتظار
+                      </div>
+                    }
                   >
-                    انضم لقائمة الانتظار 🕒
-                  </button>
+                    <button
+                      onClick={handleRequestItem}
+                      disabled={actionLoading}
+                      className="w-full bg-[#005a8c] text-white py-4 rounded-2xl font-black text-sm shadow-lg hover:bg-[#004a75] transition-all"
+                    >
+                      انضم لقائمة الانتظار 🕒
+                    </button>
+                  </LevelGate>
                 )}
 
                 {/* ✅ زر التواصل — يظهر فقط للطرفين وقت الحجز */}

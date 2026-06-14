@@ -1,10 +1,13 @@
 // src/lib/api/axiosInstance.ts
-// ✅ DUP-AUTH-01: استيراد setSessionCookie من cookieUtils بدل تعريفها هنا
-// ✅ ADM-AUTH-02: حذف magic number 7 — تُدار من NEXT_PUBLIC_SESSION_EXPIRE_DAYS في cookieUtils
+// ✅ BUG-AX-01: isRefreshing يُعاد ضبطه قبل processRefreshQueue — حذف finally
+// ✅ BUG-AX-02: resetAuthState يرفض الـ Promises المعلّقة قبل تفريغ الـ queues
+// ✅ BUG-AX-03: PUBLIC_PATH_PATTERNS تحمل getOnly صراحةً — لا اعتماد على index
+// ✅ BUG-AX-04: clearSessionCookie تُستدعى عند فشل الـ refresh لكسر redirect loop
+// ✅ HC-01:     timeout من env
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { isProtectedPath, isAuthOnlyPath }               from '@/config/routes';
-import { setSessionCookie }                              from '@/lib/utils/cookieUtils'; // ← جديد
+import { setSessionCookie, clearSessionCookie }          from '@/lib/utils/cookieUtils';
 
 // ─────────────────────────────────────────────
 // State
@@ -32,12 +35,21 @@ export const setAccessToken = (t: string | null) => { accessToken = t; };
 export const getAccessToken = () => accessToken;
 
 export const resetAuthState = () => {
-  accessToken      = null;
-  isRefreshing     = false;
-  refreshQueue     = [];
-  isInitialized    = false;
+  accessToken  = null;
+  isRefreshing = false;
+
+  // ✅ BUG-AX-02: أرفض كل الـ Promises المعلّقة قبل تفريغ الـ queues
+  // — يمنع memory leak وتجمّد الـ UI عند logout في منتصف page load
+  const authError = new Error('NOT_AUTHENTICATED');
+
+  refreshQueue.forEach(({ reject }) => reject(authError));
+  refreshQueue = [];
+
+  initQueueRejects.forEach((rej) => rej(authError));
   initQueue        = [];
   initQueueRejects = [];
+
+  isInitialized = false;
   delete axiosInstance.defaults.headers.common['Authorization'];
 };
 
@@ -72,7 +84,8 @@ const API_BASE_URL = (() => {
 
 const axiosInstance = axios.create({
   baseURL:         API_BASE_URL,
-  timeout:         15_000,
+  // ✅ HC-01: من env — أضف NEXT_PUBLIC_API_TIMEOUT=15000 في .env.local
+  timeout:         parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT ?? '15000', 10),
   withCredentials: true,
 });
 
@@ -89,17 +102,18 @@ const isAuthSafeUrl = (url: string): boolean =>
 
 const isAuthMeUrl = (url: string): boolean => url.includes('/auth/me');
 
-const PUBLIC_PATH_PATTERNS: RegExp[] = [
-  /^\/api\/items(\/(?!me|complete|waitlist)[^/]+)?\/?$/,
-  /^\/api\/hubs/,
-  /^\/api\/public/,
+// ✅ BUG-AX-03: كل pattern يحمل خصائصه صراحةً — لا اعتماد على الـ index
+const PUBLIC_PATH_PATTERNS: Array<{ pattern: RegExp; getOnly: boolean }> = [
+  { pattern: /^\/api\/items(\/(?!me|complete|waitlist)[^/]+)?\/?$/, getOnly: true  },
+  { pattern: /^\/api\/hubs/,                                        getOnly: false },
+  { pattern: /^\/api\/public/,                                      getOnly: false },
 ];
 
 const isPublicUrl = (url: string, method?: string): boolean => {
   const pathname = url.split('?')[0];
   const isGet    = (method ?? 'get').toLowerCase() === 'get';
-  return PUBLIC_PATH_PATTERNS.some((pattern, i) => {
-    if (i === 0) return isGet && pattern.test(pathname);
+  return PUBLIC_PATH_PATTERNS.some(({ pattern, getOnly }) => {
+    if (getOnly && !isGet) return false;
     return pattern.test(pathname);
   });
 };
@@ -172,8 +186,8 @@ axiosInstance.interceptors.response.use(
       | (InternalAxiosRequestConfig & { _retry?: boolean; _initRetry?: boolean })
       | undefined;
 
-    if (!originalRequest)                        return Promise.reject(error);
-    if (error.message === 'NOT_AUTHENTICATED')   return Promise.reject(error);
+    if (!originalRequest)                       return Promise.reject(error);
+    if (error.message === 'NOT_AUTHENTICATED')  return Promise.reject(error);
 
     if (error.message === 'AUTH_INIT_TIMEOUT' && !originalRequest._initRetry) {
       originalRequest._initRetry = true;
@@ -181,8 +195,8 @@ axiosInstance.interceptors.response.use(
       return axiosInstance(originalRequest);
     }
 
-    const status    = error.response?.status;
-    const url       = originalRequest.url ?? '';
+    const status      = error.response?.status;
+    const url         = originalRequest.url ?? '';
     const isAuthRoute = isAuthSafeUrl(url) || isAuthMeUrl(url);
 
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
@@ -212,7 +226,11 @@ axiosInstance.interceptors.response.use(
 
         const newToken = data.accessToken;
         setAccessToken(newToken);
-        setSessionCookie(); // ✅ DUP-AUTH-01: من cookieUtils — لا تكرار
+        setSessionCookie();
+
+        // ✅ BUG-AX-01: اضبط isRefreshing قبل processRefreshQueue
+        // — يمنع refresh جديد غير ضروري من الطلبات المحرَّرة
+        isRefreshing = false;
         processRefreshQueue(null, newToken);
 
         originalRequest.headers                = originalRequest.headers ?? {};
@@ -224,6 +242,11 @@ axiosInstance.interceptors.response.use(
           refreshError instanceof Error ? refreshError : new Error('REFRESH_FAILED');
 
         setAccessToken(null);
+        // ✅ BUG-AX-04: احذف session_active لكسر redirect loop في middleware.ts
+        clearSessionCookie();
+
+        // ✅ BUG-AX-01: اضبط isRefreshing قبل processRefreshQueue في الـ catch أيضاً
+        isRefreshing = false;
         processRefreshQueue(finalError, null);
 
         if (typeof window !== 'undefined') {
@@ -236,9 +259,8 @@ axiosInstance.interceptors.response.use(
         }
 
         return Promise.reject(finalError);
-      } finally {
-        isRefreshing = false;
       }
+      // ✅ BUG-AX-01: لا finally هنا — isRefreshing تُدار يدوياً أعلاه
     }
 
     return Promise.reject(error);

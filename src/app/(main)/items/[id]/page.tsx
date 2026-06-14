@@ -11,7 +11,6 @@ import DeliveryConfirmButton    from "@/components/DeliveryConfirmButton";
 import ChatDrawer               from "@/components/ChatDrawer"; // ✅
 import { useRouter } from 'next/navigation';
 
-const backendUrl = process.env.NEXT_PUBLIC_API_URL!;
 
 export default function ItemDetailsPage() {
   const router = useRouter();
@@ -21,9 +20,14 @@ export default function ItemDetailsPage() {
     isDonor, isBooker, isWaitlisted, isCancelledBefore,
     handleRequestItem, handleCancelAction,
   } = useItemDetails();
+  
 
   const [chatOpen, setChatOpen] = useState(false); // ✅
 
+    const handleDeliveryComplete = (_itemId: string) => {
+    router.refresh();
+  };
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-surface">

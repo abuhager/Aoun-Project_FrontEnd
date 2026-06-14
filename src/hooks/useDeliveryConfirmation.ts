@@ -1,8 +1,10 @@
+// src/hooks/useDeliveryConfirmation.ts ✅ FIXED
 'use client';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useSocket }        from '@/hooks/useSocket';
-import { completeDelivery } from '@/lib/api/itemApi';
-import toast from 'react-hot-toast';
+import { useSocket }                                  from '@/hooks/useSocket';
+import { completeDelivery, getItemById }              from '@/lib/api/itemApi'; // ✅ [FIX-1] استيراد getItemById
+import type { Item }                                  from '@/types/item.types'; // ✅ [FIX-2] استيراد النوع
+import toast                                          from 'react-hot-toast';
 
 type ConfirmationType = 'recipient_confirm' | 'donor_confirm';
 type DeliveryStatus   = 'idle' | 'recipient_confirming' | 'waiting_donor' | 'donor_confirming' | 'completed' | 'error';
@@ -16,27 +18,27 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
   const [isLoading, setLoading]  = useState(false);
   const [errorMsg,  setErrorMsg] = useState<string | null>(null);
   const isMountedRef = useRef(true);
-  const prevRef      = useRef(initialRecipientConfirmed);
+  // ✅ [FIX-3] حذف prevRef — كانت معرّفة لكن غير مستخدمة
 
   useEffect(() => () => { isMountedRef.current = false; }, []);
 
-  // [FIX-5] مزامنة الـ status مع initialRecipientConfirmed عند تغيّره
- useEffect(() => {
-  if (userRole !== 'donor') return;
-  if (initialRecipientConfirmed) return; // ← البيانات الأولية محدثة بالفعل
+  // Offline fallback — يتحقق من حالة الـ item عند mount للـ donor
+  useEffect(() => {
+    if (userRole !== 'donor') return;
+    if (initialRecipientConfirmed) return;
 
-  // ✅ إذا كان الـ donor يفتح الصفحة بعد تأكيد المستلم (while offline)
-  // نتحقق من حالة الـ item مرة واحدة عند mount
-  let cancelled = false;
-  getItemById(itemId).then((item) => {
-    if (cancelled) return;
-    if (item.recipientConfirmed && !item.donorConfirmed) {
-      setStatus('waiting_donor');
-    }
-  }).catch(() => {});
+    let cancelled = false;
+    getItemById(itemId)
+      .then((item: Item) => {           // ✅ [FIX-2] type صريح بدل any
+        if (cancelled) return;
+        if (item.recipientConfirmed && !item.donorConfirmed) {
+          setStatus('waiting_donor');
+        }
+      })
+      .catch(() => {});
 
-  return () => { cancelled = true; };
-}, [itemId, userRole, initialRecipientConfirmed]);
+    return () => { cancelled = true; };
+  }, [itemId, userRole, initialRecipientConfirmed]);
 
   // Socket listeners
   useEffect(() => {
@@ -54,10 +56,10 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
       onSuccess?.(itemId);
     };
     socket.on('delivery:recipient_confirmed', onRC);
-    socket.on('delivery:completed', onC);
+    socket.on('delivery:completed',           onC);
     return () => {
       socket.off('delivery:recipient_confirmed', onRC);
-      socket.off('delivery:completed', onC);
+      socket.off('delivery:completed',           onC);
     };
   }, [socketRef, itemId, onSuccess]);
 
@@ -65,7 +67,6 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
     if (isLoading) return;
     setLoading(true);
     setErrorMsg(null);
-    // ✅ ضبط حالة التحميل الصحيحة
     setStatus(type === 'recipient_confirm' ? 'recipient_confirming' : 'donor_confirming');
 
     try {
@@ -82,7 +83,6 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
       }
     } catch (err: unknown) {
       if (!isMountedRef.current) return;
-      // ✅ [FIX-2] دائماً 'error' عند الفشل — يُظهر "إعادة المحاولة" في DeliveryConfirmButton
       setStatus('error');
       const msg = (err as { response?: { data?: { msg?: string } } })
         ?.response?.data?.msg ?? 'حدث خطأ، حاول مجدداً';

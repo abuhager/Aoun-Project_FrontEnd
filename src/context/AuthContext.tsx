@@ -121,20 +121,22 @@ function loadUserCookie(): CachedUser | null {
       return null;
     }
     return {
-      _id:          decoded._id,
-      name:         decoded.name,
-      email:        decoded.email,
-      avatar:       decoded.avatar ?? "",
-      trustLevel: ([1, 2, 3, 4].includes(decoded.trustLevel as number) ? decoded.trustLevel : 1) as TrustLevel,
-      role: (['user','admin','super_admin'].includes(decoded.role as string)? decoded.role: 'user') as UserRole,
+      _id:         decoded._id,
+      name:        decoded.name,
+      email:       decoded.email,
+      avatar:      decoded.avatar ?? '',
+      trustLevel: ([1, 2, 3, 4].includes(decoded.trustLevel as number)
+        ? decoded.trustLevel : 1) as TrustLevel,
+      trustScore:  typeof decoded.trustScore === 'number'   // ✅ [FIX] إضافة trustScore
+        ? decoded.trustScore : 0,
+      role: (['user', 'admin', 'super_admin'].includes(decoded.role as string)
+        ? decoded.role : 'user') as UserRole,
       gamification: decoded.gamification ?? {
-        trustScore:     0,
-        totalDonations: 0,
-        level:          1,
-        title:          "مبتدئ",
-        badge:          "🌱",
-        progress:       0,
-        pointsToNext:   null,
+        level:        1,
+        title:        'مبتدئ',
+        badge:        '🌱',
+        progress:     0,
+        pointsToNext: null,
       },
     };
   } catch {

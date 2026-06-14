@@ -1,243 +1,613 @@
-// src/app/(main)/(protected)/admin/reports/page.tsx
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
+import useSWR, { mutate as globalMutate } from "swr";
 import axiosInstance from "@/lib/api/axiosInstance";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/useToast";
-import Link from "next/link";
+import type { AdminReport } from "@/types/admin.types";
+import type { ReportStatus } from "@/types/report.types";
 
-interface Report {
-  _id:        string;
-  reporter?:  { _id?: string; name?: string; email?: string; phone?: string };
-  reportedUser?: {
-    _id?:     string;
-    name?:    string;
-    email?:   string;
-    phone?:   string;
-    isBanned?: boolean;
-  };
-  relatedItem?: { title?: string };
-  reason:     string;
-  details?:   string;
-  status:     string;
-  createdAt:  string;
-  appealText?: string;
-  appealedAt?: string;
-  totalReportsAgainstUser?: number;
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+
+// ✅ [LOGIC-R01+R02] - نوع موحَّد متوافق مع Backend الفعلي
+interface AdminReportFull {
+  _id:          string;
+  reporter:     { _id: string; name: string; avatar?: string };
+  reportedUser: { _id: string; name: string; avatar?: string };
+  relatedItem:  { _id: string; title: string } | null;
+  reason:       string;
+  details:      string;
+  status:       ReportStatus; // 'pending' | 'reviewed' | 'dismissed' | 'actioned'
+  adminNote:    string;
+  appealText:   string;
+  appealedAt:   string | null;
+  resolvedAt:   string | null;
+  createdAt:    string;
 }
 
-interface PaginationMeta {
-  total: number;
-  page:  number;
-  pages: number;
+interface AdminReportsResponse {
+  reports:    AdminReportFull[];
+  totalPages: number;
+  total:      number;
 }
+
+interface ResolvePayload {
+  status:    ReportStatus;
+  adminNote: string;
+}
+
+// ─────────────────────────────────────────────
+// Constants (خارج المكوّن — [DRY-R01])
+// ─────────────────────────────────────────────
+
+const STATUS_LABELS: Record<ReportStatus, string> = {
+  pending:   "قيد المراجعة",
+  reviewed:  "تمّت المراجعة",
+  dismissed: "تم الرفض",
+  actioned:  "تم الإجراء",
+};
+
+const STATUS_COLORS: Record<ReportStatus, string> = {
+  pending:   "bg-yellow-100 text-yellow-800",
+  reviewed:  "bg-blue-100 text-blue-800",
+  dismissed: "bg-gray-100 text-gray-600",
+  actioned:  "bg-green-100 text-green-800",
+};
+
+const SWR_KEY = (page: number, statusFilter: string) =>
+  `/api/admin/reports?page=${page}&limit=10${statusFilter !== "all" ? `&status=${statusFilter}` : ""}`;
+
+// ─────────────────────────────────────────────
+// Fetcher
+// ─────────────────────────────────────────────
+
+const fetcher = (url: string) =>
+  axiosInstance.get<AdminReportsResponse>(url).then((r) => r.data);
+
+// ─────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────
 
 export default function AdminReportsPage() {
-  const [reports, setReports] = useState<Report[]>([]);
-  const [meta,    setMeta]    = useState<PaginationMeta>({ total: 0, page: 1, pages: 1 });
-  const [loading, setLoading] = useState(true);
-  const [notes,   setNotes]   = useState<Record<string, string>>({});
-  const [busy,    setBusy]    = useState<Record<string, boolean>>({});
+  // ✅ [SEC-R01] - Role guard صريح على مستوى الـ page
+  const { user, isLoading: authLoading } = useAuth();
+  const { showToast } = useToast();
 
-  const { show: showToast, ToastComponent } = useToast();
+  const [page,         setPage]         = useState(1);
+  const [statusFilter, setStatusFilter] = useState<ReportStatus | "all">("all");
+  const [selected,     setSelected]     = useState<AdminReportFull | null>(null);
+  const [adminNote,    setAdminNote]     = useState("");
+  const [actionStatus, setActionStatus] = useState<ReportStatus>("actioned");
+  const [submitting,   setSubmitting]   = useState(false);
 
-  const loadReports = useCallback(async (page = 1, withLoader = true) => {
-    if (withLoader) setLoading(true);
-    try {
-      const r = await axiosInstance.get("/api/admin/reports", { params: { page } });
-      setReports(Array.isArray(r.data?.reports) ? r.data.reports : []);
-      setMeta({
-        total: r.data?.total ?? 0,
-        page:  r.data?.page  ?? 1,
-        pages: r.data?.pages ?? 1,
-      });
-    } catch {
-      if (withLoader) {
-        setReports([]);
-        showToast("تعذر تحميل البلاغات الحالية من السيرفر", false);
-      }
-    } finally { // ✅ تم إصلاح الإملاء هنا
-      if (withLoader) setLoading(false);
+  // ✅ [LOGIC-R03] - loading per-row لمنع double-click
+  const [loadingId,    setLoadingId]    = useState<string | null>(null);
+
+  const swrKey = SWR_KEY(page, statusFilter);
+
+  const { data, error, isLoading } = useSWR<AdminReportsResponse>(
+    swrKey,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      keepPreviousData:  true,
     }
-  }, [showToast]);
+  );
 
-  useEffect(() => {
-    loadReports(1, true);
-  }, [loadReports]);
+  // ─── Guard: Admin فقط ─────────────────────
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-gray-500 text-sm animate-pulse">
+          جارٍ التحقق من الصلاحيات...
+        </div>
+      </div>
+    );
+  }
 
-  const resolve = async (id: string, action: "warn" | "ban" | "dismiss") => {
-    const adminNote = notes[id]?.trim();
-    if (!adminNote) { showToast("تعليق الأدمن إجباري قبل تنفيذ الإجراء ⚠️", false); return; }
-    if (busy[id]) return;
-    setBusy(p => ({ ...p, [id]: true }));
+  if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <span className="text-4xl">🚫</span>
+        <p className="text-red-600 font-semibold text-lg">
+          غير مصرح — هذه الصفحة للمشرفين فقط
+        </p>
+      </div>
+    );
+  }
+
+  // ─── Resolve Handler ──────────────────────
+  const handleResolve = useCallback(async () => {
+    if (!selected || submitting) return;
+
+    const trimmedNote = adminNote.trim();
+    if (!trimmedNote) {
+      showToast("يجب كتابة ملاحظة المشرف قبل الإجراء", "error");
+      return;
+    }
+
+    setSubmitting(true);
+    setLoadingId(selected._id);
+
     try {
-      await axiosInstance.post(`/api/admin/reports/${id}/resolve`, { action, adminNote });
-      showToast(
-        action === "warn" ? "✅ تم إرسال التحذير للمستخدم بنجاح" :
-        action === "ban"  ? "🚫 تم حظر حساب المستخدم بنجاح"  : "✅ تم رفض وإغلاق البلاغ بنجاح",
-        true
+      const payload: ResolvePayload = {
+        status:    actionStatus,
+        adminNote: trimmedNote,
+      };
+
+      await axiosInstance.patch(
+        `/api/admin/reports/${selected._id}/resolve`,
+        payload
       );
-      setNotes(p => { const n = { ...p }; delete n[id]; return n; });
-      await loadReports(meta.page, false);
-    } catch (err: unknown) {
-      let msg = "حدث خطأ أثناء معالجة البلاغ";
-      if (err && typeof err === "object" && "isAxiosError" in err) {
-        const axiosError = err as { response?: { data?: { msg?: string } } };
-        msg = axiosError.response?.data?.msg || msg;
-      }
-      showToast(msg, false);
-    } finally { // ✅ تم إصلاح الإملاء هنا
-      setBusy(p => ({ ...p, [id]: false }));
-    }
-  };
 
+      // ✅ [PERF-R01] - revalidate الـ SWR key الحالي فقط
+      await globalMutate(swrKey);
+
+      showToast("تم تنفيذ الإجراء بنجاح ✅", "success");
+      setSelected(null);
+      setAdminNote("");
+    } catch (err) {
+      showToast(extractErrorMsg(err, "فشل تنفيذ الإجراء"), "error");
+    } finally {
+      setSubmitting(false);
+      setLoadingId(null);
+    }
+  }, [selected, submitting, adminNote, actionStatus, swrKey, showToast]);
+
+  // ─── Quick Dismiss (بدون modal) ──────────
+  const handleQuickDismiss = useCallback(
+    async (reportId: string) => {
+      if (loadingId) return;
+      setLoadingId(reportId);
+      try {
+        await axiosInstance.patch(`/api/admin/reports/${reportId}/resolve`, {
+          status:    "dismissed" satisfies ReportStatus,
+          adminNote: "تم الرفض تلقائياً",
+        });
+        await globalMutate(swrKey);
+        showToast("تم رفض البلاغ ✅", "success");
+      } catch (err) {
+        showToast(extractErrorMsg(err, "فشل رفض البلاغ"), "error");
+      } finally {
+        setLoadingId(null);
+      }
+    },
+    [loadingId, swrKey, showToast]
+  );
+
+  // ─── Render ───────────────────────────────
   return (
-    <div className="space-y-6" dir="rtl">
-      {ToastComponent}
+    <div className="p-4 md:p-8 max-w-7xl mx-auto" dir="rtl">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-black flex items-center gap-2">
-          <span className="material-symbols-outlined text-orange-500">flag</span>
-          البلاغات المعلّقة
-          {meta.total > 0 && (
-            <span className="bg-red-100 text-red-600 text-xs font-black px-2 py-0.5 rounded-full">
-              {meta.total}
-            </span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">إدارة البلاغات</h1>
+          {data && (
+            <p className="text-sm text-gray-500 mt-1">
+              إجمالي البلاغات: {data.total}
+            </p>
           )}
-        </h1>
+        </div>
+
+        {/* ✅ Filter بـ ReportStatus الحقيقية */}
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as ReportStatus | "all");
+            setPage(1);
+          }}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">جميع الحالات</option>
+          {(Object.keys(STATUS_LABELS) as ReportStatus[]).map((s) => (
+            <option key={s} value={s}>
+              {STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      {/* Loading Skeleton */}
+      {isLoading && (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-20 bg-gray-100 animate-pulse rounded-xl"
+            />
+          ))}
         </div>
-      ) : reports.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
-          <span className="material-symbols-outlined text-4xl text-gray-300 block mb-2">check_circle</span>
-          <p className="text-gray-400 font-bold text-sm">لا توجد بلاغات معلّقة 🎉</p>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <span className="text-4xl">⚠️</span>
+          <p className="text-red-500 font-medium">
+            {extractErrorMsg(error, "تعذّر تحميل البلاغات")}
+          </p>
+          <button
+            onClick={() => globalMutate(swrKey)}
+            className="text-sm text-blue-600 underline"
+          >
+            إعادة المحاولة
+          </button>
         </div>
-      ) : (
+      )}
+
+      {/* ✅ [STRUCT-R01] Empty State مُصمَّم */}
+      {!isLoading && !error && data?.reports.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-400">
+          <span className="text-6xl">🗂️</span>
+          <p className="text-lg font-semibold text-gray-500">
+            لا توجد بلاغات
+          </p>
+          <p className="text-sm">
+            {statusFilter !== "all"
+              ? `لا يوجد بلاغات بحالة "${STATUS_LABELS[statusFilter as ReportStatus]}"`
+              : "لم يُرفع أي بلاغ حتى الآن"}
+          </p>
+        </div>
+      )}
+
+      {/* Reports Table */}
+      {!isLoading && !error && data && data.reports.length > 0 && (
         <>
-          <div className="space-y-3">
-            {reports.map((report) => {
-              const isBusy     = !!busy[report._id];
-              const totalCount = report.totalReportsAgainstUser ?? 0;
-              const countColor =
-                totalCount >= 5 ? "bg-red-500 text-white" :
-                totalCount >= 3 ? "bg-orange-400 text-white" :
-                                  "bg-gray-100 text-gray-600";
-
-              return (
-                <div key={report._id}
-                  className={`bg-white rounded-2xl border shadow-sm p-5 space-y-4 transition-all
-                    ${report.reportedUser?.isBanned ? "border-red-200 bg-red-50/30" : "border-gray-100"}`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-black text-gray-500">المُبلِّغ:</span>
-                        {report.reporter?._id ? (
-                          <Link href={`/profile/${report.reporter._id}`} className="text-xs font-black text-primary hover:underline">
-                            {report.reporter.name ?? "—"}
-                          </Link>
+          <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+            <table className="min-w-full divide-y divide-gray-100 bg-white text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                    المُبلِّغ
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                    المُبلَّغ عنه
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                    السبب
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                    الحالة
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                    التاريخ
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                    الإجراء
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data.reports.map((report) => (
+                  <tr
+                    key={report._id}
+                    className={`hover:bg-gray-50 transition-colors ${
+                      loadingId === report._id ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                  >
+                    {/* المُبلِّغ */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {report.reporter.avatar ? (
+                          <img
+                            src={report.reporter.avatar}
+                            alt={report.reporter.name}
+                            className="w-7 h-7 rounded-full object-cover"
+                          />
                         ) : (
-                          <span className="text-xs font-black text-gray-800">{report.reporter?.name ?? "—"}</span>
+                          <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">
+                            {report.reporter.name.charAt(0)}
+                          </div>
                         )}
-
-                        <span className="material-symbols-outlined text-sm text-gray-300">arrow_back</span>
-
-                        {report.reportedUser?._id ? (
-                          <Link href={`/profile/${report.reportedUser._id}`} className="text-xs font-black text-red-600 hover:underline">
-                            {report.reportedUser.name ?? "—"}
-                          </Link>
-                        ) : (
-                          <span className="text-xs font-black text-red-600">{report.reportedUser?.name ?? "—"}</span>
-                        )}
-
-                        <span className={`flex items-center gap-0.5 text-[10px] font-black px-2 py-0.5 rounded-full ${countColor}`} title={`إجمالي البلاغات التراكمية`}>
-                          <span className="material-symbols-outlined text-[11px]">flag</span>
-                          {totalCount} بلاغ إجمالي
+                        <span className="font-medium text-gray-800">
+                          {report.reporter.name}
                         </span>
-
-                        {report.reportedUser?.isBanned && (
-                          <span className="text-[10px] bg-red-100 text-red-600 font-black px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                            <span className="material-symbols-outlined text-[11px]">block</span>محظور
-                          </span>
-                        )}
-
-                        {report.relatedItem?.title && (
-                          <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-bold">
-                            {report.relatedItem.title}
-                          </span>
-                        )}
                       </div>
+                    </td>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[10px] text-gray-500">
-                        <div className="bg-gray-50 rounded-lg px-2 py-1.5 space-y-0.5">
-                          <p className="font-black text-gray-400">المُبلِّغ</p>
-                          {report.reporter?.email && <p className="flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">mail</span>{report.reporter.email}</p>}
-                          {report.reporter?.phone && <p className="flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">phone</span>{report.reporter.phone}</p>}
-                        </div>
-                        <div className="bg-red-50/60 rounded-lg px-2 py-1.5 space-y-0.5">
-                          <p className="font-black text-red-400">المُبلَّغ عنه</p>
-                          {report.reportedUser?.email && <p className="flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">mail</span>{report.reportedUser.email}</p>}
-                          {report.reportedUser?.phone && <p className="flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">phone</span>{report.reportedUser.phone}</p>}
-                        </div>
+                    {/* ✅ [LOGIC-R01] reportedUser (لا reported) */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {report.reportedUser.avatar ? (
+                          <img
+                            src={report.reportedUser.avatar}
+                            alt={report.reportedUser.name}
+                            className="w-7 h-7 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-xs font-bold text-red-600">
+                            {report.reportedUser.name.charAt(0)}
+                          </div>
+                        )}
+                        <span className="font-medium text-gray-800">
+                          {report.reportedUser.name}
+                        </span>
                       </div>
+                    </td>
 
-                      <p className="text-[11px] text-gray-600 font-bold">السبب: <span className="text-gray-800">{report.reason}</span></p>
-                      {report.details && <p className="text-[10px] text-gray-400 bg-gray-50 rounded-lg px-2 py-1">{report.details}</p>}
-
-                      {report.appealText ? (
-                        <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3 space-y-1">
-                          <span className="text-[10px] font-black text-yellow-700 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[13px]">gavel</span>اعتراض المستخدم
-                          </span>
-                          <p className="text-[11px] text-yellow-800">{report.appealText}</p>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-bold">✅ انتهت مهلة الاعتراض</span>
+                    {/* السبب */}
+                    <td className="px-4 py-3 max-w-[160px]">
+                      <span className="truncate block text-gray-700">
+                        {report.reason}
+                      </span>
+                      {report.relatedItem && (
+                        <span className="text-xs text-gray-400 truncate block">
+                          غرض: {report.relatedItem.title}
+                        </span>
                       )}
+                    </td>
 
-                      <p className="text-[10px] text-gray-400">{new Date(report.createdAt).toLocaleDateString("ar-EG")}</p>
-                    </div>
+                    {/* ✅ [LOGIC-R02] الحالة من ReportStatus الحقيقية */}
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          STATUS_COLORS[report.status] ?? "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {STATUS_LABELS[report.status] ?? report.status}
+                      </span>
+                    </td>
 
-                    <div className="flex flex-col gap-2 shrink-0">
-                      <button onClick={() => resolve(report._id, "warn")} disabled={isBusy} className="px-4 py-2 rounded-xl text-[11px] font-black bg-yellow-50 text-yellow-700 hover:bg-yellow-100 disabled:opacity-50 transition-all flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm">warning</span>{isBusy ? "جاري..." : "تحذير"}
-                      </button>
-                      <button onClick={() => resolve(report._id, "ban")} disabled={isBusy} className="px-4 py-2 rounded-xl text-[11px] font-black bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 transition-all flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm">block</span>{isBusy ? "جاري..." : "حظر"}
-                      </button>
-                      <button onClick={() => resolve(report._id, "dismiss")} disabled={isBusy} className="px-4 py-2 rounded-xl text-[11px] font-black bg-gray-50 text-gray-500 hover:bg-gray-100 disabled:opacity-50 transition-all flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm">close</span>{isBusy ? "جاري..." : "رفض"}
-                      </button>
-                    </div>
-                  </div>
+                    {/* التاريخ */}
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
+                      {new Date(report.createdAt).toLocaleDateString("ar-JO", {
+                        year:  "numeric",
+                        month: "short",
+                        day:   "numeric",
+                      })}
+                    </td>
 
-                  <div className="flex gap-2 pt-1 border-t border-gray-50">
-                    <input
-                      type="text" value={notes[report._id] ?? ""} disabled={isBusy}
-                      onChange={e => setNotes(p => ({ ...p, [report._id]: e.target.value }))}
-                      placeholder="تعليق الأدمن (إجباري)..."
-                      className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-[12px] focus:outline-none focus:border-primary disabled:bg-gray-50 disabled:text-gray-400"
-                    />
-                    <span className="material-symbols-outlined text-gray-300 self-center text-sm">sticky_note_2</span>
-                  </div>
-                </div>
-              );
-            })}
+                    {/* الإجراءات */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {report.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelected(report);
+                                setAdminNote(report.adminNote ?? "");
+                                setActionStatus("actioned");
+                              }}
+                              disabled={!!loadingId}
+                              className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                            >
+                              مراجعة
+                            </button>
+                            <button
+                              onClick={() => handleQuickDismiss(report._id)}
+                              disabled={!!loadingId}
+                              className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                            >
+                              رفض سريع
+                            </button>
+                          </>
+                        )}
+                        {report.status !== "pending" && (
+                          <button
+                            onClick={() => {
+                              setSelected(report);
+                              setAdminNote(report.adminNote ?? "");
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            عرض التفاصيل
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          {meta.pages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <button onClick={() => loadReports(meta.page - 1)} disabled={meta.page <= 1} className="px-4 py-2 rounded-xl text-xs font-black bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 transition-all">السابق</button>
-              <span className="text-xs text-gray-500 font-bold">{meta.page} / {meta.pages}</span>
-              <button onClick={() => loadReports(meta.page + 1)} disabled={meta.page >= meta.pages} className="px-4 py-2 rounded-xl text-xs font-black bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 transition-all">التالي</button>
+          {/* Pagination */}
+          {data.totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                ← السابق
+              </button>
+              <span className="text-sm text-gray-600">
+                صفحة {page} من {data.totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
+                disabled={page === data.totalPages}
+                className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                التالي →
+              </button>
             </div>
           )}
         </>
+      )}
+
+      {/* ─── Modal التفاصيل والإجراء ──────────── */}
+      {selected && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelected(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            dir="rtl"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900">
+                تفاصيل البلاغ
+              </h2>
+              <button
+                onClick={() => setSelected(null)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none"
+                aria-label="إغلاق"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+
+              {/* معلومات البلاغ */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400 mb-1">المُبلِّغ</p>
+                  <p className="font-semibold text-gray-800 text-sm">
+                    {selected.reporter.name}
+                  </p>
+                </div>
+                <div className="bg-red-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400 mb-1">المُبلَّغ عنه</p>
+                  <p className="font-semibold text-red-700 text-sm">
+                    {selected.reportedUser.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* السبب والتفاصيل */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                  السبب
+                </p>
+                <p className="text-sm text-gray-800 bg-yellow-50 rounded-lg px-3 py-2">
+                  {selected.reason}
+                </p>
+              </div>
+
+              {selected.details && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                    تفاصيل إضافية
+                  </p>
+                  {/* ✅ [SEC-R02] عرض آمن — لا dangerouslySetInnerHTML */}
+                  <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap break-words">
+                    {selected.details}
+                  </p>
+                </div>
+              )}
+
+              {/* الطعن (إن وُجد) */}
+              {selected.appealText && (
+                <div className="border-r-4 border-orange-400 pr-3 bg-orange-50 rounded-lg py-2">
+                  <p className="text-xs font-semibold text-orange-600 mb-1">
+                    طعن المستخدم
+                  </p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                    {selected.appealText}
+                  </p>
+                </div>
+              )}
+
+              {/* الغرض المرتبط */}
+              {selected.relatedItem && (
+                <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+                  <span className="font-medium">الغرض المرتبط: </span>
+                  {selected.relatedItem.title}
+                </div>
+              )}
+
+              {/* ─── قسم الإجراء (pending فقط) */}
+              {selected.status === "pending" && (
+                <div className="border-t border-gray-100 pt-5 space-y-4">
+                  <p className="text-sm font-semibold text-gray-700">
+                    اتخاذ إجراء
+                  </p>
+
+                  {/* اختيار نوع الإجراء */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      نوع الإجراء
+                    </label>
+                    <select
+                      value={actionStatus}
+                      onChange={(e) =>
+                        setActionStatus(e.target.value as ReportStatus)
+                      }
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="actioned">
+                        {STATUS_LABELS.actioned}
+                      </option>
+                      <option value="reviewed">
+                        {STATUS_LABELS.reviewed}
+                      </option>
+                      <option value="dismissed">
+                        {STATUS_LABELS.dismissed}
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* ملاحظة المشرف */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      ملاحظة المشرف{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={adminNote}
+                      onChange={(e) => setAdminNote(e.target.value)}
+                      rows={3}
+                      maxLength={500}
+                      placeholder="اكتب ملاحظتك هنا..."
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-gray-400 text-left mt-0.5">
+                      {adminNote.length}/500
+                    </p>
+                  </div>
+
+                  {/* أزرار الإجراء */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleResolve}
+                      disabled={submitting || !adminNote.trim()}
+                      className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {submitting ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          جارٍ التنفيذ...
+                        </span>
+                      ) : (
+                        "تأكيد الإجراء"
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setSelected(null)}
+                      disabled={submitting}
+                      className="px-5 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* عرض ملاحظة المشرف للحالات المُغلقة */}
+              {selected.status !== "pending" && selected.adminNote && (
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs font-semibold text-gray-500 mb-1">
+                    ملاحظة المشرف
+                  </p>
+                  <p className="text-sm text-gray-700 bg-blue-50 rounded-lg px-3 py-2 whitespace-pre-wrap break-words">
+                    {selected.adminNote}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

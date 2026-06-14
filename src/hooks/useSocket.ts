@@ -36,11 +36,11 @@ export function useSocket() {
     }
 
     socketSingleton = io(SOCKET_URL, {
-  auth: (cb) => cb({ token: getAccessToken() }),  // ← دالة تُستدعى عند كل reconnect
+  auth: (cb) => cb({ token: getAccessToken() }), 
   withCredentials: true,
   transports: ['websocket'],
   reconnection: true,
-  reconnectionAttempts: 10,    // ← زيادة المحاولات
+  reconnectionAttempts: 10,
   reconnectionDelay: 1500,
   timeout: 8000,
 });

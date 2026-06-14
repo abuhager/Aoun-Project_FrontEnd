@@ -3,13 +3,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { getAccessToken } from '@/lib/api/axiosInstance';  // ✅ import هذا
+import { getAccessToken } from '@/lib/api/axiosInstance';
 import { useSocket } from './useSocket';
 import type { ChatMessage, ConversationInfo } from '@/types/chat.types';
 
 const API = process.env.NEXT_PUBLIC_API_URL!;
 
-// ✅ يقرأ من الـ in-memory token — نفس ما يستخدمه axios
+// يقرأ من الـ in-memory token — نفس ما يستخدمه axios
 function getAuthHeaders(): HeadersInit {
   const token = getAccessToken();
   return {
@@ -30,6 +30,7 @@ export function useChat(itemId: string) {
   const [text, setText]             = useState('');
   const [typingUser, setTypingUser] = useState<string | null>(null);
 
+  // ✅ تم إصلاح الاعتماديات وحذف socketRef لأن قيمته ثابتة كـ Ref Object
   const initConversation = useCallback(async () => {
     if (!user?._id || !isLoggedIn || !itemId) return;
 
@@ -64,7 +65,7 @@ export function useChat(itemId: string) {
     } finally {
       setLoading(false);
     }
-  }, [user?._id, isLoggedIn, itemId, socketRef]);
+  }, [user?._id, isLoggedIn, itemId]); 
 
   useEffect(() => {
     initConversation();
@@ -74,8 +75,22 @@ export function useChat(itemId: string) {
     const socket = socketRef.current;
     if (!socket) return;
 
+    // ✅ إصلاح: تحويلها لدالة عادية لأن الـ Hooks لا تُستدعى داخل الـ useEffect
     const handleNewMessage = (msg: ChatMessage) => {
       setMessages((prev) => {
+        // إذا كانت الرسالة من نفس المستخدم -> استبدل الـ optimistic temp بها
+        if (msg.sender === user?._id) {
+          const hasTempVersion = prev.some((m) => m._id.startsWith('temp-'));
+          if (hasTempVersion) {
+            const tempIdx = prev.findIndex((m) => m._id.startsWith('temp-'));
+            if (tempIdx !== -1) {
+              const updated = [...prev];
+              updated[tempIdx] = msg;
+              return updated;
+            }
+          }
+        }
+        // رسالة من الطرف الآخر أو لا يوجد temp -> أضفها إذا لم تكن موجودة
         if (prev.some((m) => m._id === msg._id)) return prev;
         return [...prev, msg];
       });
@@ -98,6 +113,7 @@ export function useChat(itemId: string) {
     };
   }, [socketRef, user?._id]);
 
+  // ✅ تم تنظيف الـ dependencies هنا أيضاً وحذف socketRef
   const sendMessage = useCallback(async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -145,8 +161,9 @@ export function useChat(itemId: string) {
       setSending(false);
       socketRef.current?.emit('stopTyping', { convId });
     }
-  }, [text, user?._id, initConversation, socketRef]);
+  }, [text, user?._id, initConversation]);
 
+  // ✅ تنظيف الـ dependencies وحذف socketRef لقيم مستقرة وبدون تكرار أداء
   const markRead = useCallback(async () => {
     const convId = convIdRef.current;
     if (!convId) return;
@@ -159,17 +176,17 @@ export function useChat(itemId: string) {
     } catch (err) {
       console.error('markRead error', err);
     }
-  }, [socketRef]);
+  }, []);
 
   const emitTyping = useCallback(() => {
     const convId = convIdRef.current;
     if (convId) socketRef.current?.emit('typing', { convId });
-  }, [socketRef]);
+  }, []);
 
   const emitStopTyping = useCallback(() => {
     const convId = convIdRef.current;
     if (convId) socketRef.current?.emit('stopTyping', { convId });
-  }, [socketRef]);
+  }, []);
 
   return {
     messages,

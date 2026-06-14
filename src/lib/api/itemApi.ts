@@ -94,6 +94,7 @@ export async function completeDelivery(
 }
 
 // ✅ الـ Wrappers البسيطة والنظيفة لاستدعائها في الـ UI والـ Hooks مباشرة
+
 export const confirmReceipt  = (id: string) => completeDelivery(id, 'recipient_confirm');
 export const confirmDelivery = (id: string) => completeDelivery(id, 'donor_confirm');
 

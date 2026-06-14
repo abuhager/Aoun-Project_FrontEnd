@@ -220,12 +220,11 @@ const showChat = (isDonor || isBooker)
                     {item.status === "محجوز" && (
                       <>
                         <DeliveryConfirmButton
-                          itemId={item._id}
-                          userRole="donor"
-                          initialRecipientConfirmed={initialRecipientConfirmed}
-                          onSuccess={() => router.refresh()}
-                          className="w-full py-4 rounded-2xl font-black text-sm"
-                        />
+  itemId={item._id}
+  userRole="donor"
+  initialRecipientConfirmed={item.recipientConfirmed}  // ← من الـ API response
+  onSuccess={handleDeliveryComplete}
+/>
                         <button
                           onClick={handleCancelAction}
                           disabled={actionLoading}

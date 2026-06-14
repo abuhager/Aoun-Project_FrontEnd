@@ -7,7 +7,7 @@ import { useDeliveryConfirmation } from '@/hooks/useDeliveryConfirmation';
 interface DeliveryConfirmButtonProps {
   itemId: string;
   userRole: 'donor' | 'recipient';
-  initialRecipientConfirmed?: boolean; // ✅ جديد
+  initialRecipientConfirmed?: boolean;
   onSuccess?: (itemId: string) => void;
   className?: string;
 }
@@ -41,6 +41,14 @@ export default function DeliveryConfirmButton({
 
   return (
     <div className="flex flex-col gap-2">
+      
+      {/* ✅ النص التوضيحي للمتبرع لإزالة الغموض عند تأكيد المستلم */}
+      {status === 'waiting_donor' && userRole === 'donor' && (
+        <p className="text-xs text-green-600 font-medium text-center mb-1">
+          ✅ المستلم أكّد استلام الغرض — انقر لإتمام التسليم
+        </p>
+      )}
+
       <button
         onClick={handleClick}
         disabled={!canConfirm || isLoading}

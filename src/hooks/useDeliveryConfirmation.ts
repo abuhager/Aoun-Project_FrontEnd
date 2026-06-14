@@ -21,12 +21,22 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
   useEffect(() => () => { isMountedRef.current = false; }, []);
 
   // [FIX-5] مزامنة الـ status مع initialRecipientConfirmed عند تغيّره
-  useEffect(() => {
-    if (initialRecipientConfirmed !== prevRef.current && initialRecipientConfirmed === true) {
-      setStatus((prev) => (prev === 'idle' || prev === 'error') ? 'waiting_donor' : prev);
+ useEffect(() => {
+  if (userRole !== 'donor') return;
+  if (initialRecipientConfirmed) return; // ← البيانات الأولية محدثة بالفعل
+
+  // ✅ إذا كان الـ donor يفتح الصفحة بعد تأكيد المستلم (while offline)
+  // نتحقق من حالة الـ item مرة واحدة عند mount
+  let cancelled = false;
+  getItemById(itemId).then((item) => {
+    if (cancelled) return;
+    if (item.recipientConfirmed && !item.donorConfirmed) {
+      setStatus('waiting_donor');
     }
-    prevRef.current = initialRecipientConfirmed;
-  }, [initialRecipientConfirmed]);
+  }).catch(() => {});
+
+  return () => { cancelled = true; };
+}, [itemId, userRole, initialRecipientConfirmed]);
 
   // Socket listeners
   useEffect(() => {

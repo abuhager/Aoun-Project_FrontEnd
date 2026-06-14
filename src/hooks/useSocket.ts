@@ -36,15 +36,14 @@ export function useSocket() {
     }
 
     socketSingleton = io(SOCKET_URL, {
-      auth: { token },
-      withCredentials: true,
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1500,
-      timeout: 8000,
-      autoConnect: true,
-    });
+  auth: (cb) => cb({ token: getAccessToken() }),  // ← دالة تُستدعى عند كل reconnect
+  withCredentials: true,
+  transports: ['websocket'],
+  reconnection: true,
+  reconnectionAttempts: 10,    // ← زيادة المحاولات
+  reconnectionDelay: 1500,
+  timeout: 8000,
+});
 
     socketUserId = userId;
     socketRef.current = socketSingleton;

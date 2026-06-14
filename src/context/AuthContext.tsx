@@ -24,7 +24,7 @@ import Cookies from "js-cookie";
 // ─────────────────────────────────────────────
 type CachedUser = Pick<
   AuthUser,
-  "_id" | "name" | "email" | "avatar" | "gamification" | "trustLevel" | "role"
+  "_id" | "name" | "email" | "avatar" | "gamification" | "trustLevel" | "trustScore" | "role"
 >;
 
 interface AuthContextType {
@@ -72,21 +72,14 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // ─────────────────────────────────────────────
 function toMinimalUser(u: AuthUser): CachedUser {
   return {
-    _id:    u._id,
-    name:   u.name,
-    email:  u.email,
-    avatar: u.avatar ?? undefined,
-    trustLevel: u.trustLevel ?? 1,
-    role:       u.role ?? "user",
-    gamification: u.gamification ?? {
-      trustScore:     0,
-      totalDonations: 0,
-      level:          1,
-      title:          "مبتدئ",
-      badge:          "🌱",
-      progress:       0,
-      pointsToNext:   null,
-    },
+    _id:         u._id,
+    name:        u.name,
+    email:       u.email,
+    avatar:      u.avatar ?? "",
+    trustLevel:  u.trustLevel ?? 1,
+    trustScore:  u.trustScore ?? 0,  // ✅ أضيف
+    role:        u.role ?? "user",
+    gamification: u.gamification ?? { level:1, title:"مبتدئ", badge:"🌱", progress:0, pointsToNext:null },
   };
 }
 

@@ -1,43 +1,46 @@
-// src/types/user.types.ts
+// src/types/user.types.ts — النسخة الكاملة المُصلَحة
 import type { DashboardItem } from './item.types';
-export type UserRole   = 'user' | 'admin' | 'super_admin';
 
-// ✅ إصلاح: يعكس الـ Backend بالضبط → User.js: { min: 1, max: 4 }
+export type UserRole   = 'user' | 'admin' | 'super_admin';
 export type TrustLevel = 1 | 2 | 3 | 4;
 
-// ─── ما يُرجعه /api/auth/login و /api/auth/me ───────────────
+// ✅ FIXED [BUG-PROFILE-03]: يعكس ما يُرجعه buildGamificationProfile فقط
 export interface Gamification {
-  trustScore:     number;
-  totalDonations: number;
-  level:          number;
-  title:          string;
-  badge:          string;
-  progress:       number;
-  pointsToNext:   number | null;
+  level:        number;
+  title:        string;
+  badge:        string;
+  progress:     number;
+  pointsToNext: number | null;
 }
 
+// ─── ما يُرجعه /api/auth/login و /api/auth/me ───────────────
+// ✅ FIXED [BUG-PROFILE-02]: أضيف badges
+// ✅ FIXED [BUG-PROFILE-03]: trustScore و totalDonations على مستوى الجذر
 export interface AuthUser {
   _id:               string;
   name:              string;
   email:             string;
   avatar:            string;
   role:              UserRole;
-  trustLevel:        TrustLevel; // ✅ بدل 1 | 2
+  trustScore:        number;      // ← على مستوى الجذر من buildSafeUser
+  trustLevel:        TrustLevel;
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
+  badges:            string[];    // ✅ أضيف
   createdAt:         string;
   gamification:      Gamification;
 }
 
-// ─── ما يُرجعه /api/auth/me كاملاً (Dashboard/Profile) ──────
+// ─── ما يُرجعه /api/auth/profile كاملاً ──────────────────────
 export interface ProfileUser {
   _id:               string;
   name:              string;
   email:             string;
   avatar:            string;
   role:              UserRole;
-  trustLevel:        TrustLevel; // ✅ بدل 1 | 2
+  trustScore:        number;
+  trustLevel:        TrustLevel;
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
@@ -46,15 +49,15 @@ export interface ProfileUser {
   gamification:      Gamification;
 }
 
-// ─── مستخدم عام (يُعرض في صفحة item بجانب اسم المتبرع) ─────
+// ─── مستخدم عام ─────────────────────────────────────────────
+// ✅ FIXED [BUG-PROFILE-01]: حُذف whatsapp — غير موجود في Backend
 export interface PublicUser {
   _id:               string;
   name:              string;
   avatar:            string;
-  trustLevel:        TrustLevel; // ✅ بدل 1 | 2
+  trustLevel:        TrustLevel;
   isVerifiedStudent: boolean;
   createdAt:         string;
-  whatsapp:          string | null;
   gamification:      Gamification;
 }
 
@@ -83,6 +86,7 @@ export interface DonorUser extends PublicUser {
 
 export interface DashboardStats {
   quota:        number;
-  trustLevel:   TrustLevel; // ✅ بدل TrustLevel المحصور بـ 1|2
+  trustScore:   number;   // ✅ أضيف — موجود في buildSafeUser
+  trustLevel:   TrustLevel;
   gamification: Gamification;
 }

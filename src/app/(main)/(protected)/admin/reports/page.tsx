@@ -1,19 +1,19 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Image from "next/image";
 import useSWR, { mutate as globalMutate } from "swr";
 import axiosInstance from "@/lib/api/axiosInstance";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/useToast";
-import type { AdminReport } from "@/types/admin.types";
+// ✅ FIX-04: حذف import غير المستخدم AdminReport
 import type { ReportStatus } from "@/types/report.types";
 
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
 
-// ✅ [LOGIC-R01+R02] - نوع موحَّد متوافق مع Backend الفعلي
 interface AdminReportFull {
   _id:          string;
   reporter:     { _id: string; name: string; avatar?: string };
@@ -21,7 +21,7 @@ interface AdminReportFull {
   relatedItem:  { _id: string; title: string } | null;
   reason:       string;
   details:      string;
-  status:       ReportStatus; // 'pending' | 'reviewed' | 'dismissed' | 'actioned'
+  status:       ReportStatus;
   adminNote:    string;
   appealText:   string;
   appealedAt:   string | null;
@@ -41,7 +41,7 @@ interface ResolvePayload {
 }
 
 // ─────────────────────────────────────────────
-// Constants (خارج المكوّن — [DRY-R01])
+// Constants
 // ─────────────────────────────────────────────
 
 const STATUS_LABELS: Record<ReportStatus, string> = {
@@ -57,13 +57,14 @@ const STATUS_COLORS: Record<ReportStatus, string> = {
   dismissed: "bg-gray-100 text-gray-600",
   actioned:  "bg-green-100 text-green-800",
 };
+const getUserInitial = (name?: string | null): string =>
+  name?.trim().charAt(0).toUpperCase() ?? "؟";
+
+const getUserName = (name?: string | null): string =>
+  name?.trim() || "مستخدم محذوف";
 
 const SWR_KEY = (page: number, statusFilter: string) =>
   `/api/admin/reports?page=${page}&limit=10${statusFilter !== "all" ? `&status=${statusFilter}` : ""}`;
-
-// ─────────────────────────────────────────────
-// Fetcher
-// ─────────────────────────────────────────────
 
 const fetcher = (url: string) =>
   axiosInstance.get<AdminReportsResponse>(url).then((r) => r.data);
@@ -73,9 +74,10 @@ const fetcher = (url: string) =>
 // ─────────────────────────────────────────────
 
 export default function AdminReportsPage() {
-  // ✅ [SEC-R01] - Role guard صريح على مستوى الـ page
   const { user, isLoading: authLoading } = useAuth();
-  const { showToast } = useToast();
+
+  // ✅ FIX-01: الـ hook يُرجع { show, ToastComponent } وليس showToast
+  const { show: showToast, ToastComponent } = useToast();
 
   const [page,         setPage]         = useState(1);
   const [statusFilter, setStatusFilter] = useState<ReportStatus | "all">("all");
@@ -83,8 +85,6 @@ export default function AdminReportsPage() {
   const [adminNote,    setAdminNote]     = useState("");
   const [actionStatus, setActionStatus] = useState<ReportStatus>("actioned");
   const [submitting,   setSubmitting]   = useState(false);
-
-  // ✅ [LOGIC-R03] - loading per-row لمنع double-click
   const [loadingId,    setLoadingId]    = useState<string | null>(null);
 
   const swrKey = SWR_KEY(page, statusFilter);
@@ -92,13 +92,69 @@ export default function AdminReportsPage() {
   const { data, error, isLoading } = useSWR<AdminReportsResponse>(
     swrKey,
     fetcher,
-    {
-      revalidateOnFocus: false,
-      keepPreviousData:  true,
-    }
+    { revalidateOnFocus: false, keepPreviousData: true }
   );
 
-  // ─── Guard: Admin فقط ─────────────────────
+  // ✅ FIX-02 & FIX-03: كل الـ hooks يجب أن تكون قبل أي early return
+  // نقل handleResolve و handleQuickDismiss إلى هنا — قبل أي if() return
+
+  const handleResolve = useCallback(async () => {
+    if (!selected || submitting) return;
+
+    const trimmedNote = adminNote.trim();
+    if (!trimmedNote) {
+      // ✅ FIX-01: استخدام show المُعاد تسميته إلى showToast
+      showToast("يجب كتابة ملاحظة المشرف قبل الإجراء", false);
+      return;
+    }
+
+    setSubmitting(true);
+    setLoadingId(selected._id);
+
+    try {
+      const payload: ResolvePayload = {
+        status:    actionStatus,
+        adminNote: trimmedNote,
+      };
+
+      await axiosInstance.patch(
+        `/api/admin/reports/${selected._id}/resolve`,
+        payload
+      );
+
+      await globalMutate(swrKey);
+      showToast("تم تنفيذ الإجراء بنجاح ✅", true);
+      setSelected(null);
+      setAdminNote("");
+    } catch (err) {
+      showToast(extractErrorMsg(err, "فشل تنفيذ الإجراء"), false);
+    } finally {
+      setSubmitting(false);
+      setLoadingId(null);
+    }
+  }, [selected, submitting, adminNote, actionStatus, swrKey, showToast]);
+
+  const handleQuickDismiss = useCallback(
+    async (reportId: string) => {
+      if (loadingId) return;
+      setLoadingId(reportId);
+      try {
+        await axiosInstance.patch(`/api/admin/reports/${reportId}/resolve`, {
+          status:    "dismissed" satisfies ReportStatus,
+          adminNote: "تم الرفض تلقائياً",
+        });
+        await globalMutate(swrKey);
+        showToast("تم رفض البلاغ ✅", true);
+      } catch (err) {
+        showToast(extractErrorMsg(err, "فشل رفض البلاغ"), false);
+      } finally {
+        setLoadingId(null);
+      }
+    },
+    [loadingId, swrKey, showToast]
+  );
+
+  // ─── Guards: بعد جميع الـ Hooks ─────────────
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -120,68 +176,12 @@ export default function AdminReportsPage() {
     );
   }
 
-  // ─── Resolve Handler ──────────────────────
-  const handleResolve = useCallback(async () => {
-    if (!selected || submitting) return;
-
-    const trimmedNote = adminNote.trim();
-    if (!trimmedNote) {
-      showToast("يجب كتابة ملاحظة المشرف قبل الإجراء", "error");
-      return;
-    }
-
-    setSubmitting(true);
-    setLoadingId(selected._id);
-
-    try {
-      const payload: ResolvePayload = {
-        status:    actionStatus,
-        adminNote: trimmedNote,
-      };
-
-      await axiosInstance.patch(
-        `/api/admin/reports/${selected._id}/resolve`,
-        payload
-      );
-
-      // ✅ [PERF-R01] - revalidate الـ SWR key الحالي فقط
-      await globalMutate(swrKey);
-
-      showToast("تم تنفيذ الإجراء بنجاح ✅", "success");
-      setSelected(null);
-      setAdminNote("");
-    } catch (err) {
-      showToast(extractErrorMsg(err, "فشل تنفيذ الإجراء"), "error");
-    } finally {
-      setSubmitting(false);
-      setLoadingId(null);
-    }
-  }, [selected, submitting, adminNote, actionStatus, swrKey, showToast]);
-
-  // ─── Quick Dismiss (بدون modal) ──────────
-  const handleQuickDismiss = useCallback(
-    async (reportId: string) => {
-      if (loadingId) return;
-      setLoadingId(reportId);
-      try {
-        await axiosInstance.patch(`/api/admin/reports/${reportId}/resolve`, {
-          status:    "dismissed" satisfies ReportStatus,
-          adminNote: "تم الرفض تلقائياً",
-        });
-        await globalMutate(swrKey);
-        showToast("تم رفض البلاغ ✅", "success");
-      } catch (err) {
-        showToast(extractErrorMsg(err, "فشل رفض البلاغ"), "error");
-      } finally {
-        setLoadingId(null);
-      }
-    },
-    [loadingId, swrKey, showToast]
-  );
-
   // ─── Render ───────────────────────────────
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto" dir="rtl">
+
+      {/* ✅ FIX-01: عرض ToastComponent هنا */}
+      {ToastComponent}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -194,7 +194,6 @@ export default function AdminReportsPage() {
           )}
         </div>
 
-        {/* ✅ Filter بـ ReportStatus الحقيقية */}
         <select
           value={statusFilter}
           onChange={(e) => {
@@ -205,9 +204,7 @@ export default function AdminReportsPage() {
         >
           <option value="all">جميع الحالات</option>
           {(Object.keys(STATUS_LABELS) as ReportStatus[]).map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
+            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
           ))}
         </select>
       </div>
@@ -216,10 +213,7 @@ export default function AdminReportsPage() {
       {isLoading && (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-20 bg-gray-100 animate-pulse rounded-xl"
-            />
+            <div key={i} className="h-20 bg-gray-100 animate-pulse rounded-xl" />
           ))}
         </div>
       )}
@@ -240,13 +234,11 @@ export default function AdminReportsPage() {
         </div>
       )}
 
-      {/* ✅ [STRUCT-R01] Empty State مُصمَّم */}
+      {/* Empty State */}
       {!isLoading && !error && data?.reports.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-400">
           <span className="text-6xl">🗂️</span>
-          <p className="text-lg font-semibold text-gray-500">
-            لا توجد بلاغات
-          </p>
+          <p className="text-lg font-semibold text-gray-500">لا توجد بلاغات</p>
           <p className="text-sm">
             {statusFilter !== "all"
               ? `لا يوجد بلاغات بحالة "${STATUS_LABELS[statusFilter as ReportStatus]}"`
@@ -262,24 +254,12 @@ export default function AdminReportsPage() {
             <table className="min-w-full divide-y divide-gray-100 bg-white text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    المُبلِّغ
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    المُبلَّغ عنه
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    السبب
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    الحالة
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    التاريخ
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    الإجراء
-                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">المُبلِّغ</th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">المُبلَّغ عنه</th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">السبب</th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">الحالة</th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">التاريخ</th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-600">الإجراء</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -293,31 +273,39 @@ export default function AdminReportsPage() {
                     {/* المُبلِّغ */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
+                        {/* ✅ FIX-05: استبدال <img> بـ <Image /> */}
                         {report.reporter.avatar ? (
-                          <img
+                          <Image
                             src={report.reporter.avatar}
                             alt={report.reporter.name}
-                            className="w-7 h-7 rounded-full object-cover"
+                            width={28}
+                            height={28}
+                            className="rounded-full object-cover"
                           />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">
-                            {report.reporter.name.charAt(0)}
+                            {getUserInitial(report.reporter?.name)}
+
                           </div>
                         )}
                         <span className="font-medium text-gray-800">
-                          {report.reporter.name}
+                            {getUserName(report.reporter?.name)}
+
                         </span>
                       </div>
                     </td>
 
-                    {/* ✅ [LOGIC-R01] reportedUser (لا reported) */}
+                    {/* المُبلَّغ عنه */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
+                        {/* ✅ FIX-06: استبدال <img> بـ <Image /> */}
                         {report.reportedUser.avatar ? (
-                          <img
+                          <Image
                             src={report.reportedUser.avatar}
                             alt={report.reportedUser.name}
-                            className="w-7 h-7 rounded-full object-cover"
+                            width={28}
+                            height={28}
+                            className="rounded-full object-cover"
                           />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-xs font-bold text-red-600">
@@ -331,10 +319,9 @@ export default function AdminReportsPage() {
                     </td>
 
                     {/* السبب */}
-                    <td className="px-4 py-3 max-w-[160px]">
-                      <span className="truncate block text-gray-700">
-                        {report.reason}
-                      </span>
+                    {/* ✅ FIX-07: max-w-[160px] → max-w-40 */}
+                    <td className="px-4 py-3 max-w-40">
+                      <span className="truncate block text-gray-700">{report.reason}</span>
                       {report.relatedItem && (
                         <span className="text-xs text-gray-400 truncate block">
                           غرض: {report.relatedItem.title}
@@ -342,7 +329,7 @@ export default function AdminReportsPage() {
                       )}
                     </td>
 
-                    {/* ✅ [LOGIC-R02] الحالة من ReportStatus الحقيقية */}
+                    {/* الحالة */}
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -356,9 +343,7 @@ export default function AdminReportsPage() {
                     {/* التاريخ */}
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
                       {new Date(report.createdAt).toLocaleDateString("ar-JO", {
-                        year:  "numeric",
-                        month: "short",
-                        day:   "numeric",
+                        year: "numeric", month: "short", day: "numeric",
                       })}
                     </td>
 
@@ -431,23 +416,18 @@ export default function AdminReportsPage() {
         </>
       )}
 
-      {/* ─── Modal التفاصيل والإجراء ──────────── */}
+      {/* ─── Modal ──────────── */}
       {selected && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelected(null);
-          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
             dir="rtl"
           >
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">
-                تفاصيل البلاغ
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900">تفاصيل البلاغ</h2>
               <button
                 onClick={() => setSelected(null)}
                 className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none"
@@ -458,58 +438,42 @@ export default function AdminReportsPage() {
             </div>
 
             <div className="px-6 py-5 space-y-5">
-
-              {/* معلومات البلاغ */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-400 mb-1">المُبلِّغ</p>
-                  <p className="font-semibold text-gray-800 text-sm">
-                    {selected.reporter.name}
-                  </p>
+                  <p className="font-semibold text-gray-800 text-sm">{selected.reporter.name}</p>
                 </div>
                 <div className="bg-red-50 rounded-xl p-3">
                   <p className="text-xs text-gray-400 mb-1">المُبلَّغ عنه</p>
-                  <p className="font-semibold text-red-700 text-sm">
-                    {selected.reportedUser.name}
-                  </p>
+                  <p className="font-semibold text-red-700 text-sm">{selected.reportedUser.name}</p>
                 </div>
               </div>
 
-              {/* السبب والتفاصيل */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                  السبب
-                </p>
-                <p className="text-sm text-gray-800 bg-yellow-50 rounded-lg px-3 py-2">
-                  {selected.reason}
-                </p>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">السبب</p>
+                <p className="text-sm text-gray-800 bg-yellow-50 rounded-lg px-3 py-2">{selected.reason}</p>
               </div>
 
               {selected.details && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                    تفاصيل إضافية
-                  </p>
-                  {/* ✅ [SEC-R02] عرض آمن — لا dangerouslySetInnerHTML */}
-                  <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap break-words">
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1">تفاصيل إضافية</p>
+                  {/* ✅ FIX-08: break-words → wrap-break-word */}
+                  <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap wrap-break-word">
                     {selected.details}
                   </p>
                 </div>
               )}
 
-              {/* الطعن (إن وُجد) */}
               {selected.appealText && (
                 <div className="border-r-4 border-orange-400 pr-3 bg-orange-50 rounded-lg py-2">
-                  <p className="text-xs font-semibold text-orange-600 mb-1">
-                    طعن المستخدم
-                  </p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                  <p className="text-xs font-semibold text-orange-600 mb-1">طعن المستخدم</p>
+                  {/* ✅ FIX-09: break-words → wrap-break-word */}
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap wrap-break-word">
                     {selected.appealText}
                   </p>
                 </div>
               )}
 
-              {/* الغرض المرتبط */}
               {selected.relatedItem && (
                 <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
                   <span className="font-medium">الغرض المرتبط: </span>
@@ -517,42 +481,24 @@ export default function AdminReportsPage() {
                 </div>
               )}
 
-              {/* ─── قسم الإجراء (pending فقط) */}
               {selected.status === "pending" && (
                 <div className="border-t border-gray-100 pt-5 space-y-4">
-                  <p className="text-sm font-semibold text-gray-700">
-                    اتخاذ إجراء
-                  </p>
-
-                  {/* اختيار نوع الإجراء */}
+                  <p className="text-sm font-semibold text-gray-700">اتخاذ إجراء</p>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">
-                      نوع الإجراء
-                    </label>
+                    <label className="block text-xs text-gray-500 mb-1">نوع الإجراء</label>
                     <select
                       value={actionStatus}
-                      onChange={(e) =>
-                        setActionStatus(e.target.value as ReportStatus)
-                      }
+                      onChange={(e) => setActionStatus(e.target.value as ReportStatus)}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="actioned">
-                        {STATUS_LABELS.actioned}
-                      </option>
-                      <option value="reviewed">
-                        {STATUS_LABELS.reviewed}
-                      </option>
-                      <option value="dismissed">
-                        {STATUS_LABELS.dismissed}
-                      </option>
+                      <option value="actioned">{STATUS_LABELS.actioned}</option>
+                      <option value="reviewed">{STATUS_LABELS.reviewed}</option>
+                      <option value="dismissed">{STATUS_LABELS.dismissed}</option>
                     </select>
                   </div>
-
-                  {/* ملاحظة المشرف */}
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">
-                      ملاحظة المشرف{" "}
-                      <span className="text-red-500">*</span>
+                      ملاحظة المشرف <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       value={adminNote}
@@ -562,12 +508,8 @@ export default function AdminReportsPage() {
                       placeholder="اكتب ملاحظتك هنا..."
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <p className="text-xs text-gray-400 text-left mt-0.5">
-                      {adminNote.length}/500
-                    </p>
+                    <p className="text-xs text-gray-400 text-left mt-0.5">{adminNote.length}/500</p>
                   </div>
-
-                  {/* أزرار الإجراء */}
                   <div className="flex gap-3">
                     <button
                       onClick={handleResolve}
@@ -579,9 +521,7 @@ export default function AdminReportsPage() {
                           <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                           جارٍ التنفيذ...
                         </span>
-                      ) : (
-                        "تأكيد الإجراء"
-                      )}
+                      ) : "تأكيد الإجراء"}
                     </button>
                     <button
                       onClick={() => setSelected(null)}
@@ -594,13 +534,11 @@ export default function AdminReportsPage() {
                 </div>
               )}
 
-              {/* عرض ملاحظة المشرف للحالات المُغلقة */}
               {selected.status !== "pending" && selected.adminNote && (
                 <div className="border-t border-gray-100 pt-4">
-                  <p className="text-xs font-semibold text-gray-500 mb-1">
-                    ملاحظة المشرف
-                  </p>
-                  <p className="text-sm text-gray-700 bg-blue-50 rounded-lg px-3 py-2 whitespace-pre-wrap break-words">
+                  <p className="text-xs font-semibold text-gray-500 mb-1">ملاحظة المشرف</p>
+                  {/* ✅ FIX-10: break-words → wrap-break-word */}
+                  <p className="text-sm text-gray-700 bg-blue-50 rounded-lg px-3 py-2 whitespace-pre-wrap wrap-break-word">
                     {selected.adminNote}
                   </p>
                 </div>

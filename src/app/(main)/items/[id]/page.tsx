@@ -36,9 +36,11 @@ export default function ItemDetailsPage() {
     return <div className="text-center py-20 font-bold">🛑 القطعة غير موجودة</div>;
   }
 
-  const imageUrl = item.imageUrl.startsWith("http")
-    ? item.imageUrl
-    : `${backendUrl}/${item.imageUrl}`;
+  const imageUrl = item.imageUrl?.startsWith("http")
+  ? item.imageUrl
+  : item.imageUrl
+    ? `${backendUrl}/${item.imageUrl}`
+    : "/placeholder-item.png";
 
   const showCountdown          = item.status === "محجوز" && (isBooker || isDonor);
   const initialRecipientConfirmed = item.recipientConfirmed === true;

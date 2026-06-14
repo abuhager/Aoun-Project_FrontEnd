@@ -1,38 +1,29 @@
 // src/lib/api/axiosInstance.ts
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-// ✅ استيراد دالة التحقق المشتركة لتوحيد منطق الحماية
-import { isProtectedPath, isAuthOnlyPath } from "@/config/routes";
+// ✅ DUP-AUTH-01: استيراد setSessionCookie من cookieUtils بدل تعريفها هنا
+// ✅ ADM-AUTH-02: حذف magic number 7 — تُدار من NEXT_PUBLIC_SESSION_EXPIRE_DAYS في cookieUtils
+
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { isProtectedPath, isAuthOnlyPath }               from '@/config/routes';
+import { setSessionCookie }                              from '@/lib/utils/cookieUtils'; // ← جديد
 
 // ─────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────
 let accessToken: string | null = null;
-let isRefreshing = false;
+let isRefreshing                = false;
 
 type RefreshQueueItem = {
   resolve: (token: string) => void;
   reject:  (error: Error)  => void;
 };
 
-let refreshQueue:     RefreshQueueItem[]           = [];
-let isInitialized                                  = false;
-let initQueue:        Array<() => void>            = [];
-let initQueueRejects: Array<(err: Error) => void>  = [];
+let refreshQueue:     RefreshQueueItem[]          = [];
+let isInitialized                                 = false;
+let initQueue:        Array<() => void>           = [];
+let initQueueRejects: Array<(err: Error) => void> = [];
 
 const INIT_TIMEOUT_MS =
-  parseInt(process.env.NEXT_PUBLIC_AUTH_INIT_TIMEOUT ?? "5000", 10) || 5000;
-
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-function refreshSessionCookie() {
-  if (typeof document === 'undefined') return;
-  const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-  const secure   = IS_PRODUCTION ? '; Secure'        : '';
-  const sameSite = IS_PRODUCTION ? '; SameSite=None' : '; SameSite=Lax';
-  const expires  = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `session_active=1; path=/; expires=${expires}${sameSite}${secure}`;
-}
+  parseInt(process.env.NEXT_PUBLIC_AUTH_INIT_TIMEOUT ?? '5000', 10) || 5000;
 
 // ─────────────────────────────────────────────
 // Exports
@@ -47,7 +38,7 @@ export const resetAuthState = () => {
   isInitialized    = false;
   initQueue        = [];
   initQueueRejects = [];
-  delete axiosInstance.defaults.headers.common["Authorization"];
+  delete axiosInstance.defaults.headers.common['Authorization'];
 };
 
 export const setInitialized = (success = true) => {
@@ -55,7 +46,7 @@ export const setInitialized = (success = true) => {
   if (success) {
     initQueue.forEach((cb) => cb());
   } else {
-    initQueueRejects.forEach((rej) => rej(new Error("NOT_AUTHENTICATED")));
+    initQueueRejects.forEach((rej) => rej(new Error('NOT_AUTHENTICATED')));
   }
   initQueue        = [];
   initQueueRejects = [];
@@ -63,7 +54,7 @@ export const setInitialized = (success = true) => {
 
 function processRefreshQueue(error: Error | null, token: string | null = null) {
   refreshQueue.forEach(({ resolve, reject }) => {
-    if (error || !token) reject(error ?? new Error("REFRESH_FAILED"));
+    if (error || !token) reject(error ?? new Error('REFRESH_FAILED'));
     else resolve(token);
   });
   refreshQueue = [];
@@ -73,10 +64,10 @@ function processRefreshQueue(error: Error | null, token: string | null = null) {
 // Axios Instance
 // ─────────────────────────────────────────────
 const API_BASE_URL = (() => {
-  if (typeof window === "undefined") return process.env.NEXT_PUBLIC_API_URL ?? "";
+  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL ?? '';
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl && !envUrl.startsWith("/")) return envUrl;
-  return "";
+  if (envUrl && !envUrl.startsWith('/')) return envUrl;
+  return '';
 })();
 
 const axiosInstance = axios.create({
@@ -88,33 +79,27 @@ const axiosInstance = axios.create({
 // ─────────────────────────────────────────────
 // Route Classifiers
 // ─────────────────────────────────────────────
-
-// ✅ [FIX] حُذف /auth/me من هنا — كان يتخطى initQueue فيُرسل بدون Bearer token
-// Routes هنا = لا تحتاج token أصلاً (login, register, refresh...)
 const isAuthSafeUrl = (url: string): boolean =>
-  url.includes("/auth/refresh")  ||
-  url.includes("/auth/login")    ||
-  url.includes("/auth/register") ||
-  url.includes("/auth/verify")   ||
-  url.includes("/auth/forgot")   ||
-  url.includes("/auth/reset");
+  url.includes('/auth/refresh')  ||
+  url.includes('/auth/login')    ||
+  url.includes('/auth/register') ||
+  url.includes('/auth/verify')   ||
+  url.includes('/auth/forgot')   ||
+  url.includes('/auth/reset');
 
-// ✅ [FIX] /auth/me يحتاج token لكن عند 401 لا نُعيد redirect (زائر = طبيعي)
-// مُنفصلة عن isAuthSafeUrl لأنها تحتاج انتظار initQueue لتحصل على الـ token
-const isAuthMeUrl = (url: string): boolean => url.includes("/auth/me");
+const isAuthMeUrl = (url: string): boolean => url.includes('/auth/me');
 
 const PUBLIC_PATH_PATTERNS: RegExp[] = [
-/^\/api\/items(\/(?!me|complete|waitlist)[^/]+)?\/?$/,
+  /^\/api\/items(\/(?!me|complete|waitlist)[^/]+)?\/?$/,
   /^\/api\/hubs/,
   /^\/api\/public/,
 ];
 
 const isPublicUrl = (url: string, method?: string): boolean => {
-  const pathname = url.split("?")[0];
-  const isGet    = (method ?? "get").toLowerCase() === "get";
-
-  return PUBLIC_PATH_PATTERNS.some((pattern) => {
-    if (pattern === PUBLIC_PATH_PATTERNS[0]) return isGet && pattern.test(pathname);
+  const pathname = url.split('?')[0];
+  const isGet    = (method ?? 'get').toLowerCase() === 'get';
+  return PUBLIC_PATH_PATTERNS.some((pattern, i) => {
+    if (i === 0) return isGet && pattern.test(pathname);
     return pattern.test(pathname);
   });
 };
@@ -124,23 +109,21 @@ const isPublicUrl = (url: string, method?: string): boolean => {
 // ─────────────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const url    = config.url    ?? "";
-    const method = config.method ?? "get";
+    const url    = config.url    ?? '';
+    const method = config.method ?? 'get';
 
-    // ✅ isAuthMeUrl لا تُضاف هنا — تدخل initQueue عشان تاخذ token
     const skipInitCheck = isAuthSafeUrl(url) || isPublicUrl(url, method);
 
     if (!isInitialized && !skipInitCheck) {
       return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {
         const timer = setTimeout(() => {
-          reject(new Error("AUTH_INIT_TIMEOUT"));
+          reject(new Error('AUTH_INIT_TIMEOUT'));
         }, INIT_TIMEOUT_MS);
 
         initQueue.push(() => {
           clearTimeout(timer);
           if (!accessToken && !isPublicUrl(url, method)) {
-            // زائر = لا token = رفض هادئ بدون redirect
-            reject(new Error("NOT_AUTHENTICATED"));
+            reject(new Error('NOT_AUTHENTICATED'));
             return;
           }
           if (accessToken) {
@@ -167,12 +150,11 @@ axiosInstance.interceptors.request.use(
       }
     }
 
-    // ✅ [BUG FIX] FormData — احذف Content-Type كلياً ليضعه الـ browser مع الـ boundary
     if (config.data instanceof FormData) {
-      delete config.headers["Content-Type"];
-      delete (config.headers as Record<string, unknown>)["content-type"];
+      delete config.headers['Content-Type'];
+      delete (config.headers as Record<string, unknown>)['content-type'];
     } else if (config.data) {
-      config.headers["Content-Type"] = "application/json";
+      config.headers['Content-Type'] = 'application/json';
     }
 
     return config;
@@ -190,24 +172,17 @@ axiosInstance.interceptors.response.use(
       | (InternalAxiosRequestConfig & { _retry?: boolean; _initRetry?: boolean })
       | undefined;
 
-    if (!originalRequest) return Promise.reject(error);
-    if (error.message === "NOT_AUTHENTICATED") return Promise.reject(error);
+    if (!originalRequest)                        return Promise.reject(error);
+    if (error.message === 'NOT_AUTHENTICATED')   return Promise.reject(error);
 
-    // ─── AUTH_INIT_TIMEOUT handler ─────────────────────────────────────
-    if (error.message === "AUTH_INIT_TIMEOUT" && !originalRequest._initRetry) {
+    if (error.message === 'AUTH_INIT_TIMEOUT' && !originalRequest._initRetry) {
       originalRequest._initRetry = true;
-
-      if (!accessToken) {
-        return Promise.reject(new Error("NOT_AUTHENTICATED"));
-      }
-
+      if (!accessToken) return Promise.reject(new Error('NOT_AUTHENTICATED'));
       return axiosInstance(originalRequest);
     }
 
-    const status      = error.response?.status;
-    const url         = originalRequest.url ?? "";
-
-    // ✅ [FIX] isAuthMeUrl مُضافة هنا لمنع refresh loop عند 401 للزائر
+    const status    = error.response?.status;
+    const url       = originalRequest.url ?? '';
     const isAuthRoute = isAuthSafeUrl(url) || isAuthMeUrl(url);
 
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
@@ -230,34 +205,33 @@ axiosInstance.interceptors.response.use(
 
       try {
         const { data } = await axiosInstance.post<{ accessToken: string }>(
-          "/api/auth/refresh",
+          '/api/auth/refresh',
           {},
           { withCredentials: true }
         );
 
         const newToken = data.accessToken;
         setAccessToken(newToken);
-        refreshSessionCookie();
+        setSessionCookie(); // ✅ DUP-AUTH-01: من cookieUtils — لا تكرار
         processRefreshQueue(null, newToken);
 
         originalRequest.headers                = originalRequest.headers ?? {};
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return axiosInstance(originalRequest);
+
       } catch (refreshError) {
         const finalError =
-          refreshError instanceof Error ? refreshError : new Error("REFRESH_FAILED");
+          refreshError instanceof Error ? refreshError : new Error('REFRESH_FAILED');
 
         setAccessToken(null);
         processRefreshQueue(finalError, null);
 
-        if (typeof window !== "undefined") {
-          const currentPath = window.location.pathname;
-
+        if (typeof window !== 'undefined') {
+          const currentPath   = window.location.pathname;
           const isProtected   = isProtectedPath(currentPath);
           const notOnAuthPage = !isAuthOnlyPath(currentPath);
-
           if (isProtected && notOnAuthPage) {
-            window.location.replace("/login?reason=session_expired");
+            window.location.replace('/login?reason=session_expired');
           }
         }
 

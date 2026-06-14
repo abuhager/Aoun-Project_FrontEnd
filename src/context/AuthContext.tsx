@@ -183,45 +183,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const refreshSession = useCallback(async (): Promise<boolean> => {
+ const refreshSession = useCallback(async (): Promise<boolean> => {
   if (isLoggingOut.current) return false;
   if (refreshing.current)   return refreshing.current;
 
   refreshing.current = (async () => {
     try {
       const { data } = await axiosInstance.post<{ accessToken: string }>(
-        "/api/auth/refresh",
+        '/api/auth/refresh',
         {},
         { withCredentials: true }
       );
       const token = data.accessToken;
       setAccessToken(token);
 
-      // ✅ [FIX] حرّر الـ initQueue أولاً قبل /me
-      // لأن /me محمية وتحتاج token — بعد setInitialized(true)
-      // الـ interceptor سيرى accessToken ويُرفقه تلقائياً
-      setInitialized(true);
+      setInitialized(true); // حرّر الـ initQueue قبل /me
 
       try {
-        const meRes = await axiosInstance.get<AuthUser>("/api/auth/me", {
+        const meRes = await axiosInstance.get<AuthUser>('/api/auth/me', {
           withCredentials: true,
-          // ✅ لا حاجة لتمرير Authorization يدوياً — الـ interceptor يضيفه الآن
         });
         setUser(meRes.data);
         return true;
       } catch (meError) {
-        console.error("[AuthContext] /api/auth/me failed after refresh:", meError);
+        console.error('[AuthContext] /api/auth/me failed after refresh:', meError);
         setAccessToken(null);
         setUser(null);
         setInitialized(false);
         return false;
       }
+
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status !== 401) {
-        console.error("[AuthContext] refreshSession error:", err);
+      // ✅ LOGIC-AUTH-03: فحص نوع الخطأ قبل مسح المستخدم
+      const isNetworkError = axios.isAxiosError(err) && !err.response;
+      const is401          = axios.isAxiosError(err) && err.response?.status === 401;
+      const is403          = axios.isAxiosError(err) && err.response?.status === 403;
+
+      if (isNetworkError) {
+        // 🌐 خطأ شبكي — الجلسة قد تكون لا تزال حية
+        // نُبقي المستخدم المُخزَّن ولا نمسح الـ state
+        console.warn('[AuthContext] network error during refresh — keeping cached user');
+        setInitialized(false); // وقف الـ initQueue — الطلبات المحمية ستنتظر
+        return false;
       }
-      setAccessToken(null);
-      setUser(null);
+
+      if (is401 || is403) {
+        // 🔒 رفض صريح من السيرفر — الجلسة منتهية فعلاً
+        setAccessToken(null);
+        setUser(null);
+        setInitialized(false);
+        return false;
+      }
+
+      // ⚠️ خطأ غير متوقع (500، timeout، إلخ) — نسجّل ولا نمسح المستخدم
+      console.error('[AuthContext] unexpected refreshSession error:', err);
       setInitialized(false);
       return false;
     } finally {
@@ -231,6 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return refreshing.current;
 }, [setUser]);
+
 
   const logout = useCallback(async () => {
     isLoggingOut.current = true;

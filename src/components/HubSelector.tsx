@@ -1,33 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axiosInstance from "@/lib/api/axiosInstance";
-import { SafeHub } from "@/types/hub.types";
+import { getHubs } from "@/lib/api/hubApi";   // ✅ استخدام طبقة الـ API الصحيحة
+import type { SafeHub } from "@/types/hub.types";
 
 interface Props {
-  value: string;
+  value:    string;
   onChange: (hubId: string) => void;
 }
 
 export function HubSelector({ value, onChange }: Props) {
-  const [hubs, setHubs] = useState<SafeHub[]>([]);
+  const [hubs,    setHubs]    = useState<SafeHub[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error,   setError]   = useState("");
 
   useEffect(() => {
-    const fetchHubs = async () => {
-      try {
-        const { data } = await axiosInstance.get("/api/hubs");
-        // يدعم { hubs: [...] } أو مصفوفة مباشرة
-        const list: SafeHub[] = Array.isArray(data) ? data : (data.hubs ?? []);
-        setHubs(list.filter((h) => h.isActive)); // ✅ فقط المراكز النشطة
-      } catch {
-        setError("تعذر تحميل مراكز التسليم");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchHubs();
+    getHubs()
+      .then((list) => setHubs(list.filter((h) => h.isActive)))
+      .catch(() => setError("تعذر تحميل مراكز التسليم"))
+      .finally(() => setLoading(false));
   }, []);
 
   return (

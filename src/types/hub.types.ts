@@ -30,3 +30,9 @@ export interface UpdateHubPayload {
   workingHours?: string;
   coordinates?:  { lat: number; lng: number };
 }
+
+export interface HubSelectOption {
+  value:    string;   // _id
+  label:    string;   // "اسم المركز — المدينة"
+  isActive: boolean;
+}

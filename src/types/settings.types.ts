@@ -1,20 +1,33 @@
-// src/types/settings.types.ts
+// src/types/settings.ts
+// TypeScript interfaces مطابقة لـ SystemSettings Schema في الـ Backend بالكامل
+
+export interface PublicSettings {
+  categories:    string[];
+  reportReasons: string[];
+}
 
 export interface SystemSettings {
+  _id:                        string;
   defaultQuota:               number;
   level2Quota:                number;
+  maxBookingsPerUser:         number;
   maxActiveRequestsPerMonth:  number;
   requestExpiryDays:          number;
-  bookingExpiryHours:         number;
-  maxActiveItems:             number;
-  minTrustLevelForRequests:   number;
-  maxPageSize:                number;
   donorQuotaReward:           number;
   trustScorePerDonation:      number;
+  trustScorePerRequest:       number;
+  bookingExpiryHours:         number;
   categories:                 string[];
-  locations:                  string[];
   reportReasons:              string[];
   autoReportBanThreshold:     number;
+  quotaResetDayOfMonth:       number;
+  universityEmailDomains:     string[];
+  requireHubForBooking:       boolean;
   maintenanceMode:            boolean;
   platformName:               string;
+  contactEmail:               string;
+  createdAt:                  string;
+  updatedAt:                  string;
 }
+
+export type UpdateSettingsPayload = Partial<Omit<SystemSettings, '_id' | 'createdAt' | 'updatedAt'>>;

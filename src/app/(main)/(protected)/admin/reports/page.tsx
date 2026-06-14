@@ -1,3 +1,4 @@
+// src/app/(main)/(protected)/admin/reports/page.tsx
 "use client";
 
 import { useState, useCallback } from "react";
@@ -7,7 +8,6 @@ import axiosInstance from "@/lib/api/axiosInstance";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/useToast";
-// ✅ FIX-04: حذف import غير المستخدم AdminReport
 import type { ReportStatus } from "@/types/report.types";
 
 // ─────────────────────────────────────────────
@@ -30,13 +30,13 @@ interface AdminReportFull {
 }
 
 interface AdminReportsResponse {
-  reports:    AdminReportFull[];
+  reports:     AdminReportFull[];
   totalPages: number;
-  total:      number;
+  total:       number;
 }
 
 interface ResolvePayload {
-  status:    ReportStatus;
+  status:     ReportStatus;
   adminNote: string;
 }
 
@@ -57,6 +57,7 @@ const STATUS_COLORS: Record<ReportStatus, string> = {
   dismissed: "bg-gray-100 text-gray-600",
   actioned:  "bg-green-100 text-green-800",
 };
+
 const getUserInitial = (name?: string | null): string =>
   name?.trim().charAt(0).toUpperCase() ?? "؟";
 
@@ -75,14 +76,12 @@ const fetcher = (url: string) =>
 
 export default function AdminReportsPage() {
   const { user, isLoading: authLoading } = useAuth();
-
-  // ✅ FIX-01: الـ hook يُرجع { show, ToastComponent } وليس showToast
   const { show: showToast, ToastComponent } = useToast();
 
   const [page,         setPage]         = useState(1);
   const [statusFilter, setStatusFilter] = useState<ReportStatus | "all">("all");
   const [selected,     setSelected]     = useState<AdminReportFull | null>(null);
-  const [adminNote,    setAdminNote]     = useState("");
+  const [adminNote,    setAdminNote]    = useState("");
   const [actionStatus, setActionStatus] = useState<ReportStatus>("actioned");
   const [submitting,   setSubmitting]   = useState(false);
   const [loadingId,    setLoadingId]    = useState<string | null>(null);
@@ -95,15 +94,11 @@ export default function AdminReportsPage() {
     { revalidateOnFocus: false, keepPreviousData: true }
   );
 
-  // ✅ FIX-02 & FIX-03: كل الـ hooks يجب أن تكون قبل أي early return
-  // نقل handleResolve و handleQuickDismiss إلى هنا — قبل أي if() return
-
   const handleResolve = useCallback(async () => {
     if (!selected || submitting) return;
 
     const trimmedNote = adminNote.trim();
     if (!trimmedNote) {
-      // ✅ FIX-01: استخدام show المُعاد تسميته إلى showToast
       showToast("يجب كتابة ملاحظة المشرف قبل الإجراء", false);
       return;
     }
@@ -113,7 +108,7 @@ export default function AdminReportsPage() {
 
     try {
       const payload: ResolvePayload = {
-        status:    actionStatus,
+        status:     actionStatus,
         adminNote: trimmedNote,
       };
 
@@ -154,7 +149,7 @@ export default function AdminReportsPage() {
     [loadingId, swrKey, showToast]
   );
 
-  // ─── Guards: بعد جميع الـ Hooks ─────────────
+  // ─── Guards ─────────────────────────────────
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -176,11 +171,9 @@ export default function AdminReportsPage() {
     );
   }
 
-  // ─── Render ───────────────────────────────
+  // ─── Render ────────────────────────────────
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto" dir="rtl">
-
-      {/* ✅ FIX-01: عرض ToastComponent هنا */}
       {ToastComponent}
 
       {/* Header */}
@@ -209,7 +202,6 @@ export default function AdminReportsPage() {
         </select>
       </div>
 
-      {/* Loading Skeleton */}
       {isLoading && (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -218,7 +210,6 @@ export default function AdminReportsPage() {
         </div>
       )}
 
-      {/* Error State */}
       {error && (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <span className="text-4xl">⚠️</span>
@@ -234,7 +225,6 @@ export default function AdminReportsPage() {
         </div>
       )}
 
-      {/* Empty State */}
       {!isLoading && !error && data?.reports.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-400">
           <span className="text-6xl">🗂️</span>
@@ -247,7 +237,6 @@ export default function AdminReportsPage() {
         </div>
       )}
 
-      {/* Reports Table */}
       {!isLoading && !error && data && data.reports.length > 0 && (
         <>
           <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
@@ -273,11 +262,10 @@ export default function AdminReportsPage() {
                     {/* المُبلِّغ */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {/* ✅ FIX-05: استبدال <img> بـ <Image /> */}
-                        {report.reporter.avatar ? (
+                        {report.reporter?.avatar ? (
                           <Image
                             src={report.reporter.avatar}
-                            alt={report.reporter.name}
+                             alt={getUserName(report.reporter?.name)}
                             width={28}
                             height={28}
                             className="rounded-full object-cover"
@@ -285,12 +273,10 @@ export default function AdminReportsPage() {
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">
                             {getUserInitial(report.reporter?.name)}
-
                           </div>
                         )}
                         <span className="font-medium text-gray-800">
-                            {getUserName(report.reporter?.name)}
-
+                          {getUserName(report.reporter?.name)}
                         </span>
                       </div>
                     </td>
@@ -298,28 +284,27 @@ export default function AdminReportsPage() {
                     {/* المُبلَّغ عنه */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {/* ✅ FIX-06: استبدال <img> بـ <Image /> */}
-                        {report.reportedUser.avatar ? (
+                        {report.reportedUser?.avatar ? (
                           <Image
                             src={report.reportedUser.avatar}
-                            alt={report.reportedUser.name}
+                            alt={getUserName(report.reportedUser?.name)}
                             width={28}
                             height={28}
                             className="rounded-full object-cover"
                           />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-xs font-bold text-red-600">
-                            {report.reportedUser.name.charAt(0)}
+                            {/* ✅ تم التأمين والتعويض بالدالة لمنع الـ Crash */}
+                            {getUserInitial(report.reportedUser?.name)}
                           </div>
                         )}
                         <span className="font-medium text-gray-800">
-                          {report.reportedUser.name}
+                          {getUserName(report.reportedUser?.name)}
                         </span>
                       </div>
                     </td>
 
                     {/* السبب */}
-                    {/* ✅ FIX-07: max-w-[160px] → max-w-40 */}
                     <td className="px-4 py-3 max-w-40">
                       <span className="truncate block text-gray-700">{report.reason}</span>
                       {report.relatedItem && (
@@ -441,11 +426,11 @@ export default function AdminReportsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-400 mb-1">المُبلِّغ</p>
-                  <p className="font-semibold text-gray-800 text-sm">{selected.reporter.name}</p>
+                  <p className="font-semibold text-gray-800 text-sm">{getUserName(selected.reporter?.name)}</p>
                 </div>
                 <div className="bg-red-50 rounded-xl p-3">
                   <p className="text-xs text-gray-400 mb-1">المُبلَّغ عنه</p>
-                  <p className="font-semibold text-red-700 text-sm">{selected.reportedUser.name}</p>
+                  <p className="font-semibold text-red-700 text-sm">{getUserName(selected.reportedUser?.name)}</p>
                 </div>
               </div>
 
@@ -457,7 +442,6 @@ export default function AdminReportsPage() {
               {selected.details && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-1">تفاصيل إضافية</p>
-                  {/* ✅ FIX-08: break-words → wrap-break-word */}
                   <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap wrap-break-word">
                     {selected.details}
                   </p>
@@ -467,7 +451,6 @@ export default function AdminReportsPage() {
               {selected.appealText && (
                 <div className="border-r-4 border-orange-400 pr-3 bg-orange-50 rounded-lg py-2">
                   <p className="text-xs font-semibold text-orange-600 mb-1">طعن المستخدم</p>
-                  {/* ✅ FIX-09: break-words → wrap-break-word */}
                   <p className="text-sm text-gray-700 whitespace-pre-wrap wrap-break-word">
                     {selected.appealText}
                   </p>
@@ -537,7 +520,6 @@ export default function AdminReportsPage() {
               {selected.status !== "pending" && selected.adminNote && (
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-xs font-semibold text-gray-500 mb-1">ملاحظة المشرف</p>
-                  {/* ✅ FIX-10: break-words → wrap-break-word */}
                   <p className="text-sm text-gray-700 bg-blue-50 rounded-lg px-3 py-2 whitespace-pre-wrap wrap-break-word">
                     {selected.adminNote}
                   </p>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
+import axios from "axios"; // ✅ إضافة استيراد axios هنا
 import axiosInstance, { getAccessToken } from "@/lib/api/axiosInstance";
 
 export interface LeaderboardEntry {
@@ -75,7 +76,12 @@ export function useLeaderboard() {
       setLastUpdated(new Date());
 
     } catch (err: unknown) {
-      // ✅ سجّل الخطأ في dev فقط — صامت في production
+      // ✅ الحل: التحقق مما إذا كان الخطأ بسبب الإلغاء (Abort) وتجاهله بصمت
+      if (axios.isCancel(err)) {
+        return;
+      }
+
+      // ✅ سجّل الخطأ الحقيقي في dev فقط — صامت في production
       if (process.env.NODE_ENV === "development") {
         console.warn("[useLeaderboard] fetch error:", err);
       }

@@ -1,6 +1,6 @@
 // next.config.ts — Flow 1 Fixed
 // ✅ ARCH-WARN-02: localhost/127.0.0.1 في remotePatterns مقيّدان بـ !isProduction فقط
-// ✅ تمت إضافة Content-Security-Policy لحماية الواجهة الأمامية بشكل مستقل
+// ✅ تمت إضافة Content-Security-Policy مع السماح بخطوط وأيقونات Google
 
 import type { NextConfig } from 'next';
 
@@ -40,16 +40,15 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // إضافة نطاقات الصور المسموحة (Cloudinary)
               "img-src 'self' https://res.cloudinary.com data:",
-              // Next.js dev server يحتاج unsafe-eval و unsafe-inline للـ Fast Refresh
               `script-src 'self' ${!isProduction ? "'unsafe-eval' 'unsafe-inline'" : ""}`,
-              // Tailwind يحتاج unsafe-inline
-              "style-src 'self' 'unsafe-inline'",
-              // السماح بالاتصال بالـ API الخارجي
+              // ✅ السماح بـ CSS الخاص بخطوط جوجل
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", 
+              // ✅ السماح بتحميل ملفات الخطوط والأيقونات
+              "font-src 'self' https://fonts.gstatic.com", 
               `connect-src 'self' ${API_URL || ''}`,
               "frame-ancestors 'none'",
-            ].join('; ').replace(/\s+/g, ' ').trim(), // تنظيف المسافات الزائدة
+            ].join('; ').replace(/\s+/g, ' ').trim(), 
           },
 
           ...(isProduction
@@ -72,8 +71,6 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname:  '*.googleusercontent.com',
       },
-      // ✅ ARCH-WARN-02: localhost/127.0.0.1 في dev فقط
-      // في production قبولهما يعني SSRF محتمل عبر Next.js Image Optimization
       ...(!isProduction
         ? [
             { protocol: 'http' as const, hostname: 'localhost',  port: '5000' },
@@ -81,7 +78,6 @@ const nextConfig: NextConfig = {
           ]
         : []
       ),
-      // placehold.co في dev/staging فقط — لا تسرب لـ production
       ...(!isProduction
         ? [{ protocol: 'https' as const, hostname: 'placehold.co' }]
         : []

@@ -1,6 +1,6 @@
 // next.config.ts — Flow 1 Fixed
 // ✅ ARCH-WARN-02: localhost/127.0.0.1 في remotePatterns مقيّدان بـ !isProduction فقط
-// ✅ باقي المنطق محفوظ كما هو
+// ✅ تمت إضافة Content-Security-Policy لحماية الواجهة الأمامية بشكل مستقل
 
 import type { NextConfig } from 'next';
 
@@ -34,6 +34,23 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy',        value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy',     value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          
+          // ✅ إضافة CSP header
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              // إضافة نطاقات الصور المسموحة (Cloudinary)
+              "img-src 'self' https://res.cloudinary.com data:",
+              // Next.js dev server يحتاج unsafe-eval و unsafe-inline للـ Fast Refresh
+              `script-src 'self' ${!isProduction ? "'unsafe-eval' 'unsafe-inline'" : ""}`,
+              // Tailwind يحتاج unsafe-inline
+              "style-src 'self' 'unsafe-inline'",
+              // السماح بالاتصال بالـ API الخارجي
+              `connect-src 'self' ${API_URL || ''}`,
+              "frame-ancestors 'none'",
+            ].join('; ').replace(/\s+/g, ' ').trim(), // تنظيف المسافات الزائدة
+          },
 
           ...(isProduction
             ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]

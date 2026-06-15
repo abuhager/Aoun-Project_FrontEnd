@@ -107,6 +107,9 @@ const PUBLIC_PATH_PATTERNS: Array<{ pattern: RegExp; getOnly: boolean }> = [
   { pattern: /^\/api\/items(\/(?!me|complete|waitlist)[^/]+)?\/?$/, getOnly: true  },
   { pattern: /^\/api\/hubs/,                                        getOnly: false },
   { pattern: /^\/api\/public/,                                      getOnly: false },
+    { pattern: /^\/api\/settings\/public/,                            getOnly: true  },
+  { pattern: /^\/api\/leaderboard(?!\/me)/,                         getOnly: true  },
+
 ];
 
 const isPublicUrl = (url: string, method?: string): boolean => {

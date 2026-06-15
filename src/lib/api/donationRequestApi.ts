@@ -1,4 +1,6 @@
 // src/lib/api/donationRequestApi.ts
+// ✅ FIX: حذف getPublicSettings المكررة التي كانت تستدعي /api/settings (Admin only)
+//         وإعادة تصديرها من settingsApi.ts الصحيح (/api/settings/public)
 
 import axiosInstance from '@/lib/api/axiosInstance';
 import type {
@@ -8,22 +10,8 @@ import type {
   MyDonationRequestsResponse,
 } from '@/types/donationRequest.types';
 
-// ─────────────────────────────────────────────────────────────
-// ✅ الإصلاح: /api/settings موجود فعلاً بدون auth
-//    لا نحتاج /api/settings/public
-// ─────────────────────────────────────────────────────────────
-export async function getPublicSettings(): Promise<{
-  categories: string[];
-  locations:  string[];
-  conditions: string[];
-}> {
-  const { data } = await axiosInstance.get('/api/settings');
-  return {
-    categories: data.categories ?? [],
-    locations:  data.locations  ?? [],
-    conditions: data.conditions ?? [],
-  };
-}
+// ✅ re-export من المصدر الصحيح — لا تغيير مطلوب في donation-requests/page.tsx
+export { getPublicSettings } from '@/lib/api/settingsApi';
 
 // ─────────────────────────────────────────────────────────────
 // جلب قائمة الطلبات

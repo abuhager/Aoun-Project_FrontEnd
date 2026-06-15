@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import axiosInstance from "@/lib/api/axiosInstance";
+import axiosInstance, { getAccessToken } from "@/lib/api/axiosInstance";
 
 export interface LeaderboardEntry {
   rank:           number;
@@ -46,42 +46,55 @@ export function useLeaderboard() {
     abortRef.current = controller;
 
     try {
-      const [boardRes, rankRes] = await Promise.all([
+      // ✅ الإصلاح الجوهري:
+      // /api/leaderboard  → عام، يُطلب دائماً
+      // /api/leaderboard/me → محمي، يُطلب فقط إذا يوجد accessToken
+      const isLoggedIn = !!getAccessToken();
+
+      const requests = [
         axiosInstance.get<{ leaderboard: LeaderboardEntry[] }>(
           "/api/leaderboard",
           { signal: controller.signal }
         ),
-        axiosInstance.get<MyRank>(
-          "/api/leaderboard/me",
-          { signal: controller.signal }
-        ),
-      ]);
+        // ✅ إذا غير مسجّل → Promise.resolve(null) بدلاً من طلب محمي
+        isLoggedIn
+          ? axiosInstance.get<MyRank>(
+              "/api/leaderboard/me",
+              { signal: controller.signal }
+            )
+          : Promise.resolve(null),
+      ] as const;
+
+      const [boardRes, rankRes] = await Promise.all(requests);
 
       if (controller.signal.aborted) return;
+
       setLeaderboard(boardRes.data.leaderboard);
-      setMyRank(rankRes.data);
+      // ✅ rankRes يكون null إذا غير مسجّل → myRank يبقى null
+      setMyRank(rankRes ? rankRes.data : null);
       setLastUpdated(new Date());
-    } catch {
-      // صامت
+
+    } catch (err: unknown) {
+      // ✅ سجّل الخطأ في dev فقط — صامت في production
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[useLeaderboard] fetch error:", err);
+      }
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // فيتش أول
     fetchAll(false);
 
-    // ✅ اتصال Socket.io
     const socket = io(process.env.NEXT_PUBLIC_API_URL!, {
       withCredentials: true,
-      transports: ["websocket"],
+      transports:      ["websocket"],
     });
     socketRef.current = socket;
 
-    // ✅ كل ما يصير تبرع/تسليم → حدّث الـ leaderboard
     socket.on("leaderboard:update", () => {
-      fetchAll(true); // في الخلفية بدون spinner
+      fetchAll(true);
     });
 
     return () => {
@@ -90,5 +103,11 @@ export function useLeaderboard() {
     };
   }, [fetchAll]);
 
-  return { leaderboard, myRank, loading, lastUpdated, refetch: () => fetchAll(false) };
+  return {
+    leaderboard,
+    myRank,
+    loading,
+    lastUpdated,
+    refetch: () => fetchAll(false),
+  };
 }

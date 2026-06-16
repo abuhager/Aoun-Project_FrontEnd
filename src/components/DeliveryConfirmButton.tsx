@@ -1,82 +1,107 @@
-// src/components/DeliveryConfirmButton.tsx
+// src/hooks/useDeliveryConfirmation.ts — ✅ FINAL DIRECT MATCH WITH API
 'use client';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSocket }                                  from '@/hooks/useSocket';
+import { confirmDelivery, getItemById }               from '@/lib/api/itemApi'; // ✅ استيراد الدالة الموحدة
+import type { Item }                                  from '@/types/item.types'; // ✅ استيراد النوع الصريح
+import toast                                          from 'react-hot-toast';
 
-import React from 'react';
-import { useDeliveryConfirmation } from '@/hooks/useDeliveryConfirmation';
+type ConfirmationType = 'recipient_confirm' | 'donor_confirm';
+type DeliveryStatus   = 'idle' | 'recipient_confirming' | 'waiting_donor' | 'donor_confirming' | 'completed' | 'error';
 
-interface DeliveryConfirmButtonProps {
-  itemId: string;
-  userRole: 'donor' | 'recipient';
-  initialRecipientConfirmed?: boolean;
-  onSuccess?: (itemId: string) => void;
-  className?: string;
-}
+interface Props  { itemId: string; userRole: 'donor' | 'recipient'; initialRecipientConfirmed?: boolean; onSuccess?: (id: string) => void; }
+interface Return { status: DeliveryStatus; isLoading: boolean; errorMsg: string | null; confirmReceipt: () => Promise<void>; confirmDelivery: () => Promise<void>; canConfirm: boolean; }
 
-const buttonLabel: Record<string, Record<string, string>> = {
-  idle:                 { recipient: 'تأكيد الاستلام ✅',              donor: 'في انتظار تأكيد المستلم ⏳' },
-  recipient_confirming: { recipient: 'جارٍ التأكيد...',                donor: 'انتظر...'                  },
-  waiting_donor:        { recipient: 'تم تأكيد استلامك ✅',            donor: 'تأكيد التسليم النهائي ✅'   },
-  donor_confirming:     { recipient: 'انتظر...',                       donor: 'جارٍ التأكيد...'            },
-  completed:            { recipient: 'تم التسليم بنجاح 🎉',            donor: 'تم التسليم بنجاح 🎉'         },
-  error:                { recipient: 'إعادة المحاولة',                 donor: 'إعادة المحاولة'             },
-};
+export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConfirmed = false, onSuccess }: Props): Return {
+  const socketRef   = useSocket();
+  const [status,    setStatus]   = useState<DeliveryStatus>(initialRecipientConfirmed ? 'waiting_donor' : 'idle');
+  const [isLoading, setLoading]  = useState(false);
+  const [errorMsg,  setErrorMsg] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
 
-export default function DeliveryConfirmButton({
-  itemId,
-  userRole,
-  initialRecipientConfirmed = false,
-  onSuccess,
-  className = '',
-}: DeliveryConfirmButtonProps) {
-  const { status, isLoading, errorMsg, confirmReceipt, confirmDelivery, canConfirm } =
-    useDeliveryConfirmation({ itemId, userRole, initialRecipientConfirmed, onSuccess });
+  useEffect(() => () => { isMountedRef.current = false; }, []);
 
-  const handleClick = () => {
-    if (userRole === 'recipient') confirmReceipt();
-    else confirmDelivery();
+  // Offline fallback — يتحقق من حالة الـ item عند الـ mount للتأكد من حالة التسليم
+  useEffect(() => {
+    if (userRole !== 'donor') return;
+    if (initialRecipientConfirmed) return;
+
+    let cancelled = false;
+    getItemById(itemId)
+      .then((item: Item) => {
+        if (cancelled) return;
+        if (item.recipientConfirmed && !item.donorConfirmed) {
+          setStatus('waiting_donor');
+        }
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [itemId, userRole, initialRecipientConfirmed]);
+
+  // Socket listeners لمزامنة تسليم التبرعات في الوقت الفعلي
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
+    const onRC = (d: { itemId: string; message: string }) => {
+      if (d.itemId !== itemId) return;
+      setStatus('waiting_donor');
+      toast.success(d.message ?? 'المستلم أكّد الاستلام ✅');
+    };
+    const onC = (d: { itemId: string; message: string }) => {
+      if (d.itemId !== itemId) return;
+      setStatus('completed');
+      toast.success(d.message ?? 'تم التسليم 🎉');
+      onSuccess?.(itemId);
+    };
+    socket.on('delivery:recipient_confirmed', onRC);
+    socket.on('delivery:completed',           onC);
+    return () => {
+      socket.off('delivery:recipient_confirmed', onRC);
+      socket.off('delivery:completed',           onC);
+    };
+  }, [socketRef, itemId, onSuccess]);
+
+  const sendConfirmation = useCallback(async (type: ConfirmationType) => {
+    if (isLoading) return;
+    setLoading(true);
+    setErrorMsg(null);
+    setStatus(type === 'recipient_confirm' ? 'recipient_confirming' : 'donor_confirming');
+
+    try {
+      // ✅ [FIX] تمرير وسيط واحد فقط وهو الـ itemId كـ string ليطابق الـ API تماماً
+      const data = await confirmDelivery(itemId);
+      if (!isMountedRef.current) return;
+
+      if (type === 'recipient_confirm') {
+        setStatus('waiting_donor');
+        toast.success(data.msg ?? 'تم التأكيد ✅');
+      } else {
+        setStatus('completed');
+        toast.success(data.msg ?? 'تم التسليم 🎉');
+        onSuccess?.(itemId);
+      }
+    } catch (err: unknown) {
+      if (!isMountedRef.current) return;
+      setStatus('error');
+      const msg = (err as { response?: { data?: { msg?: string } } })
+        ?.response?.data?.msg ?? 'حدث خطأ، حاول مجدداً';
+      setErrorMsg(msg);
+      toast.error(msg);
+    } finally {
+      if (isMountedRef.current) setLoading(false);
+    }
+  }, [itemId, isLoading, onSuccess]);
+
+  return {
+    status,
+    isLoading,
+    errorMsg,
+    confirmReceipt:  () => sendConfirmation('recipient_confirm'),
+    confirmDelivery: () => sendConfirmation('donor_confirm'),
+    canConfirm: !isLoading && status !== 'completed' && (
+      (userRole === 'recipient' && (status === 'idle' || status === 'error')) ||
+      (userRole === 'donor'     && status === 'waiting_donor')
+    ),
   };
-
-  const label = buttonLabel[status]?.[userRole] ?? 'تأكيد';
-  const isCompleted = status === 'completed';
-
-  return (
-    <div className="flex flex-col gap-2">
-      
-      {/* ✅ النص التوضيحي للمتبرع لإزالة الغموض عند تأكيد المستلم */}
-      {status === 'waiting_donor' && userRole === 'donor' && (
-        <p className="text-xs text-green-600 font-medium text-center mb-1">
-          ✅ المستلم أكّد استلام الغرض — انقر لإتمام التسليم
-        </p>
-      )}
-
-      <button
-        onClick={handleClick}
-        disabled={!canConfirm || isLoading}
-        className={[
-          'px-4 py-2 rounded-lg font-medium transition-all',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
-          isCompleted
-            ? 'bg-green-100 text-green-700 cursor-default'
-            : canConfirm
-            ? 'bg-green-600 hover:bg-green-700 text-white'
-            : 'bg-gray-200 text-gray-500 cursor-not-allowed',
-          className,
-        ].join(' ')}
-      >
-        {isLoading ? (
-          <span className="flex items-center gap-2 justify-center">
-            <span className="animate-spin inline-block">⏳</span>
-            جارٍ التأكيد...
-          </span>
-        ) : (
-          label
-        )}
-      </button>
-
-      {/* رسالة خطأ */}
-      {errorMsg && status === 'error' && (
-        <p className="text-xs text-red-500 text-center">{errorMsg}</p>
-      )}
-    </div>
-  );
 }

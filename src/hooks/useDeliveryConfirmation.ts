@@ -1,9 +1,9 @@
-// src/hooks/useDeliveryConfirmation.ts ✅ FIXED
+// src/hooks/useDeliveryConfirmation.ts — ✅ DEFINITIVE FIX (MATCHING API SIGNATURE)
 'use client';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSocket }                                  from '@/hooks/useSocket';
-import { completeDelivery, getItemById }              from '@/lib/api/itemApi'; // ✅ [FIX-1] استيراد getItemById
-import type { Item }                                  from '@/types/item.types'; // ✅ [FIX-2] استيراد النوع
+import { confirmDelivery, getItemById }               from '@/lib/api/itemApi'; // ✅ استيراد سليم
+import type { Item }                                  from '@/types/item.types'; // ✅ استيراد نوع الـ Item الموحد
 import toast                                          from 'react-hot-toast';
 
 type ConfirmationType = 'recipient_confirm' | 'donor_confirm';
@@ -18,18 +18,17 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
   const [isLoading, setLoading]  = useState(false);
   const [errorMsg,  setErrorMsg] = useState<string | null>(null);
   const isMountedRef = useRef(true);
-  // ✅ [FIX-3] حذف prevRef — كانت معرّفة لكن غير مستخدمة
 
   useEffect(() => () => { isMountedRef.current = false; }, []);
 
-  // Offline fallback — يتحقق من حالة الـ item عند mount للـ donor
+  // Offline fallback — التحقق من حالة الـ item عند الـ mount للتأكد من حالة التسليم
   useEffect(() => {
     if (userRole !== 'donor') return;
     if (initialRecipientConfirmed) return;
 
     let cancelled = false;
     getItemById(itemId)
-      .then((item: Item) => {           // ✅ [FIX-2] type صريح بدل any
+      .then((item: Item) => {
         if (cancelled) return;
         if (item.recipientConfirmed && !item.donorConfirmed) {
           setStatus('waiting_donor');
@@ -40,7 +39,7 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
     return () => { cancelled = true; };
   }, [itemId, userRole, initialRecipientConfirmed]);
 
-  // Socket listeners
+  // Socket listeners لمزامنة تسليم التبرعات في الوقت الفعلي
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
@@ -70,7 +69,8 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
     setStatus(type === 'recipient_confirm' ? 'recipient_confirming' : 'donor_confirming');
 
     try {
-      const data = await completeDelivery(itemId, type);
+      // ✅ إصلاح الخطأ: تمرير معامل واحد فقط (itemId) متوافق 100% مع الـ API المتوفر لديك
+      const data = await confirmDelivery(itemId);
       if (!isMountedRef.current) return;
 
       if (type === 'recipient_confirm') {

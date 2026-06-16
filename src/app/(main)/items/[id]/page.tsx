@@ -7,10 +7,11 @@ import { ConfirmModal }         from "./components/ConfirmModal";
 import { CountdownTimer }       from "./components/CountdownTimer";
 import { useItemDetails }       from "./hooks/useItemDetails";
 import LevelGate                from "@/components/LevelGate";
-import DeliveryConfirmButton    from "@/components/DeliveryConfirmButton";
-import ChatDrawer               from "@/components/ChatDrawer"; // ✅
-import { useRouter } from 'next/navigation';
+import ChatDrawer               from "@/components/ChatDrawer"; 
+import { useRouter }            from 'next/navigation';
 
+// ✅ استيراد الـ Hook الفعلي المصدر من الملف
+import { useDeliveryConfirmation } from "@/components/DeliveryConfirmButton";
 
 export default function ItemDetailsPage() {
   const router = useRouter();
@@ -21,10 +22,19 @@ export default function ItemDetailsPage() {
     handleRequestItem, handleCancelAction,
   } = useItemDetails();
   
+  const [chatOpen, setChatOpen] = useState(false); 
 
-  const [chatOpen, setChatOpen] = useState(false); // ✅
+  // ✅ استخدام الـ Hook مباشرة هنا لحل مشكلة المكون المفقود ومزامنة الحالات
+  const delivery = useDeliveryConfirmation({
+    itemId: item?._id ?? "",
+    userRole: isDonor ? "donor" : "recipient",
+    initialRecipientConfirmed: item?.recipientConfirmed ?? false,
+    onSuccess: () => {
+      router.refresh();
+    }
+  });
 
-    const handleDeliveryComplete = (_itemId: string) => {
+  const handleDeliveryComplete = () => {
     router.refresh();
   };
   
@@ -42,13 +52,13 @@ export default function ItemDetailsPage() {
 
   const imageUrl = item.imageUrl ?? "/placeholder-item.png";
 
-
-  const showCountdown          = item.status === "محجوز" && (isBooker || isDonor);
+  const showCountdown            = item.status === "محجوز" && (isBooker || isDonor);
   const initialRecipientConfirmed = item.recipientConfirmed === true;
-const showChat = (isDonor || isBooker) 
-  && item.status === "محجوز"
-  && item.recipientConfirmed === true; 
- return (
+  const showChat = (isDonor || isBooker) 
+    && item.status === "محجوز"
+    && item.recipientConfirmed === true; 
+
+  return (
     <div className="bg-surface min-h-screen text-[#191c1d] pb-20" dir="rtl">
 
       {confirmModal.show && (
@@ -144,8 +154,8 @@ const showChat = (isDonor || isBooker)
             {/* ─── معلومات الغرض ─── */}
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: "الموقع",    val: item.location,                                         ic: "distance"      },
-                { label: "التاريخ",   val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event"          },
+                { label: "الموقع",    val: item.location,                                     ic: "distance"          },
+                { label: "التاريخ",   val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event"             },
               ].map((s, i) => (
                 <div key={i} className="bg-white p-3 rounded-2xl border border-gray-100 text-center">
                   <span className="material-symbols-outlined text-primary text-xl mb-1">{s.ic}</span>
@@ -223,12 +233,27 @@ const showChat = (isDonor || isBooker)
                     </div>
                     {item.status === "محجوز" && (
                       <>
-                        <DeliveryConfirmButton
-  itemId={item._id}
-  userRole="donor"
-  initialRecipientConfirmed={item.recipientConfirmed}  // ← من الـ API response
-  onSuccess={handleDeliveryComplete}
-/>
+                        {/* ✅ زر تفاعلي مباشر للمتبرع معتمد على الـ Hook المستورد والـ API الموحد */}
+                        <button
+                          onClick={delivery.confirmDelivery}
+                          disabled={delivery.isLoading || delivery.status === 'completed'}
+                          className={`w-full py-4 rounded-2xl font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+                            delivery.status === 'waiting_donor'
+                              ? 'bg-primary text-white hover:bg-[#004d44]'
+                              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                          }`}
+                        >
+                          {delivery.isLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : delivery.status === 'completed' ? (
+                            "تم تسليم الغرض بنجاح ✅"
+                          ) : delivery.status === 'donor_confirming' ? (
+                            "جاري تأكيد التسليم..."
+                          ) : (
+                            "تأكيد تسليم الغرض للمستلم 📦"
+                          )}
+                        </button>
+
                         <button
                           onClick={handleCancelAction}
                           disabled={actionLoading}
@@ -256,13 +281,26 @@ const showChat = (isDonor || isBooker)
                 ) : isBooker ? (
                   <div className="space-y-3">
                     {item.status === "محجوز" && (
-                      <DeliveryConfirmButton
-                        itemId={item._id}
-                        userRole="recipient"
-                        initialRecipientConfirmed={initialRecipientConfirmed}
-                        onSuccess={() => router.refresh()}
-                        className="w-full py-4 rounded-2xl font-black text-sm"
-                      />
+                      /* ✅ زر تفاعلي مباشر للمستلم معتمد على الـ Hook المستورد والـ API الموحد */
+                      <button
+                        onClick={delivery.confirmReceipt}
+                        disabled={delivery.isLoading || delivery.status === 'completed' || delivery.status === 'waiting_donor'}
+                        className={`w-full py-4 rounded-2xl font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+                          delivery.status === 'idle' || delivery.status === 'error'
+                            ? 'bg-[#005a8c] text-white hover:bg-[#004a75]'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}
+                      >
+                        {delivery.isLoading ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : delivery.status === 'waiting_donor' ? (
+                          "بانتظار تأكيد المتبرع النهائي... ⏳"
+                        ) : delivery.status === 'recipient_confirming' ? (
+                          "جاري تأكيد الاستلام..."
+                        ) : (
+                          "تأكيد استلام الغرض عيناً 👍"
+                        )}
+                      </button>
                     )}
                     <button
                       onClick={handleCancelAction}
@@ -297,7 +335,6 @@ const showChat = (isDonor || isBooker)
 
                 /* ── قائمة الانتظار ── */
                 ) : (
-                  // ✅ تم تطبيق الحماية هنا بإضافة الـ fallback المناسب لتوضيح سبب الحظر للمستخدم
                   <LevelGate
                     fallback={
                       <div className="w-full py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold text-center text-sm">

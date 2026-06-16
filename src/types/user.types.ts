@@ -1,10 +1,13 @@
-// src/types/user.types.ts — النسخة الكاملة المُصلَحة
-import type { DashboardItem } from './item.types';
+// src/types/user.types.ts — ✅ FULLY FIXED
+import type { Item } from './item.types';
+
+// ✅ إصلاح جذر المشكلة: نقوم ببناء وتصدير النوع الجديد باستخدام Item لتصفية أخطاء TypeScript و ESLint معاً
+export type DashboardItem = Item & { reportId: string | null };
 
 export type UserRole   = 'user' | 'admin' | 'super_admin';
 export type TrustLevel = 1 | 2 | 3 | 4;
 
-// ✅ FIXED [BUG-PROFILE-03]: يعكس ما يُرجعه buildGamificationProfile فقط
+// FIXED [BUG-PROFILE-03]: يعكس ما يُرجعه buildGamificationProfile فقط
 export interface Gamification {
   level:        number;
   title:        string;
@@ -14,14 +17,12 @@ export interface Gamification {
 }
 
 // ─── ما يُرجعه /api/auth/login و /api/auth/me ───────────────
-// ✅ FIXED [BUG-PROFILE-02]: أضيف badges
-// ✅ FIXED [BUG-PROFILE-03]: trustScore و totalDonations على مستوى الجذر
 export interface AuthUser {
   _id:               string;
   name:              string;
   email:             string;
-  phone?:            string;         // ✅ جديد
-  phoneVerified?:    boolean;        // ✅ جديد
+  phone?:            string;
+  phoneVerified?:    boolean;
   avatar:            string;
   role:              'user' | 'admin' | 'super_admin';
   trustScore:        number;
@@ -32,10 +33,10 @@ export interface AuthUser {
   badges:            string[];
   createdAt:         string;
   gamification: {
-    level:         number;
-    title:         string;
-    nextLevelAt:   number;
-    progressPct:   number;
+    level:          number;
+    title:          string;
+    nextLevelAt:    number;
+    progressPct:    number;
     totalDonations: number;
   };
 }
@@ -58,7 +59,6 @@ export interface ProfileUser {
 }
 
 // ─── مستخدم عام ─────────────────────────────────────────────
-// ✅ FIXED [BUG-PROFILE-01]: حُذف whatsapp — غير موجود في Backend
 export interface PublicUser {
   name:              string;
   avatar:            string;
@@ -73,16 +73,17 @@ export interface PublicUser {
     totalDonations: number;
   };
 }
+
 export interface ProfileResponse {
-  user:             ProfileUser;
+  user:         ProfileUser;
   stats: {
     donationsCount:     number;
     completedDonations: number;
     receivedCount:      number;
     totalRatings:       number;
   };
-  allDonations:      DashboardItem[];
-  completedRequests: DashboardItem[];
+  allDonations:      DashboardItem[]; // ✅ سيعمل الآن لأن DashboardItem معرّف في السطر 4
+  completedRequests: DashboardItem[]; // ✅ سيعمل الآن لأن DashboardItem معرّف في السطر 4
 }
 
 export interface BookedByUser {
@@ -98,7 +99,7 @@ export interface DonorUser extends PublicUser {
 
 export interface DashboardStats {
   quota:        number;
-  trustScore:   number;   // ✅ أضيف — موجود في buildSafeUser
+  trustScore:   number;
   trustLevel:   TrustLevel;
   gamification: Gamification;
 }

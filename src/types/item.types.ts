@@ -1,155 +1,106 @@
-// src/types/item.types.ts
+// src/types/item.types.ts — ✅ PATCHED [FRONT-01]: أنواع كاملة لكل API response
+import type { SafeHub } from "@/types/hub.types";
 
-import type { PublicUser, BookedByUser } from './user.types';
-import { SafeHub } from "./hub.types";
+export type ItemStatus = "متاح" | "محجوز" | "تم التسليم" | "مخفي";
+export type ItemCondition = "جديد" | "مستعمل ممتاز" | "مستعمل جيد";
 
-export type ItemStatus   = 'متاح' | 'محجوز' | 'تم التسليم' | 'مخفي';
-export type ItemCategory = 'كتب' | 'إلكترونيات' | 'أثاث' | 'أخرى' | 'ملابس';
-export type HandoverMode = 'direct' | 'hub';
+export interface ItemDonor {
+  _id:                string;
+  name:               string;
+  avatar?:            string;
+  trustScore?:        number;
+  trustLevel?:        number;
+  isVerifiedStudent?: boolean;
+}
 
 export interface WaitlistEntry {
-  user:     string;
+  user:     { _id: string; name: string; avatar?: string; trustLevel?: number };
   joinedAt: string;
 }
 
 export interface Item {
   _id:                  string;
   title:                string;
-  description:          string;
-  category:             ItemCategory;
-  imageUrl:             string;
-  cloudinaryId?:        string;
-  location:             string;
-  condition:            string;
+  description?:         string;
+  category:             string;
+  location?:            string;
+  imageUrl?:            string;
+  condition:            ItemCondition;
   status:               ItemStatus;
-  handoverMode:         HandoverMode;
-  hubId?:               string | null;
-  isRated:              boolean;
-  rating?:              number | null;
-  reportCount:          number;
+  donor:                ItemDonor;
+  safeHub:              SafeHub;
+  bookedBy?:            { _id: string; name: string; avatar?: string } | null;
   bookedAt?:            string | null;
-  cancelledBy?:         string[];
-  createdAt:            string;
-  updatedAt:            string;
-  donor:                PublicUser;
-  bookedBy?:            BookedByUser | null;
-  waitlist?:            WaitlistEntry[];
-  safeHub?:             SafeHub;
-  recipientConfirmed?:  boolean;
-  recipientConfirmedAt?: string | null;
-  donorConfirmed?:      boolean;        // ✅ مضاف — كان موجوداً في DashboardItem فقط
+  recipientConfirmed:   boolean;
+  donorConfirmed:       boolean;
+  recipientConfirmedAt?:string | null;
   donorConfirmedAt?:    string | null;
   deliveredAt?:         string | null;
-  expiryHours?:         number;         // ✅ مضاف — يأتي من Backend settings
+  reportCount?:         number;
+  isRated?:             boolean;
+  linkedRequestId?:     string | null;
+  // فقط للمتبرع عند getItemById
+  waitlist?:            WaitlistEntry[];
+  waitlistCount:        number;
+  // من الـ settings
+  expiryHours?:         number;
+  createdAt:            string;
+  updatedAt:            string;
 }
 
-export interface ItemSummary {
-  _id:       string;
-  title:     string;
-  imageUrl:  string;
-  status:    ItemStatus;
-  category:  ItemCategory;
-  location:  string;
-  createdAt: string;
-  donor: {
-    _id:    string;
-    name:   string;
-    avatar?: string;
-  };
-}
+// ── Response Types ────────────────────────────────────────────────────────────
 
-export interface DashboardItem {
-  _id:         string;
-  title:       string;
-  imageUrl:    string;
-  status:      ItemStatus;
-  category:    ItemCategory;
-  location:    string;
-  condition:   string;
-  isRated:     boolean;
-  rating?:     number | null;
-  reportCount: number;
-  reportId?:   string;
-  bookedAt?:   string | null;
-  createdAt:   string;
-  updatedAt:   string;
-  recipientConfirmed?: boolean;
-  donorConfirmed?:     boolean;
-  donor: {
-    _id:    string;
-    name:   string;
-    avatar?: string;
-  };
-  bookedBy?:  BookedByUser | null;
-  waitlist?:  WaitlistEntry[];
-}
-
-export interface MyItemsUser {
-  _id: string;
-  name: string;
-  email?: string;
-  avatar?: string;
-  trustScore?: number;
-  trustLevel?: number;
-  quota?: number;
-  isVerified?: boolean;
-  isVerifiedStudent?: boolean;
-  gamification?: {
-    level:      number;
-    xp:         number;
-    badges:     string[];
-    trustScore: number;
-  };
-}
-
-export interface MyItemsResponse {
-  user:        MyItemsUser;
-  myDonations: DashboardItem[];
-  myRequests:  DashboardItem[];
-}
-
-export interface CreateItemPayload {
-  title:         string;
-  description:   string;
-  category:      ItemCategory;
-  location:      string;
-  condition?:    string;
-  handoverMode?: HandoverMode;
-  hubId?:        string;
-  image:         File;
-}
-
-export interface GetItemsResponse {
-  items: ItemSummary[];
+export interface ItemsListResponse {
+  items: Item[];
   total: number;
   page:  number;
   pages: number;
 }
 
-export interface BookItemResponse {
-  status:  'booked' | 'waitlist';
-  message: string;
-  item?:   Item;
+export interface MyItemsResponse {
+  user:        { _id: string; name: string; email: string; trustScore: number; quota: number };
+  myDonations: (Item & { reportId: string | null })[];
+  myRequests:  (Item & { reportId: string | null })[];
 }
 
-export interface RateItemResponse {
-  msg: string;
-  gamification: {
-    trustScore:     number;
-    totalDonations: number;
-    level:          number;
-    title:          string;
-    badge:          string;
-    progress:       number;
-    pointsToNext:   number | null;
-  };
+export interface BookingResponse {
+  success: boolean;
+  msg:     string;
+  itemId:  string;
+  status:  ItemStatus;
 }
+
+export interface DeliveryResponse {
+  status:  "pending_donor" | "delivered";
+  msg:     string;
+  itemId:  string;
+}
+
+// ── Payload Types ─────────────────────────────────────────────────────────────
 
 export interface ItemFilters {
-  category?: ItemCategory;
-  location?: string;
   page?:     number;
   limit?:    number;
+  search?:   string;
+  category?: string;
+  location?: string;
 }
 
-export type ConfirmationType = 'recipient_confirm' | 'donor_confirm';
+export interface CreateItemPayload {
+  title:        string;
+  description?: string;
+  category:     string;
+  location?:    string;
+  condition:    ItemCondition;
+  safeHub:      string;
+  image:        File;
+}
+
+export interface UpdateItemPayload {
+  title?:       string;
+  description?: string;
+  category?:    string;
+  location?:    string;
+  condition?:   ItemCondition;
+  image?:       File;
+}

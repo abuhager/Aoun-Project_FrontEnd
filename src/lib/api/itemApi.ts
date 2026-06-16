@@ -1,107 +1,128 @@
-// src/lib/api/itemApi.ts
-
+// src/lib/api/itemApi.ts — ✅ PATCHED [FRONT-01]: كل response له نوع صريح
 import axiosInstance from './axiosInstance';
 import type {
-  GetItemsResponse,
   Item,
+  ItemsListResponse,
   MyItemsResponse,
-  BookItemResponse,
+  BookingResponse,
+  DeliveryResponse,
+  ItemFilters,
   CreateItemPayload,
-  ConfirmationType, // ✅ مستوردة مباشرة من مكانها الصحيح
-} from '@/types/item.types';
-import type { PaginationQuery } from '@/types/api.types';
+  UpdateItemPayload,
+} from "@/types/item.types";
 
-// ----------------------------------------
-// 1. استعراض وجلب العناصر (Items)
-// ----------------------------------------
-
-export async function getItems(params?: PaginationQuery): Promise<GetItemsResponse> {
-  const { data } = await axiosInstance.get<GetItemsResponse>('/api/items', { params });
+// ── جلب الأغراض المتاحة ─────────────────────────────────────────────────────
+export const getItems = async (
+  filters: ItemFilters = {}
+): Promise<ItemsListResponse> => {
+  const { data } = await axiosInstance.get<ItemsListResponse>("/api/items", {
+    params: filters,
+  });
   return data;
-}
+};
 
-export async function getItemById(id: string): Promise<Item> {
+// ── جلب أغراضي ──────────────────────────────────────────────────────────────
+export const getMyItems = async (): Promise<MyItemsResponse> => {
+  const { data } = await axiosInstance.get<MyItemsResponse>("/api/items/me");
+  return data;
+};
+
+// ── جلب غرض بالـ ID ──────────────────────────────────────────────────────────
+export const getItemById = async (id: string): Promise<Item> => {
   const { data } = await axiosInstance.get<Item>(`/api/items/${id}`);
   return data;
-}
+};
 
-export async function getMyItems(): Promise<MyItemsResponse> {
-  const { data } = await axiosInstance.get<MyItemsResponse>('/api/items/me');
-  return data;
-}
-
-// ----------------------------------------
-// 2. إدارة العناصر (إنشاء، تعديل، حذف)
-// ----------------------------------------
-
-export async function createItem(payload: CreateItemPayload): Promise<{ msg: string; item: Item }> {
+// ── إنشاء غرض ────────────────────────────────────────────────────────────────
+export const createItem = async (
+  payload: CreateItemPayload
+): Promise<{ success: boolean; item: Item }> => {
   const formData = new FormData();
   Object.entries(payload).forEach(([key, val]) => {
-    if (val !== undefined && val !== null) formData.append(key, val as string | Blob);
+    if (val !== undefined && val !== null) {
+      formData.append(key, val as string | Blob);
+    }
   });
-  const { data } = await axiosInstance.post<{ msg: string; item: Item }>('/api/items', formData);
+  const { data } = await axiosInstance.post<{ success: boolean; item: Item }>(
+    "/api/items",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
   return data;
-}
+};
 
-export async function updateItem(
+// ── حجز غرض ──────────────────────────────────────────────────────────────────
+export const bookItem = async (id: string): Promise<BookingResponse> => {
+  const { data } = await axiosInstance.put<BookingResponse>(
+    `/api/items/book/${id}`
+  );
+  return data;
+};
+
+// ── إلغاء الحجز ──────────────────────────────────────────────────────────────
+export const cancelBooking = async (
+  id: string
+): Promise<{ msg: string }> => {
+  const { data } = await axiosInstance.put<{ msg: string }>(
+    `/api/items/cancel/${id}`
+  );
+  return data;
+};
+
+// ── مغادرة Waitlist ───────────────────────────────────────────────────────────
+export const leaveWaitlist = async (
+  id: string
+): Promise<{ msg: string }> => {
+  const { data } = await axiosInstance.put<{ msg: string }>(
+    `/api/items/leave-waitlist/${id}`
+  );
+  return data;
+};
+
+// ── تأكيد الاستلام (المستلم) ─────────────────────────────────────────────────
+export const confirmReceipt = async (
+  id: string
+): Promise<DeliveryResponse> => {
+  // ✅ FRONT-01: POST /:id/confirm-receipt — لا body مطلوب (injectRecipientConfirm في الـ route)
+  const { data } = await axiosInstance.post<DeliveryResponse>(
+    `/api/items/${id}/confirm-receipt`
+  );
+  return data;
+};
+
+// ── تأكيد التسليم (المتبرع) ───────────────────────────────────────────────────
+export const confirmDelivery = async (
+  id: string
+): Promise<DeliveryResponse> => {
+  const { data } = await axiosInstance.put<DeliveryResponse>(
+    `/api/items/complete/${id}`,
+    { confirmationType: "donor_confirm" }
+  );
+  return data;
+};
+
+// ── تعديل غرض ────────────────────────────────────────────────────────────────
+export const updateItem = async (
   id: string,
-  payload: Partial<CreateItemPayload>
-): Promise<{ msg: string; item: Item }> {
+  payload: UpdateItemPayload
+): Promise<{ msg: string; item: Item }> => {
   const formData = new FormData();
   Object.entries(payload).forEach(([key, val]) => {
-    if (val !== undefined && val !== null) formData.append(key, val as string | Blob);
+    if (val !== undefined && val !== null)
+      formData.append(key, val as string | Blob);
   });
   const { data } = await axiosInstance.put<{ msg: string; item: Item }>(
     `/api/items/${id}`,
-    formData
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
   );
   return data;
-}
+};
 
-export async function deleteItem(id: string): Promise<{ msg: string }> {
-  const { data } = await axiosInstance.delete<{ msg: string }>(`/api/items/${id}`);
-  return data;
-}
-
-// ----------------------------------------
-// 3. الحجز والإلغاء (Booking)
-// ----------------------------------------
-
-export async function bookItem(id: string): Promise<BookItemResponse> {
-  const { data } = await axiosInstance.put<BookItemResponse>(`/api/items/book/${id}`);
-  return data;
-}
-
-export async function cancelBooking(id: string): Promise<{ msg: string }> {
-  const { data } = await axiosInstance.put<{ msg: string }>(`/api/items/cancel/${id}`);
-  return data;
-}
-
-// ----------------------------------------
-// 4. نظام التأكيد الثنائي (Double Confirmation) والتقييم
-// ----------------------------------------
-
-// ✅ الدالة الأساسية الموحدة لتأكيد التسليم
-export async function completeDelivery(
-  id: string,
-  confirmationType: ConfirmationType
-): Promise<{ msg: string; status: string }> {
-  const { data } = await axiosInstance.put<{ msg: string; status: string }>(
-    `/api/items/complete/${id}`,
-    { confirmationType }
+// ── حذف غرض ──────────────────────────────────────────────────────────────────
+export const deleteItem = async (id: string): Promise<{ msg: string }> => {
+  const { data } = await axiosInstance.delete<{ msg: string }>(
+    `/api/items/${id}`
   );
   return data;
-}
-
-// ✅ الـ Wrappers البسيطة والنظيفة لاستدعائها في الـ UI والـ Hooks مباشرة
-
-export const confirmReceipt  = (id: string) => completeDelivery(id, 'recipient_confirm');
-export const confirmDelivery = (id: string) => completeDelivery(id, 'donor_confirm');
-
-export async function rateItem(id: string, rating: number): Promise<{ msg: string; trustScore: number }> {
-  const { data } = await axiosInstance.post<{ msg: string; trustScore: number }>(
-    `/api/items/rate/${id}`,
-    { rating }
-  );
-  return data;
-}
+};

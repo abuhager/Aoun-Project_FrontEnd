@@ -1,6 +1,7 @@
+// src/app/(main)/hubs/hooks/useHubs.ts — ✅ PATCHED [LOGIC-02]
 "use client";
 import { useEffect, useState } from "react";
-import { getHubs }             from "@/lib/api/hubApi";   // ✅ الاسم الصحيح
+import { getHubs }             from "@/lib/api/hubApi";
 import { SafeHub }             from "@/types/hub.types";
 
 export function useHubs() {
@@ -12,12 +13,15 @@ export function useHubs() {
 
   useEffect(() => {
     getHubs()
-      .then((data) => setHubs(data.filter((h) => h.isActive))) // ✅ فلترة النشطين
+      // ✅ LOGIC-02: حُذفت .filter((h) => h.isActive) — الـ Backend يكفل ذلك
+      // GET /api/hubs → findAllActive() → isActive: true فقط
+      .then((data) => setHubs(data))
       .catch(() => setError("تعذر تحميل مراكز التسليم"))
       .finally(() => setLoading(false));
   }, []);
 
-  const cities = ["الكل", ...Array.from(new Set(hubs.map((h) => h.city)))];
+  // ✅ المدن مستخرجة ديناميكياً من البيانات المحملة — لا hardcoded
+  const cities = ["الكل", ...Array.from(new Set(hubs.map((h) => h.city))).sort()];
 
   const filtered = hubs.filter((h) => {
     const matchCity   = city === "الكل" || h.city === city;

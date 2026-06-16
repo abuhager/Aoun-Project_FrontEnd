@@ -1,10 +1,29 @@
 // src/app/(main)/(protected)/profile/edit/page.tsx
+// ✅ FIX [SEC-PROF-01]  : PASSWORD_REGEX مطابق لـ strongPassword في authDto.js
+// ✅ FIX [SEC-PROF-02]  : استخدام msg وليس message — مطابق لـ Backend
+// ✅ FIX [DUP-PROF-02]  : عرض phone الحالي من user context عند فتح الصفحة
+// ✅ FIX [HC-PROF-01]   : maxAvatarMB ديناميكي من /api/settings/public
+// ✅ FIX [ARCH-PROF-01] : فحص isFullyLoaded قبل عرض البيانات
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/api/axiosInstance";
+import type { AuthUser } from "@/types/user.types";
+
+// ✅ FIX [SEC-PROF-01]: مطابق لـ strongPassword validator في authDto.js
+const PASSWORD_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._\-#^])[A-Za-z\d@$!%*?&._\-#^]{8,}$/;
+
+// ✅ FIX [SEC-PROF-02]: استخراج msg أو message أياً كان — مطابق للـ Backend
+const extractMsg = (err: unknown, fallback: string): string => {
+  if (err && typeof err === "object" && "response" in err) {
+    const res = (err as { response?: { data?: { msg?: string; message?: string } } }).response;
+    return res?.data?.msg ?? res?.data?.message ?? fallback;
+  }
+  return fallback;
+};
 
 type EditForm = {
   name:            string;
@@ -15,9 +34,9 @@ type EditForm = {
 };
 
 export default function EditProfilePage() {
-  const { user, setUser } = useAuth();
+  // ✅ FIX [ARCH-PROF-01]: استخدام isFullyLoaded
+  const { user, setUser, isFullyLoaded, isLoading } = useAuth();
 
-  // ── mounted guard — prevents hydration mismatch ──
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -34,15 +53,36 @@ export default function EditProfilePage() {
   const [error, setError]         = useState("");
   const [activeTab, setActiveTab] = useState<"info" | "password">("info");
 
+  // ✅ FIX [HC-PROF-01]: حجم الصورة الأقصى ديناميكي
+  const [maxAvatarMB, setMaxAvatarMB] = useState<number>(5);
+
   const fileInputRef                      = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [avatarFile, setAvatarFile]       = useState<File | null>(null);
 
-  // sync user data after mount (client-only)
+  // ✅ FIX [HC-PROF-01]: جلب الحد الأقصى لحجم الصورة من الـ Backend عند أول تحميل
+  useEffect(() => {
+    axiosInstance
+      .get("/api/settings/public")
+      .then(({ data }) => {
+        if (data?.maxAvatarSizeMb) setMaxAvatarMB(data.maxAvatarSizeMb);
+      })
+      .catch(() => {
+        // استخدام القيمة الافتراضية 5MB عند فشل الجلب
+      });
+  }, []);
+
+  // ✅ FIX [DUP-PROF-02]: عرض phone الحالي من user context
   useEffect(() => {
     if (!user) return;
-    if (user.name)   setForm(prev => ({ ...prev, name: user.name }));
-    if (user.avatar) setAvatarPreview(user.avatar);
+    const typedUser = user as AuthUser;
+    if (typedUser.name)   setForm(prev => ({ ...prev, name: typedUser.name }));
+    if (typedUser.phone)  {
+      // حذف +962 للعرض في حقل الإدخال (المستخدم يدخل الأرقام فقط)
+      const cleanPhone = typedUser.phone.replace(/^\+962/, "");
+      setForm(prev => ({ ...prev, phone: cleanPhone }));
+    }
+    if (typedUser.avatar) setAvatarPreview(typedUser.avatar);
   }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,61 +90,98 @@ export default function EditProfilePage() {
     setError(""); setSuccess("");
   };
 
+  // ✅ FIX [HC-PROF-01]: استخدام maxAvatarMB الديناميكي
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { setError("حجم الصورة يجب أن يكون أقل من 5MB"); return; }
+    if (file.size > maxAvatarMB * 1024 * 1024) {
+      setError(`حجم الصورة يجب أن يكون أقل من ${maxAvatarMB}MB`);
+      return;
+    }
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
   };
 
   // ── حفظ المعلومات ──
   const handleSaveInfo = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!form.name.trim()) { setError("الاسم مطلوب"); return; }
-  setLoading(true); setError(""); setSuccess("");
-  try {
-    const fd = new FormData();
-    fd.append("name", form.name.trim());
-    if (form.phone.trim()) fd.append("phone", form.phone.trim());
-    if (avatarFile) fd.append("avatar", avatarFile);
+    e.preventDefault();
+    if (!form.name.trim()) { setError("الاسم مطلوب"); return; }
+    setLoading(true); setError(""); setSuccess("");
+    try {
+      const fd = new FormData();
+      fd.append("name", form.name.trim());
+      if (form.phone.trim()) fd.append("phone", form.phone.trim());
+      if (avatarFile)        fd.append("avatar", avatarFile);
 
-    // ✅ لا تُحدد Content-Type — Axios يضعه تلقائياً مع الـ boundary
-    const { data } = await axiosInstance.put("/api/auth/me", fd, {
-  withCredentials: true,
-});
+      const { data } = await axiosInstance.put("/api/auth/me", fd, {
+        withCredentials: true,
+      });
 
-    setUser(data.user ?? data);
-    setSuccess("تم تحديث المعلومات بنجاح ✓");
-    setAvatarFile(null);
-  } catch (err: unknown) {
-    setError((err as any)?.response?.data?.message ?? "حدث خطأ، حاول مجدداً");
-  } finally {
-    setLoading(false);
-  }
-};
+      setUser(data.user ?? data);
+      setSuccess("تم تحديث المعلومات بنجاح ✓");
+      setAvatarFile(null);
+    } catch (err: unknown) {
+      // ✅ FIX [SEC-PROF-02]: extractMsg يبحث عن msg أولاً
+      setError(extractMsg(err, "حدث خطأ، حاول مجدداً"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ── تغيير كلمة المرور ──
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.currentPassword) { setError("أدخل كلمة المرور الحالية"); return; }
-    if (form.newPassword.length < 6) { setError("كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل"); return; }
-    if (form.newPassword !== form.confirmPassword) { setError("كلمتا المرور غير متطابقتين"); return; }
+
+    // ✅ FIX [SEC-PROF-01]: فحص strongPassword مطابق للـ Backend
+    if (!PASSWORD_REGEX.test(form.newPassword)) {
+      setError(
+        "كلمة المرور يجب أن تحتوي على: حرف كبير، حرف صغير، رقم، رمز خاص (@$!%*?&._-#^)، وطولها 8 أحرف على الأقل"
+      );
+      return;
+    }
+    if (form.newPassword !== form.confirmPassword) {
+      setError("كلمتا المرور غير متطابقتين");
+      return;
+    }
+
     setLoading(true); setError(""); setSuccess("");
     try {
-      await axiosInstance.put("/api/auth/me/password",
+      await axiosInstance.put(
+        "/api/auth/me/password",
         { currentPassword: form.currentPassword, newPassword: form.newPassword },
         { withCredentials: true }
       );
       setSuccess("تم تغيير كلمة المرور بنجاح ✓");
       setForm(prev => ({ ...prev, currentPassword: "", newPassword: "", confirmPassword: "" }));
     } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setError((err as any)?.response?.data?.message ?? "كلمة المرور الحالية غير صحيحة");
+      // ✅ FIX [SEC-PROF-02]
+      setError(extractMsg(err, "كلمة المرور الحالية غير صحيحة"));
     } finally {
       setLoading(false);
     }
   };
+
+  // ✅ FIX [ARCH-PROF-01]: انتظر اكتمال تحميل بيانات المستخدم
+  if (isLoading || !mounted) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <span className="material-symbols-outlined text-primary text-4xl animate-spin">
+          progress_activity
+        </span>
+      </div>
+    );
+  }
+
+  if (!isFullyLoaded && !user) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <span className="material-symbols-outlined text-primary text-4xl animate-spin">
+          progress_activity
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface pt-20 md:pt-24 pb-12 px-4" dir="rtl">
@@ -146,12 +223,14 @@ export default function EditProfilePage() {
             >
               <span className="material-symbols-outlined text-[14px]">photo_camera</span>
             </button>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+            <input
+              ref={fileInputRef} type="file" accept="image/*"
+              className="hidden" onChange={handleAvatarChange}
+            />
           </div>
 
           <div>
             <h1 className="text-2xl font-black text-[#191c1d]">تعديل الملف الشخصي</h1>
-            {/* suppressHydrationWarning: email is client-only (from AuthContext) */}
             <p className="text-sm text-on-surface-variant mt-0.5" suppressHydrationWarning>
               {mounted ? (user?.email ?? "") : ""}
             </p>
@@ -298,27 +377,44 @@ export default function EditProfilePage() {
 
               {/* كلمة المرور الجديدة */}
               <div className="space-y-1.5">
-                <label className="text-xs font-black text-on-surface-variant">كلمة المرور الجديدة</label>
+                <label className="text-xs font-black text-on-surface-variant">
+                  كلمة المرور الجديدة
+                  <span className="text-[10px] text-on-surface-variant/60 font-medium mr-2">
+                    (8 أحرف+ • كبير وصغير • رقم • رمز خاص)
+                  </span>
+                </label>
                 <div className="relative">
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-outline">lock_reset</span>
                   <input
-                    name="newPassword" type="password" required dir="ltr" minLength={6}
+                    name="newPassword" type="password" required dir="ltr"
                     value={form.newPassword} onChange={handleChange}
                     placeholder="••••••••"
                     className="w-full pr-12 pl-4 py-3.5 bg-surface-container-highest rounded-xl border-2 border-transparent outline-none focus:border-primary/30 focus:bg-white transition-all text-sm text-left"
                   />
                 </div>
-                {/* مؤشر القوة */}
-                {form.newPassword && (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    {[4, 6, 8, 10].map(n => (
-                      <div key={n} className={`h-1 flex-1 rounded-full transition-colors ${form.newPassword.length >= n ? "bg-primary" : "bg-gray-200"}`} />
-                    ))}
-                    <span className="text-[10px] font-bold text-on-surface-variant mr-1">
-                      {form.newPassword.length < 6 ? "ضعيفة" : form.newPassword.length < 8 ? "متوسطة" : "قوية"}
-                    </span>
-                  </div>
-                )}
+                {/* ✅ مؤشر القوة المُحسَّن — يعكس PASSWORD_REGEX */}
+                {form.newPassword && (() => {
+                  const checks = {
+                    length:  form.newPassword.length >= 8,
+                    upper:   /[A-Z]/.test(form.newPassword),
+                    lower:   /[a-z]/.test(form.newPassword),
+                    digit:   /\d/.test(form.newPassword),
+                    special: /[@$!%*?&._\-#^]/.test(form.newPassword),
+                  };
+                  const score = Object.values(checks).filter(Boolean).length;
+                  const labels = ["", "ضعيفة جداً", "ضعيفة", "متوسطة", "جيدة", "قوية"];
+                  const colors = ["", "bg-red-400", "bg-orange-400", "bg-yellow-400", "bg-blue-400", "bg-green-500"];
+                  return (
+                    <div className="space-y-1 mt-1">
+                      <div className="flex gap-1">
+                        {[1,2,3,4,5].map(n => (
+                          <div key={n} className={`h-1 flex-1 rounded-full transition-colors ${n <= score ? colors[score] : "bg-gray-200"}`} />
+                        ))}
+                        <span className="text-[10px] font-bold text-on-surface-variant mr-1">{labels[score]}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* تأكيد كلمة المرور */}
@@ -327,7 +423,7 @@ export default function EditProfilePage() {
                 <div className="relative">
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-outline">verified</span>
                   <input
-                    name="confirmPassword" type="password" required dir="ltr" minLength={6}
+                    name="confirmPassword" type="password" required dir="ltr"
                     value={form.confirmPassword} onChange={handleChange}
                     placeholder="••••••••"
                     className={`w-full pr-12 pl-4 py-3.5 bg-surface-container-highest rounded-xl border-2 outline-none transition-all text-sm text-left ${

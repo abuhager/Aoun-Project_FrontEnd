@@ -20,16 +20,24 @@ export interface AuthUser {
   _id:               string;
   name:              string;
   email:             string;
+  phone?:            string;         // ✅ جديد
+  phoneVerified?:    boolean;        // ✅ جديد
   avatar:            string;
-  role:              UserRole;
-  trustScore:        number;      // ← على مستوى الجذر من buildSafeUser
-  trustLevel:        TrustLevel;
+  role:              'user' | 'admin' | 'super_admin';
+  trustScore:        number;
+  trustLevel:        1 | 2 | 3 | 4;
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
-  badges:            string[];    // ✅ أضيف
+  badges:            string[];
   createdAt:         string;
-  gamification:      Gamification;
+  gamification: {
+    level:         number;
+    title:         string;
+    nextLevelAt:   number;
+    progressPct:   number;
+    totalDonations: number;
+  };
 }
 
 // ─── ما يُرجعه /api/auth/profile كاملاً ──────────────────────
@@ -52,15 +60,19 @@ export interface ProfileUser {
 // ─── مستخدم عام ─────────────────────────────────────────────
 // ✅ FIXED [BUG-PROFILE-01]: حُذف whatsapp — غير موجود في Backend
 export interface PublicUser {
-  _id:               string;
   name:              string;
   avatar:            string;
-  trustLevel:        TrustLevel;
+  trustLevel:        1 | 2 | 3 | 4;
   isVerifiedStudent: boolean;
   createdAt:         string;
-  gamification:      Gamification;
+  gamification: {
+    level:          number;
+    title:          string;
+    nextLevelAt:    number;
+    progressPct:    number;
+    totalDonations: number;
+  };
 }
-
 export interface ProfileResponse {
   user:             ProfileUser;
   stats: {

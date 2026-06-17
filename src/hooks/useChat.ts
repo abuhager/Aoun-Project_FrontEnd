@@ -1,226 +1,82 @@
-// src/hooks/useChat.ts — ✅ THE IMMUNE PRODUCTION VERSION (V3)
 "use client";
-
+// HIGH-01 ► correlationId | MED-03 ► socket يحمل الرسائل
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth }        from '@/context/AuthContext';
 import { getAccessToken } from '@/lib/api/axiosInstance';
-import { useSocket } from './useSocket';
+import { useSocket }      from './useSocket';
 import type { ChatMessage, ConversationInfo } from '@/types/chat.types';
 
 const API = process.env.NEXT_PUBLIC_API_URL!;
+const h = (): HeadersInit => { const t = getAccessToken(); return { 'Content-Type': 'application/json', ...(t ? { Authorization: 'Bearer ' + t } : {}) }; };
 
-function getAuthHeaders(): HeadersInit {
-  const token = getAccessToken();
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
-export function useChat(itemId: string, isOpen: boolean = false) {
+export function useChat(itemId: string, isOpen = false) {
   const { user, isLoggedIn } = useAuth();
   const socketRef = useSocket();
   const convIdRef = useRef<string | null>(null);
-
-  const [messages, setMessages]     = useState<ChatMessage[]>([]);
-  const [convInfo, setConvInfo]     = useState<ConversationInfo | null>(null);
-  const [loading, setLoading]       = useState(false);
-  const [sending, setSending]       = useState(false);
-  const [text, setText]             = useState('');
+  const isOpenRef = useRef(isOpen);
+  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+  const [messages,   setMessages]   = useState<ChatMessage[]>([]);
+  const [convInfo,   setConvInfo]   = useState<ConversationInfo | null>(null);
+  const [loading,    setLoading]    = useState(false);
+  const [sending,    setSending]    = useState(false);
+  const [text,       setText]       = useState('');
   const [typingUser, setTypingUser] = useState<string | null>(null);
 
-  // ✅ استخدام Ref للاحتفاظ بحالة isOpen اللحظية لقطع أي سباق برمي (Race Condition)
-  const isOpenRef = useRef(isOpen);
-  useEffect(() => {
-    isOpenRef.current = isOpen;
-  }, [isOpen]);
-
- const initConversation = useCallback(async () => {
-    // 🔒 [الحارس الحديدي]: اخرج فوراً إذا كان الشات مغلقاً
-    if (isOpenRef.current !== true || !itemId || !user?._id || !isLoggedIn) {
-      return;
-    }
-
+  const initConversation = useCallback(async () => {
+    if (!isOpenRef.current || !itemId || !user?._id || !isLoggedIn) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/conversations`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ itemId }),
-      });
-
-      // 🎯 [امتصاص وصيد الـ 400]: إذا رفض السيرفر الطلب (لأن الغرض غير محجوز أو أطراف الحجز لم تكتمل بعد)
-      // اخرج بصمت بـ return آمن دون إلقاء خطأ يعلق بالمتصفح ويملأ الكونسول باللون الأحمر
-      if (res.status === 400) {
-        convIdRef.current = null;
-        setConvInfo(null);
-        return; 
-      }
-
-      if (!res.ok) {
-        throw new Error(`Conversation init failed: ${res.status}`);
-      }
-
+      const res = await fetch(API + '/api/conversations', { method: 'POST', headers: h(), body: JSON.stringify({ itemId }) });
+      if (res.status === 400) { convIdRef.current = null; setConvInfo(null); return; }
+      if (!res.ok) throw new Error();
       const data: ConversationInfo = await res.json();
       convIdRef.current = data._id;
       setConvInfo(data);
-
-      const msgsRes = await fetch(`${API}/api/conversations/${data._id}/messages`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!msgsRes.ok) throw new Error(`Fetch messages failed: ${msgsRes.status}`);
-
-      const msgsData = await msgsRes.json();
-      
-      const actualMessages = Array.isArray(msgsData.messages) 
-        ? msgsData.messages 
-        : (Array.isArray(msgsData.data) ? msgsData.data : (msgsData.messages?.data || []));
-
-      setMessages(actualMessages);
-
       socketRef.current?.emit('joinConversation', { itemId, convId: data._id });
-    } catch (err) {
-      // كتم الأخطاء العابرة لضمان ثبات التطبيق والمظهر الاحترافي للـ Console
-      convIdRef.current = null;
-      setConvInfo(null);
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
+    } catch { convIdRef.current = null; setConvInfo(null); setMessages([]); }
+    finally { setLoading(false); }
   }, [user?._id, isLoggedIn, itemId, socketRef]);
-  useEffect(() => {
-    if (isOpen === true && itemId && isLoggedIn) {
-      initConversation();
-    }
-  }, [isOpen, itemId, isLoggedIn, initConversation]);
+
+  useEffect(() => { if (isOpen && itemId && isLoggedIn) initConversation(); }, [isOpen, itemId, isLoggedIn, initConversation]);
 
   useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
-
-    const handleNewMessage = (msg: ChatMessage) => {
+    const s = socketRef.current; if (!s) return;
+    const onJoined = ({ convId, messages: msgs }: { convId: string; messages: ChatMessage[] }) => { convIdRef.current = convId; setMessages(msgs || []); setLoading(false); };
+    const onMsg = (msg: ChatMessage & { correlationId?: string }) => {
       setMessages((prev) => {
-        if (msg.sender === user?._id) {
-          const hasTempVersion = prev.some((m) => m._id.startsWith('temp-'));
-          if (hasTempVersion) {
-            const tempIdx = prev.findIndex((m) => m._id.startsWith('temp-'));
-            if (tempIdx !== -1) {
-              const updated = [...prev];
-              updated[tempIdx] = msg;
-              return updated;
-            }
-          }
-        }
+        if (msg.correlationId) { const i = prev.findIndex((m) => m._id === msg.correlationId); if (i !== -1) { const u = [...prev]; u[i] = { ...msg }; return u; } }
+        if (msg.sender === user?._id) { const ti = prev.findIndex((m) => m._id.startsWith('temp-')); if (ti !== -1) { const u = [...prev]; u[ti] = { ...msg }; return u; } }
         if (prev.some((m) => m._id === msg._id)) return prev;
         return [...prev, msg];
       });
     };
-
-    const handleTyping = (payload: { userId: string; name: string }) => {
-      if (payload.userId !== user?._id) setTypingUser(payload.name);
-    };
-
-    const handleStopTyping = () => setTypingUser(null);
-
-    socket.on('newMessage',     handleNewMessage);
-    socket.on('userTyping',     handleTyping);
-    socket.on('userStopTyping', handleStopTyping);
-
-    return () => {
-      socket.off('newMessage',     handleNewMessage);
-      socket.off('userTyping',     handleTyping);
-      socket.off('userStopTyping', handleStopTyping);
-    };
+    s.on('conversationJoined', onJoined);
+    s.on('newMessage',         onMsg);
+    s.on('userTyping',         (p: { userId: string; name: string }) => { if (p.userId !== user?._id) setTypingUser(p.name); });
+    s.on('userStopTyping',     () => setTypingUser(null));
+    s.on('messagesRead',       ({ by }: { by: string }) => { if (by !== user?._id) setMessages((p) => p.map((m) => ({ ...m, read: true }))); });
+    return () => { s.off('conversationJoined', onJoined); s.off('newMessage', onMsg); s.off('userTyping'); s.off('userStopTyping'); s.off('messagesRead'); };
   }, [socketRef, user?._id]);
 
   const sendMessage = useCallback(async () => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-
-    if (!convIdRef.current) {
-  await initConversation();
-  
-  if (!convIdRef.current) {
-    return;
-  }
-}
-
-    const convId       = convIdRef.current;
-    const optimisticId = `temp-${Date.now()}`;
-
-    const optimistic: ChatMessage = {
-      _id:       optimisticId,
-      sender:    user?._id ?? '',
-      text:      trimmed,
-      createdAt: new Date().toISOString(),
-      read:      false,
-    };
-
-    setSending(true);
-    setMessages((prev) => [...prev, optimistic]);
-    setText('');
-
+    const trimmed = text.trim(); if (!trimmed) return;
+    if (!convIdRef.current) { await initConversation(); if (!convIdRef.current) return; }
+    const convId = convIdRef.current;
+    const correlationId = 'temp-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    const optimistic: ChatMessage = { _id: correlationId, sender: user?._id ?? '', text: trimmed, createdAt: new Date().toISOString(), read: false };
+    setSending(true); setMessages((p) => [...p, optimistic]); setText('');
     try {
-      const res = await fetch(`${API}/api/conversations/${convId}/messages`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ text: trimmed }),
-      });
-
-      if (!res.ok) throw new Error(`Send message failed: ${res.status}`);
-
+      const res = await fetch(API + '/api/conversations/' + convId + '/messages', { method: 'POST', headers: h(), body: JSON.stringify({ text: trimmed, correlationId }) });
+      if (!res.ok) throw new Error();
       const data = await res.json();
-      if (data?.message?._id) {
-        setMessages((prev) =>
-          prev.map((m) => (m._id === optimisticId ? data.message : m))
-        );
-      }
-    } catch (err) {
-      console.error('sendMessage error', err);
-      setMessages((prev) => prev.filter((m) => m._id !== optimisticId));
-      setText(trimmed);
-    } finally {
-      setSending(false);
-      if (socketRef.current) socketRef.current.emit('stopTyping', { convId });
-    }
+      if (data?.message?._id) setMessages((p) => p.map((m) => m._id === correlationId ? { ...data.message, correlationId } : m));
+    } catch { setMessages((p) => p.filter((m) => m._id !== correlationId)); setText(trimmed); }
+    finally { setSending(false); socketRef.current?.emit('stopTyping', { convId }); }
   }, [text, user?._id, initConversation, socketRef]);
 
-  const markRead = useCallback(() => {
-    const convId = convIdRef.current;
-    if (!convId || !socketRef.current) return;
-    try {
-      fetch(`${API}/api/conversations/${convId}/read`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-      }).catch(() => {});
-      socketRef.current.emit('readMessages', { convId });
-    } catch (err) {
-      console.error('markRead error', err);
-    }
-  }, [socketRef]);
+  const markRead       = useCallback(() => { const c = convIdRef.current; if (!c) return; fetch(API + '/api/conversations/' + c + '/read', { method: 'PUT', headers: h() }).catch(() => {}); socketRef.current?.emit('readMessages', { convId: c }); }, [socketRef]);
+  const emitTyping     = useCallback(() => { const c = convIdRef.current; if (c) socketRef.current?.emit('typing',     { convId: c }); }, [socketRef]);
+  const emitStopTyping = useCallback(() => { const c = convIdRef.current; if (c) socketRef.current?.emit('stopTyping', { convId: c }); }, [socketRef]);
 
-  const emitTyping = useCallback(() => {
-    const convId = convIdRef.current;
-    if (convId && socketRef.current) socketRef.current.emit('typing', { convId });
-  }, [socketRef]);
-
-  const emitStopTyping = useCallback(() => {
-    const convId = convIdRef.current;
-    if (convId && socketRef.current) socketRef.current.emit('stopTyping', { convId });
-  }, [socketRef]);
-
-  return {
-    messages,
-    convInfo,
-    loading,
-    sending,
-    text,
-    setText,
-    sendMessage,
-    typingUser,
-    emitTyping,
-    emitStopTyping,
-    markRead,
-  };
+  return { messages, convInfo, loading, sending, text, setText, sendMessage, typingUser, emitTyping, emitStopTyping, markRead };
 }

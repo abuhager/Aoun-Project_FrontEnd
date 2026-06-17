@@ -8,7 +8,8 @@ export function useSettings() {
     getPublicSettings,
     {
       revalidateOnFocus: false,
-      dedupingInterval: 60_000,
+      dedupingInterval: 5 * 60_000,
+      revalidateOnMount: false,
     }
   );
 

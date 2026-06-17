@@ -55,7 +55,8 @@ export default function LevelGate({
   return (
     <>
       <div className="flex flex-col items-center gap-3 p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
-        <span className="text-3xl">🔐</span>
+        <span className="text-3xl" role="img" aria-label="مستوى ثقة مطلوب">🔐</span>
+
         <p className="text-sm text-amber-800 font-medium">
           {/* ✅ الرسالة ديناميكية تعكس المستوى الفعلي المطلوب */}
           يتطلب هذا الإجراء مستوى الثقة {requiredLevel} أو أعلى

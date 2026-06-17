@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import axiosInstance                         from "@/lib/api/axiosInstance";
+import { getAdminSettings, updateAdminSettings } from "@/lib/api/settingsApi";
+import type { UpdateSettingsPayload } from "@/types/settings.types";
 import { useToast }                          from "@/hooks/useToast";
 
 // ─── Interface ─────────────────────────────────────────────────────────────────
@@ -24,7 +25,7 @@ interface SystemSettings {
   platformName:                  string;
   contactEmail:                  string;
   quotaResetDayOfMonth:          number;
-  // ✅ FIX-SP-01: الحقلان الجديدان المضافان في validateBody — أضفناهما هنا
+  // ✅ FIX-SP-01: الحقلان الجديدان المضافان في validateBody
   donorQuotaReward:              number;
   bookingExpiryHours:            number;
   trustScorePerDonation:         number;
@@ -45,8 +46,6 @@ const EDITABLE_FIELDS: (keyof SystemSettings)[] = [
 ];
 
 // ─── TagListEditor ──────────────────────────────────────────────────────────
-// ✅ FIX-SP-02: كان key={idx} يُسبب re-render خاطئاً عند الحذف
-//              الآن key={item} لأن القيم فريدة (add() تمنع التكرار)
 function TagListEditor({
   label, items = [], onChange, placeholder,
 }: {
@@ -89,7 +88,6 @@ function TagListEditor({
       </div>
       <div className="flex flex-wrap gap-2">
         {items.map((item) => (
-          // ✅ FIX-SP-02: key={item} بدل key={idx}
           <span
             key={item}
             className="flex items-center gap-1 bg-gray-100 text-gray-700 text-xs
@@ -115,9 +113,6 @@ function TagListEditor({
 }
 
 // ─── NumberField ────────────────────────────────────────────────────────────
-// ✅ FIX-SP-03: value="" عند مسح الرقم يُرسل min للـ state مباشرة
-//              هذا يعني مثلاً أن المستخدم يمسح "5" فيصبح الحقل "1" تلقائياً
-//              الحل: نحتفظ بـ localValue كـ string لحين blur أو تأكيد صريح
 function NumberField({
   label, value, onChange, min = 0, max = 100, hint,
 }: {
@@ -128,10 +123,8 @@ function NumberField({
   max?:     number;
   hint?:    string;
 }) {
-  // ✅ FIX-SP-03: نعرض string محلية — نُثبّت الـ state الحقيقية عند blur فقط
   const [local, setLocal] = useState(String(value));
 
-  // مزامنة إذا تغيّرت القيمة من الخارج (مثلاً عند fetch)
   useEffect(() => { setLocal(String(value)); }, [value]);
 
   const commit = (raw: string) => {
@@ -141,7 +134,6 @@ function NumberField({
       onChange(clamped);
       setLocal(String(clamped));
     } else {
-      // أُعد إلى القيمة الأخيرة الصحيحة عند ترك الحقل فارغاً
       setLocal(String(value));
     }
   };
@@ -156,7 +148,6 @@ function NumberField({
         value={local}
         onChange={e => setLocal(e.target.value)}
         onBlur={e => commit(e.target.value)}
-        // ✅ تأكيد القيمة عند الضغط على Enter أيضاً
         onKeyDown={e => e.key === "Enter" && commit((e.target as HTMLInputElement).value)}
         className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm
                    focus:outline-none focus:border-primary"
@@ -167,7 +158,6 @@ function NumberField({
 }
 
 // ─── Toggle ─────────────────────────────────────────────────────────────────
-// ✅ FIX-SP-04: مكوّن Toggle مستقل — يمنع تكرار كود الزر في 4 أماكن
 function Toggle({
   checked, onChange, activeColor = "bg-primary",
 }: {
@@ -201,21 +191,18 @@ export default function AdminSettingsPage() {
 
   const { show: showToast, ToastComponent } = useToast();
 
-  // ✅ FIX-SP-05: showToast في الـ deps كان يُسبب infinite loop عند re-render
-  //              useCallback يضمن مرجعاً ثابتاً
   const fetchSettings = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await axiosInstance.get<SystemSettings>("/api/settings");
-      setSettings(r.data);
+      const data = await getAdminSettings();
+      setSettings(data);
       setDirty(false);
     } catch {
       showToast("تعذر تحميل الإعدادات الحالية", false);
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // showToast مستقر لأن useToast يُعيد ref ثابتاً
+  }, [showToast]);
 
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
 
@@ -228,20 +215,16 @@ export default function AdminSettingsPage() {
     if (!settings || !dirty) return;
     setSaving(true);
     try {
-      // ✅ FIX-SP-01: نرسل فقط الحقول الموجودة في EDITABLE_FIELDS
-      //              ونحذف أي حقل بقيمة undefined لتجنب 422 من Joi
-      const payload = Object.fromEntries(
+      const payload: UpdateSettingsPayload = Object.fromEntries(
         EDITABLE_FIELDS
           .filter((k) => settings[k] !== undefined)
           .map((k) => [k, settings[k]])
-      );
+      ) as UpdateSettingsPayload;
 
-      await axiosInstance.patch("/api/settings", payload);
-      showToast("✅ تم حفظ الإعدادات وتحديث الكاش بنجاح", true);
+      await updateAdminSettings(payload);
+      showToast("✅ تم حفظ الإعدادات بنجاح", true);
       setDirty(false);
     } catch (err: unknown) {
-      // ✅ FIX-SP-06: err as any كان مكسوراً في strict TypeScript
-      //              الآن نفحص بأمان عبر type narrowing
       const msg = (() => {
         if (
           err &&
@@ -259,7 +242,6 @@ export default function AdminSettingsPage() {
     }
   };
 
-  // ─── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -276,7 +258,6 @@ export default function AdminSettingsPage() {
     );
   }
 
-  // ─── UI ────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 max-w-2xl" dir="rtl">
       {ToastComponent}
@@ -307,7 +288,6 @@ export default function AdminSettingsPage() {
             <p className="text-sm font-bold text-gray-800">وضع الصيانة</p>
             <p className="text-xs text-gray-400">يمنع المستخدمين من الدخول للمنصة حالياً</p>
           </div>
-          {/* ✅ FIX-SP-04: Toggle مستقل بدل تكرار الكود */}
           <Toggle
             checked={settings.maintenanceMode}
             onChange={() => update("maintenanceMode", !settings.maintenanceMode)}
@@ -373,7 +353,6 @@ export default function AdminSettingsPage() {
             hint="كوتا إضافية بعد التسليم"
           />
         </div>
-        {/* ✅ FIX-SP-01: الحقلان المضافان في validateBody يظهران الآن في الـ UI */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-50">
           <NumberField
             label="حد التبرعات النشطة (مستوى 1)" value={settings.maxActiveDonationsPerUser}
@@ -484,7 +463,7 @@ export default function AdminSettingsPage() {
         />
       </section>
 
-      {/* ── زر الحفظ ──────────────────────────────────────────────────────── */}
+      {/* ZER AL-HIFTH */}
       <div className="pb-8">
         <button
           onClick={save}

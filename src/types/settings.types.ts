@@ -1,11 +1,11 @@
 // src/types/settings.types.ts
-// مُحدَّث ليطابق SystemSettings Schema في الـ Backend بالكامل
+// ✅ مطابقة كاملة لـ SystemSettings Schema في الـ Backend
 
 export interface PublicSettings {
   platformName?: string;
-  categories: string[];
+  categories:    string[];
   reportReasons: string[];
-  locations?: string[];
+  locations?:    string[];
 }
 
 export interface SystemSettings {
@@ -19,7 +19,7 @@ export interface SystemSettings {
   trustScorePerDonation:         number;
   trustScorePerRequest:          number;
   bookingExpiryHours:            number;
-  // ✅ DC-01 Cascade Fix: الحقلان المفقودان من الـ Frontend Type
+  // ✅ DC-01: الحقلان المستعادان
   maxActiveDonationsPerUser:     number;
   maxActiveDonationsLevel2Plus:  number;
   categories:                    string[];
@@ -35,6 +35,7 @@ export interface SystemSettings {
   updatedAt:                     string;
 }
 
+// ✅ DC-07 FIX: النوع الآمن للإرسال — يحذف الحقول المحمية تلقائياً
 export type UpdateSettingsPayload = Partial<
   Omit<SystemSettings, '_id' | 'createdAt' | 'updatedAt'>
 >;

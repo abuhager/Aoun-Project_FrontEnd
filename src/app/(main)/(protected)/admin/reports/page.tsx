@@ -17,7 +17,7 @@ import type { ReportStatus } from "@/types/report.types";
 interface AdminReportFull {
   _id:          string;
   reporter:     { _id: string; name: string; avatar?: string };
-  reportedUser: { _id: string; name: string; avatar?: string };
+  reportedUser: { _id: string; name: string; avatar?: string; isBanned?: boolean };
   relatedItem:  { _id: string; title: string } | null;
   reason:       string;
   details:      string;
@@ -27,16 +27,20 @@ interface AdminReportFull {
   appealedAt:   string | null;
   resolvedAt:   string | null;
   createdAt:    string;
+  // ✅ FIX BUG-06: حقول isRepeatOffender موجودة في الـ API — أضفناها للـ Interface
+  totalReportsAgainstUser:   number;
+  pendingReportsAgainstUser: number;
+  isRepeatOffender:          boolean;
 }
 
 interface AdminReportsResponse {
-  reports:     AdminReportFull[];
-  totalPages: number;
-  total:       number;
+  reports:    AdminReportFull[];
+  totalPages: number; // ✅ FIX BUG-07: "totalPages" يطابق الـ Backend المُصلَح
+  total:      number;
 }
 
 interface ResolvePayload {
-  status:     ReportStatus;
+  status:    ReportStatus;
   adminNote: string;
 }
 
@@ -64,8 +68,11 @@ const getUserInitial = (name?: string | null): string =>
 const getUserName = (name?: string | null): string =>
   name?.trim() || "مستخدم محذوف";
 
+// ✅ FIX BUG-06: عدم إرسال status عند "all" → الـ Backend يُعيد كل الحالات
 const SWR_KEY = (page: number, statusFilter: string) =>
-  `/api/admin/reports?page=${page}&limit=10${statusFilter !== "all" ? `&status=${statusFilter}` : ""}`;
+  `/api/admin/reports?page=${page}&limit=10${
+    statusFilter !== "all" ? `&status=${statusFilter}` : ""
+  }`;
 
 const fetcher = (url: string) =>
   axiosInstance.get<AdminReportsResponse>(url).then((r) => r.data);
@@ -107,8 +114,9 @@ export default function AdminReportsPage() {
     setLoadingId(selected._id);
 
     try {
+      // ✅ FIX BUG-01: يُرسل "status" ← يطابق الـ Backend المُصلَح تماماً
       const payload: ResolvePayload = {
-        status:     actionStatus,
+        status:    actionStatus,
         adminNote: trimmedNote,
       };
 
@@ -265,9 +273,8 @@ export default function AdminReportsPage() {
                         {report.reporter?.avatar ? (
                           <Image
                             src={report.reporter.avatar}
-                             alt={getUserName(report.reporter?.name)}
-                            width={28}
-                            height={28}
+                            alt={getUserName(report.reporter?.name)}
+                            width={28} height={28}
                             className="rounded-full object-cover"
                           />
                         ) : (
@@ -288,19 +295,25 @@ export default function AdminReportsPage() {
                           <Image
                             src={report.reportedUser.avatar}
                             alt={getUserName(report.reportedUser?.name)}
-                            width={28}
-                            height={28}
+                            width={28} height={28}
                             className="rounded-full object-cover"
                           />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-xs font-bold text-red-600">
-                            {/* ✅ تم التأمين والتعويض بالدالة لمنع الـ Crash */}
                             {getUserInitial(report.reportedUser?.name)}
                           </div>
                         )}
-                        <span className="font-medium text-gray-800">
-                          {getUserName(report.reportedUser?.name)}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-800">
+                            {getUserName(report.reportedUser?.name)}
+                          </span>
+                          {/* ✅ FIX BUG-06: عرض isRepeatOffender في الجدول */}
+                          {report.isRepeatOffender && (
+                            <span className="text-xs text-orange-600 font-semibold">
+                              ⚠️ مخالف متكرر ({report.totalReportsAgainstUser} بلاغ)
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 
@@ -405,7 +418,7 @@ export default function AdminReportsPage() {
       {selected && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget && !submitting) setSelected(null); }}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
@@ -414,7 +427,7 @@ export default function AdminReportsPage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-900">تفاصيل البلاغ</h2>
               <button
-                onClick={() => setSelected(null)}
+                onClick={() => !submitting && setSelected(null)}
                 className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none"
                 aria-label="إغلاق"
               >
@@ -423,6 +436,29 @@ export default function AdminReportsPage() {
             </div>
 
             <div className="px-6 py-5 space-y-5">
+              {/* ✅ FIX BUG-06: عرض إحصائيات المخالف في الـ Modal */}
+              {selected.totalReportsAgainstUser > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    selected.isRepeatOffender
+                      ? "bg-red-100 text-red-700"
+                      : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {selected.totalReportsAgainstUser} بلاغ إجمالي ضد هذا المستخدم
+                  </span>
+                  {selected.pendingReportsAgainstUser > 0 && (
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                      {selected.pendingReportsAgainstUser} بلاغ قيد المراجعة
+                    </span>
+                  )}
+                  {selected.isRepeatOffender && (
+                    <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">
+                      ⚠️ مخالف متكرر
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-400 mb-1">المُبلِّغ</p>
@@ -431,6 +467,9 @@ export default function AdminReportsPage() {
                 <div className="bg-red-50 rounded-xl p-3">
                   <p className="text-xs text-gray-400 mb-1">المُبلَّغ عنه</p>
                   <p className="font-semibold text-red-700 text-sm">{getUserName(selected.reportedUser?.name)}</p>
+                  {selected.reportedUser?.isBanned && (
+                    <span className="text-xs text-red-500 font-medium">🚫 محظور</span>
+                  )}
                 </div>
               </div>
 
@@ -442,7 +481,7 @@ export default function AdminReportsPage() {
               {selected.details && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-1">تفاصيل إضافية</p>
-                  <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap wrap-break-word">
+                  <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap break-words">
                     {selected.details}
                   </p>
                 </div>
@@ -451,7 +490,7 @@ export default function AdminReportsPage() {
               {selected.appealText && (
                 <div className="border-r-4 border-orange-400 pr-3 bg-orange-50 rounded-lg py-2">
                   <p className="text-xs font-semibold text-orange-600 mb-1">طعن المستخدم</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap wrap-break-word">
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
                     {selected.appealText}
                   </p>
                 </div>
@@ -520,7 +559,7 @@ export default function AdminReportsPage() {
               {selected.status !== "pending" && selected.adminNote && (
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-xs font-semibold text-gray-500 mb-1">ملاحظة المشرف</p>
-                  <p className="text-sm text-gray-700 bg-blue-50 rounded-lg px-3 py-2 whitespace-pre-wrap wrap-break-word">
+                  <p className="text-sm text-gray-700 bg-blue-50 rounded-lg px-3 py-2 whitespace-pre-wrap break-words">
                     {selected.adminNote}
                   </p>
                 </div>

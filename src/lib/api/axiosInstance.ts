@@ -76,10 +76,10 @@ function processRefreshQueue(error: Error | null, token: string | null = null) {
 // Axios Instance
 // ─────────────────────────────────────────────
 const API_BASE_URL = (() => {
-  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL ?? '';
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl && !envUrl.startsWith('/')) return envUrl;
-  return '';
+  // في المتصفح دائماً استخدم relative path → يمر عبر Next.js Rewrites
+  if (typeof window !== 'undefined') return '';
+  // في Server-Side استخدم الـ URL الكامل
+  return process.env.NEXT_PUBLIC_API_URL ?? '';
 })();
 
 const axiosInstance = axios.create({

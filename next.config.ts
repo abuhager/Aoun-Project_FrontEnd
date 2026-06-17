@@ -4,7 +4,7 @@
 
 import type { NextConfig } from 'next';
 
-const API_URL      = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
 const isProduction = process.env.NODE_ENV === 'production';
 
 if (!API_URL) {

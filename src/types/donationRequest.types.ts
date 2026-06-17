@@ -1,11 +1,18 @@
-// src/types/donationRequest.types.ts ✅ PATCHED & FIXED FOR TYPESCRIPT COMPILER
+// src/types/donationRequest.types.ts
+// ✅ DC-15 FIX: DonationOfferStatus في Frontend يشمل 'cancelled_by_requester'
+//    لكن DonationOffer Model في Backend لا يملك هذه القيمة في الـ enum!
+//    التزامن مطلوب: إما إضافة القيمة للـ Backend Model، أو حذفها من Frontend
 
 export type DonationRequestStatus  = 'active' | 'fulfilled' | 'expired' | 'cancelled';
-export type DonationOfferStatus    =
+
+// ✅ DC-15: مزامنة مع DonationOffer Model في Backend
+// Backend enum: ['pending', 'accepted', 'rejected']
+// ← إضافة 'cancelled_by_requester' للـ Backend Model مطلوبة (انظر التعليقات أدناه)
+export type DonationOfferStatus =
   | 'pending'
   | 'accepted'
   | 'rejected'
-  | 'cancelled_by_requester'; // ✅ FRONT-01: نوع جديد متوافق مع الـ Backend
+  | 'cancelled_by_requester'; // ← يجب إضافته لـ Backend Model أيضاً
 
 export interface DonationRequestUser {
   _id:         string;
@@ -39,30 +46,22 @@ export interface DonationOffer {
 }
 
 export interface DonationRequest {
-  _id:             string;
-  title:           string;
-  category:        string;
-  urgency:         'low' | 'medium' | 'high';
-  description?:    string;
-  location:        string;
-  status:          DonationRequestStatus;
-  requester:       DonationRequestUser;
-  // ✅ تحديث الهيكلية هنا لتشمل خصائص الـ Double Confirmation وحالة الغرض ومعرف المتبرع
+  _id:          string;
+  title:        string;
+  category:     string;
+  urgency:      'low' | 'medium' | 'high';
+  description?: string;
+  location:     string;
+  status:       DonationRequestStatus;
+  requester:    DonationRequestUser;
   fulfilledByItem?: {
     _id:                string;
     status:             string;
-    condition:          string;           // 👈 مضاف للـ Build
-    recipientConfirmed: boolean;          // 👈 مضاف للـ Build
-    donorConfirmed:     boolean;          // 👈 مضاف للـ Build
-    safeHub: { 
-      name:    string; 
-      city:    string; 
-      address: string 
-    };
-    donor: { 
-      _id:  string;                       // 👈 مضاف لفحص الـ Chat Authorization
-      name: string 
-    };
+    condition:          string;
+    recipientConfirmed: boolean;
+    donorConfirmed:     boolean;
+    safeHub: { name: string; city: string; address: string };
+    donor:   { _id: string; name: string };
   } | null;
   month?:     string;
   expiresAt?: string;
@@ -70,7 +69,6 @@ export interface DonationRequest {
   updatedAt:  string;
 }
 
-// ✅ FRONT-02: QuotaInfo interface بدل any
 export interface QuotaInfo {
   used:      number;
   max:       number;
@@ -86,7 +84,7 @@ export interface DonationRequestsListResponse {
 
 export interface MyDonationRequestsResponse {
   requests: DonationRequest[];
-  quota:    QuotaInfo; // ✅ FRONT-02: كانت any
+  quota:    QuotaInfo;
 }
 
 export interface GetDonationRequestsParams {

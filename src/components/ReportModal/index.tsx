@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { createReport } from "@/lib/api/reportApi";
-import { REPORT_REASONS, type ReportReason } from "@/types/report.types";
+// ✅ إصلاح الاستيراد باستخدام (as) ليطابق الاسم الفعلي المصدّر في ملف الأنواع
+import { REPORT_REASONS_FALLBACK as REPORT_REASONS, type ReportReason } from "@/types/report.types";
 
 interface Props {
   reportedUserId: string;
@@ -30,11 +31,11 @@ export default function ReportModal({
     setLoading(true);
     try {
       await createReport({
-  reportedUserId,
-  itemId,
-  reason,
-  details: details.trim() || undefined,
-});
+        reportedUserId,
+        itemId,
+        reason,
+        details: details.trim() || undefined,
+      });
       setSuccess(true);
       setTimeout(onClose, 2000);
     } catch (err: unknown) {

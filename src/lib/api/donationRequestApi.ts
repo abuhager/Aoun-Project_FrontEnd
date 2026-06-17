@@ -1,14 +1,12 @@
-// src/lib/api/donationRequestApi.ts ✅ PATCHED [FRONT-01]
 import axiosInstance from '@/lib/api/axiosInstance';
 import type {
   CreateDonationRequestPayload,
+  DonationRequest,
   DonationRequestsListResponse,
   DonationOffer,
   GetDonationRequestsParams,
   MyDonationRequestsResponse,
 } from '@/types/donationRequest.types';
-
-export { getPublicSettings } from '@/lib/api/settingsApi';
 
 export async function getDonationRequests(params?: GetDonationRequestsParams) {
   const { data } = await axiosInstance.get<DonationRequestsListResponse>(
@@ -41,7 +39,7 @@ export async function cancelDonationRequest(requestId: string) {
 }
 
 export async function getDonationRequestById(requestId: string) {
-  const { data } = await axiosInstance.get<{ request: import('@/types/donationRequest.types').DonationRequest }>(
+  const { data } = await axiosInstance.get<{ request: DonationRequest }>(
     `/api/donation-requests/${requestId}`
   );
   return data;
@@ -61,7 +59,6 @@ export async function acceptOffer(requestId: string, offerId: string) {
   return data;
 }
 
-// ── Submit Offer ─────────────────────────────────────────────────────────────
 export type RespondPayload = {
   condition:    'جديد' | 'مستعمل ممتاز' | 'مستعمل جيد';
   safeHub:      string;
@@ -69,11 +66,7 @@ export type RespondPayload = {
   imageFile?:   File;
 };
 
-// ✅ FRONT-01: Response متوافق مع ما يُعيده Backend فعلياً
-export type SubmitOfferResponse = {
-  msg:     string;
-  offerId: string; // ← Backend يُعيد offerId وليس item
-};
+export type SubmitOfferResponse = { msg: string; offerId: string };
 
 export async function respondToDonationRequest(
   requestId: string,

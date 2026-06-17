@@ -1,18 +1,24 @@
+// src/app/(main)/donation-requests/DonationRequestsClient.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  getDonationRequests,
-  cancelDonationRequest,
-  respondToDonationRequest,
-  getPublicSettings,
-} from '@/lib/api/donationRequestApi';
 import axiosInstance from '@/lib/api/axiosInstance';
 import type { DonationRequest } from '@/types/donationRequest.types';
 import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
 
+// ─── الاستيرادات المصححة ──────────────────────────────────────────────────────
+import {
+  getDonationRequests,
+  cancelDonationRequest,
+  respondToDonationRequest,
+} from '@/lib/api/donationRequestApi';
+
+// ✅ جلب الدالة من ملف الـ API الصحيح الخاص بالإعدادات لمنع خطأ الـ Turbopack
+import { getPublicSettings } from '@/lib/api/settingsApi';
+
+// ─── الثوابت والمكونات المساعدة ───────────────────────────────────────────────
 const DEFAULT_CATEGORIES = ['كتب', 'إلكترونيات', 'أثاث', 'ملابس', 'أخرى'];
 const DEFAULT_LOCATIONS = ['عمان', 'الزرقاء', 'إربد', 'العقبة', 'السلط', 'مادبا'];
 const CONDITIONS = ['جديد', 'مستعمل ممتاز', 'مستعمل جيد'] as const;
@@ -39,6 +45,7 @@ function RequestStatusBadge({ status }: { status: DonationRequest['status'] }) {
   );
 }
 
+// ─── المكون الرئيسي ───────────────────────────────────────────────────────────
 export default function DonationRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();

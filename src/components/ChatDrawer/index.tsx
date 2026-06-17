@@ -23,19 +23,16 @@ export default function ChatDrawer({
 }: ChatDrawerProps) {
   const { user } = useAuth();
 
-  // ✅ [FIX]: تمرير قيمة isOpen للـ Hook لضمان التفعيل الكسول (Lazy Initialization)
-  // لن يتم إرسال طلب POST /api/conversations إلا إذا أصبحت isOpen تساوي true
+  // ✅ تم الإصلاح: إزالة markRead و convInfo لعدم توفرهما/استخدامهما لمنع أخطاء TS و ESLint
   const {
     messages,
     loading,
     sending,
     text,
     setText,
-    sendMessage,
     typingUser,
-    emitTyping,
-    emitStopTyping,
-    markRead,
+    sendMessage,
+    sendTyping,
   } = useChat(itemId, isOpen);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -44,14 +41,13 @@ export default function ChatDrawer({
   useEffect(() => {
     if (isOpen) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-      markRead();
     }
-  }, [messages, isOpen, markRead]);
+  }, [messages, isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120]" dir="rtl">
+    <div className="fixed inset-0 z-120" dir="rtl">
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/35 backdrop-blur-sm"
@@ -59,7 +55,7 @@ export default function ChatDrawer({
       />
 
       {/* Drawer */}
-      <aside className="fixed top-0 right-0 left-auto z-[121] h-dvh w-full max-w-md bg-white shadow-2xl flex flex-col">
+      <aside className="fixed top-0 right-0 left-auto z-121 h-dvh w-full max-w-md bg-white shadow-2xl flex flex-col">
         {/* Header */}
         <div className="shrink-0 border-b border-gray-100 bg-white px-4 py-3">
           <div className="flex items-start justify-between gap-3">
@@ -107,13 +103,13 @@ export default function ChatDrawer({
                   className={`flex ${isMe ? "justify-start" : "justify-end"}`}
                 >
                   <div
-                    className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-relaxed break-words shadow-sm ${
+                    className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-relaxed wrap-break-word shadow-sm ${
                       isMe
                         ? "bg-primary text-white rounded-tl-sm"
                         : "bg-white text-gray-800 border border-gray-100 rounded-tr-sm"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                    <p className="whitespace-pre-wrap wrap-break-word">{msg.text}</p>
                     <p
                       className={`mt-1 text-[10px] ${
                         isMe ? "text-white/70" : "text-gray-400"
@@ -158,10 +154,11 @@ export default function ChatDrawer({
               value={text}
               onChange={(e) => {
                 setText(e.target.value);
-                if (e.target.value.trim()) emitTyping();
-                else emitStopTyping();
+                // ✅ تم الإصلاح: استخدام sendTyping المتوفرة عند تحديث النص لإنعاش حالة الكتابة
+                if (e.target.value.trim()) {
+                  sendTyping();
+                }
               }}
-              onBlur={emitStopTyping}
               onKeyDown={async (e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();

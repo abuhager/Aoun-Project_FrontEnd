@@ -1,92 +1,61 @@
-// src/hooks/useAdminTable.ts
-"use client";
-
-import { useState, useEffect, useCallback } from "react";
-import axiosInstance from "@/lib/api/axiosInstance";
-import { useToast } from "@/hooks/useToast";
+'use client';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import axiosInstance from '@/lib/api/axiosInstance';
+import { useToast }  from '@/hooks/useToast';
 
 type Deps = Record<string, unknown>;
 
-// ✅ 1. تعريف الهيكل المتوقع من الـ API لمنع استخدام any
 interface AdminApiResponse {
-  pages?: number;
-  users?: unknown[];
-  items?: unknown[];
-  hubs?: unknown[];
+  pages?:   number;
+  users?:   unknown[];
+  items?:   unknown[];
+  hubs?:    unknown[];
   reports?: unknown[];
-  settings?: unknown[];
 }
 
-export function useAdminTable<T>(
-  endpoint: string,
-  deps: Deps = {}
-) {
-  const [rows, setRows] = useState<T[]>([]);
+export function useAdminTable<T>(endpoint: string, deps: Deps = {}) {
+  const [rows,    setRows]    = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
+  const [page,    setPage]    = useState(1);
+  const [pages,   setPages]   = useState(1);
+
+  // ✅ FL13-04: تخزين deps في ref — يتجنب إعادة إنشاء load() عند كل render
+  const depsRef = useRef(deps);
+  useEffect(() => { depsRef.current = deps; });
 
   const { show: showToast, ToastComponent } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // ✅ تزويد أكسيوس بالأنواع المتوقعة كـ Generic
-      const { data } = await axiosInstance.get<AdminApiResponse | unknown[]>(endpoint, {
-        params: { page, ...deps },
-      });
-
-      let extractedItems: unknown[] = [];
+      const { data } = await axiosInstance.get<AdminApiResponse | unknown[]>(
+        endpoint,
+        { params: { page, ...depsRef.current } }
+      );
+      let items: unknown[] = [];
       let totalPages = 1;
-
-      // ✅ 2. فحص نوع البيانات المستلمة بأمان تيب-سكربت صارم
       if (Array.isArray(data)) {
-        extractedItems = data;
-      } else if (data && typeof data === "object") {
-        extractedItems = 
-          data.users ??
-          data.items ??
-          data.hubs ??
-          data.reports ??
-          data.settings ??
-          [];
-        
-        totalPages = data.pages ?? 1; // 👈 تم حل مشكلة الـ any هنا بنجاح
+        items = data;
+      } else if (data && typeof data === 'object') {
+        items = data.users ?? data.items ?? data.hubs ?? data.reports ?? [];
+        totalPages = data.pages ?? 1;
       }
-
-      setRows(extractedItems as T[]);
+      setRows(items as T[]);
       setPages(totalPages);
     } catch (err) {
-      let msg = "تعذر تحميل البيانات";
-
-      // ✅ 3. فحص الخطأ برمجياً بدون استيراد أكسيوس العادي وبدون any
-      if (err && typeof err === "object" && "isAxiosError" in err) {
-        const axiosError = err as { response?: { data?: { msg?: string } } };
-        if (axiosError.response?.data?.msg) {
-          msg = axiosError.response.data.msg;
-        }
+      let msg = 'تعذر تحميل البيانات';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const e = err as { response?: { data?: { msg?: string } } };
+        if (e.response?.data?.msg) msg = e.response.data.msg;
       }
-      
       showToast(msg, false);
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endpoint, page, JSON.stringify(deps)]);
+  // ✅ FL13-04: deps لا تدخل هنا — تُقرأ من depsRef
+  }, [endpoint, page, showToast]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  return {
-    rows,
-    setRows,
-    loading,
-    page,
-    setPage,
-    pages,
-    reload: load,
-    showToast,
-    ToastComponent,
-  };
+  return { rows, setRows, loading, page, setPage, pages, reload: load, showToast, ToastComponent };
 }

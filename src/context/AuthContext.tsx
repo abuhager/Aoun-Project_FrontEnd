@@ -26,7 +26,7 @@ import Cookies from "js-cookie";
 // ─────────────────────────────────────────────
 type CachedUser = Pick<
   AuthUser,
-  "_id" | "name" | "email" | "avatar" | "gamification" | "trustLevel" | "trustScore" | "role"
+  "_id" | "name" | "email" | "avatar" | "gamification" | "trustLevel" | "role"
 >;
 
 interface AuthContextType {
@@ -74,14 +74,21 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // ─────────────────────────────────────────────
 function toMinimalUser(u: AuthUser): CachedUser {
   return {
-    _id:         u._id,
-    name:        u.name,
-    email:       u.email,
-    avatar:      u.avatar ?? "",
-    trustLevel:  u.trustLevel ?? 1,
-    trustScore:  u.trustScore ?? 0,  // ✅ أضيف
-    role:        u.role ?? "user",
-    gamification: u.gamification ?? { level:1, title:"مبتدئ", badge:"🌱", progress:0, pointsToNext:null },
+    _id: u._id,
+    name: u.name,
+    email: u.email,
+    avatar: u.avatar ?? "",
+    trustLevel: u.trustLevel ?? 1,
+    role: u.role ?? "user",
+    gamification: u.gamification ?? {
+      trustScore: 0,
+      totalDonations: 0,
+      level: 1,
+      title: "مبتدئ",
+      badge: "🌱",
+      progress: 0,
+      pointsToNext: null,
+    },
   };
 }
 
@@ -117,28 +124,40 @@ function loadUserCookie(): CachedUser | null {
   try {
     const raw = Cookies.get(USER_COOKIE);
     if (!raw) return null;
+
     const decoded = decodeCookieValue(raw);
     if (!isValidCachedUser(decoded)) {
       clearUserCookie();
       return null;
     }
+
+    const g =
+      decoded.gamification && typeof decoded.gamification === "object"
+        ? (decoded.gamification as Record<string, unknown>)
+        : null;
+
     return {
-      _id:         decoded._id,
-      name:        decoded.name,
-      email:       decoded.email,
-      avatar:      decoded.avatar ?? '',
+      _id: decoded._id,
+      name: decoded.name,
+      email: decoded.email,
+      avatar: typeof decoded.avatar === "string" ? decoded.avatar : "",
       trustLevel: ([1, 2, 3, 4].includes(decoded.trustLevel as number)
-        ? decoded.trustLevel : 1) as TrustLevel,
-      trustScore:  typeof decoded.trustScore === 'number'   // ✅ [FIX] إضافة trustScore
-        ? decoded.trustScore : 0,
-      role: (['user', 'admin', 'super_admin'].includes(decoded.role as string)
-        ? decoded.role : 'user') as UserRole,
-      gamification: decoded.gamification ?? {
-        level:        1,
-        title:        'مبتدئ',
-        badge:        '🌱',
-        progress:     0,
-        pointsToNext: null,
+        ? decoded.trustLevel
+        : 1) as TrustLevel,
+      role: (["user", "admin", "super_admin"].includes(decoded.role as string)
+        ? decoded.role
+        : "user") as UserRole,
+      gamification: {
+        trustScore: typeof g?.trustScore === "number" ? g.trustScore : 0,
+        totalDonations: typeof g?.totalDonations === "number" ? g.totalDonations : 0,
+        level: typeof g?.level === "number" ? g.level : 1,
+        title: typeof g?.title === "string" ? g.title : "مبتدئ",
+        badge: typeof g?.badge === "string" ? g.badge : "🌱",
+        progress: typeof g?.progress === "number" ? g.progress : 0,
+        pointsToNext:
+          typeof g?.pointsToNext === "number" || g?.pointsToNext === null
+            ? g.pointsToNext
+            : null,
       },
     };
   } catch {

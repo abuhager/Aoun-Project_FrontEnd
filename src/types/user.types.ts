@@ -22,22 +22,21 @@ export interface AuthUser {
   name:              string;
   email:             string;
   phone?:            string;
-  phoneVerified?:    boolean;
   avatar:            string;
-  role:              'user' | 'admin' | 'super_admin';
-  trustScore:        number;
-  trustLevel:        1 | 2 | 3 | 4;
+  role:              UserRole;
+  trustLevel:        TrustLevel;
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
-  badges:            string[];
   createdAt:         string;
-  gamification: {
+  gamification?: {
+    trustScore:     number;
+    totalDonations: number;
     level:          number;
     title:          string;
-    nextLevelAt:    number;
-    progressPct:    number;
-    totalDonations: number;
+    badge:          string;
+    progress:       number;
+    pointsToNext:   number | null;
   };
 }
 

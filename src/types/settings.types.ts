@@ -2,8 +2,10 @@
 // مُحدَّث ليطابق SystemSettings Schema في الـ Backend بالكامل
 
 export interface PublicSettings {
-  categories:    string[];
+  platformName?: string;
+  categories: string[];
   reportReasons: string[];
+  locations?: string[];
 }
 
 export interface SystemSettings {

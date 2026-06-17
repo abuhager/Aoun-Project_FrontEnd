@@ -70,7 +70,7 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
 
     try {
       // ✅ [FIX] تمرير وسيط واحد فقط وهو الـ itemId كـ string ليطابق الـ API تماماً
-      const data = await confirmDelivery(itemId);
+const data = await confirmDelivery(itemId, { confirmationType: type });
       if (!isMountedRef.current) return;
 
       if (type === 'recipient_confirm') {

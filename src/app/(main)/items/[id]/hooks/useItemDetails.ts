@@ -38,16 +38,17 @@ export function useItemDetails() {
   const isDonor           = !!currentUserId && getId(item?.donor)    === currentUserId;
   const isBooker          = !!currentUserId && getId(item?.bookedBy) === currentUserId;
   const isWaitlisted      = !!currentUserId && !!item?.waitlist?.some((w) => getId(w.user) === currentUserId);
-  const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid) => getId(uid) === currentUserId);
-
+const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid: string) => getId(uid) === currentUserId);
   const fetchItem = useCallback(async (isMounted = true) => {
     try {
       setLoading(true);
       const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-      const data   = await getItemById(itemId);
+      const data = await getItemById(itemId);
       if (isMounted) setItem(data);
-    } catch {
+      return data; // ✅ إرجاع البيانات لتسهيل التتبع
+    } catch (err) {
       if (isMounted) setMessage({ type: "error", text: "حدث خطأ أثناء تحميل بيانات الطلب" });
+      return null;
     } finally {
       if (isMounted) setLoading(false);
     }
@@ -78,8 +79,7 @@ export function useItemDetails() {
         try {
           const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
           const res    = await bookItem(itemId);
-          setMessage({ type: "success", text: res.message ?? "تم طلبك بنجاح" });
-          fetchItem();
+          setMessage({ type: "success", text: res.msg ?? "تم طلبك بنجاح" });          fetchItem();
         } catch (err: unknown) {
           const msg = axios.isAxiosError(err)
             ? err.response?.data?.msg ?? "حدث خطأ أثناء الطلب"
@@ -129,6 +129,6 @@ export function useItemDetails() {
     actionLoading, currentUserId,
     isDonor, isBooker, isWaitlisted, isCancelledBefore,
     confirmModal, setConfirmModal,
-    handleRequestItem, handleCancelAction, fetchItem,
+    handleRequestItem, handleCancelAction, fetchItem, // ✅ موجودة
   };
 }

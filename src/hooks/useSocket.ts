@@ -1,5 +1,4 @@
-// src/hooks/useSocket.ts — الإصلاح الكامل
-
+// src/hooks/useSocket.ts ✅ PATCHED [SEC-01]
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
@@ -9,55 +8,50 @@ import { getAccessToken } from "@/lib/api/axiosInstance";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// ✅ الـ singleton مرتبط بـ userId لضمان disconnect صحيح
 let socketSingleton: Socket | null = null;
-let socketUserId: string | null = null;
+let socketUserId:    string | null = null;
 
 export function useSocket() {
   const { user, isAuthenticated } = useAuth();
   const socketRef = useRef<Socket | null>(null);
 
   const connectSocket = useCallback((userId: string) => {
-    const token = getAccessToken();
-    if (!token) return null;
-
-    // ✅ إذا الـ socket موجود ويخص نفس المستخدم — أعد استخدامه
     if (socketSingleton?.connected && socketUserId === userId) {
       socketRef.current = socketSingleton;
       return socketSingleton;
     }
 
-    // ✅ قطع الاتصال القديم بالكامل قبل فتح جديد
     if (socketSingleton) {
       socketSingleton.removeAllListeners();
       socketSingleton.disconnect();
       socketSingleton = null;
-      socketUserId = null;
+      socketUserId    = null;
     }
 
     socketSingleton = io(SOCKET_URL, {
-  auth: (cb) => cb({ token: getAccessToken() }), 
-  withCredentials: true,
-  transports: ['websocket'],
-  reconnection: true,
-  reconnectionAttempts: 10,
-  reconnectionDelay: 1500,
-  timeout: 8000,
-});
+      // ✅ SEC-01: auth كـ callback ديناميكي — يُستدعى عند كل reconnect تلقائياً
+      // بدل { token: getAccessToken() } الثابتة
+      auth: (cb) => cb({ token: getAccessToken() }),
+      withCredentials:      true,
+      transports:           ['websocket'],
+      reconnection:         true,
+      reconnectionAttempts: 10,
+      reconnectionDelay:    1500,
+      timeout:              8000,
+    });
 
-    socketUserId = userId;
+    socketUserId  = userId;
     socketRef.current = socketSingleton;
     return socketSingleton;
   }, []);
 
   useEffect(() => {
     if (!user?._id || !isAuthenticated) {
-      // ✅ تنظيف كامل عند logout
       if (socketSingleton) {
         socketSingleton.removeAllListeners();
         socketSingleton.disconnect();
         socketSingleton = null;
-        socketUserId = null;
+        socketUserId    = null;
       }
       socketRef.current = null;
       return;
@@ -67,13 +61,14 @@ export function useSocket() {
     if (!socket) return;
 
     const handleConnectError = (err: Error) => {
-      const message = err?.message || "";
-      if (message === "TOKEN_EXPIRED" || message === "INVALID_TOKEN") {
+      const msg = err?.message || "";
+      if (msg === "TOKEN_EXPIRED" || msg === "INVALID_TOKEN") {
+        // ✅ SEC-01: لا نُعيّن auth يدوياً — auth callback يجلب fresh token تلقائياً
+        // فقط نُعيد الاتصال بعد تأخير قصير لإتاحة Refresh Token بالعمل
         setTimeout(() => {
-          const freshToken = getAccessToken();
-          if (!freshToken || !socketSingleton) return;
-          socketSingleton.auth = { token: freshToken };
-          socketSingleton.connect();
+          if (socketSingleton && !socketSingleton.connected) {
+            socketSingleton.connect();
+          }
         }, 1200);
       }
     };
@@ -82,7 +77,6 @@ export function useSocket() {
 
     return () => {
       socket.off("connect_error", handleConnectError);
-      // ✅ لا نقطع الـ socket عند unmount — Singleton يبقى حياً
     };
   }, [user?._id, isAuthenticated, connectSocket]);
 

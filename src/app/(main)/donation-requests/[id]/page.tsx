@@ -192,10 +192,14 @@ export default function DonationRequestDetailPage() {
   // ── ✅ القيم المشتقة المصلحة والمحمية ضد الإلغاء الشبحي ───
   const isOwner = currentUserId === request.requester._id;
 
-  // 🔍 فحص دقيق للـ bookedBy للتأكد هل الايتم محجوز فعلياً بموجب عقد حقيقي في الداتابيز أم تم إلغاؤه؟
-  const itemBookedById = request.fulfilledByItem?.bookedBy && typeof request.fulfilledByItem.bookedBy === 'object' && '_id' in request.fulfilledByItem.bookedBy
-    ? (request.fulfilledByItem.bookedBy as { _id: string })._id
-    : (request.fulfilledByItem?.bookedBy as unknown as string);
+  // 🔍 استخدام الكاستنج المؤقت لتجاوز نقص التايبس بأمان
+  const fulfilledItem = request.fulfilledByItem as Record<string, unknown> | null | undefined;
+
+const itemBookedById = fulfilledItem && 'bookedBy' in fulfilledItem && fulfilledItem.bookedBy
+  ? (typeof fulfilledItem.bookedBy === 'object' && fulfilledItem.bookedBy !== null && '_id' in fulfilledItem.bookedBy
+      ? (fulfilledItem.bookedBy as { _id: string })._id
+      : (fulfilledItem.bookedBy as string))
+  : undefined;
 
   // 🔒 حارس الحجز الحقيقي: إذا كان الغرض خاوياً من الـ bookedBy فهذا إعلان رسمي صادر من السيرفر بإلغاء العملية
   const isComponentBooked = !!itemBookedById;
@@ -240,7 +244,7 @@ export default function DonationRequestDetailPage() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white transition-all ${
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white transition-all ${
           toast.ok ? 'bg-green-500' : 'bg-red-500'
         }`}>
           {toast.msg}

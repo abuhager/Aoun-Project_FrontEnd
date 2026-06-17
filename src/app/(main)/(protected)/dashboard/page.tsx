@@ -112,10 +112,10 @@ export default function DashboardPage() {
         <ProfileCard
           name={data.user?.name}
           email={data.user?.email}
-          trustScore={data.user?.gamification?.trustScore}
+          trustScore={data.user?.trustScore}
         />
         <StatsGrid
-          trustScore={data.user?.gamification?.trustScore}
+          trustScore={data.user?.trustScore}
           quota={data.user?.quota}
           donationsCount={data.myDonations.length}
         />

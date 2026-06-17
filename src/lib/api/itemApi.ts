@@ -80,10 +80,8 @@ export const leaveWaitlist = async (
 };
 
 // ── تأكيد الاستلام (المستلم) ─────────────────────────────────────────────────
-export const confirmReceipt = async (
-  id: string
-): Promise<DeliveryResponse> => {
-  // ✅ FRONT-01: POST /:id/confirm-receipt — لا body مطلوب (injectRecipientConfirm في الـ route)
+export const confirmReceipt = async (id: string): Promise<DeliveryResponse> => {
+  // ✅ ARCH-02: يُطابق Route الجديد POST /:id/confirm-receipt
   const { data } = await axiosInstance.post<DeliveryResponse>(
     `/api/items/${id}/confirm-receipt`
   );
@@ -92,11 +90,14 @@ export const confirmReceipt = async (
 
 // ── تأكيد التسليم (المتبرع) ───────────────────────────────────────────────────
 export const confirmDelivery = async (
-  id: string
+  id: string, 
+  body: { confirmationType: 'recipient_confirm' | 'donor_confirm' } // ✅ استقبال الـ Body بشكل ديناميكي
 ): Promise<DeliveryResponse> => {
-  const { data } = await axiosInstance.put<DeliveryResponse>(
-    `/api/items/complete/${id}`,
-    { confirmationType: "donor_confirm" }
+  
+  // ✅ تمرير الـ body القادم من الـ Hook مباشرة بدل تثبيته
+  const { data } = await axiosInstance.post<DeliveryResponse>(
+    `/api/items/${id}/confirm-delivery`,
+    body 
   );
   return data;
 };

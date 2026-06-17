@@ -1,9 +1,10 @@
-// src/hooks/useDeliveryConfirmation.ts — ✅ DEFINITIVE FIX (MATCHING API SIGNATURE)
+// src/hooks/useDeliveryConfirmation.ts — ✅ DEFINITIVE ARCHITECTURE FIX
 'use client';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSocket }                                  from '@/hooks/useSocket';
-import { confirmDelivery, getItemById }               from '@/lib/api/itemApi'; // ✅ استيراد سليم
-import type { Item }                                  from '@/types/item.types'; // ✅ استيراد نوع الـ Item الموحد
+// ✅ تعديل الاستيراد ليشمل الدالتين المنفصلتين حسب الـ API Architecture عندك
+import { confirmDelivery, confirmReceipt, getItemById } from '@/lib/api/itemApi'; 
+import type { Item }                                  from '@/types/item.types'; 
 import toast                                          from 'react-hot-toast';
 
 type ConfirmationType = 'recipient_confirm' | 'donor_confirm';
@@ -69,23 +70,28 @@ export function useDeliveryConfirmation({ itemId, userRole, initialRecipientConf
     setStatus(type === 'recipient_confirm' ? 'recipient_confirming' : 'donor_confirming');
 
     try {
-      // ✅ إصلاح الخطأ: تمرير معامل واحد فقط (itemId) متوافق 100% مع الـ API المتوفر لديك
-      const data = await confirmDelivery(itemId);
-      if (!isMountedRef.current) return;
-
+      let data;
+      
+      // ✅ التوجيه الذكي: كل مستخدم بيرمي على الـ Route المخصص إله بالباك إند
       if (type === 'recipient_confirm') {
+        // المستلم بيروح على /confirm-receipt
+        data = await confirmReceipt(itemId);
+        if (!isMountedRef.current) return;
         setStatus('waiting_donor');
-        toast.success(data.msg ?? 'تم التأكيد ✅');
+        toast.success(data.msg ?? 'تم تأكيد استلامك للقطعة بنجاح ✅');
       } else {
+        // المتبرع بيروح على /confirm-delivery حامل الـ Body
+        data = await confirmDelivery(itemId, { confirmationType: type });
+        if (!isMountedRef.current) return;
         setStatus('completed');
-        toast.success(data.msg ?? 'تم التسليم 🎉');
+        toast.success(data.msg ?? 'تم إتمام التبرع بنجاح، شكراً لك 🎉');
         onSuccess?.(itemId);
       }
     } catch (err: unknown) {
       if (!isMountedRef.current) return;
       setStatus('error');
       const msg = (err as { response?: { data?: { msg?: string } } })
-        ?.response?.data?.msg ?? 'حدث خطأ، حاول مجدداً';
+        ?.response?.data?.msg ?? 'حدث خطأ أثناء التأكيد، حاول مجدداً';
       setErrorMsg(msg);
       toast.error(msg);
     } finally {

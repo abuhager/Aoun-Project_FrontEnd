@@ -29,6 +29,7 @@ export interface Item {
   status:               ItemStatus;
   donor:                ItemDonor;
   safeHub:              SafeHub;
+  cancelledBy?: string[];
   bookedBy?:            { _id: string; name: string; avatar?: string } | null;
   bookedAt?:            string | null;
   recipientConfirmed:   boolean;

@@ -41,7 +41,8 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "img-src 'self' https://res.cloudinary.com data:",
-              `script-src 'self' ${!isProduction ? "'unsafe-eval' 'unsafe-inline'" : ""}`,
+              `script-src 'self' 'unsafe-inline' ${!isProduction ? "'unsafe-eval'" : ""}`,
+
               // ✅ السماح بـ CSS الخاص بخطوط جوجل
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", 
               // ✅ السماح بتحميل ملفات الخطوط والأيقونات

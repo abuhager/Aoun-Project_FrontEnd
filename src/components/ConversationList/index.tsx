@@ -1,6 +1,7 @@
+// src/components/ConversationsDrawer.tsx — ✅ FINAL CLEAN VERSION
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/api/axiosInstance";
 import ChatDrawer from "@/components/ChatDrawer";
@@ -50,48 +51,72 @@ export default function ConversationsDrawer({
     onUnreadCountChange?.(unreadTotal);
   }, [unreadTotal, onUnreadCountChange]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let cancelled = false;
-
+  // ✅ [FIX]: تغليف الدالة بـ useCallback لتسهيل استدعائها عند إغلاق الشات
+  const fetchConversations = useCallback((cancelledRef = { current: false }) => {
     axiosInstance
       .get<Conversation[]>("/api/conversations")
       .then((r) => {
-        if (cancelled) return;
+        if (cancelledRef.current) return;
 
-        const data = Array.isArray(r.data) ? r.data : [];
+        // التحقق من وجود مغلف البيانات المعتاد في الـ API الاستجابة (r.data.data)
+        const rawData = r.data && typeof r.data === 'object' && 'data' in r.data 
+          ? (r.data as Record<string, unknown>).data 
+          : r.data;
+
+        const data = Array.isArray(rawData) ? rawData : [];
         setConversations(data);
         setHasFetched(true);
       })
       .catch((err) => {
         console.error("fetch conversations error", err);
-
-        if (cancelled) return;
-
+        if (cancelledRef.current) return;
         setConversations([]);
         setHasFetched(true);
       });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const cancelledRef = { current: false };
+    fetchConversations(cancelledRef);
 
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
     };
-  }, [isOpen]);
+  }, [isOpen, fetchConversations]);
 
+  // ✅ [FIX]: وضع معالجة وقراءة لعداد الرسائل بشكل آمن وتحديث حالة القراءة في السيرفر
+  const openConversation = async (conv: Conversation) => {
+    setSelected(conv);
+
+    if (conv.unread > 0) {
+      setConversations((prev) =>
+        prev.map((c) => (c._id === conv._id ? { ...c, unread: 0 } : c))
+      );
+
+      try {
+        await axiosInstance.put(`/api/conversations/${conv._id}/read`);
+      } catch (err) {
+        console.error("mark conversation as read error", err);
+        // Rollback عند الفشل
+        setConversations((prev) =>
+          prev.map((c) => (c._id === conv._id ? { ...c, unread: conv.unread } : c))
+        );
+      }
+    }
+  };
+
+  // ✅ [FIX]: عند إغلاق الشات، نعود للقائمة وننعش البيانات فوراً ليعكس العداد التغيير اللحظي
   if (selected) {
     return (
       <ChatDrawer
-        itemId={selected.item._id}
-        itemTitle={selected.item.title}
+        itemId={selected.item?._id}
+        itemTitle={selected.item?.title || "غرض غير متاح"}
         isOpen={true}
         onClose={() => {
           setSelected(null);
-
-          setConversations((prev) =>
-            prev.map((conv) =>
-              conv._id === selected._id ? { ...conv, unread: 0 } : conv
-            )
-          );
+          fetchConversations(); // تضمن كنس وتحديث العداد مباشرة بعد إغلاق شاشة المراسلة
         }}
       />
     );
@@ -172,7 +197,7 @@ export default function ConversationsDrawer({
                 return (
                   <button
                     key={conv._id}
-                    onClick={() => setSelected(conv)}
+                    onClick={() => openConversation(conv)}
                     className="w-full rounded-2xl border border-gray-100 bg-white px-3 py-3 text-right shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
                     type="button"
                   >
@@ -200,7 +225,7 @@ export default function ConversationsDrawer({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <p className="truncate text-sm font-black text-gray-800">
-                            {conv.item.title}
+                            {conv.item?.title || "غرض غير متاح"}
                           </p>
 
                           {conv.unread > 0 && (
@@ -211,7 +236,7 @@ export default function ConversationsDrawer({
                         </div>
 
                         <p className="mt-1 truncate text-xs text-gray-400">
-                          {other?.name || "مستخدم"}
+                          {other?.name || "مستخدم عون"}
                         </p>
                       </div>
                     </div>

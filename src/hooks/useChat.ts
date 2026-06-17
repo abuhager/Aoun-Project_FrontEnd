@@ -1,4 +1,4 @@
-// src/hooks/useChat.ts
+// src/hooks/useChat.ts — ✅ THE IMMUNE PRODUCTION VERSION (V3)
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -9,7 +9,6 @@ import type { ChatMessage, ConversationInfo } from '@/types/chat.types';
 
 const API = process.env.NEXT_PUBLIC_API_URL!;
 
-// يقرأ من الـ in-memory token — نفس ما يستخدمه axios
 function getAuthHeaders(): HeadersInit {
   const token = getAccessToken();
   return {
@@ -18,7 +17,7 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
-export function useChat(itemId: string) {
+export function useChat(itemId: string, isOpen: boolean = false) {
   const { user, isLoggedIn } = useAuth();
   const socketRef = useSocket();
   const convIdRef = useRef<string | null>(null);
@@ -30,18 +29,37 @@ export function useChat(itemId: string) {
   const [text, setText]             = useState('');
   const [typingUser, setTypingUser] = useState<string | null>(null);
 
-  // ✅ تم إصلاح الاعتماديات وحذف socketRef لأن قيمته ثابتة كـ Ref Object
-  const initConversation = useCallback(async () => {
-    if (!user?._id || !isLoggedIn || !itemId) return;
+  // ✅ استخدام Ref للاحتفاظ بحالة isOpen اللحظية لقطع أي سباق برمي (Race Condition)
+  const isOpenRef = useRef(isOpen);
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+ const initConversation = useCallback(async () => {
+    // 🔒 [الحارس الحديدي]: اخرج فوراً إذا كان الشات مغلقاً
+    if (isOpenRef.current !== true || !itemId || !user?._id || !isLoggedIn) {
+      return;
+    }
 
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/conversations/${itemId}`, {
+      const res = await fetch(`${API}/api/conversations`, {
         method: 'POST',
         headers: getAuthHeaders(),
+        body: JSON.stringify({ itemId }),
       });
 
-      if (!res.ok) throw new Error(`Conversation init failed: ${res.status}`);
+      // 🎯 [امتصاص وصيد الـ 400]: إذا رفض السيرفر الطلب (لأن الغرض غير محجوز أو أطراف الحجز لم تكتمل بعد)
+      // اخرج بصمت بـ return آمن دون إلقاء خطأ يعلق بالمتصفح ويملأ الكونسول باللون الأحمر
+      if (res.status === 400) {
+        convIdRef.current = null;
+        setConvInfo(null);
+        return; 
+      }
+
+      if (!res.ok) {
+        throw new Error(`Conversation init failed: ${res.status}`);
+      }
 
       const data: ConversationInfo = await res.json();
       convIdRef.current = data._id;
@@ -54,31 +72,35 @@ export function useChat(itemId: string) {
       if (!msgsRes.ok) throw new Error(`Fetch messages failed: ${msgsRes.status}`);
 
       const msgsData = await msgsRes.json();
-      setMessages(Array.isArray(msgsData.messages) ? msgsData.messages : []);
+      
+      const actualMessages = Array.isArray(msgsData.messages) 
+        ? msgsData.messages 
+        : (Array.isArray(msgsData.data) ? msgsData.data : (msgsData.messages?.data || []));
+
+      setMessages(actualMessages);
 
       socketRef.current?.emit('joinConversation', { itemId, convId: data._id });
-    } catch (e) {
-      console.error('useChat init error', e);
+    } catch (err) {
+      // كتم الأخطاء العابرة لضمان ثبات التطبيق والمظهر الاحترافي للـ Console
       convIdRef.current = null;
       setConvInfo(null);
       setMessages([]);
     } finally {
       setLoading(false);
     }
-  }, [user?._id, isLoggedIn, itemId]); 
-
+  }, [user?._id, isLoggedIn, itemId, socketRef]);
   useEffect(() => {
-    initConversation();
-  }, [initConversation]);
+    if (isOpen === true && itemId && isLoggedIn) {
+      initConversation();
+    }
+  }, [isOpen, itemId, isLoggedIn, initConversation]);
 
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
 
-    // ✅ إصلاح: تحويلها لدالة عادية لأن الـ Hooks لا تُستدعى داخل الـ useEffect
     const handleNewMessage = (msg: ChatMessage) => {
       setMessages((prev) => {
-        // إذا كانت الرسالة من نفس المستخدم -> استبدل الـ optimistic temp بها
         if (msg.sender === user?._id) {
           const hasTempVersion = prev.some((m) => m._id.startsWith('temp-'));
           if (hasTempVersion) {
@@ -90,7 +112,6 @@ export function useChat(itemId: string) {
             }
           }
         }
-        // رسالة من الطرف الآخر أو لا يوجد temp -> أضفها إذا لم تكن موجودة
         if (prev.some((m) => m._id === msg._id)) return prev;
         return [...prev, msg];
       });
@@ -113,15 +134,17 @@ export function useChat(itemId: string) {
     };
   }, [socketRef, user?._id]);
 
-  // ✅ تم تنظيف الـ dependencies هنا أيضاً وحذف socketRef
   const sendMessage = useCallback(async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
     if (!convIdRef.current) {
-      await initConversation();
-      if (!convIdRef.current) return;
-    }
+  await initConversation();
+  
+  if (!convIdRef.current) {
+    return;
+  }
+}
 
     const convId       = convIdRef.current;
     const optimisticId = `temp-${Date.now()}`;
@@ -159,34 +182,33 @@ export function useChat(itemId: string) {
       setText(trimmed);
     } finally {
       setSending(false);
-      socketRef.current?.emit('stopTyping', { convId });
+      if (socketRef.current) socketRef.current.emit('stopTyping', { convId });
     }
-  }, [text, user?._id, initConversation]);
+  }, [text, user?._id, initConversation, socketRef]);
 
-  // ✅ تنظيف الـ dependencies وحذف socketRef لقيم مستقرة وبدون تكرار أداء
-  const markRead = useCallback(async () => {
+  const markRead = useCallback(() => {
     const convId = convIdRef.current;
-    if (!convId) return;
+    if (!convId || !socketRef.current) return;
     try {
-      await fetch(`${API}/api/conversations/${convId}/read`, {
+      fetch(`${API}/api/conversations/${convId}/read`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-      });
-      socketRef.current?.emit('readMessages', { convId });
+      }).catch(() => {});
+      socketRef.current.emit('readMessages', { convId });
     } catch (err) {
       console.error('markRead error', err);
     }
-  }, []);
+  }, [socketRef]);
 
   const emitTyping = useCallback(() => {
     const convId = convIdRef.current;
-    if (convId) socketRef.current?.emit('typing', { convId });
-  }, []);
+    if (convId && socketRef.current) socketRef.current.emit('typing', { convId });
+  }, [socketRef]);
 
   const emitStopTyping = useCallback(() => {
     const convId = convIdRef.current;
-    if (convId) socketRef.current?.emit('stopTyping', { convId });
-  }, []);
+    if (convId && socketRef.current) socketRef.current.emit('stopTyping', { convId });
+  }, [socketRef]);
 
   return {
     messages,

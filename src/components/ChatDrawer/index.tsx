@@ -23,6 +23,8 @@ export default function ChatDrawer({
 }: ChatDrawerProps) {
   const { user } = useAuth();
 
+  // ✅ [FIX]: تمرير قيمة isOpen للـ Hook لضمان التفعيل الكسول (Lazy Initialization)
+  // لن يتم إرسال طلب POST /api/conversations إلا إذا أصبحت isOpen تساوي true
   const {
     messages,
     loading,
@@ -34,7 +36,7 @@ export default function ChatDrawer({
     emitTyping,
     emitStopTyping,
     markRead,
-  } = useChat(itemId);
+  } = useChat(itemId, isOpen);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const canSend = useMemo(() => !!text.trim() && !sending, [text, sending]);

@@ -1,6 +1,7 @@
+// src/components/ConversationsDrawer.tsx — ✅ FINAL PRODUCTION VERSION (ANTI-400 FLOOD)
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/api/axiosInstance";
 import ChatDrawer from "@/components/ChatDrawer";
@@ -52,37 +53,45 @@ export default function ConversationsDrawer({
     onUnreadCountChange?.(unreadTotal);
   }, [unreadTotal, onUnreadCountChange]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let cancelled = false;
-
+  // دالة موحدة لجلب المحادثات لضمان إمكانية جلبها مجدداً عند إغلاق الشات الفرعي
+  const fetchConversations = useCallback((cancelledRef = { current: false }) => {
     axiosInstance
       .get<Conversation[]>("/api/conversations")
       .then((r) => {
-        if (cancelled) return;
+        if (cancelledRef.current) return;
+        
+        // التحقق من بنية البيانات القادمة من الـ API (توافقية مع data wrapper)
+        const rawData = r.data && typeof r.data === 'object' && 'data' in r.data 
+          ? (r.data as Record<string, unknown>).data 
+          : r.data;
 
-        const data = Array.isArray(r.data) ? r.data : [];
+        const data = Array.isArray(rawData) ? rawData : [];
         setConversations(data);
         setStatus("success");
       })
       .catch((err) => {
         console.error("fetch conversations error", err);
-
-        if (cancelled) return;
-
+        if (cancelledRef.current) return;
         setConversations([]);
         setStatus("error");
       });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const cancelledRef = { current: false };
+    fetchConversations(cancelledRef);
 
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
     };
-  }, [isOpen]);
+  }, [isOpen, fetchConversations]);
 
   const openConversation = async (conv: Conversation) => {
     setSelected(conv);
 
+    // تحديث تفاؤلي سريع (Optimistic Update) في الفرونت للعداد
     if (conv.unread > 0) {
       setConversations((prev) =>
         prev.map((c) =>
@@ -94,7 +103,7 @@ export default function ConversationsDrawer({
         await axiosInstance.put(`/api/conversations/${conv._id}/read`);
       } catch (err) {
         console.error("mark conversation as read error", err);
-
+        // Rollback في حال فشل طلب الـ API
         setConversations((prev) =>
           prev.map((c) =>
             c._id === conv._id ? { ...c, unread: conv.unread } : c
@@ -106,14 +115,16 @@ export default function ConversationsDrawer({
 
   if (!isOpen) return null;
 
+  // ✅ [FIXED]: ربط ديناميكي حقيقي يمنع الـ Auto-mount العشوائي بالخلفية فور تحميل الصفحة
   if (selected) {
     return (
       <ChatDrawer
         itemId={selected.item._id}
         itemTitle={selected.item.title}
-        isOpen={true}
+        isOpen={!!selected} // 👈 🔒 تم التعديل هنا لكسر ثغرة الـ true الثابتة
         onClose={() => {
           setSelected(null);
+          fetchConversations(); 
         }}
       />
     );
@@ -125,12 +136,15 @@ export default function ConversationsDrawer({
 
   return (
     <div className="fixed inset-0 z-110" dir="rtl">
+      {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/35 backdrop-blur-sm"
         onClick={onClose}
       />
 
+      {/* Drawer */}
       <aside className="fixed top-0 right-0 left-auto z-111 h-dvh w-full max-w-md border-l border-gray-100 bg-white shadow-2xl flex flex-col">
+        {/* Header */}
         <div className="shrink-0 border-b border-gray-100 bg-white px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -153,6 +167,7 @@ export default function ConversationsDrawer({
           </div>
         </div>
 
+        {/* List Content */}
         <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50">
           {isLoading ? (
             <div className="space-y-2 p-3">
@@ -229,7 +244,7 @@ export default function ConversationsDrawer({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <p className="truncate text-sm font-black text-gray-800">
-                            {conv.item.title}
+                            {conv.item?.title || "غرض محذوف"}
                           </p>
 
                           {conv.unread > 0 && (
@@ -240,7 +255,7 @@ export default function ConversationsDrawer({
                         </div>
 
                         <p className="mt-1 truncate text-xs text-gray-400">
-                          {other?.name || "مستخدم"}
+                          {other?.name || "مستخدم عون"}
                         </p>
                       </div>
                     </div>

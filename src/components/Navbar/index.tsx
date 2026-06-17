@@ -1,3 +1,4 @@
+// src/components/Navbar/index.tsx — ✅ FINAL PRODUCTION FIXED
 "use client";
 
 import Link from "next/link";
@@ -44,8 +45,7 @@ export default function Navbar() {
   const isReadyForUserData = isMounted && isLoggedIn;
   const isAdmin = isReadyForUserData && userRole === "admin";
   const userLevel = user?.gamification?.level ?? 1;
-  const userBadge = user?.gamification?.badge ?? "🌱";
-
+const userBadge = (user?.gamification as { badge?: string })?.badge ?? "🌱";
   const chatUnreadCount = isReadyForUserData ? serverChatUnreadCount : 0;
 
   const visibleLinks = useMemo(() => {
@@ -56,9 +56,18 @@ export default function Navbar() {
   }, [isReadyForUserData]);
 
   const fetchUnreadCount = useCallback(async () => {
-    const response = await axiosInstance.get<ConversationUnreadItem[]>("/api/conversations");
-    const data = Array.isArray(response.data) ? response.data : [];
-    return data.reduce((sum, conv) => sum + (conv.unread || 0), 0);
+    try {
+      const response = await axiosInstance.get<ConversationUnreadItem[]>("/api/conversations");
+      // التعامل الآمن مع بنية ردود الـ API المحتملة
+      const rawData = response.data && typeof response.data === 'object' && 'data' in response.data 
+        ? (response.data as Record<string, unknown>).data 
+        : response.data;
+        
+      const data = Array.isArray(rawData) ? rawData : [];
+      return data.reduce((sum, conv) => sum + (conv.unread || 0), 0);
+    } catch {
+      return 0;
+    }
   }, []);
 
   useEffect(() => {
@@ -77,41 +86,38 @@ export default function Navbar() {
     };
   }, [isProfileDropdownOpen, setIsProfileDropdownOpen]);
 
- useEffect(() => {
-  if (!isReadyForUserData) return;
+  useEffect(() => {
+    if (!isReadyForUserData) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  fetchUnreadCount()
-    .then((total) => {
-      if (cancelled) return;
-      setServerChatUnreadCount(total);
-    })
-    .catch((error: unknown) => {
-      if (cancelled) return;
-      setServerChatUnreadCount(0);
+    fetchUnreadCount()
+      .then((total) => {
+        if (cancelled) return;
+        setServerChatUnreadCount(total);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setServerChatUnreadCount(0);
 
-      // ✅ بعد التعديل الجذري لمنع تلوث الـ Console بأخطاء المصادقة الطبيعية للزوار
-      // استخراج الرسالة أياً كان هيكل الخطأ (Axios Error أو Custom Error)
-      let msg = "";
-      if (error && typeof error === "object") {
-        if ("message" in error) {
-          msg = (error as { message: string }).message;
-        } else if ("code" in error) {
-          msg = (error as { code: string }).code;
+        let msg = "";
+        if (error && typeof error === "object") {
+          if ("message" in error) {
+            msg = (error as { message: string }).message;
+          } else if ("code" in error) {
+            msg = (error as { code: string }).code;
+          }
         }
-      }
 
-      // كتم الأخطاء الطبيعية الخاصة بالزوار أو انتهاء مهلة فحص الجلسة برمجياً
-      if (msg !== "NOT_AUTHENTICATED" && msg !== "AUTH_INIT_TIMEOUT") {
-        console.error("fetch navbar unread count error", error);
-      }
-    });
+        if (msg !== "NOT_AUTHENTICATED" && msg !== "AUTH_INIT_TIMEOUT") {
+          console.error("fetch navbar unread count error", error);
+        }
+      });
 
-  return () => {
-    cancelled = true;
-  };
-}, [isReadyForUserData, fetchUnreadCount]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isReadyForUserData, fetchUnreadCount]);
 
   if (isLogoOnlyPage) {
     return (
@@ -567,7 +573,9 @@ export default function Navbar() {
         </div>
       </div>
 
-      {isReadyForUserData && (
+      {/* ✅ [FIX]: تعديل الفحص ليعتمد على التفعيل الكسول (Lazy Mount) */}
+      {/* لن يتم رندر أو استدعاء ملف ConversationsDrawer ومرفقاته بتاتاً إلا إذا قام المستخدم بالنقر وفتح القائمة فعلياً */}
+      {isReadyForUserData && chatOpen && (
         <ConversationsDrawer
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}

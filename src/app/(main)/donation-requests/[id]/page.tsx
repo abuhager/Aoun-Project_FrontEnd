@@ -28,7 +28,10 @@ export default function DonationRequestDetailPage() {
     itemId: string; itemTitle: string;
   } | null>(null);
 
-  // ✅ ref لتجنب stale closure في Socket listeners
+  // التحكم بفتح وإغلاق الـ Drawer لمنع الميلاد الشبحي بالخلفية
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // ref لتجنب stale closure في Socket listeners
   const requestRef = useRef<DonationRequest | null>(null);
   useEffect(() => { requestRef.current = request; }, [request]);
 
@@ -118,36 +121,38 @@ export default function DonationRequestDetailPage() {
     };
   }, [id, socketRef, showToast]);
 
-  // ── قبول عرض ──────────────────────────────────────────────
-  // ✅ [FIX] يقرأ itemId من الـ response ويعمل redirect بعد fetchRequest
+  // ── قبول عرض مع حماية ضد الحظر التكراري ──────────────────────────────────
   const handleAcceptOffer = async (offerId: string) => {
     setAccepting(offerId);
     try {
       const res = await axiosInstance.post(
         `/api/donation-requests/${id}/offers/${offerId}/accept`
       );
-      // ✅ backend يرجع itemId بعد Transaction ناجحة
+      
       const itemId = res.data?.itemId as string | undefined;
-      showToast('🎉 تم اختيار المتبرع وحجز الغرض! راجع تفاصيل التسليم أدناه', true);
+      showToast('🎉 تم اختيار المتبرع وحجز الغرض بنجاح!', true);
+      
       setOffers([]);
       await fetchRequest();
-      // ✅ انتقل لصفحة الغرض فوراً
+      
       if (itemId) {
         router.push(`/items/${itemId}?ref=donation-request`);
       }
     } catch (err) {
+      setIsChatOpen(false);
+      setChatTarget(null);
+      await fetchRequest(); // تحديث فوري لكشف الإلغاء إذا فشل بسبب الحظر
       showToast(extractErrorMsg(err, 'تعذر قبول العرض'), false);
     } finally {
       setAccepting(null);
     }
   };
 
-  // ── تأكيد استلام الغرض (Optimistic Update + Rollback) ─────
+  // ── تأكيد استلام الغرض ───────────────────────────────────────
   const handleConfirmReceipt = async () => {
     if (!request?.fulfilledByItem?._id) return;
     setConfirming(true);
 
-    // Optimistic update
     setRequest((prev) => {
       if (!prev?.fulfilledByItem) return prev;
       return { ...prev, fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: true } };
@@ -161,7 +166,6 @@ export default function DonationRequestDetailPage() {
       showToast('✅ تم تأكيدك — في انتظار تأكيد المتبرع', true);
       setTimeout(() => fetchRequest(), 800);
     } catch (err) {
-      // Rollback عند الفشل
       setRequest((prev) => {
         if (!prev?.fulfilledByItem) return prev;
         return { ...prev, fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: false } };
@@ -185,26 +189,52 @@ export default function DonationRequestDetailPage() {
     </div>
   );
 
-  // ── القيم المشتقة ──────────────────────────────────────────
-  const isOwner       = currentUserId === request.requester._id;
-  const respondedItem = request.fulfilledByItem ?? null;
+  // ── ✅ القيم المشتقة المصلحة والمحمية ضد الإلغاء الشبحي ───
+  const isOwner = currentUserId === request.requester._id;
+
+  // 🔍 فحص دقيق للـ bookedBy للتأكد هل الايتم محجوز فعلياً بموجب عقد حقيقي في الداتابيز أم تم إلغاؤه؟
+  const itemBookedById = request.fulfilledByItem?.bookedBy && typeof request.fulfilledByItem.bookedBy === 'object' && '_id' in request.fulfilledByItem.bookedBy
+    ? (request.fulfilledByItem.bookedBy as { _id: string })._id
+    : (request.fulfilledByItem?.bookedBy as unknown as string);
+
+  // 🔒 حارس الحجز الحقيقي: إذا كان الغرض خاوياً من الـ bookedBy فهذا إعلان رسمي صادر من السيرفر بإلغاء العملية
+  const isComponentBooked = !!itemBookedById;
+
+  // إجبار المكون على تصفير respondedItem إذا تبيّن أن الحجز ملغى بالمزامنة النظيفة
+  const respondedItem = isComponentBooked ? (request.fulfilledByItem ?? null) : null;
+
   const recipientDone = respondedItem?.recipientConfirmed ?? false;
   const donorDone     = respondedItem?.donorConfirmed     ?? false;
   const fullyDone     = recipientDone && donorDone;
-  const showCaseB     = request.status === 'active' && !isOwner && !respondedItem;
-  const showChat      = !!respondedItem?._id && !fullyDone;
+
+  // إعادة إظهار كرت "أريد التبرع" في حال نُسف الحجز مسبقاً
+  const showCaseB = (request.status === 'active' || !isComponentBooked) && !isOwner && !respondedItem;
+
+  const donorId = request.fulfilledByItem?.donor && typeof request.fulfilledByItem.donor === 'object' && '_id' in request.fulfilledByItem.donor
+    ? (request.fulfilledByItem.donor as { _id: string })._id
+    : (request.fulfilledByItem?.donor as unknown as string);
+
+  const isAuthorizedForChat = 
+    !!currentUserId && 
+    (currentUserId === request.requester._id || currentUserId === donorId);
+
+  // حظر كامل للزر والمكون الفرعي إذا كان respondedItem معدوماً
+  const showChat = !!respondedItem && !fullyDone && isAuthorizedForChat;
 
   // ─────────────────────────────────────────────────────────
   return (
     <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
 
-      {/* ChatDrawer */}
-      {chatTarget && (
+      {/* رندر محمي ومقيد بـ isChatOpen الصريح */}
+      {showChat && chatTarget && isChatOpen && (
         <ChatDrawer
           itemId={chatTarget.itemId}
           itemTitle={chatTarget.itemTitle}
-          isOpen
-          onClose={() => setChatTarget(null)}
+          isOpen={isChatOpen}
+          onClose={() => {
+            setIsChatOpen(false);
+            setChatTarget(null);
+          }}
         />
       )}
 
@@ -303,8 +333,8 @@ export default function DonationRequestDetailPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <InfoRow label="المتبرع"    value={respondedItem.donor?.name ?? '—'} />
-              <InfoRow label="حالة الغرض" value={respondedItem.condition} />
+              <InfoRow label="المتبرع"     value={respondedItem.donor?.name ?? '—'} />
+              <InfoRow label="حالة الغرض" value={respondedItem.condition ?? '—'} />
             </div>
 
             {/* مؤشر التأكيد المزدوج */}
@@ -354,15 +384,24 @@ export default function DonationRequestDetailPage() {
               </div>
             )}
 
-            {/* زر المحادثة */}
-            {showChat && (
+            {/* زر المحادثة المحمي */}
+            {showChat ? (
               <button
-                onClick={() => setChatTarget({ itemId: respondedItem._id, itemTitle: request.title })}
+                onClick={() => {
+                  setChatTarget({ itemId: respondedItem._id, itemTitle: request.title });
+                  setIsChatOpen(true);
+                }}
                 className="w-full py-2.5 rounded-2xl text-sm font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">chat</span>
                 محادثة مع المتبرع لتنسيق التسليم
               </button>
+            ) : (
+              !fullyDone && (
+                <div className="w-full py-2.5 rounded-2xl text-[11px] font-bold text-center bg-gray-50 text-gray-400 border border-gray-100">
+                  🔒 التنسيق والمراسلة متاحان فقط لأطراف عملية الحجز (المتبرع والمستلم)
+                </div>
+              )
             )}
 
             <button
@@ -394,7 +433,6 @@ function ConfirmIndicator({ label, done }: { label: string; done: boolean }) {
   );
 }
 
-// ✅ [FIX] أُزيل الـ redirect من OfferCard — المنطق كله في handleAcceptOffer
 function OfferCard({ offer, onAccept, isAccepting }: {
   offer:       DonationOffer;
   onAccept:    () => void;

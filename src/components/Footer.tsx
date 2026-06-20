@@ -1,54 +1,164 @@
+// src/components/Footer.tsx — ✅ REDESIGNED
 export default function Footer() {
   return (
     <footer
-      className="bg-[#004d44] text-white py-6 md:py-8 border-t border-white/10 font-body text-center"
       dir="rtl"
+      className="relative overflow-hidden bg-[#003d36] text-white"
+      style={{
+        background: "radial-gradient(ellipse 80% 60% at 50% 120%, #005c50 0%, #003d36 60%)",
+      }}
     >
-      <div className="max-w-4xl mx-auto px-4">
-        <h2 className="text-2xl font-black mb-2 font-headline tracking-wider">عـون</h2>
+      {/* طبقة نقطة ضوء خلفية خفيفة */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 50% 0%, white 0%, transparent 70%)",
+        }}
+      />
 
-        <p className="text-xs md:text-sm text-gray-200 mb-5 max-w-2xl mx-auto leading-relaxed">
-          منصة خيرية شبابية تهدف إلى تسهيل التبرع العيني وربط المتبرعين
-          بالمحتاجين، تعزيزاً للتكافل الاجتماعي ودعماً لجهود الإغاثة لأهلنا في
-          غزة والمجتمع المحلي.
-        </p>
+      {/* الحاجز العلوي */}
+      <div className="border-t border-white/[0.08]" />
 
-        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-5 mb-5 text-xs md:text-sm font-bold text-[#96f7e9]">
-          <a
-            href="https://mail.google.com/mail/?view=cm&fs=1&to=aoun.project.jo@gmail.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white transition-colors flex items-center gap-1.5"
-          >
-            <span className="material-symbols-outlined text-[16px]">mail</span>
-            <span dir="ltr">aoun.help.center@gmail.com</span>
-          </a>
+      <div className="relative mx-auto max-w-5xl px-5 py-10 md:py-12">
 
-          {/* ✅ الفاصل مرئي الآن */}
-          <span className="text-white/20 hidden md:inline">|</span>
+        {/* ── شبكة المحتوى الرئيسية ───────────────────────────── */}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6">
 
-          <a
-            href="https://wa.me/962797283384"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white transition-colors flex items-center gap-1.5"
-          >
-            <span className="material-symbols-outlined text-[16px]">support_agent</span>
-            الدعم الفني (واتساب)
-          </a>
+          {/* العمود الأول: الشعار والرسالة */}
+          <div className="flex flex-col items-center text-center md:items-start md:text-right">
+            {/* الشعار */}
+            <div className="mb-3 flex items-center gap-2.5">
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-xl
+                           bg-white/[0.12] backdrop-blur-sm"
+              >
+                <span
+                  className="material-symbols-outlined text-[20px] text-white"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  volunteer_activism
+                </span>
+              </div>
+              <span className="text-xl font-black tracking-tight">عـون</span>
+            </div>
 
-          <span className="text-white/20 hidden md:inline">|</span>
+            <p className="max-w-xs text-[13px] leading-relaxed text-white/60">
+              منصة خيرية شبابية تهدف إلى تسهيل التبرع العيني وربط المتبرعين
+              بالمحتاجين، تعزيزاً للتكافل الاجتماعي.
+            </p>
 
-          <span className="text-gray-300 flex items-center gap-1.5 cursor-default">
-            <span className="material-symbols-outlined text-[16px]">volunteer_activism</span>
-            مبادرة أردنية مستقلة
-          </span>
+            {/* شارة المبادرة */}
+            <div
+              className="mt-4 flex items-center gap-1.5 rounded-full border
+                         border-white/[0.12] bg-white/[0.06] px-3 py-1.5"
+            >
+              <span className="material-symbols-outlined text-[13px] text-emerald-400"
+                style={{ fontVariationSettings: "'FILL' 1" }}>
+                verified
+              </span>
+              <span className="text-[11px] font-bold text-white/70">
+                مبادرة أردنية مستقلة
+              </span>
+            </div>
+          </div>
+
+          {/* العمود الثاني: روابط سريعة */}
+          <div className="flex flex-col items-center md:items-start">
+            <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-white/40">
+              روابط سريعة
+            </p>
+            <nav className="flex flex-col gap-1.5" aria-label="روابط التذييل">
+              {[
+                { href: "/browse",             label: "تصفح الأغراض",    icon: "explore" },
+                { href: "/donation-requests",   label: "طلبات التبرع",    icon: "volunteer_activism" },
+                { href: "/leaderboard",         label: "المتصدرون",       icon: "leaderboard" },
+                { href: "/hubs",                label: "مراكز التسليم",   icon: "warehouse" },
+              ].map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="group flex items-center gap-2 rounded-lg px-2 py-1.5
+                             text-[13px] font-bold text-white/60 transition-all
+                             duration-150 hover:bg-white/[0.06] hover:text-white"
+                >
+                  <span
+                    className="material-symbols-outlined text-[15px] text-white/30
+                               transition-colors group-hover:text-emerald-400"
+                    style={{ fontVariationSettings: "'FILL' 0" }}
+                  >
+                    {link.icon}
+                  </span>
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+
+          {/* العمود الثالث: التواصل */}
+          <div className="flex flex-col items-center md:items-start">
+            <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-white/40">
+              تواصل معنا
+            </p>
+
+            <div className="flex flex-col gap-2 w-full max-w-xs">
+              {/* البريد الإلكتروني */}
+              <a
+                href="https://mail.google.com/mail/?view=cm&fs=1&to=aoun.project.jo@gmail.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2.5 rounded-xl border
+                           border-white/[0.10] bg-white/[0.05] px-3 py-2.5
+                           transition-all duration-200 hover:border-white/20
+                           hover:bg-white/[0.09]"
+              >
+                <span className="material-symbols-outlined text-[16px] text-white/50
+                               transition-colors group-hover:text-white"
+                  style={{ fontVariationSettings: "'FILL' 1" }}>
+                  mail
+                </span>
+                <span
+                  dir="ltr"
+                  className="text-[12px] font-bold text-white/60 transition-colors
+                             group-hover:text-white truncate"
+                >
+                  aoun.help.center@gmail.com
+                </span>
+              </a>
+
+              {/* واتساب */}
+              <a
+                href="https://wa.me/962797283384"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-center gap-2 rounded-xl
+                           bg-[#25d366]/20 px-4 py-2.5 text-[13px] font-bold
+                           text-[#25d366] transition-all duration-200
+                           hover:bg-[#25d366]/30 hover:shadow-lg
+                           hover:shadow-[#25d366]/10"
+              >
+                <span className="material-symbols-outlined text-[16px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}>
+                  support_agent
+                </span>
+                الدعم الفني عبر واتساب
+              </a>
+            </div>
+          </div>
         </div>
 
-        <div className="w-full h-px bg-white/10 mb-4" />
+        {/* ── Divider مع نص ─────────────────────────────────── */}
+        <div className="mt-10 flex items-center gap-4">
+          <div className="h-px flex-1 bg-white/[0.08]" />
+          <span className="text-[11px] font-black tracking-widest text-white/20">
+            عـون
+          </span>
+          <div className="h-px flex-1 bg-white/[0.08]" />
+        </div>
 
-        <p className="text-[10px] md:text-xs text-gray-400 font-bold">
-          © {new Date().getFullYear()} منصة عون المجتمعية - جميع الحقوق محفوظة
+        {/* ── Copyright ─────────────────────────────────────── */}
+        <p className="mt-4 text-center text-[11px] font-bold text-white/30">
+          © {new Date().getFullYear()} منصة عون المجتمعية — جميع الحقوق محفوظة
         </p>
       </div>
     </footer>

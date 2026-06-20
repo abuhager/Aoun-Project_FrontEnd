@@ -1,162 +1,177 @@
+// src/app/(main)/hubs/page.tsx  ✅ REDESIGNED
 "use client";
 
 import { useHubs } from "./hooks/useHubs";
-
-/* ─── بناء رابط Google Maps من العنوان + المدينة ─── */
-function mapsUrl(address: string, city: string) {
-  const q = encodeURIComponent(`${address}، ${city}، الأردن`);
-  return `https://maps.google.com/?q=${q}`;
-}
+import Navbar from "@/components/Navbar";
 
 export default function HubsPage() {
-  const { hubs, loading, error, search, setSearch, city, setCity, cities } = useHubs();
+  const { hubs, loading } = useHubs();
 
   return (
-    <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
-      <main className="pt-20 md:pt-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto font-body">
+    <div className="min-h-screen bg-[#f7f6f2]" dir="rtl">
+      <Navbar />
 
-        {/* ── العنوان ── */}
-        <div className="mb-8 md:mb-12 text-center">
-          <h1 className="text-2xl md:text-3xl font-extrabold font-headline mb-2">
-            مراكز التسليم 🏪
+      <main className="mx-auto max-w-5xl px-4 pb-20 pt-24 md:px-8 md:pt-28">
+
+        {/* ── Header ──────────────────────────────────────────── */}
+        <div className="mb-8">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full
+                          border border-primary/15 bg-primary/[0.07] px-3.5
+                          py-1.5 text-[11px] font-black tracking-wide text-primary">
+            <span className="material-symbols-outlined text-[14px]"
+              style={{ fontVariationSettings: "'FILL' 1" }}>
+              warehouse
+            </span>
+            مواقع موثوقة على مستوى المملكة
+          </div>
+          <h1 className="text-2xl font-black text-gray-900 md:text-3xl">
+            مراكز التسليم
           </h1>
-          <p className="text-sm md:text-base text-on-surface-variant max-w-md mx-auto">
-            اختر أقرب مركز إليك لتسليم أو استلام التبرعات
+          <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-gray-400">
+            نقاط تسليم آمنة وموثوقة منتشرة في مدن الأردن لتسهيل إيصال التبرعات
+            بين المتبرعين والمستفيدين
           </p>
         </div>
 
-        {/* ── بحث + فلتر المدينة ── */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          {/* بحث */}
-          <div className="relative flex-1">
-            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">
-              search
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="ابحث باسم المركز أو العنوان..."
-              className="w-full bg-white border border-[#edeeef] rounded-xl pr-10 pl-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline"
-            />
-          </div>
-
-          {/* فلتر المدينة */}
-          <div className="relative">
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="appearance-none bg-white border border-[#edeeef] rounded-xl px-4 py-3 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all min-w-36"
-            >
-              {cities.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">
-              location_on
-            </span>
-          </div>
-        </div>
-
-        {/* ── حالات التحميل / الخطأ ── */}
+        {/* ── Skeleton ────────────────────────────────────────── */}
         {loading && (
-          <div className="flex justify-center items-center py-24">
-            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-
-        {error && (
-          <div className="text-center py-16">
-            <span className="material-symbols-outlined text-5xl text-red-300 mb-3 block">
-              error
-            </span>
-            <p className="text-red-400 font-bold text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* ── empty state ── */}
-        {!loading && !error && hubs.length === 0 && (
-          <div className="text-center py-20 space-y-3">
-            <span className="material-symbols-outlined text-5xl text-primary/30 block">
-              warehouse
-            </span>
-            <p className="text-on-surface-variant font-medium text-sm">
-              لا توجد مراكز تطابق بحثك
-            </p>
-            <button
-              onClick={() => { setSearch(""); setCity("الكل"); }}
-              className="text-primary text-sm font-bold hover:underline"
-            >
-              مسح الفلاتر
-            </button>
-          </div>
-        )}
-
-        {/* ── شبكة البطاقات ── */}
-        {!loading && !error && hubs.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-            {hubs.map((hub) => (
+          <div className="grid gap-4 md:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
               <div
-                key={hub._id}
-                className="bg-white rounded-2xl border border-[#edeeef] shadow-[0_4px_20px_rgba(0,97,85,0.06)] p-5 flex flex-col gap-4 hover:shadow-[0_8px_28px_rgba(0,97,85,0.1)] transition-shadow"
+                key={i}
+                className="animate-pulse rounded-2xl border border-black/[0.06]
+                           bg-white p-5 shadow-sm"
               >
-                {/* رأس البطاقة */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-primary text-xl">
-                        warehouse
-                      </span>
-                    </div>
-                    <div>
-                      <h2 className="font-extrabold text-sm leading-tight">{hub.name}</h2>
-                      <p className="text-xs text-on-surface-variant">{hub.city}</p>
-                    </div>
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 shrink-0 rounded-xl bg-gray-100" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-2/5 rounded-lg bg-gray-100" />
+                    <div className="h-3 w-3/5 rounded-lg bg-gray-100" />
+                    <div className="h-3 w-4/5 rounded-lg bg-gray-100" />
                   </div>
-                  {/* badge نشط */}
-                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full shrink-0">
-                    نشط
-                  </span>
                 </div>
-
-                {/* العنوان */}
-                <div className="flex items-start gap-2 text-xs text-on-surface-variant">
-                  <span className="material-symbols-outlined text-base text-primary/50 mt-0.5 shrink-0">
-                    location_on
-                  </span>
-                  <span>{hub.address}</span>
-                </div>
-
-                {/* ساعات العمل */}
-                <div className="flex items-center gap-2 text-xs text-on-surface-variant">
-                  <span className="material-symbols-outlined text-base text-primary/50 shrink-0">
-                    schedule
-                  </span>
-                  <span>{hub.workingHours}</span>
-                </div>
-
-                {/* زر Google Maps */}
-                <a
-                  href={mapsUrl(hub.address, hub.city)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-auto flex items-center justify-center gap-2 bg-primary/5 hover:bg-primary/10 text-primary font-bold text-xs rounded-xl py-2.5 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-base">open_in_new</span>
-                  افتح في خرائط Google
-                </a>
               </div>
             ))}
           </div>
         )}
 
-        {/* عدد النتائج */}
-        {!loading && !error && hubs.length > 0 && (
-          <p className="text-center text-xs text-on-surface-variant mt-6">
-            {hubs.length} مركز متاح
-          </p>
+        {/* ── Grid ────────────────────────────────────────────── */}
+        {!loading && hubs.length > 0 && (
+          <div className="grid gap-4 md:grid-cols-2">
+            {hubs.map((hub: {
+              _id: string;
+              name: string;
+              city?: string;
+              address?: string;
+              phone?: string;
+              workingHours?: string;
+              isActive?: boolean;
+            }) => (
+              <div
+                key={hub._id}
+                className="group relative overflow-hidden rounded-2xl border
+                           border-black/[0.06] bg-white p-5 shadow-sm
+                           transition-all duration-200 hover:shadow-md
+                           hover:shadow-black/[0.06]"
+              >
+                {/* خلفية تدرج خفيف */}
+                <div
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-l
+                             from-primary/[0.03] to-transparent opacity-0
+                             transition-opacity duration-300 group-hover:opacity-100"
+                />
+
+                <div className="relative flex items-start gap-4">
+                  {/* أيقونة المركز */}
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center
+                               rounded-xl bg-primary/[0.08] transition-colors
+                               duration-200 group-hover:bg-primary/[0.14]"
+                  >
+                    <span
+                      className="material-symbols-outlined text-[24px] text-primary"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      warehouse
+                    </span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="text-[15px] font-black text-gray-900">
+                        {hub.name}
+                      </h2>
+                      {hub.isActive !== undefined && (
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px]
+                                      font-black
+                                      ${hub.isActive
+                                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                        : "bg-gray-100 text-gray-400 border border-gray-200"
+                                      }`}
+                        >
+                          {hub.isActive ? "نشط" : "مغلق"}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5 space-y-1.5">
+                      {hub.city && (
+                        <div className="flex items-center gap-2 text-[12px] text-gray-500">
+                          <span className="material-symbols-outlined text-[15px] text-primary">
+                            location_on
+                          </span>
+                          {hub.city}
+                          {hub.address && ` — ${hub.address}`}
+                        </div>
+                      )}
+                      {hub.phone && (
+                        <div className="flex items-center gap-2 text-[12px] text-gray-500">
+                          <span className="material-symbols-outlined text-[15px] text-primary">
+                            phone
+                          </span>
+                          <span dir="ltr">{hub.phone}</span>
+                        </div>
+                      )}
+                      {hub.workingHours && (
+                        <div className="flex items-center gap-2 text-[12px] text-gray-500">
+                          <span className="material-symbols-outlined text-[15px] text-primary">
+                            schedule
+                          </span>
+                          {hub.workingHours}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
+        {/* ── Empty State ─────────────────────────────────────── */}
+        {!loading && hubs.length === 0 && (
+          <div
+            className="flex flex-col items-center justify-center rounded-2xl
+                       border border-dashed border-gray-200 bg-white py-16 text-center"
+          >
+            <div className="mb-4 flex h-14 w-14 items-center justify-center
+                            rounded-2xl bg-gray-50">
+              <span
+                className="material-symbols-outlined text-[30px] text-gray-300"
+                style={{ fontVariationSettings: "'FILL' 0" }}
+              >
+                warehouse
+              </span>
+            </div>
+            <p className="text-[15px] font-black text-gray-700">
+              لا توجد مراكز تسليم متاحة حالياً
+            </p>
+            <p className="mt-1 text-[13px] text-gray-400">
+              يتم إضافة المراكز من لوحة الإدارة
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );

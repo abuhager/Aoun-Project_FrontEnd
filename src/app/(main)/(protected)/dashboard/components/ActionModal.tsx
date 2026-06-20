@@ -1,3 +1,5 @@
+// src/app/(main)/(protected)/dashboard/components/ActionModal.tsx  ✅ REDESIGNED
+
 interface ActionModalProps {
   message: string;
   onConfirm: () => void;
@@ -7,30 +9,66 @@ interface ActionModalProps {
 }
 
 export function ActionModal({
-  message, onConfirm, onCancel,
-  confirmText = "تأكيد", isDanger = false,
+  message,
+  onConfirm,
+  onCancel,
+  confirmText = "تأكيد",
+  isDanger = false,
 }: ActionModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 border border-gray-100">
-        <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center mx-auto">
-          <span className="material-symbols-outlined text-orange-500">warning</span>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center
+                 bg-black/40 p-4 backdrop-blur-sm"
+      dir="rtl"
+    >
+      <div
+        className="w-full max-w-sm overflow-hidden rounded-2xl border
+                   border-black/[0.07] bg-white shadow-2xl shadow-black/[0.15]"
+      >
+        {/* أيقونة التحذير */}
+        <div className="flex justify-center px-6 pt-6 pb-4">
+          <div
+            className={`flex h-12 w-12 items-center justify-center rounded-2xl
+                        ${isDanger ? "bg-red-50" : "bg-orange-50"}`}
+          >
+            <span
+              className={`material-symbols-outlined text-[26px]
+                          ${isDanger ? "text-red-500" : "text-orange-500"}`}
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              {isDanger ? "delete_forever" : "warning"}
+            </span>
+          </div>
         </div>
-        <p className="text-sm font-bold text-[#191c1d] leading-relaxed text-center whitespace-pre-line">
+
+        {/* الرسالة */}
+        <p
+          className="px-6 pb-6 text-center text-sm font-bold
+                     leading-relaxed text-gray-700 whitespace-pre-line"
+        >
           {message}
         </p>
-        <div className="flex gap-3">
-          <button
-            onClick={onConfirm}
-            className={`flex-1 ${isDanger ? "bg-red-500" : "bg-primary"} text-white py-3 rounded-2xl font-black text-xs hover:opacity-90 transition-all`}
-          >
-            {confirmText}
-          </button>
+
+        {/* الأزرار */}
+        <div className="flex gap-2 border-t border-black/[0.06] p-4">
           <button
             onClick={onCancel}
-            className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-2xl font-black text-xs hover:bg-gray-200 transition-all"
+            className="flex-1 rounded-xl bg-gray-100 py-2.5 text-sm
+                       font-black text-gray-600 transition-all duration-150
+                       hover:bg-gray-200 active:scale-95"
           >
             تراجع
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 rounded-xl py-2.5 text-sm font-black text-white
+                        shadow-md transition-all duration-150 active:scale-95
+                        ${isDanger
+                          ? "bg-red-500 shadow-red-500/25 hover:bg-red-600 hover:shadow-red-500/35"
+                          : "bg-primary shadow-primary/20 hover:bg-primary/90 hover:shadow-primary/30"
+                        }`}
+          >
+            {confirmText}
           </button>
         </div>
       </div>

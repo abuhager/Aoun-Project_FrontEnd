@@ -103,61 +103,82 @@ export default function AdminItemsPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
+      {/* Toast */}
       {toast && (
-  <div
-    className={`fixed top-20 md:top-24 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white transition-all ${
-      toast.ok ? "bg-green-500" : "bg-red-500"
-    }`}
-  >
-    {toast.msg}
-  </div>
-)}
+        <div
+          className={`fixed left-1/2 top-20 z-[60] -translate-x-1/2 rounded-2xl px-6 py-3 text-sm font-black text-white shadow-[0_20px_40px_rgba(15,23,42,0.16)] transition-all ${
+            toast.ok ? "bg-green-500" : "bg-red-500"
+          }`}
+        >
+          {toast.msg}
+        </div>
+      )}
 
+      {/* Delete Modal */}
       {pendingDelete && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 backdrop-blur-sm"
           onClick={() => setPendingDelete(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 space-y-4"
+            className="w-full max-w-md rounded-[30px] border border-white/30 bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.18)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-base font-black text-gray-800">تأكيد حذف الغرض</h2>
+            <div className="mb-5 flex items-start gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                <span className="material-symbols-outlined text-[22px]">
+                  delete
+                </span>
+              </div>
 
-            <p className="text-[13px] text-gray-500 leading-6">
-              الغرض: <span className="font-bold text-gray-800">{pendingDelete.title}</span>
-              {pendingDelete.donorName ? (
-                <>
-                  <br />
-                  صاحب الغرض:{" "}
-                  <span className="font-bold text-gray-800">{pendingDelete.donorName}</span>
-                </>
-              ) : null}
-            </p>
+              <div>
+                <h2 className="text-base font-black text-[#1f312f]">
+                  تأكيد حذف الغرض
+                </h2>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-gray-500">
+                <p className="mt-1 text-sm leading-6 text-[#7c766f]">
+                  الغرض:{" "}
+                  <span className="font-black text-[#263735]">
+                    {pendingDelete.title}
+                  </span>
+                </p>
+
+                {pendingDelete.donorName ? (
+                  <p className="text-sm leading-6 text-[#7c766f]">
+                    صاحب الغرض:{" "}
+                    <span className="font-bold text-[#263735]">
+                      {pendingDelete.donorName}
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-[#8a837b]">
                 تعليق الحذف <span className="text-red-500">*</span>
               </label>
+
               <textarea
-                rows={3}
+                rows={4}
                 value={deleteNote}
                 onChange={(e) => setDeleteNote(e.target.value)}
                 placeholder="اكتب سبب حذف الغرض..."
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-[13px] focus:outline-none focus:border-primary resize-none"
+                className="w-full rounded-2xl border border-[#e7e1d8] bg-[#fcfaf7] px-4 py-3 text-sm text-[#24302f] outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary resize-none"
               />
             </div>
 
-            <div className="flex gap-2 pt-1">
+            <div className="mt-5 flex gap-3">
               <button
                 onClick={confirmDelete}
-                className="flex-1 py-2.5 rounded-xl text-[13px] font-black bg-red-600 hover:bg-red-700 text-white transition-all"
+                className="flex-1 rounded-2xl bg-red-600 py-3 text-sm font-black text-white transition-all duration-300 hover:bg-red-700"
               >
                 تأكيد الحذف
               </button>
+
               <button
                 onClick={() => setPendingDelete(null)}
-                className="flex-1 py-2.5 rounded-xl text-[13px] font-black bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all"
+                className="flex-1 rounded-2xl bg-[#f3f0ea] py-3 text-sm font-black text-[#5f5a54] transition-all duration-300 hover:bg-[#eae5dd]"
               >
                 إلغاء
               </button>
@@ -166,134 +187,214 @@ export default function AdminItemsPage() {
         </div>
       )}
 
-      <h1 className="text-xl font-black mb-6 flex items-center gap-2">
-        <span className="material-symbols-outlined text-primary">inventory_2</span>
-        الأغراض
-      </h1>
+      {/* Header */}
+      <section className="rounded-[30px] border border-[#e7e1d8] bg-[linear-gradient(180deg,#fffdfa_0%,#f7f4ee_100%)] p-6 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/5 px-3 py-1.5 text-[11px] font-extrabold text-primary">
+              <span className="material-symbols-outlined text-[15px]">
+                inventory_2
+              </span>
+              إدارة الأغراض
+            </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 text-[11px] text-gray-400 font-bold uppercase tracking-wider">
-              <th className="text-right p-4">الغرض</th>
-              <th className="text-right p-4">التصنيف</th>
-              <th className="text-right p-4">المتبرع</th>
-              <th className="text-right p-4">الحالة</th>
-              <th className="text-right p-4">التاريخ</th>
-              <th className="p-4" />
-            </tr>
-          </thead>
+            <h1 className="text-2xl font-black tracking-tight text-[#1f312f]">
+              الأغراض
+            </h1>
 
-          <tbody>
-            {loading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i} className="border-b border-gray-50">
-                  {Array.from({ length: 6 }).map((_, j) => (
-                    <td key={j} className="p-4">
-                      <div className="h-4 bg-gray-100 rounded animate-pulse" />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="text-center py-16 text-gray-400">
-                  <span className="material-symbols-outlined text-4xl block mb-2">
-                    inventory_2
-                  </span>
-                  لا توجد أغراض
-                </td>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-[#7a746d]">
+              مراجعة العناصر المنشورة، التحقق من أصحابها، ومتابعة حالتها من واجهة
+              مرتبة ومناسبة للإدارة اليومية.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              { icon: "inventory", label: "إدارة مباشرة" },
+              { icon: "image", label: "معاينة أوضح" },
+              { icon: "schedule", label: "متابعة زمنية" },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="inline-flex items-center gap-2 rounded-2xl border border-[#ece6de] bg-white px-3.5 py-2 text-xs font-bold text-[#5f5a54] shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[16px] text-primary">
+                  {item.icon}
+                </span>
+                {item.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Table Shell */}
+      <section className="overflow-hidden rounded-[28px] border border-[#e8e2d9] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+        <div className="flex items-center justify-between border-b border-[#f0ebe4] bg-[#faf8f4] px-5 py-4">
+          <div>
+            <h2 className="text-sm font-black text-[#233433]">قائمة الأغراض</h2>
+            <p className="mt-1 text-xs text-[#8a837a]">
+              جميع العناصر المنشورة ضمن صفحة إدارة الأدمن
+            </p>
+          </div>
+
+          <div className="rounded-full border border-[#e9e3db] bg-white px-3 py-1 text-[11px] font-extrabold text-[#8e877f]">
+            الصفحة {page} من {pages}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[920px] text-sm">
+            <thead className="bg-white">
+              <tr className="border-b border-[#f0ebe4] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#a39b92]">
+                <th className="p-4 text-right">الغرض</th>
+                <th className="p-4 text-right">التصنيف</th>
+                <th className="p-4 text-right">المتبرع</th>
+                <th className="p-4 text-right">الحالة</th>
+                <th className="p-4 text-right">التاريخ</th>
+                <th className="p-4 text-right">إجراء</th>
               </tr>
-            ) : (
-              items.map((item) => {
-                const imageUrl = getImage(item);
+            </thead>
 
-                return (
-                  <tr
-                    key={item._id}
-                    className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
-                  >
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
-                          {imageUrl ? (
-                            <Image
-                              src={imageUrl}
-                              alt={item.title}
-                              width={40}
-                              height={40}
-                              className="object-cover w-full h-full"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="material-symbols-outlined text-gray-300 text-lg">
-                                image
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <span className="font-bold text-[13px] line-clamp-1">
-                          {item.title}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="p-4 text-gray-500 text-[12px]">{item.category}</td>
-
-                    <td className="p-4">
-                      <div>
-                        <p className="font-bold text-[12px]">{item.donor?.name ?? "—"}</p>
-                        <p className="text-[11px] text-gray-400">
-                          {item.donor?.email ?? ""}
-                        </p>
-                      </div>
-                    </td>
-
-                    <td className="p-4">
-                      <span
-                        className={`px-2 py-1 rounded-lg text-[10px] font-black ${
-                          item.status === "تم التسليم"
-                            ? "bg-green-50 text-green-600"
-                            : item.status === "محجوز"
-                            ? "bg-blue-50 text-blue-600"
-                            : "bg-yellow-50 text-yellow-600"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-
-                    <td className="p-4 text-[11px] text-gray-400">
-                      {new Date(item.createdAt).toLocaleDateString("ar-EG")}
-                    </td>
-
-                    <td className="p-4">
-                      <button
-                        onClick={() => openDeleteModal(item)}
-                        disabled={busy[item._id]}
-                        className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-[11px] font-black hover:bg-red-100 disabled:opacity-50 transition-all"
-                      >
-                        {busy[item._id] ? "جاري الحذف..." : "حذف"}
-                      </button>
-                    </td>
+            <tbody>
+              {loading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className="border-b border-[#f5f1eb]">
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <td key={j} className="p-4">
+                        <div className="h-4 animate-pulse rounded-full bg-[#f1ece5]" />
+                      </td>
+                    ))}
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                ))
+              ) : items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-20 text-center">
+                    <div className="flex flex-col items-center justify-center text-[#b3aba1]">
+                      <span className="material-symbols-outlined mb-3 text-5xl">
+                        inventory_2
+                      </span>
+                      <p className="text-base font-black text-[#7b756d]">
+                        لا توجد أغراض
+                      </p>
+                      <p className="mt-1 text-sm text-[#a39b92]">
+                        لا يوجد عناصر معروضة حاليًا في هذه الصفحة.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                items.map((item) => {
+                  const imageUrl = getImage(item);
 
+                  return (
+                    <tr
+                      key={item._id}
+                      className="border-b border-[#f5f1eb] transition-colors hover:bg-[#fcfaf7]"
+                    >
+                      {/* Item */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#f2eee7]">
+                            {imageUrl ? (
+                              <Image
+                                src={imageUrl}
+                                alt={item.title}
+                                width={48}
+                                height={48}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center">
+                                <span className="material-symbols-outlined text-lg text-[#b8b0a7]">
+                                  image
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="line-clamp-1 text-sm font-black text-[#223433]">
+                              {item.title}
+                            </p>
+                            <p className="mt-1 text-xs text-[#9b948c]">
+                              {imageUrl ? "صورة متوفرة" : "بدون صورة"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Category */}
+                      <td className="p-4">
+                        <span className="rounded-xl bg-[#f4f1eb] px-2.5 py-1 text-[11px] font-black text-[#746e67]">
+                          {item.category}
+                        </span>
+                      </td>
+
+                      {/* Donor */}
+                      <td className="p-4">
+                        <div>
+                          <p className="text-sm font-bold text-[#223433]">
+                            {item.donor?.name ?? "—"}
+                          </p>
+                          <p className="text-xs text-[#9b948c]">
+                            {item.donor?.email ?? ""}
+                          </p>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="p-4">
+                        <span
+                          className={`rounded-xl px-2.5 py-1 text-[11px] font-black ${
+                            item.status === "تم التسليم"
+                              ? "bg-green-50 text-green-600"
+                              : item.status === "محجوز"
+                              ? "bg-blue-50 text-blue-600"
+                              : "bg-yellow-50 text-yellow-700"
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+
+                      {/* Date */}
+                      <td className="p-4">
+                        <span className="text-xs font-medium text-[#8f877f]">
+                          {new Date(item.createdAt).toLocaleDateString("ar-EG")}
+                        </span>
+                      </td>
+
+                      {/* Action */}
+                      <td className="p-4">
+                        <button
+                          onClick={() => openDeleteModal(item)}
+                          disabled={busy[item._id]}
+                          className="rounded-xl bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition-all duration-300 hover:bg-red-100 disabled:opacity-50"
+                        >
+                          {busy[item._id] ? "جاري الحذف..." : "حذف"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Pagination */}
       {pages > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
             <button
               key={p}
               onClick={() => setPage(p)}
-              className={`w-9 h-9 rounded-xl text-sm font-bold transition-colors ${
+              className={`h-10 min-w-10 rounded-2xl px-3 text-sm font-black transition-all ${
                 page === p
-                  ? "bg-primary text-white"
-                  : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
+                  ? "bg-primary text-white shadow-[0_10px_20px_rgba(1,105,111,0.18)]"
+                  : "border border-[#e5dfd6] bg-white text-[#746e67] hover:bg-[#faf8f4]"
               }`}
             >
               {p}

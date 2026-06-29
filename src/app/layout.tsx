@@ -19,25 +19,39 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "منصة عون | للتكافل الاجتماعي",
-  description: "منصة مفتوحة لتبادل الأغراض مجاناً",
+  title: {
+    default: "منصة عون | للتكافل الاجتماعي",
+    template: "%s | منصة عون",
+  },
+  description: "منصة مفتوحة للتكافل الاجتماعي وتبادل الأغراض والخدمات مجاناً.",
+  applicationName: "Aoun Platform",
+  keywords: [
+    "عون",
+    "منصة عون",
+    "التكافل الاجتماعي",
+    "التبرع",
+    "تبادل الأغراض",
+    "الخدمات المجانية",
+  ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" className={`${cairo.variable} ${tajawal.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className={`${cairo.variable} ${tajawal.variable} bg-surface min-h-screen flex flex-col`}>
+
+      <body className="bg-surface min-h-screen text-on-surface antialiased">
         <AuthProvider>
           <GlobalRatingModal />
-          <main className="flex-grow">
+          <main className="flex min-h-screen flex-col">
             {children}
           </main>
         </AuthProvider>

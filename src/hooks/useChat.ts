@@ -2,8 +2,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth }   from '@/context/AuthContext';
 import { useSocket } from './useSocket';
-import axiosInstance from '@/lib/api/axiosInstance'; // ✅ FL13-03
+import axiosInstance from '@/lib/api/axiosInstance';
 import type { ChatMessage, ConversationInfo } from '@/types/chat.types';
+
+// تعديل واجهة الاستجابة لتشمل الرسائل القادمة من الباكيند
+interface ConversationResponse extends ConversationInfo {
+  messages?: ChatMessage[];
+}
 
 export function useChat(itemId: string, isOpen = false) {
   const { user, isLoggedIn } = useAuth();
@@ -23,13 +28,23 @@ export function useChat(itemId: string, isOpen = false) {
     if (!isOpenRef.current || !itemId || !user?._id || !isLoggedIn) return;
     setLoading(true);
     try {
-      // ✅ FL13-03: axiosInstance يتولى Authorization + Refresh تلقائياً
-      const { data } = await axiosInstance.post<ConversationInfo>(
+      // ضرب الـ API لجلب أو فتح المحادثة (الباكيند المطور يرجع كائن المحادثة كامل)
+      const { data } = await axiosInstance.post<ConversationResponse>(
         '/api/conversations',
         { itemId }
       );
+      
       convIdRef.current = data._id;
-      setConvInfo(data);
+      setConvInfo({ _id: data._id, item: data.item });
+
+      // 🔥 [الإصلاح السحري]: حقن الرسائل القديمة (التاريخية) القادمة من الداتابيز فوراً في الـ State
+      if (data.messages && Array.isArray(data.messages)) {
+        setMessages(data.messages);
+      } else {
+        setMessages([]);
+      }
+
+      // إخطار السوكيت بالانضمام للغرفة التاريخية الصحيحة للمحادثة
       socketRef.current?.emit('joinConversation', { itemId, convId: data._id });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -50,8 +65,11 @@ export function useChat(itemId: string, isOpen = false) {
     if (!text.trim() || !convIdRef.current || sending) return;
     const tempId = `temp-${Date.now()}`;
     const tempMsg: ChatMessage = {
-      _id: tempId, sender: user?._id ?? '',
-      text: text.trim(), createdAt: new Date().toISOString(), read: false,
+      _id: tempId, 
+      sender: user?._id ?? '', // سيتم عرضها كـ "أنت" في الشاشة بناءً على المقارنة
+      text: text.trim(), 
+      createdAt: new Date().toISOString(), 
+      read: false,
     };
     setMessages((p) => [...p, tempMsg]);
     setText('');

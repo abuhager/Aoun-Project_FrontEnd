@@ -1,7 +1,7 @@
-// src/components/ConversationsDrawer.tsx — ✅ FINAL CLEAN VERSION
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/api/axiosInstance";
 import ChatDrawer from "@/components/ChatDrawer";
@@ -51,17 +51,16 @@ export default function ConversationsDrawer({
     onUnreadCountChange?.(unreadTotal);
   }, [unreadTotal, onUnreadCountChange]);
 
-  // ✅ [FIX]: تغليف الدالة بـ useCallback لتسهيل استدعائها عند إغلاق الشات
   const fetchConversations = useCallback((cancelledRef = { current: false }) => {
     axiosInstance
       .get<Conversation[]>("/api/conversations")
       .then((r) => {
         if (cancelledRef.current) return;
 
-        // التحقق من وجود مغلف البيانات المعتاد في الـ API الاستجابة (r.data.data)
-        const rawData = r.data && typeof r.data === 'object' && 'data' in r.data 
-          ? (r.data as Record<string, unknown>).data 
-          : r.data;
+        const rawData =
+          r.data && typeof r.data === "object" && "data" in r.data
+            ? (r.data as Record<string, unknown>).data
+            : r.data;
 
         const data = Array.isArray(rawData) ? rawData : [];
         setConversations(data);
@@ -86,7 +85,6 @@ export default function ConversationsDrawer({
     };
   }, [isOpen, fetchConversations]);
 
-  // ✅ [FIX]: وضع معالجة وقراءة لعداد الرسائل بشكل آمن وتحديث حالة القراءة في السيرفر
   const openConversation = async (conv: Conversation) => {
     setSelected(conv);
 
@@ -99,7 +97,6 @@ export default function ConversationsDrawer({
         await axiosInstance.put(`/api/conversations/${conv._id}/read`);
       } catch (err) {
         console.error("mark conversation as read error", err);
-        // Rollback عند الفشل
         setConversations((prev) =>
           prev.map((c) => (c._id === conv._id ? { ...c, unread: conv.unread } : c))
         );
@@ -107,7 +104,6 @@ export default function ConversationsDrawer({
     }
   };
 
-  // ✅ [FIX]: عند إغلاق الشات، نعود للقائمة وننعش البيانات فوراً ليعكس العداد التغيير اللحظي
   if (selected) {
     return (
       <ChatDrawer
@@ -116,7 +112,7 @@ export default function ConversationsDrawer({
         isOpen={true}
         onClose={() => {
           setSelected(null);
-          fetchConversations(); // تضمن كنس وتحديث العداد مباشرة بعد إغلاق شاشة المراسلة
+          fetchConversations();
         }}
       />
     );
@@ -128,88 +124,118 @@ export default function ConversationsDrawer({
   const isEmpty = hasFetched && conversations.length === 0;
 
   return (
-    <div className="fixed inset-0 z-110" dir="rtl">
+    <div className="fixed inset-0 z-[110]" dir="rtl">
       <div
-        className="absolute inset-0 bg-black/35 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#0f1720]/45 backdrop-blur-[3px] transition-opacity duration-300"
         onClick={onClose}
       />
 
-      <aside className="fixed top-0 right-0 left-auto z-111 h-dvh w-full max-w-md border-l border-gray-100 bg-white shadow-2xl flex flex-col">
+      <aside className="fixed inset-y-0 right-0 z-[111] flex h-dvh w-full max-w-md flex-col overflow-hidden border-l border-black/[0.06] bg-[#fcfbf8] shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
         {/* Header */}
-        <div className="shrink-0 border-b border-gray-100 bg-white px-4 py-4">
-          <div className="flex items-center justify-between gap-3">
+        <div className="relative shrink-0 border-b border-[#ece7de] bg-white/95 px-4 py-4 backdrop-blur-xl">
+          <div className="absolute left-0 top-0 h-24 w-24 -translate-x-1/3 -translate-y-1/3 rounded-full bg-primary/10 blur-2xl" />
+
+          <div className="relative flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="text-base font-black text-gray-800">الرسائل</h2>
-              <p className="mt-0.5 text-xs text-gray-400">
+              <div className="mb-1 inline-flex items-center gap-1 rounded-full border border-primary/10 bg-primary/5 px-2.5 py-1 text-[10px] font-black text-primary">
+                <span className="material-symbols-outlined text-[13px]">mail</span>
+                صندوق المحادثات
+              </div>
+
+              <h2 className="text-base font-black text-[#1c2324]">الرسائل</h2>
+              <p className="mt-0.5 text-xs font-semibold text-[#8b847c]">
                 جميع المحادثات الخاصة بك
               </p>
             </div>
 
-            <button
-              onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100"
-              aria-label="إغلاق"
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[22px]">
-                close
-              </span>
-            </button>
+            <div className="flex items-center gap-2">
+              {unreadTotal > 0 && (
+                <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-primary px-2 text-[11px] font-black text-white shadow-sm">
+                  {unreadTotal > 99 ? "99+" : unreadTotal}
+                </span>
+              )}
+
+              <button
+                onClick={onClose}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-[#6f6a63] transition-all duration-300 hover:bg-[#f2eee8] hover:text-[#1f2526]"
+                aria-label="إغلاق"
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[22px]">close</span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[linear-gradient(180deg,#f7f5f0_0%,#f8f6f2_100%)]">
           {isLoading ? (
             <div className="space-y-2 p-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-3 py-3"
+                  className="rounded-[22px] border border-[#ece7de] bg-white px-3 py-3 shadow-sm"
                 >
-                  <div className="h-11 w-11 shrink-0 rounded-full bg-gray-200 animate-pulse" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3 w-3/4 rounded bg-gray-200 animate-pulse" />
-                    <div className="h-2 w-1/2 rounded bg-gray-100 animate-pulse" />
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-[#ebe5dd]" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="h-3 w-3/4 animate-pulse rounded-full bg-[#e7e1d9]" />
+                      <div className="h-2.5 w-1/2 animate-pulse rounded-full bg-[#f2ede6]" />
+                    </div>
+                    <div className="h-5 w-8 animate-pulse rounded-full bg-[#e8f5f3]" />
                   </div>
                 </div>
               ))}
             </div>
           ) : isEmpty ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-gray-400">
-              <span className="material-symbols-outlined text-5xl">
-                chat_bubble_outline
-              </span>
-              <p className="text-sm font-bold text-gray-600">
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary shadow-sm">
+                <span className="material-symbols-outlined text-3xl">
+                  chat_bubble_outline
+                </span>
+              </div>
+              <p className="mt-4 text-sm font-black text-[#243132]">
                 لا توجد محادثات بعد
               </p>
-              <p className="max-w-55 text-xs leading-6 text-gray-400">
-                عند حجز أي غرض أو بدء محادثة جديدة ستظهر هنا مباشرة
+              <p className="mt-2 max-w-[18rem] text-xs leading-6 text-[#8a837b]">
+                عند حجز أي غرض أو بدء محادثة جديدة ستظهر هنا مباشرة بشكل منظم وواضح.
               </p>
             </div>
           ) : (
             <div className="space-y-2 p-3">
               {conversations.map((conv) => {
-                const other = conv.participants.find(
-                  (p) => p._id !== user?._id
-                );
+                const other = conv.participants.find((p) => p._id !== user?._id);
+                const hasUnread = conv.unread > 0;
 
                 return (
                   <button
                     key={conv._id}
                     onClick={() => openConversation(conv)}
-                    className="w-full rounded-2xl border border-gray-100 bg-white px-3 py-3 text-right shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+                    className={`group w-full rounded-[22px] border px-3 py-3 text-right shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
+                      hasUnread
+                        ? "border-primary/15 bg-[#f8fffd]"
+                        : "border-[#ece7de] bg-white hover:bg-[#fcfbf8]"
+                    }`}
                     type="button"
                   >
                     <div className="flex items-center gap-3">
-                      {/* Avatar */}
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+                      {/* Avatar / item image */}
+                      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 ring-1 ring-black/[0.04]">
                         {other?.avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <Image
                             src={other.avatar}
                             alt={other.name}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        ) : conv.item?.imageUrl ? (
+                          <Image
+                            src={conv.item.imageUrl}
+                            alt={conv.item?.title || "غرض"}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
                           />
                         ) : (
                           <span
@@ -224,19 +250,42 @@ export default function ConversationsDrawer({
                       {/* Text */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-black text-gray-800">
+                          <p
+                            className={`truncate text-sm font-black ${
+                              hasUnread ? "text-[#163637]" : "text-[#1c2324]"
+                            }`}
+                          >
                             {conv.item?.title || "غرض غير متاح"}
                           </p>
 
-                          {conv.unread > 0 && (
-                            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-white">
-                              {conv.unread > 9 ? "9+" : conv.unread}
-                            </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {hasUnread && (
+                              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-white">
+                                {conv.unread > 9 ? "9+" : conv.unread}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-1 flex items-center gap-2">
+                          <p
+                            className={`truncate text-xs ${
+                              hasUnread ? "font-bold text-[#5f6d67]" : "text-[#9b948c]"
+                            }`}
+                          >
+                            {other?.name || "مستخدم عون"}
+                          </p>
+
+                          {hasUnread && (
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                           )}
                         </div>
 
-                        <p className="mt-1 truncate text-xs text-gray-400">
-                          {other?.name || "مستخدم عون"}
+                        <p className="mt-1 text-[10px] font-semibold text-[#b0a89f]">
+                          {new Date(conv.lastActivity).toLocaleDateString("ar-JO", {
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </p>
                       </div>
                     </div>

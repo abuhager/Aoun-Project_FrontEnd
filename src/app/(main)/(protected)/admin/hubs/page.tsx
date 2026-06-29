@@ -3,9 +3,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useToast }        from "@/hooks/useToast";
-import type { SafeHub }    from "@/types/hub.types";
-// ✅ BUG-02: استيراد من طبقة hubApi بدل axiosInstance مباشرةً
+import { useToast } from "@/hooks/useToast";
+import type { SafeHub } from "@/types/hub.types";
 import {
   getAllHubsAdmin,
   createHub,
@@ -14,9 +13,6 @@ import {
   reactivateHub,
 } from "@/lib/api/hubApi";
 
-// ✅ SEC-03: حُذف JORDAN_CITIES الـ hardcoded — المدن تُستخرج من البيانات الفعلية
-
-// ── helper لاستخراج رسالة الخطأ من Axios ────────────────────────────────────
 function extractErrorMsg(err: unknown, fallback: string): string {
   if (err && typeof err === "object" && "response" in err) {
     const e = err as { response?: { data?: { msg?: string; message?: string } } };
@@ -26,30 +22,32 @@ function extractErrorMsg(err: unknown, fallback: string): string {
 }
 
 const EMPTY_FORM = {
-  name: "", address: "", city: "", workingHours: "9:00 ص — 5:00 م",
-  lat: "", lng: "",
+  name: "",
+  address: "",
+  city: "",
+  workingHours: "9:00 ص — 5:00 م",
+  lat: "",
+  lng: "",
 };
 
 export default function AdminHubsPage() {
-  const [hubs,    setHubs]    = useState<SafeHub[]>([]);
+  const [hubs, setHubs] = useState<SafeHub[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busy,    setBusy]    = useState<Record<string, boolean>>({});
-  const [filter,  setFilter]  = useState<"all" | "active" | "inactive">("all");
-  const [search,  setSearch]  = useState("");
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
+  const [search, setSearch] = useState("");
 
-  const [modal,       setModal]      = useState<"closed" | "add" | "edit">("closed");
-  const [editTarget,  setEditTarget] = useState<SafeHub | null>(null);
-  const [form,        setForm]       = useState(EMPTY_FORM);
-  const [formBusy,    setFormBusy]   = useState(false);
-  const [formErrors,  setFormErrors] = useState<string[]>([]);
+  const [modal, setModal] = useState<"closed" | "add" | "edit">("closed");
+  const [editTarget, setEditTarget] = useState<SafeHub | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formBusy, setFormBusy] = useState(false);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
 
   const { show: showToast, ToastComponent } = useToast();
 
-  // ── تحميل البيانات ──────────────────────────────────────────────────────────
   const loadHubs = useCallback(async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
-      // ✅ BUG-02: بدل axiosInstance.get("/api/hubs/admin/all")
       const data = await getAllHubsAdmin();
       setHubs(data);
     } catch {
@@ -59,19 +57,18 @@ export default function AdminHubsPage() {
     }
   }, [showToast]);
 
-  useEffect(() => { loadHubs(); }, [loadHubs]);
+  useEffect(() => {
+    loadHubs();
+  }, [loadHubs]);
 
-  // ✅ SEC-03: المدن مستخرجة ديناميكياً من البيانات — لا JORDAN_CITIES hardcoded
   const availableCities = useMemo(
     () => [...new Set(hubs.map((h) => h.city))].sort(),
     [hubs]
   );
 
-  // ── فلترة العرض ─────────────────────────────────────────────────────────────
   const visible = hubs.filter((h) => {
     const matchFilter =
-      filter === "all"      ? true :
-      filter === "active"   ? h.isActive : !h.isActive;
+      filter === "all" ? true : filter === "active" ? h.isActive : !h.isActive;
     const matchSearch =
       h.name.includes(search) ||
       h.city.includes(search) ||
@@ -79,7 +76,6 @@ export default function AdminHubsPage() {
     return matchFilter && matchSearch;
   });
 
-  // ── فتح Modal الإضافة ────────────────────────────────────────────────────────
   const openAdd = () => {
     setForm(EMPTY_FORM);
     setFormErrors([]);
@@ -87,37 +83,37 @@ export default function AdminHubsPage() {
     setModal("add");
   };
 
-  // ── فتح Modal التعديل ────────────────────────────────────────────────────────
   const openEdit = (hub: SafeHub) => {
     setForm({
-      name:         hub.name,
-      address:      hub.address,
-      city:         hub.city,
+      name: hub.name,
+      address: hub.address,
+      city: hub.city,
       workingHours: hub.workingHours,
-      lat:          hub.coordinates?.lat?.toString() ?? "",
-      lng:          hub.coordinates?.lng?.toString() ?? "",
+      lat: hub.coordinates?.lat?.toString() ?? "",
+      lng: hub.coordinates?.lng?.toString() ?? "",
     });
     setFormErrors([]);
     setEditTarget(hub);
     setModal("edit");
   };
 
-  // ── حفظ النموذج (إضافة أو تعديل) ───────────────────────────────────────────
   const saveForm = async () => {
-    // Validation محلي سريع
     const errors: string[] = [];
-    if (!form.name.trim())    errors.push("اسم المركز مطلوب");
+    if (!form.name.trim()) errors.push("اسم المركز مطلوب");
     if (!form.address.trim()) errors.push("العنوان مطلوب");
-    if (!form.city.trim())    errors.push("المدينة مطلوبة");
-    if (errors.length) { setFormErrors(errors); return; }
+    if (!form.city.trim()) errors.push("المدينة مطلوبة");
+    if (errors.length) {
+      setFormErrors(errors);
+      return;
+    }
 
     setFormBusy(true);
     setFormErrors([]);
 
     const payload = {
-      name:         form.name.trim(),
-      address:      form.address.trim(),
-      city:         form.city.trim(),
+      name: form.name.trim(),
+      address: form.address.trim(),
+      city: form.city.trim(),
       workingHours: form.workingHours.trim(),
       ...(form.lat && form.lng
         ? { coordinates: { lat: parseFloat(form.lat), lng: parseFloat(form.lng) } }
@@ -126,11 +122,9 @@ export default function AdminHubsPage() {
 
     try {
       if (modal === "add") {
-        // ✅ BUG-02: بدل axiosInstance.post("/api/hubs", payload)
         await createHub(payload as Parameters<typeof createHub>[0]);
         showToast("✅ تم إضافة المركز بنجاح", true);
       } else {
-        // ✅ BUG-02: بدل axiosInstance.patch(`/api/hubs/${editTarget!._id}`, payload)
         await updateHub(editTarget!._id, payload);
         showToast("✅ تم تحديث المركز بنجاح", true);
       }
@@ -143,293 +137,406 @@ export default function AdminHubsPage() {
     }
   };
 
-  // ── تبديل حالة المركز (تعطيل / تفعيل) ─────────────────────────────────────
   const toggleActive = async (hub: SafeHub) => {
     if (busy[hub._id]) return;
     setBusy((p) => ({ ...p, [hub._id]: true }));
     try {
       if (hub.isActive) {
-        // ✅ BUG-02: بدل axiosInstance.delete(...)
         await deactivateHub(hub._id);
         showToast("⏸ تم تعطيل المركز بنجاح", true);
       } else {
-        // ✅ BUG-02: بدل axiosInstance.patch(..., { isActive: true })
-        // يستخدم الآن PATCH /:id/reactivate الصحيح
         await reactivateHub(hub._id);
         showToast("✅ تم تفعيل المركز بنجاح", true);
       }
       await loadHubs(false);
     } catch (err) {
-      // ✅ LOGIC-01 cascade: نعرض رسالة الـ Backend (مثل: "يوجد 3 عنصر نشط مرتبط به")
       showToast(extractErrorMsg(err, "حدث خطأ أثناء تحديث حالة المركز"), false);
     } finally {
       setBusy((p) => ({ ...p, [hub._id]: false }));
     }
   };
 
-  // ── إحصاءات ─────────────────────────────────────────────────────────────────
-  const activeCount   = hubs.filter((h) => h.isActive).length;
+  const activeCount = hubs.filter((h) => h.isActive).length;
   const inactiveCount = hubs.filter((h) => !h.isActive).length;
-  const cityCount     = availableCities.length; // ✅ SEC-03: من البيانات الفعلية
+  const cityCount = availableCities.length;
 
   return (
     <div className="space-y-6" dir="rtl">
       {ToastComponent}
 
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-xl font-black flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary">warehouse</span>
-          مراكز التسليم — Safe Hubs
-        </h1>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 bg-primary text-white px-4 py-2.5
-            rounded-2xl text-sm font-black hover:bg-primary/90 transition-colors shadow-sm"
-        >
-          <span className="material-symbols-outlined text-base">add_location_alt</span>
-          إضافة مركز جديد
-        </button>
-      </div>
+      {/* Header */}
+      <section className="rounded-[32px] border border-[#e7e1d8] bg-[linear-gradient(180deg,#fffdfa_0%,#f7f4ee_100%)] p-6 shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/5 px-3 py-1.5 text-[11px] font-extrabold text-primary">
+              <span className="material-symbols-outlined text-[15px]">warehouse</span>
+              Safe Hubs Workspace
+            </div>
 
-      {/* ── بطاقات الإحصاء ── */}
-      <div className="grid grid-cols-3 gap-3">
+            <h1 className="text-2xl font-black tracking-tight text-[#1f312f]">
+              مراكز التسليم
+            </h1>
+
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-[#7a746d]">
+              إدارة مراكز التسليم من واجهة أوضح بصريًا، مع فلترة أسرع وإبراز للحالة
+              والموقع وساعات العمل داخل بطاقات أكثر تنظيمًا.
+            </p>
+          </div>
+
+          <button
+            onClick={openAdd}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white shadow-[0_10px_22px_rgba(1,105,111,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/90"
+          >
+            <span className="material-symbols-outlined text-base">add_location_alt</span>
+            إضافة مركز جديد
+          </button>
+        </div>
+      </section>
+
+      {/* Bento Top */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        {/* Main insight card */}
+        <div className="relative overflow-hidden rounded-[30px] border border-[#e8e2d9] bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.05)] lg:col-span-5">
+          <div className="absolute -left-10 top-0 h-28 w-28 rounded-full bg-primary/5 blur-3xl" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-[24px]">hub</span>
+            </div>
+
+            <span className="rounded-full border border-[#ece6de] bg-[#faf8f4] px-3 py-1 text-[10px] font-extrabold tracking-[0.18em] text-[#9a9289]">
+              NETWORK
+            </span>
+          </div>
+
+          <div className="mt-10">
+            <p className="text-5xl font-black leading-none tracking-tight text-[#1f312f]">
+              {hubs.length}
+            </p>
+            <p className="mt-3 text-sm font-bold text-[#7b756e]">
+              إجمالي مراكز التسليم في الشبكة
+            </p>
+          </div>
+
+          <div className="mt-8 flex flex-wrap gap-2">
+            <span className="rounded-full bg-[#f4f1eb] px-3 py-1 text-[11px] font-black text-[#6e675f]">
+              {activeCount} نشط
+            </span>
+            <span className="rounded-full bg-[#f4f1eb] px-3 py-1 text-[11px] font-black text-[#6e675f]">
+              {inactiveCount} معطّل
+            </span>
+            <span className="rounded-full bg-[#f4f1eb] px-3 py-1 text-[11px] font-black text-[#6e675f]">
+              {cityCount} مدينة
+            </span>
+          </div>
+        </div>
+
+        {/* Stats */}
         {[
-          { label: "نشط",    value: activeCount,   color: "text-green-600 bg-green-50",  icon: "check_circle"  },
-          { label: "معطّل",  value: inactiveCount, color: "text-red-500 bg-red-50",      icon: "cancel"        },
-          { label: "مدينة",  value: cityCount,     color: "text-blue-600 bg-blue-50",    icon: "location_city" },
-        ].map((c) => (
-          <div key={c.label} className={`rounded-2xl p-4 text-center space-y-1 ${c.color}`}>
-            <span className="material-symbols-outlined text-2xl">{c.icon}</span>
-            <p className="text-2xl font-black">{c.value}</p>
-            <p className="text-xs font-bold opacity-70">{c.label}</p>
+          {
+            label: "نشط",
+            value: activeCount,
+            icon: "check_circle",
+            wrap: "bg-green-50 text-green-700",
+          },
+          {
+            label: "معطّل",
+            value: inactiveCount,
+            icon: "pause_circle",
+            wrap: "bg-red-50 text-red-600",
+          },
+          {
+            label: "مدينة",
+            value: cityCount,
+            icon: "location_city",
+            wrap: "bg-blue-50 text-blue-600",
+          },
+        ].map((c, i) => (
+          <div
+            key={c.label}
+            className={`rounded-[28px] border border-[#e8e2d9] bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.04)] ${
+              i === 0 ? "lg:col-span-3" : i === 1 ? "lg:col-span-4" : "lg:col-span-3"
+            }`}
+          >
+            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${c.wrap}`}>
+              <span className="material-symbols-outlined text-[22px]">{c.icon}</span>
+            </div>
+
+            <div className="mt-7">
+              <p className="text-3xl font-black leading-none tracking-tight text-[#1f312f]">
+                {c.value}
+              </p>
+              <p className="mt-2 text-sm font-bold text-[#7a746d]">{c.label}</p>
+            </div>
           </div>
         ))}
-      </div>
 
-      {/* ── بحث + فلتر ── */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2
-            text-gray-400 text-lg pointer-events-none">search</span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="بحث باسم المركز أو المدينة..."
-            className="w-full bg-white border border-gray-200 rounded-xl pr-10 pl-4 py-2.5
-              text-sm focus:outline-none focus:border-primary transition-colors"
-          />
+        {/* Search + filters */}
+        <div className="rounded-[30px] border border-[#e8e2d9] bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.04)] lg:col-span-12">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-md">
+              <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-[#9b948b]">
+                search
+              </span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="بحث باسم المركز أو المدينة أو العنوان..."
+                className="w-full rounded-2xl border border-[#e5dfd6] bg-[#fcfaf7] py-3 pl-4 pr-10 text-sm text-[#24302f] outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(["all", "active", "inactive"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`rounded-2xl px-4 py-2.5 text-xs font-black transition-all duration-300 ${
+                    filter === f
+                      ? "bg-primary text-white shadow-[0_8px_18px_rgba(1,105,111,0.16)]"
+                      : "bg-[#f5f1eb] text-[#746e67] hover:bg-[#ece6de]"
+                  }`}
+                >
+                  {f === "all" ? "الكل" : f === "active" ? "نشط" : "معطّل"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          {(["all", "active", "inactive"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-black transition-colors
-                ${filter === f
-                  ? "bg-primary text-white"
-                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                }`}
-            >
-              {f === "all" ? "الكل" : f === "active" ? "نشط" : "معطّل"}
-            </button>
+      </section>
+
+      {/* List */}
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-[190px] animate-pulse rounded-[28px] border border-[#ece7df] bg-white"
+            />
           ))}
         </div>
-      </div>
-
-      {/* ── قائمة المراكز ── */}
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
       ) : visible.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-          <span className="material-symbols-outlined text-4xl text-gray-300 block mb-2">warehouse</span>
-          <p className="text-gray-400 text-sm font-bold">لا توجد مراكز تطابق الفلتر</p>
+        <div className="rounded-[28px] border border-[#e8e2d9] bg-white py-20 text-center shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#f4f1eb] text-[#a89f95]">
+            <span className="material-symbols-outlined text-[30px]">warehouse</span>
+          </div>
+          <p className="mt-5 text-base font-black text-[#5d5750]">
+            لا توجد مراكز تطابق الفلتر
+          </p>
+          <p className="mt-1 text-sm text-[#9f978e]">
+            جرّب تغيير حالة الفلترة أو تعديل كلمات البحث
+          </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {visible.map((hub) => (
-            <div
+            <article
               key={hub._id}
-              className={`bg-white rounded-2xl border shadow-sm p-5 transition-all
-                ${hub.isActive ? "border-gray-100" : "border-gray-200 bg-gray-50/50 opacity-70"}`}
+              className={`group rounded-[28px] border p-5 shadow-[0_10px_26px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.07)] ${
+                hub.isActive
+                  ? "border-[#e8e2d9] bg-white"
+                  : "border-[#e4dfd7] bg-[#fcfaf7]"
+              }`}
             >
               <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-black text-gray-900 text-sm">{hub.name}</span>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full
-                      ${hub.isActive
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-200 text-gray-500"
-                      }`}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-black text-[#1f312f]">
+                      {hub.name}
+                    </h3>
+
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-black ${
+                        hub.isActive
+                          ? "bg-green-50 text-green-700"
+                          : "bg-slate-200 text-slate-600"
+                      }`}
+                    >
                       {hub.isActive ? "● نشط" : "● معطّل"}
                     </span>
-                    <span className="text-[10px] bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded-full">
+
+                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-600">
                       {hub.city}
                     </span>
                   </div>
 
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm text-gray-400">location_on</span>
-                    {hub.address}
-                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-[#faf8f4] px-4 py-3">
+                      <p className="mb-1 text-[11px] font-extrabold text-[#9b948c]">
+                        العنوان
+                      </p>
+                      <p className="flex items-start gap-2 text-sm leading-6 text-[#5f5a54]">
+                        <span className="material-symbols-outlined mt-0.5 text-[16px] text-[#9b948c]">
+                          location_on
+                        </span>
+                        {hub.address}
+                      </p>
+                    </div>
 
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm text-gray-400">schedule</span>
-                    {hub.workingHours}
-                  </p>
+                    <div className="rounded-2xl bg-[#faf8f4] px-4 py-3">
+                      <p className="mb-1 text-[11px] font-extrabold text-[#9b948c]">
+                        ساعات العمل
+                      </p>
+                      <p className="flex items-start gap-2 text-sm leading-6 text-[#5f5a54]">
+                        <span className="material-symbols-outlined mt-0.5 text-[16px] text-[#9b948c]">
+                          schedule
+                        </span>
+                        {hub.workingHours}
+                      </p>
+                    </div>
+                  </div>
 
                   {hub.coordinates?.lat && (
                     <a
                       href={`https://maps.google.com/?q=${hub.coordinates.lat},${hub.coordinates.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[10px] text-primary/70
-                        hover:text-primary transition-colors font-bold"
+                      className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-primary/10 bg-primary/5 px-3 py-1.5 text-[11px] font-black text-primary transition-all duration-300 hover:bg-primary/10"
                     >
-                      <span className="material-symbols-outlined text-xs">open_in_new</span>
-                      خرائط Google
+                      <span className="material-symbols-outlined text-[15px]">
+                        open_in_new
+                      </span>
+                      فتح على خرائط Google
                     </a>
                   )}
                 </div>
 
-                {/* أزرار الإجراءات */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   <button
                     onClick={() => openEdit(hub)}
-                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200
-                      text-gray-600 transition-colors"
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f3f0ea] text-[#68635d] transition-all duration-300 hover:bg-[#e9e3db]"
                     title="تعديل"
                   >
-                    <span className="material-symbols-outlined text-base">edit</span>
+                    <span className="material-symbols-outlined text-[18px]">edit</span>
                   </button>
 
                   <button
                     onClick={() => toggleActive(hub)}
                     disabled={!!busy[hub._id]}
-                    className={`p-2 rounded-xl transition-colors disabled:opacity-50
-                      ${hub.isActive
-                        ? "bg-red-50 hover:bg-red-100 text-red-500"
-                        : "bg-green-50 hover:bg-green-100 text-green-600"
-                      }`}
+                    className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-300 disabled:opacity-50 ${
+                      hub.isActive
+                        ? "bg-red-50 text-red-600 hover:bg-red-100"
+                        : "bg-green-50 text-green-600 hover:bg-green-100"
+                    }`}
                     title={hub.isActive ? "تعطيل المركز" : "تفعيل المركز"}
                   >
                     {busy[hub._id] ? (
-                      <span className="w-4 h-4 border-2 border-current border-t-transparent
-                        rounded-full animate-spin block" />
+                      <span className="block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     ) : (
-                      <span className="material-symbols-outlined text-base">
+                      <span className="material-symbols-outlined text-[18px]">
                         {hub.isActive ? "pause_circle" : "play_circle"}
                       </span>
                     )}
                   </button>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
 
-      {/* ── Modal الإضافة / التعديل ── */}
+      {/* Modal */}
       {modal !== "closed" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-5"
-            dir="rtl">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-black text-gray-900">
-                {modal === "add" ? "➕ إضافة مركز جديد" : "✏️ تعديل المركز"}
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div
+            className="w-full max-w-xl rounded-[32px] border border-white/20 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.18)]"
+            dir="rtl"
+          >
+            <div className="flex items-center justify-between border-b border-[#f0ebe4] px-6 py-5">
+              <div>
+                <h2 className="text-lg font-black text-[#1f312f]">
+                  {modal === "add" ? "إضافة مركز جديد" : "تعديل المركز"}
+                </h2>
+                <p className="mt-1 text-xs text-[#938b82]">
+                  أدخل بيانات المركز بدقة لتسهيل إدارته وربطه بالموقع
+                </p>
+              </div>
+
               <button
                 onClick={() => setModal("closed")}
-                className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5f1eb] text-[#6e6860] transition-colors hover:bg-[#ece6de]"
               >
-                <span className="material-symbols-outlined text-gray-500">close</span>
+                <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
-            {/* أخطاء الـ validation */}
-            {formErrors.length > 0 && (
-              <div className="bg-red-50 border border-red-100 rounded-xl p-3 space-y-1">
-                {formErrors.map((e, i) => (
-                  <p key={i} className="text-xs text-red-600 font-bold flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">error</span>
-                    {e}
-                  </p>
-                ))}
-              </div>
-            )}
+            <div className="space-y-5 px-6 py-6">
+              {formErrors.length > 0 && (
+                <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+                  <div className="space-y-2">
+                    {formErrors.map((e, i) => (
+                      <p
+                        key={i}
+                        className="flex items-center gap-2 text-xs font-bold text-red-600"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          error
+                        </span>
+                        {e}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            <div className="space-y-4">
-              {/* الاسم */}
-              <div>
-                <label className="block text-xs font-black text-gray-700 mb-1.5">
-                  اسم المركز <span className="text-red-500">*</span>
-                </label>
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="مثال: مركز الزرقاء الرئيسي"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm
-                    focus:outline-none focus:border-primary transition-colors"
-                />
-              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                    اسم المركز <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={form.name}
+                    onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                    placeholder="مثال: مركز الزرقاء الرئيسي"
+                    className="w-full rounded-2xl border border-[#e5dfd6] bg-[#fcfaf7] px-4 py-3 text-sm outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary"
+                  />
+                </div>
 
-              {/* العنوان */}
-              <div>
-                <label className="block text-xs font-black text-gray-700 mb-1.5">
-                  العنوان <span className="text-red-500">*</span>
-                </label>
-                <input
-                  value={form.address}
-                  onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
-                  placeholder="مثال: شارع الملكة نور، بناية رقم 5"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm
-                    focus:outline-none focus:border-primary transition-colors"
-                />
-              </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                    العنوان <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={form.address}
+                    onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+                    placeholder="مثال: شارع الملكة نور، بناية رقم 5"
+                    className="w-full rounded-2xl border border-[#e5dfd6] bg-[#fcfaf7] px-4 py-3 text-sm outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary"
+                  />
+                </div>
 
-              {/* المدينة */}
-              <div>
-                <label className="block text-xs font-black text-gray-700 mb-1.5">
-                  المدينة <span className="text-red-500">*</span>
-                </label>
-                {/* ✅ SEC-03: input نصي حر بدل قائمة hardcoded */}
-                <input
-                  value={form.city}
-                  onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
-                  placeholder="مثال: عمان"
-                  list="cities-datalist"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm
-                    focus:outline-none focus:border-primary transition-colors"
-                />
-                {/* ✅ SEC-03: اقتراحات ديناميكية من المدن الموجودة فعلاً */}
-                <datalist id="cities-datalist">
-                  {availableCities.map((c) => (
-                    <option key={c} value={c} />
-                  ))}
-                </datalist>
-              </div>
-
-              {/* ساعات العمل */}
-              <div>
-                <label className="block text-xs font-black text-gray-700 mb-1.5">
-                  ساعات العمل
-                </label>
-                <input
-                  value={form.workingHours}
-                  onChange={(e) => setForm((p) => ({ ...p, workingHours: e.target.value }))}
-                  placeholder="9:00 ص — 5:00 م"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm
-                    focus:outline-none focus:border-primary transition-colors"
-                />
-              </div>
-
-              {/* الإحداثيات (اختياري) */}
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-black text-gray-700 mb-1.5">
+                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                    المدينة <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={form.city}
+                    onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
+                    placeholder="مثال: عمان"
+                    list="cities-datalist"
+                    className="w-full rounded-2xl border border-[#e5dfd6] bg-[#fcfaf7] px-4 py-3 text-sm outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary"
+                  />
+                  <datalist id="cities-datalist">
+                    {availableCities.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                    ساعات العمل
+                  </label>
+                  <input
+                    value={form.workingHours}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, workingHours: e.target.value }))
+                    }
+                    placeholder="9:00 ص — 5:00 م"
+                    className="w-full rounded-2xl border border-[#e5dfd6] bg-[#fcfaf7] px-4 py-3 text-sm outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
                     خط العرض (Lat)
                   </label>
                   <input
@@ -437,12 +544,12 @@ export default function AdminHubsPage() {
                     value={form.lat}
                     onChange={(e) => setForm((p) => ({ ...p, lat: e.target.value }))}
                     placeholder="31.9539"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
-                      focus:outline-none focus:border-primary transition-colors"
+                    className="w-full rounded-2xl border border-[#e5dfd6] bg-[#fcfaf7] px-4 py-3 text-sm outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-black text-gray-700 mb-1.5">
+                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
                     خط الطول (Lng)
                   </label>
                   <input
@@ -450,39 +557,36 @@ export default function AdminHubsPage() {
                     value={form.lng}
                     onChange={(e) => setForm((p) => ({ ...p, lng: e.target.value }))}
                     placeholder="35.9106"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
-                      focus:outline-none focus:border-primary transition-colors"
+                    className="w-full rounded-2xl border border-[#e5dfd6] bg-[#fcfaf7] px-4 py-3 text-sm outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary"
                   />
                 </div>
               </div>
-            </div>
 
-            {/* أزرار الحفظ / الإلغاء */}
-            <div className="flex gap-3 pt-1">
-              <button
-                onClick={() => setModal("closed")}
-                className="flex-1 py-2.5 rounded-2xl border border-gray-200 text-sm
-                  font-black text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={saveForm}
-                disabled={formBusy}
-                className="flex-1 py-2.5 rounded-2xl bg-primary text-white text-sm
-                  font-black hover:bg-primary/90 transition-colors disabled:opacity-60
-                  flex items-center justify-center gap-2"
-              >
-                {formBusy ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent
-                      rounded-full animate-spin" />
-                    جاري الحفظ...
-                  </>
-                ) : (
-                  modal === "add" ? "إضافة المركز" : "حفظ التعديلات"
-                )}
-              </button>
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setModal("closed")}
+                  className="flex-1 rounded-2xl border border-[#e2ddd5] py-3 text-sm font-black text-[#66615b] transition-all duration-300 hover:bg-[#faf8f4]"
+                >
+                  إلغاء
+                </button>
+
+                <button
+                  onClick={saveForm}
+                  disabled={formBusy}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-black text-white transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {formBusy ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      جاري الحفظ...
+                    </>
+                  ) : modal === "add" ? (
+                    "إضافة المركز"
+                  ) : (
+                    "حفظ التعديلات"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

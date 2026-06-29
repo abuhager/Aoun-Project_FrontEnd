@@ -1,4 +1,3 @@
-// src/app/(main)/(protected)/dashboard/components/Toast.tsx  ✅ REDESIGNED
 "use client";
 
 import { useEffect } from "react";
@@ -19,25 +18,28 @@ export function Toast({ msg, type, onClose }: ToastProps) {
 
   return (
     <div
-      className={`fixed bottom-6 left-1/2 z-[200] flex -translate-x-1/2
-                  items-center gap-3 rounded-2xl border px-5 py-3
-                  text-sm font-bold shadow-xl
-                  transition-all duration-300 animate-in
-                  ${isSuccess
-                    ? "border-emerald-200 bg-emerald-600 text-white shadow-emerald-600/25"
-                    : "border-red-200 bg-red-500 text-white shadow-red-500/25"
-                  }`}
+      className={`fixed bottom-6 left-1/2 z-[200] flex -translate-x-1/2 items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-bold shadow-xl transition-all duration-300 ${
+        isSuccess
+          ? "border-emerald-200 bg-white text-emerald-700 shadow-emerald-100"
+          : "border-red-200 bg-white text-red-700 shadow-red-100"
+      }`}
+      role="status"
+      aria-live="polite"
     >
       <span
-        className="material-symbols-outlined text-[18px]"
+        className={`material-symbols-outlined text-[18px] ${
+          isSuccess ? "text-emerald-600" : "text-red-600"
+        }`}
         style={{ fontVariationSettings: "'FILL' 1" }}
       >
         {isSuccess ? "check_circle" : "error"}
       </span>
+
       <span className="max-w-[260px] leading-snug">{msg}</span>
+
       <button
         onClick={onClose}
-        className="ml-1 opacity-70 transition-opacity duration-150 hover:opacity-100"
+        className="ml-1 opacity-60 transition-opacity duration-150 hover:opacity-100"
         type="button"
         aria-label="إغلاق"
       >

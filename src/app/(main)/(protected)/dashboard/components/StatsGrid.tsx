@@ -1,5 +1,3 @@
-// src/app/(main)/(protected)/dashboard/components/StatsGrid.tsx  ✅ REDESIGNED
-
 interface StatsGridProps {
   trustScore?: number;
   quota?: number;
@@ -14,107 +12,85 @@ export function StatsGrid({
   const quotaUsed = Math.min(quota, 2);
   const quotaFree = 2 - quotaUsed;
 
+  const cards = [
+    {
+      icon: "shield",
+      value: trustScore,
+      label: "نقاط الثقة",
+      tone: "text-primary",
+      iconBg: "bg-primary/[0.08]",
+      iconColor: "text-primary",
+      accent: "from-primary/[0.05]",
+    },
+    {
+      icon: "bookmark",
+      value: `${quotaFree}`,
+      label: "حجوزات متاحة",
+      tone: "text-blue-600",
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-500",
+      accent: "from-blue-500/[0.04]",
+      helper: (
+        <div className="mt-1 flex items-center gap-1.5">
+          {[0, 1].map((i) => (
+            <div
+              key={i}
+              className={`h-2.5 w-2.5 rounded-full border ${
+                i < quotaUsed
+                  ? "border-blue-400 bg-blue-400"
+                  : "border-gray-200 bg-gray-100"
+              }`}
+            />
+          ))}
+        </div>
+      ),
+    },
+    {
+      icon: "volunteer_activism",
+      value: donationsCount,
+      label: "تبرعاتك",
+      tone: "text-emerald-600",
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+      accent: "from-emerald-500/[0.04]",
+    },
+  ];
+
   return (
-    <section className="grid grid-cols-3 gap-3">
-
-      {/* نقاط الثقة */}
-      <div
-        className="relative overflow-hidden rounded-2xl border border-black/[0.06]
-                   bg-white p-4 shadow-sm transition-all duration-200
-                   hover:shadow-md hover:shadow-black/[0.05]"
-      >
+    <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {cards.map((card, i) => (
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br
-                     from-primary/[0.05] to-transparent"
-        />
-        <div className="relative">
+          key={i}
+          className="relative overflow-hidden rounded-[28px] border border-black/[0.06] bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-black/[0.05]"
+        >
           <div
-            className="mb-3 flex h-8 w-8 items-center justify-center
-                       rounded-xl bg-primary/[0.08]"
-          >
-            <span
-              className="material-symbols-outlined text-[18px] text-primary"
-              style={{ fontVariationSettings: "'FILL' 1" }}
+            className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${card.accent} to-transparent`}
+          />
+
+          <div className="relative">
+            <div
+              className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${card.iconBg}`}
             >
-              shield
-            </span>
-          </div>
-          <p className="text-2xl font-black tabular-nums text-primary">
-            {trustScore}
-          </p>
-          <p className="mt-0.5 text-[11px] font-bold text-gray-400">نقاط الثقة</p>
-        </div>
-      </div>
+              <span
+                className={`material-symbols-outlined text-[18px] ${card.iconColor}`}
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                {card.icon}
+              </span>
+            </div>
 
-      {/* الكوتا */}
-      <div
-        className="relative overflow-hidden rounded-2xl border border-black/[0.06]
-                   bg-white p-4 shadow-sm transition-all duration-200
-                   hover:shadow-md hover:shadow-black/[0.05]"
-      >
-        <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br
-                     from-blue-500/[0.04] to-transparent"
-        />
-        <div className="relative">
-          <div
-            className="mb-3 flex h-8 w-8 items-center justify-center
-                       rounded-xl bg-blue-50"
-          >
-            <span className="material-symbols-outlined text-[18px] text-blue-500"
-              style={{ fontVariationSettings: "'FILL' 1" }}>
-              bookmark
-            </span>
-          </div>
-          {/* دوائر الكوتا */}
-          <div className="flex items-center gap-1.5 mb-1">
-            {[0, 1].map(i => (
-              <div
-                key={i}
-                className={`h-2.5 w-2.5 rounded-full border transition-colors duration-300
-                            ${i < quotaUsed
-                              ? 'border-blue-400 bg-blue-400'
-                              : 'border-gray-200 bg-gray-100'
-                            }`}
-              />
-            ))}
-            <span className="text-xs font-black text-blue-600 mr-1">
-              {quotaFree} متاح
-            </span>
-          </div>
-          <p className="text-[11px] font-bold text-gray-400">حجوزات نشطة</p>
-        </div>
-      </div>
+            <p className={`text-2xl font-black tabular-nums ${card.tone}`}>
+              {card.value}
+            </p>
 
-      {/* التبرعات */}
-      <div
-        className="relative overflow-hidden rounded-2xl border border-black/[0.06]
-                   bg-white p-4 shadow-sm transition-all duration-200
-                   hover:shadow-md hover:shadow-black/[0.05]"
-      >
-        <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br
-                     from-emerald-500/[0.04] to-transparent"
-        />
-        <div className="relative">
-          <div
-            className="mb-3 flex h-8 w-8 items-center justify-center
-                       rounded-xl bg-emerald-50"
-          >
-            <span
-              className="material-symbols-outlined text-[18px] text-emerald-600"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              volunteer_activism
-            </span>
-          </div>
-          <p className="text-2xl font-black tabular-nums text-emerald-600">
-            {donationsCount}
-          </p>
-          <p className="mt-0.5 text-[11px] font-bold text-gray-400">تبرعاتك</p>
-        </div>
-      </div>
+            <p className="mt-0.5 text-[11px] font-bold text-gray-400">
+              {card.label}
+            </p>
 
+            {"helper" in card && card.helper}
+          </div>
+        </div>
+      ))}
     </section>
   );
 }

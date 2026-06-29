@@ -1,51 +1,74 @@
-// src/app/(main)/donation-requests/DonationRequestsClient.tsx
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import axiosInstance from '@/lib/api/axiosInstance';
-import type { DonationRequest } from '@/types/donationRequest.types';
-import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import axiosInstance from "@/lib/api/axiosInstance";
+import type { DonationRequest } from "@/types/donationRequest.types";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 
-// ─── الاستيرادات المصححة ──────────────────────────────────────────────────────
 import {
   getDonationRequests,
   cancelDonationRequest,
   respondToDonationRequest,
-} from '@/lib/api/donationRequestApi';
+} from "@/lib/api/donationRequestApi";
+import { getPublicSettings } from "@/lib/api/settingsApi";
 
-// ✅ جلب الدالة من ملف الـ API الصحيح الخاص بالإعدادات لمنع خطأ الـ Turbopack
-import { getPublicSettings } from '@/lib/api/settingsApi';
+const DEFAULT_CATEGORIES = ["كتب", "إلكترونيات", "أثاث", "ملابس", "أخرى"];
+const DEFAULT_LOCATIONS = ["عمان", "الزرقاء", "إربد", "العقبة", "السلط", "مادبا"];
+const CONDITIONS = ["جديد", "مستعمل ممتاز", "مستعمل جيد"] as const;
 
-// ─── الثوابت والمكونات المساعدة ───────────────────────────────────────────────
-const DEFAULT_CATEGORIES = ['كتب', 'إلكترونيات', 'أثاث', 'ملابس', 'أخرى'];
-const DEFAULT_LOCATIONS = ['عمان', 'الزرقاء', 'إربد', 'العقبة', 'السلط', 'مادبا'];
-const CONDITIONS = ['جديد', 'مستعمل ممتاز', 'مستعمل جيد'] as const;
-
-function RequestStatusBadge({ status }: { status: DonationRequest['status'] }) {
+function RequestStatusBadge({ status }: { status: DonationRequest["status"] }) {
   const styles = {
-    active: 'bg-green-50 text-green-700 border-green-100',
-    fulfilled: 'bg-blue-50 text-blue-700 border-blue-100',
-    expired: 'bg-orange-50 text-orange-700 border-orange-100',
-    cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
+    active: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    fulfilled: "bg-sky-50 text-sky-700 border-sky-100",
+    expired: "bg-orange-50 text-orange-700 border-orange-100",
+    cancelled: "bg-gray-100 text-gray-600 border-gray-200",
   } as const;
 
   const labels = {
-    active: 'نشط',
-    fulfilled: 'تمت تلبيته',
-    expired: 'منتهي',
-    cancelled: 'ملغي',
+    active: "نشط",
+    fulfilled: "تمت تلبيته",
+    expired: "منتهي",
+    cancelled: "ملغي",
   } as const;
 
   return (
-    <span className={`text-[11px] font-black px-2.5 py-1 rounded-full border ${styles[status]}`}>
+    <span
+      className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${styles[status]}`}
+    >
       {labels[status]}
     </span>
   );
 }
 
-// ─── المكون الرئيسي ───────────────────────────────────────────────────────────
+function RequestCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-sm">
+      <div className="space-y-4 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-2">
+            <div className="h-4 w-40 animate-pulse rounded-full bg-[#e7e1d9]" />
+            <div className="h-3 w-28 animate-pulse rounded-full bg-[#f0ebe3]" />
+          </div>
+          <div className="h-6 w-16 animate-pulse rounded-full bg-[#f2ede6]" />
+        </div>
+
+        <div className="space-y-2">
+          <div className="h-3.5 w-full animate-pulse rounded-full bg-[#f0ebe3]" />
+          <div className="h-3.5 w-5/6 animate-pulse rounded-full bg-[#f0ebe3]" />
+          <div className="h-3.5 w-3/5 animate-pulse rounded-full bg-[#f0ebe3]" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="h-10 animate-pulse rounded-2xl bg-[#f6f2eb]" />
+          <div className="h-10 animate-pulse rounded-2xl bg-[#e8f5f3]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DonationRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -55,7 +78,7 @@ export default function DonationRequestsClient() {
 
   useEffect(() => {
     setMounted(true);
-    setMyOnly(searchParams.get('mine') === 'true');
+    setMyOnly(searchParams.get("mine") === "true");
   }, [searchParams]);
 
   const [requests, setRequests] = useState<DonationRequest[]>([]);
@@ -64,23 +87,27 @@ export default function DonationRequestsClient() {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState('');
-  const [settingsCategories, setSettingsCategories] = useState<string[]>(DEFAULT_CATEGORIES);
-  const [settingsLocations, setSettingsLocations] = useState<string[]>(DEFAULT_LOCATIONS);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [settingsCategories, setSettingsCategories] =
+    useState<string[]>(DEFAULT_CATEGORIES);
+  const [settingsLocations, setSettingsLocations] =
+    useState<string[]>(DEFAULT_LOCATIONS);
   const [respondingTo, setRespondingTo] = useState<DonationRequest | null>(null);
-  const [hubs, setHubs] = useState<{ _id: string; name: string; city: string }[]>([]);
+  const [hubs, setHubs] = useState<{ _id: string; name: string; city: string }[]>(
+    []
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const [respondForm, setRespondForm] = useState<{
-    condition: typeof CONDITIONS[number];
+    condition: (typeof CONDITIONS)[number];
     safeHub: string;
     description: string;
     imageFile: File | null;
   }>({
-    condition: 'مستعمل جيد',
-    safeHub: '',
-    description: '',
+    condition: "مستعمل جيد",
+    safeHub: "",
+    description: "",
     imageFile: null,
   });
 
@@ -91,30 +118,33 @@ export default function DonationRequestsClient() {
     stateRef.current = { myOnly, selectedCategory, selectedLocation, page };
   });
 
-  const load = useCallback(async (
-    targetPage = 1,
-    category = stateRef.current.selectedCategory,
-    mine = stateRef.current.myOnly,
-    location = stateRef.current.selectedLocation,
-  ) => {
-    setLoading(true);
-    try {
-      const data = await getDonationRequests({
-        page: targetPage,
-        limit: 10,
-        category: category || undefined,
-        location: location || undefined,
-        mine: mine === true ? true : undefined,
-      });
-      setRequests(data.requests ?? []);
-      setPage(data.page ?? 1);
-      setPages(data.pages ?? 1);
-    } catch (err) {
-      setToast({ msg: extractErrorMsg(err, 'تعذر تحميل طلبات التبرع'), ok: false });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (
+      targetPage = 1,
+      category = stateRef.current.selectedCategory,
+      mine = stateRef.current.myOnly,
+      location = stateRef.current.selectedLocation
+    ) => {
+      setLoading(true);
+      try {
+        const data = await getDonationRequests({
+          page: targetPage,
+          limit: 10,
+          category: category || undefined,
+          location: location || undefined,
+          mine: mine === true ? true : undefined,
+        });
+        setRequests(data.requests ?? []);
+        setPage(data.page ?? 1);
+        setPages(data.pages ?? 1);
+      } catch (err) {
+        setToast({ msg: extractErrorMsg(err, "تعذر تحميل طلبات التبرع"), ok: false });
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   const handleRespond = async () => {
     if (!respondingTo || !respondForm.safeHub) return;
@@ -129,7 +159,7 @@ export default function DonationRequestsClient() {
 
       setRespondingTo(null);
       setImagePreview(null);
-      setToast({ msg: res.msg ?? 'تم التبرع بنجاح! جارٍ التحويل...', ok: true });
+      setToast({ msg: res.msg ?? "تم التبرع بنجاح! جارٍ التحويل...", ok: true });
 
       if (res.offerId) {
         setTimeout(() => router.push(`/items/${res.offerId}`), 1200);
@@ -137,7 +167,7 @@ export default function DonationRequestsClient() {
         load(1);
       }
     } catch (err) {
-      setToast({ msg: extractErrorMsg(err, 'تعذر الاستجابة للطلب'), ok: false });
+      setToast({ msg: extractErrorMsg(err, "تعذر الاستجابة للطلب"), ok: false });
     } finally {
       setSubmitting(false);
     }
@@ -148,10 +178,10 @@ export default function DonationRequestsClient() {
     setCancelingId(id);
     try {
       const res = await cancelDonationRequest(id);
-      setToast({ msg: res.msg ?? 'تم إلغاء الطلب بنجاح', ok: true });
+      setToast({ msg: res.msg ?? "تم إلغاء الطلب بنجاح", ok: true });
       load(stateRef.current.page);
     } catch (err) {
-      setToast({ msg: extractErrorMsg(err, 'تعذر إلغاء الطلب'), ok: false });
+      setToast({ msg: extractErrorMsg(err, "تعذر إلغاء الطلب"), ok: false });
     } finally {
       setCancelingId(null);
     }
@@ -170,9 +200,12 @@ export default function DonationRequestsClient() {
       })
       .catch(() => {});
 
-    axiosInstance.get('/api/hubs').then((r) => {
-      if (Array.isArray(r.data)) setHubs(r.data);
-    }).catch(() => {});
+    axiosInstance
+      .get("/api/hubs")
+      .then((r) => {
+        if (Array.isArray(r.data)) setHubs(r.data);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -188,7 +221,7 @@ export default function DonationRequestsClient() {
   }, [imagePreview]);
 
   const activeMineCount = useMemo(
-    () => requests.filter((r) => r.status === 'active').length,
+    () => requests.filter((r) => r.status === "active").length,
     [requests]
   );
 
@@ -202,158 +235,244 @@ export default function DonationRequestsClient() {
   const resetRespondForm = () => {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImagePreview(null);
-    setRespondForm({ condition: 'مستعمل جيد', safeHub: '', description: '', imageFile: null });
+    setRespondForm({
+      condition: "مستعمل جيد",
+      safeHub: "",
+      description: "",
+      imageFile: null,
+    });
   };
 
   return (
-    <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
+    <div className="min-h-screen bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
       {toast && (
-        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white transition-all ${toast.ok ? 'bg-green-500' : 'bg-red-500'}`}>
+        <div
+          className={`fixed left-1/2 top-24 z-[60] -translate-x-1/2 rounded-2xl px-5 py-3 text-sm font-black text-white shadow-[0_14px_35px_rgba(0,0,0,0.16)] transition-all ${
+            toast.ok ? "bg-emerald-500" : "bg-red-500"
+          }`}
+        >
           {toast.msg}
         </div>
       )}
 
-      <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-gray-900">طلبات التبرع</h1>
-            <p className="text-xs text-gray-500 font-bold mt-1">
-              {!mounted
-                ? 'تصفح الطلبات وساهم بتبرع'
-                : myOnly
-                ? `لديك ${activeMineCount} طلب نشط`
-                : 'تصفح الطلبات وساهم بتبرع'}
-            </p>
+      <main className="mx-auto max-w-6xl space-y-6 px-4 pt-20 md:px-8 md:pt-24">
+        {/* Hero */}
+        <section className="relative overflow-hidden rounded-[32px] border border-black/[0.06] bg-white p-6 shadow-sm md:p-8">
+          <div className="absolute left-0 top-0 h-40 w-40 -translate-x-1/3 -translate-y-1/3 rounded-full bg-[#01696f]/[0.06] blur-3xl" />
+          <div className="absolute bottom-0 right-0 h-40 w-40 translate-x-1/3 translate-y-1/3 rounded-full bg-[#005a8c]/[0.05] blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#d9ecea] bg-[#ecf8f6] px-3 py-1.5 text-[11px] font-black text-primary">
+                <span className="material-symbols-outlined text-[15px]">
+                  volunteer_activism
+                </span>
+                مساحة لطلب المساعدة والتبرع
+              </div>
+
+              <h1 className="mt-4 text-2xl font-black tracking-tight text-[#191c1d] md:text-4xl">
+                طلبات التبرع
+              </h1>
+
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-[#6e675f] md:text-base">
+                استعرض الطلبات الحالية وساهم بما تستطيع، أو أنشئ طلبًا جديدًا بطريقة
+                واضحة ومحترمة تحفظ خصوصية وكرامة الجميع.
+              </p>
+
+              <p className="mt-3 text-xs font-bold text-[#8e877f]">
+                {!mounted
+                  ? "تصفح الطلبات وساهم بتبرع"
+                  : myOnly
+                  ? `لديك ${activeMineCount} طلب نشط`
+                  : "تصفح الطلبات وساهم بتبرع"}
+              </p>
+            </div>
+
+            <Link
+              href="/donation-requests/new"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-xs font-black text-white shadow-[0_10px_24px_rgba(1,105,111,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/90"
+            >
+              <span className="material-symbols-outlined text-[16px]">add</span>
+              اطلب تبرعاً
+            </Link>
           </div>
-          <Link
-            href="/donation-requests/new"
-            className="px-5 py-2.5 bg-primary text-white rounded-2xl text-xs font-black hover:bg-primary/90 transition-all flex items-center gap-2 shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[16px]">add</span>
-            اطلب تبرعاً
-          </Link>
-        </div>
+        </section>
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => setMyOnly(false)}
-            className={`px-4 py-2 rounded-2xl text-xs font-black transition-all ${
-              !myOnly ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            كل الطلبات
-          </button>
-          <button
-            onClick={() => setMyOnly(true)}
-            className={`px-4 py-2 rounded-2xl text-xs font-black transition-all ${
-              myOnly ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            طلباتي فقط
-          </button>
-        </div>
+        {/* Controls */}
+        <section className="rounded-3xl border border-black/[0.06] bg-white p-4 shadow-sm md:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setMyOnly(false)}
+                className={`rounded-full px-4 py-2 text-xs font-black transition-all ${
+                  !myOnly
+                    ? "bg-primary text-white shadow-sm"
+                    : "bg-[#f3f1ec] text-[#6b655e] hover:bg-[#ece7df]"
+                }`}
+              >
+                كل الطلبات
+              </button>
 
-        <div className="flex flex-wrap gap-3">
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-2 rounded-2xl border border-gray-200 text-xs font-black bg-white focus:outline-none focus:border-primary"
-          >
-            <option value="">كل التصنيفات</option>
-            {settingsCategories.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+              <button
+                onClick={() => setMyOnly(true)}
+                className={`rounded-full px-4 py-2 text-xs font-black transition-all ${
+                  myOnly
+                    ? "bg-primary text-white shadow-sm"
+                    : "bg-[#f3f1ec] text-[#6b655e] hover:bg-[#ece7df]"
+                }`}
+              >
+                طلباتي فقط
+              </button>
+            </div>
 
-          <select
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-            className="px-4 py-2 rounded-2xl border border-gray-200 text-xs font-black bg-white focus:outline-none focus:border-primary"
-          >
-            <option value="">كل المناطق</option>
-            {settingsLocations.map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
-        </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="rounded-2xl border border-[#e4dfd7] bg-[#fcfbf8] px-4 py-2.5 text-xs font-black text-[#393531] outline-none transition-all focus:border-primary focus:bg-white"
+              >
+                <option value="">كل التصنيفات</option>
+                {settingsCategories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
 
-        <section className="space-y-4 max-w-4xl mx-auto">
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="rounded-2xl border border-[#e4dfd7] bg-[#fcfbf8] px-4 py-2.5 text-xs font-black text-[#393531] outline-none transition-all focus:border-primary focus:bg-white"
+              >
+                <option value="">كل المناطق</option>
+                {settingsLocations.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* List */}
+        <section className="mx-auto max-w-5xl space-y-4">
           {loading ? (
-            <div className="flex justify-center py-16">
-              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="grid gap-4 md:grid-cols-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <RequestCardSkeleton key={i} />
+              ))}
             </div>
           ) : requests.length === 0 ? (
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-10 text-center">
-              <span className="material-symbols-outlined text-5xl text-gray-300 block mb-2">inbox</span>
-              <p className="text-gray-400 text-sm font-bold">
-                {myOnly ? 'لا توجد طلبات بعد — اضغط "اطلب تبرعاً"' : 'لا توجد طلبات حالياً'}
+            <div className="rounded-[28px] border border-dashed border-[#ddd7cf] bg-white p-12 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f4f1eb]">
+                <span className="material-symbols-outlined text-4xl text-[#b9b1a8]">
+                  inbox
+                </span>
+              </div>
+              <p className="text-sm font-black text-[#7c746b]">
+                {myOnly
+                  ? 'لا توجد طلبات بعد — اضغط "اطلب تبرعاً"'
+                  : "لا توجد طلبات حالياً"}
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid gap-4 md:grid-cols-2">
               {requests.map((request) => (
-                <article key={request._id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-3">
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-black text-gray-900 text-sm">{request.title}</h3>
-                        <RequestStatusBadge status={request.status} />
-                        <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-                          {request.category}
-                        </span>
+                <article
+                  key={request._id}
+                  className="group rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <div className="flex h-full flex-col">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-black text-[#1e2526] md:text-base">
+                            {request.title}
+                          </h3>
+                          <RequestStatusBadge status={request.status} />
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-[#8b847c]">
+                          <span className="rounded-full bg-[#f3f1ec] px-2.5 py-1 text-[#6b655e]">
+                            {request.category}
+                          </span>
+                          <span>بواسطة: {request.requester?.name ?? "مستخدم"}</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-500 font-bold">
-                        بواسطة: {request.requester?.name ?? 'مستخدم'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-gray-600 leading-7">{request.description}</p>
-
-                  <div className="pt-2 border-t border-gray-50 flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex gap-2">
-                      {myOnly && request.fulfilledByItem && request.status !== 'cancelled' && (
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/donation-requests/${request._id}`)}
-                          className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-green-50 text-green-700 hover:bg-green-100 flex items-center gap-1 animate-pulse"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">notifications_active</span>
-                          شخص استجاب! اضغط هنا 🎁
-                        </button>
-                      )}
-                      {myOnly && !request.fulfilledByItem && (
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/donation-requests/${request._id}`)}
-                          className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                          عرض التفاصيل
-                        </button>
-                      )}
                     </div>
 
-                    <div className="flex gap-2">
-                      {!myOnly && request.status === 'active' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            resetRespondForm();
-                            setRespondingTo(request);
-                          }}
-                          className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">volunteer_activism</span>
-                          سأتبرع بهذا 🎁
-                        </button>
-                      )}
-                      {myOnly && request.status === 'active' && (
-                        <button
-                          type="button"
-                          onClick={() => cancel(request._id)}
-                          disabled={cancelingId === request._id}
-                          className="px-4 py-2 rounded-2xl text-xs font-black transition-all bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
-                        >
-                          {cancelingId === request._id ? 'جاري الإلغاء...' : 'إلغاء الطلب'}
-                        </button>
-                      )}
+                    <p className="mt-4 line-clamp-4 text-sm leading-7 text-[#635d56]">
+                      {request.description}
+                    </p>
+
+                    <div className="mt-5 border-t border-[#f1ece5] pt-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap gap-2">
+                          {myOnly &&
+                            request.fulfilledByItem &&
+                            request.status !== "cancelled" && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  router.push(`/donation-requests/${request._id}`)
+                                }
+                                className="inline-flex items-center gap-1 rounded-2xl bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700 transition-all hover:bg-emerald-100"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">
+                                  notifications_active
+                                </span>
+                                شخص استجاب! اضغط هنا 🎁
+                              </button>
+                            )}
+
+                          {myOnly && !request.fulfilledByItem && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push(`/donation-requests/${request._id}`)
+                              }
+                              className="inline-flex items-center gap-1 rounded-2xl bg-[#f3f1ec] px-4 py-2 text-xs font-black text-[#625c55] transition-all hover:bg-[#ebe6df]"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">
+                                open_in_new
+                              </span>
+                              عرض التفاصيل
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {!myOnly && request.status === "active" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                resetRespondForm();
+                                setRespondingTo(request);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-2xl bg-primary/10 px-4 py-2 text-xs font-black text-primary transition-all hover:bg-primary/15"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">
+                                volunteer_activism
+                              </span>
+                              سأتبرع بهذا 🎁
+                            </button>
+                          )}
+
+                          {myOnly && request.status === "active" && (
+                            <button
+                              type="button"
+                              onClick={() => cancel(request._id)}
+                              disabled={cancelingId === request._id}
+                              className="rounded-2xl bg-red-50 px-4 py-2 text-xs font-black text-red-600 transition-all hover:bg-red-100 disabled:opacity-50"
+                            >
+                              {cancelingId === request._id
+                                ? "جاري الإلغاء..."
+                                : "إلغاء الطلب"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -362,21 +481,23 @@ export default function DonationRequestsClient() {
           )}
 
           {pages > 1 && (
-            <div className="flex justify-center gap-2 pt-4">
+            <div className="flex items-center justify-center gap-2 pt-4">
               <button
                 onClick={() => load(page - 1)}
                 disabled={page <= 1 || loading}
-                className="px-4 py-2 rounded-2xl text-xs font-black bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+                className="rounded-2xl bg-[#f0ece5] px-4 py-2 text-xs font-black text-[#6b655e] transition-all hover:bg-[#e8e2d9] disabled:opacity-40"
               >
                 السابق
               </button>
-              <span className="px-4 py-2 text-xs font-black text-gray-500">
+
+              <span className="rounded-2xl bg-white px-4 py-2 text-xs font-black text-[#746d66] shadow-sm border border-black/[0.05]">
                 {page} / {pages}
               </span>
+
               <button
                 onClick={() => load(page + 1)}
                 disabled={page >= pages || loading}
-                className="px-4 py-2 rounded-2xl text-xs font-black bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+                className="rounded-2xl bg-[#f0ece5] px-4 py-2 text-xs font-black text-[#6b655e] transition-all hover:bg-[#e8e2d9] disabled:opacity-40"
               >
                 التالي
               </button>
@@ -387,159 +508,204 @@ export default function DonationRequestsClient() {
 
       {respondingTo && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 backdrop-blur-[2px]"
           onClick={() => !submitting && (resetRespondForm(), setRespondingTo(null))}
         >
           <div
-            className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[30px] border border-black/5 bg-white p-6 shadow-[0_30px_80px_rgba(0,0,0,0.22)] md:p-7"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-base font-black text-gray-900">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#ecf8f6] px-3 py-1 text-[10px] font-black text-primary">
+                  <span className="material-symbols-outlined text-[13px]">
+                    volunteer_activism
+                  </span>
+                  إنشاء عرض مرتبط بالطلب
+                </div>
+
+                <h2 className="mt-3 text-base font-black text-[#1d2324] md:text-lg">
                   الاستجابة لطلب: {respondingTo.title}
                 </h2>
-                <p className="text-xs text-gray-500 mt-1">
-                  سيُنشأ غرض ويُحجز تلقائياً لصاحب الطلب.
-                  توجّها معاً للنقطة الآمنة لإتمام التسليم.
+
+                <p className="mt-1 text-xs leading-6 text-[#7a736b]">
+                  سيُنشأ غرض ويُحجز تلقائياً لصاحب الطلب، ثم تنتقلان معاً إلى نقطة
+                  التسليم الآمنة لإتمام العملية.
                 </p>
               </div>
+
               <button
-                onClick={() => { resetRespondForm(); setRespondingTo(null); }}
+                onClick={() => {
+                  resetRespondForm();
+                  setRespondingTo(null);
+                }}
                 disabled={submitting}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 transition-colors hover:text-gray-600"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-black text-gray-700 mb-1">حالة الغرض</label>
-              <select
-                value={respondForm.condition}
-                onChange={(e) => setRespondForm({ ...respondForm, condition: e.target.value as typeof CONDITIONS[number] })}
-                className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
-              >
-                {CONDITIONS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-black text-[#4b4640]">
+                  حالة الغرض
+                </label>
+                <select
+                  value={respondForm.condition}
+                  onChange={(e) =>
+                    setRespondForm({
+                      ...respondForm,
+                      condition: e.target.value as (typeof CONDITIONS)[number],
+                    })
+                  }
+                  className="w-full rounded-2xl border border-[#e4dfd7] bg-[#fcfbf8] px-4 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white"
+                >
+                  {CONDITIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-xs font-black text-gray-700 mb-1">
-                وصف الغرض
-                <span className="text-gray-400 font-normal mr-1">(اختياري)</span>
-              </label>
-              <textarea
-                value={respondForm.description}
-                onChange={(e) => setRespondForm({ ...respondForm, description: e.target.value })}
-                placeholder="مثلاً: كتاب رياضيات صف عاشر، حالة ممتازة، لم يُستخدم كثيراً..."
-                rows={3}
-                maxLength={500}
-                className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary resize-none"
-              />
-              <p className="text-[10px] text-gray-400 text-left mt-1">
-                {respondForm.description.length}/500
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-gray-700 mb-1">
-                صورة الغرض
-                <span className="text-gray-400 font-normal mr-1">(اختيارية)</span>
-              </label>
-              <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all relative overflow-hidden">
-                {imagePreview ? (
-                  <>
-                    <img
-                      src={imagePreview}
-                      alt="معاينة الصورة"
-                      className="w-full h-full object-cover rounded-2xl"
-                    />
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-2xl">
-                      <span className="text-white text-xs font-black">تغيير الصورة</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center gap-1 text-gray-400">
-                    <span className="material-symbols-outlined text-3xl">add_photo_alternate</span>
-                    <span className="text-xs font-bold">اضغط لإضافة صورة</span>
-                    <span className="text-[10px]">JPG, PNG, WebP — بحد أقصى 5MB</span>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={handleImageChange}
+              <div>
+                <label className="mb-1.5 block text-xs font-black text-[#4b4640]">
+                  وصف الغرض
+                  <span className="mr-1 font-normal text-gray-400">(اختياري)</span>
+                </label>
+                <textarea
+                  value={respondForm.description}
+                  onChange={(e) =>
+                    setRespondForm({ ...respondForm, description: e.target.value })
+                  }
+                  placeholder="مثلاً: كتاب رياضيات صف عاشر، حالة ممتازة، لم يُستخدم كثيراً..."
+                  rows={4}
+                  maxLength={500}
+                  className="w-full resize-none rounded-2xl border border-[#e4dfd7] bg-[#fcfbf8] px-4 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white"
                 />
-              </label>
-              {respondForm.imageFile && (
+                <p className="mt-1 text-left text-[10px] text-gray-400">
+                  {respondForm.description.length}/500
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-black text-[#4b4640]">
+                  صورة الغرض
+                  <span className="mr-1 font-normal text-gray-400">(اختيارية)</span>
+                </label>
+
+                <label className="relative flex h-32 w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#ddd7cf] bg-[#fcfbf8] transition-all hover:border-primary/40 hover:bg-primary/[0.03]">
+                  {imagePreview ? (
+                    <>
+                      <img
+                        src={imagePreview}
+                        alt="معاينة الصورة"
+                        className="h-full w-full rounded-2xl object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity hover:opacity-100">
+                        <span className="text-xs font-black text-white">
+                          تغيير الصورة
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-gray-400">
+                      <span className="material-symbols-outlined text-3xl">
+                        add_photo_alternate
+                      </span>
+                      <span className="text-xs font-bold">اضغط لإضافة صورة</span>
+                      <span className="text-[10px]">
+                        JPG, PNG, WebP — بحد أقصى 5MB
+                      </span>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleImageChange}
+                  />
+                </label>
+
+                {respondForm.imageFile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (imagePreview) URL.revokeObjectURL(imagePreview);
+                      setImagePreview(null);
+                      setRespondForm((prev) => ({ ...prev, imageFile: null }));
+                    }}
+                    className="mt-1 text-[10px] font-bold text-red-500 transition-colors hover:text-red-700"
+                  >
+                    ✕ إزالة الصورة
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-black text-[#4b4640]">
+                  نقطة التسليم الآمنة
+                </label>
+
+                {hubs.length === 0 ? (
+                  <div className="w-full rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs font-bold text-orange-600">
+                    ⚠️ لا توجد نقاط تسليم متاحة — تواصل مع الإدارة
+                  </div>
+                ) : (
+                  <select
+                    value={respondForm.safeHub}
+                    onChange={(e) =>
+                      setRespondForm({ ...respondForm, safeHub: e.target.value })
+                    }
+                    className="w-full rounded-2xl border border-[#e4dfd7] bg-[#fcfbf8] px-4 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white"
+                  >
+                    <option value="">اختر نقطة...</option>
+                    {hubs.map((h) => (
+                      <option key={h._id} value={h._id}>
+                        {h.name} — {h.city}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {respondForm.safeHub && (
+                <div className="rounded-2xl border border-primary/10 bg-primary/5 p-3 text-xs font-bold text-primary">
+                  ✅ بعد التأكيد ستُوجَّه لصفحة الغرض مباشرة لمتابعة عملية التسليم
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleRespond}
+                  disabled={submitting || !respondForm.safeHub}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-black text-white transition-all hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      جاري الإرسال...
+                    </>
+                  ) : (
+                    "تأكيد التبرع 🎁"
+                  )}
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
-                    if (imagePreview) URL.revokeObjectURL(imagePreview);
-                    setImagePreview(null);
-                    setRespondForm((prev) => ({ ...prev, imageFile: null }));
+                    resetRespondForm();
+                    setRespondingTo(null);
                   }}
-                  className="mt-1 text-[10px] text-red-500 font-bold hover:text-red-700 transition-colors"
+                  disabled={submitting}
+                  className="rounded-2xl bg-[#f0ece5] px-5 py-3 text-sm font-black text-[#6b655e] transition-all hover:bg-[#e5dfd6] disabled:opacity-50"
                 >
-                  ✕ إزالة الصورة
+                  إلغاء
                 </button>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-gray-700 mb-1">نقطة التسليم الآمنة</label>
-              {hubs.length === 0 ? (
-                <div className="w-full px-4 py-2.5 rounded-2xl border border-orange-200 bg-orange-50 text-xs text-orange-600 font-bold">
-                  ⚠️ لا توجد نقاط تسليم متاحة — تواصل مع الإدارة
-                </div>
-              ) : (
-                <select
-                  value={respondForm.safeHub}
-                  onChange={(e) => setRespondForm({ ...respondForm, safeHub: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
-                >
-                  <option value="">اختر نقطة...</option>
-                  {hubs.map((h) => (
-                    <option key={h._id} value={h._id}>{h.name} — {h.city}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            {respondForm.safeHub && (
-              <div className="p-3 rounded-2xl bg-primary/5 border border-primary/10 text-xs text-primary font-bold">
-                ✅ بعد التأكيد ستُوجَّه لصفحة الغرض مباشرة لمتابعة عملية التسليم
               </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleRespond}
-                disabled={submitting || !respondForm.safeHub}
-                className="flex-1 py-2.5 rounded-2xl text-sm font-black text-white bg-primary hover:bg-primary/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    جاري الإرسال...
-                  </>
-                ) : (
-                  'تأكيد التبرع 🎁'
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => { resetRespondForm(); setRespondingTo(null); }}
-                disabled={submitting}
-                className="px-5 py-2.5 rounded-2xl text-sm font-black text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50"
-              >
-                إلغاء
-              </button>
             </div>
           </div>
         </div>

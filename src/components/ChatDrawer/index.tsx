@@ -35,30 +35,21 @@ export default function ChatDrawer({
   } = useChat(itemId, isOpen);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const canSend = useMemo(() => !!text.trim() && !sending, [text, sending]);
+  const inputRef  = useRef<HTMLInputElement>(null);
+  const canSend   = useMemo(() => !!text.trim() && !sending, [text, sending]);
 
   useEffect(() => {
-    if (isOpen) {
-      inputRef.current?.focus();
-    }
+    if (isOpen) inputRef.current?.focus();
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen)
       bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
   }, [messages, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
@@ -84,13 +75,11 @@ export default function ChatDrawer({
                 <span className="material-symbols-outlined text-[13px]">forum</span>
                 محادثة التنسيق
               </div>
-
               <p className="text-sm font-black text-[#1c2324]">الرسائل</p>
               <p className="mt-1 truncate text-xs font-semibold text-[#8b847c]">
                 {itemTitle}
               </p>
             </div>
-
             <button
               onClick={onClose}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-[#6f6a63] transition-all duration-300 hover:bg-[#f2eee8] hover:text-[#1f2526]"
@@ -111,10 +100,7 @@ export default function ChatDrawer({
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}
-                >
+                <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
                   <div className="max-w-[82%] space-y-2">
                     <div className="h-4 w-16 animate-pulse rounded-full bg-[#e6e0d8]" />
                     <div className="h-12 w-44 animate-pulse rounded-[22px] bg-[#ebe5dd]" />
@@ -125,21 +111,29 @@ export default function ChatDrawer({
           ) : messages.length === 0 ? (
             <div className="flex min-h-full flex-col items-center justify-center px-6 py-20 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary shadow-sm">
-                <span className="material-symbols-outlined text-3xl">
-                  chat_bubble_outline
-                </span>
+                <span className="material-symbols-outlined text-3xl">chat_bubble_outline</span>
               </div>
               <p className="mt-4 text-sm font-black text-[#243132]">ابدأ المحادثة</p>
               <p className="mt-2 max-w-xs text-xs leading-6 text-[#8a837b]">
-                استخدم هذه المساحة لتنسيق وقت ومكان التسليم بشكل واضح وسريع بين الطرفين.
+                استخدم هذه المساحة لتنسيق وقت ومكان التسليم بشكل واضح وسريع.
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               {messages.map((msg, index) => {
-                const isMe = msg.sender === user?._id;
+                // [FIX] sender قد يكون string أو { _id: string }
+                const senderId =
+                  typeof msg.sender === "string"
+                    ? msg.sender
+                    : (msg.sender as { _id: string })?._id ?? "";
+                const isMe = senderId === user?._id;
                 const prev = messages[index - 1];
-                const isSameSenderAsPrev = prev?.sender === msg.sender;
+                const prevSenderId =
+                  typeof prev?.sender === "string"
+                    ? prev.sender
+                    : (prev?.sender as { _id: string })?._id ?? "";
+                const isSameSenderAsPrev = prevSenderId === senderId;
+                const isTemp = msg._id.startsWith("temp-");
 
                 return (
                   <div
@@ -148,32 +142,27 @@ export default function ChatDrawer({
                   >
                     <div className={`max-w-[84%] ${isSameSenderAsPrev ? "mt-0.5" : "mt-2"}`}>
                       {!isSameSenderAsPrev && (
-                        <div
-                          className={`mb-1 px-1 text-[10px] font-bold ${
-                            isMe ? "text-primary/75" : "text-[#9a938c]"
-                          }`}
-                        >
+                        <div className={`mb-1 px-1 text-[10px] font-bold ${isMe ? "text-primary/75" : "text-[#9a938c]"}`}>
                           {isMe ? "أنت" : "الطرف الآخر"}
                         </div>
                       )}
-
                       <div
-                        className={`rounded-[22px] px-3.5 py-2.5 text-sm leading-7 shadow-sm ${
+                        className={`rounded-[22px] px-3.5 py-2.5 text-sm leading-7 shadow-sm transition-opacity duration-300 ${
+                          isTemp ? "opacity-60" : "opacity-100"
+                        } ${
                           isMe
                             ? "rounded-tl-md bg-primary text-white"
                             : "rounded-tr-md border border-[#ece7de] bg-white text-[#1f2526]"
                         }`}
                       >
                         <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                        <p
-                          className={`mt-1 text-[10px] font-semibold ${
-                            isMe ? "text-white/70" : "text-[#aaa39b]"
-                          }`}
-                        >
-                          {new Date(msg.createdAt).toLocaleTimeString("ar-JO", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                        <p className={`mt-1 text-[10px] font-semibold ${isMe ? "text-white/70" : "text-[#aaa39b]"}`}>
+                          {isTemp
+                            ? "جاري الإرسال..."
+                            : new Date(msg.createdAt).toLocaleTimeString("ar-JO", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                         </p>
                       </div>
                     </div>
@@ -212,7 +201,6 @@ export default function ChatDrawer({
               >
                 <SendIcon />
               </button>
-
               <div className="flex-1">
                 <input
                   ref={inputRef}
@@ -221,9 +209,7 @@ export default function ChatDrawer({
                   value={text}
                   onChange={(e) => {
                     setText(e.target.value);
-                    if (e.target.value.trim()) {
-                      sendTyping();
-                    }
+                    if (e.target.value.trim()) sendTyping();
                   }}
                   onKeyDown={async (e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -231,7 +217,7 @@ export default function ChatDrawer({
                       await sendMessage();
                     }
                   }}
-                  placeholder="اكتب رسالة واضحة لتنسيق التسليم..."
+                  placeholder="اكتب رسالة لتنسيق التسليم..."
                   className="h-11 w-full rounded-2xl border border-transparent bg-transparent px-4 text-sm text-right text-[#1f2526] outline-none transition-all placeholder:text-[#a8a29a] focus:border-primary/20 focus:bg-white focus:ring-2 focus:ring-primary/10"
                   aria-label="حقل كتابة الرسالة"
                 />

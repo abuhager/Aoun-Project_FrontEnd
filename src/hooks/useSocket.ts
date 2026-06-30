@@ -1,4 +1,3 @@
-// src/hooks/useSocket.ts ✅ PATCHED [SEC-01]
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
@@ -29,18 +28,18 @@ export function useSocket() {
     }
 
     socketSingleton = io(SOCKET_URL, {
-      // ✅ SEC-01: auth كـ callback ديناميكي — يُستدعى عند كل reconnect تلقائياً
-      // بدل { token: getAccessToken() } الثابتة
-      auth: (cb) => cb({ token: getAccessToken() }),
+      // ✅ auth كـ callback ديناميكي — يُستدعى عند كل reconnect تلقائياً
+      auth: (cb: (data: { token: string | null }) => void) =>
+        cb({ token: getAccessToken() }),
       withCredentials:      true,
-      transports:           ['websocket'],
+      transports:           ["websocket"],
       reconnection:         true,
       reconnectionAttempts: 10,
       reconnectionDelay:    1500,
       timeout:              8000,
     });
 
-    socketUserId  = userId;
+    socketUserId      = userId;
     socketRef.current = socketSingleton;
     return socketSingleton;
   }, []);
@@ -63,8 +62,7 @@ export function useSocket() {
     const handleConnectError = (err: Error) => {
       const msg = err?.message || "";
       if (msg === "TOKEN_EXPIRED" || msg === "INVALID_TOKEN") {
-        // ✅ SEC-01: لا نُعيّن auth يدوياً — auth callback يجلب fresh token تلقائياً
-        // فقط نُعيد الاتصال بعد تأخير قصير لإتاحة Refresh Token بالعمل
+        // auth callback يجلب fresh token تلقائياً عند reconnect
         setTimeout(() => {
           if (socketSingleton && !socketSingleton.connected) {
             socketSingleton.connect();
@@ -74,10 +72,7 @@ export function useSocket() {
     };
 
     socket.on("connect_error", handleConnectError);
-
-    return () => {
-      socket.off("connect_error", handleConnectError);
-    };
+    return () => { socket.off("connect_error", handleConnectError); };
   }, [user?._id, isAuthenticated, connectSocket]);
 
   return socketRef;

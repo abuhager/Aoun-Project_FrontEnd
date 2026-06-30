@@ -1,4 +1,4 @@
-// src/middleware.ts — النسخة النهائية الصحيحة
+// src/proxy.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { isProtectedPath, isAuthOnlyPath } from '@/config/routes';
 
@@ -7,7 +7,7 @@ const hasSession = (request: NextRequest): boolean => {
   return signal === '1' || signal === 'true';
 };
 
-export async function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isProtected = isProtectedPath(pathname);
@@ -16,7 +16,6 @@ export async function middleware(request: NextRequest) {
 
   // 1. مسار محمي والمستخدم غير مسجّل
   if (isProtected && !loggedIn) {
-    // ✅ طلبات الـ API الداخلية (RSC / fetch) لا تُعاد توجيهها
     const isHtmlRequest = request.headers.get('accept')?.includes('text/html') ?? false;
     const isNavigation  = request.headers.get('sec-fetch-mode') === 'navigate';
 
@@ -32,7 +31,7 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // 2. مسار خاص بغير المسجّلين والمستخدم مسجّل بالفعل
+  // 2. مسار خاص بغير المسجّلين والمستخدم مسجّل
   if (isAuthOnly && loggedIn) {
     return NextResponse.redirect(new URL('/browse', request.url));
   }

@@ -34,6 +34,13 @@ function getBookedByName(bookedBy: DashboardItem["bookedBy"]): string {
   return bookedBy.name ?? "";
 }
 
+// [FIX-CHAT] هل يوجد حاجز (للتأكد قبل عرض زر المحادثة في تاب المتبرع)
+function hasBookedBy(bookedBy: DashboardItem["bookedBy"]): boolean {
+  if (!bookedBy) return false;
+  if (typeof bookedBy === "string") return bookedBy.length > 0;
+  return !!bookedBy._id;
+}
+
 /* ── Empty State ─────────────────────────────────────────────── */
 function EmptyState({ activeTab }: { activeTab: "donations" | "requests" }) {
   const isDonations = activeTab === "donations";
@@ -97,6 +104,17 @@ export function ItemsTable({
     <div className="space-y-3">
       {items.map((item) => {
         const reportId = item.reportId;
+
+        /*
+         * [FIX-CHAT] شروط ظهور زر المحادثة:
+         *   - تاب المستلم  (requests)  : الإعلان محجوز → دائماً يظهر (يتواصل مع المتبرع)
+         *   - تاب المتبرع  (donations) : الإعلان محجوز + يوجد bookedBy → يظهر (يتواصل مع الحاجز)
+         */
+        const showChat =
+          onOpenChat &&
+          item.status === "محجوز" &&
+          (activeTab === "requests" ||
+            (activeTab === "donations" && hasBookedBy(item.bookedBy)));
 
         return (
           <div
@@ -191,15 +209,17 @@ export function ItemsTable({
 
               {/* Actions */}
               <div className="flex shrink-0 flex-wrap gap-2 md:w-auto md:flex-col">
-                {item.status === "محجوز" && onOpenChat && (
+
+                {/* [FIX-CHAT] زر المحادثة — يظهر فقط عند الشرطين الصحيحَين */}
+                {showChat && (
                   <button
-                    onClick={() => onOpenChat(item)}
+                    onClick={() => onOpenChat!(item)}
                     className="inline-flex items-center justify-center gap-1 rounded-xl bg-primary/[0.07] px-3 py-2 text-[12px] font-bold text-primary transition-all duration-150 hover:bg-primary/[0.13] active:scale-[0.98]"
                   >
                     <span className="material-symbols-outlined text-[14px]">
                       chat
                     </span>
-                    محادثة
+                    {activeTab === "requests" ? "تواصل مع المتبرع" : "تواصل مع الحاجز"}
                   </button>
                 )}
 

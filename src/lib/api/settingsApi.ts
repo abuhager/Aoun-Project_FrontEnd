@@ -14,16 +14,16 @@ import type {
 
 // ── قراءة الإعدادات العامة (بدون Auth) ──────────────────────────────────────
 
-export async function getPublicSettings() {
+export async function getPublicSettings(): Promise<PublicSettings | null> {
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/settings/public`,
-      { next: { revalidate: 3600 } } // ← يُجدد كل ساعة تلقائياً
+      { cache: "no-store" } // ← دائماً أحدث قيمة من DB
     );
     if (!res.ok) return null;
-    return res.json();
+    return res.json() as Promise<PublicSettings>;
   } catch {
-    return null; // ← يرجع null → يستخدم الـ fallback
+    return null;
   }
 }
 

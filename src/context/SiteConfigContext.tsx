@@ -1,6 +1,6 @@
 // src/context/SiteConfigContext.tsx
 "use client";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 import { siteConfig } from "@/config/site.config";
 
 type SiteConfigType = {
@@ -9,24 +9,27 @@ type SiteConfigType = {
 };
 
 const SiteConfigContext = createContext<SiteConfigType>({
-  platformName: siteConfig.name,   // ← fallback
-  contactEmail: "support@aoun.jo",
+  platformName: siteConfig.name,
+  contactEmail: "aoun.help.center@gmail.com",
 });
 
 export function SiteConfigProvider({
   children,
-  settings,        // ← يجيه من Server Component
+  settings,
 }: {
   children: React.ReactNode;
   settings: SiteConfigType | null;
 }) {
-  const value = {
-    platformName: settings?.platformName ?? siteConfig.name,  // ← DB أو fallback
-    contactEmail: settings?.contactEmail ?? "support@aoun.jo",
-  };
+  const config = useMemo<SiteConfigType>(
+    () => ({
+      platformName: settings?.platformName ?? siteConfig.name,
+      contactEmail: settings?.contactEmail ?? "aoun.help.center@gmail.com",
+    }),
+    [settings?.platformName, settings?.contactEmail]
+  );
 
   return (
-    <SiteConfigContext.Provider value={value}>
+    <SiteConfigContext.Provider value={config}>
       {children}
     </SiteConfigContext.Provider>
   );

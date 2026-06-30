@@ -3,6 +3,7 @@
 
 export interface PublicSettings {
   platformName?: string;
+    contactEmail: string;
   categories:    string[];
   reportReasons: string[];
   locations?:    string[];

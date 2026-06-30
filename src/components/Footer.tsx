@@ -1,10 +1,10 @@
-// src/components/Footer.tsx — ✅ REDESIGNED
+// src/components/Footer.tsx
 "use client";
 
 import { useSiteConfig } from "@/context/SiteConfigContext";
 
 export default function Footer() {
-    const { platformName } = useSiteConfig();
+  const { platformName, contactEmail } = useSiteConfig(); // ← contactEmail من DB
 
   return (
     <footer
@@ -14,31 +14,22 @@ export default function Footer() {
         background: "radial-gradient(ellipse 80% 60% at 50% 120%, #005c50 0%, #003d36 60%)",
       }}
     >
-      {/* طبقة نقطة ضوء خلفية خفيفة */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
         style={{
-          backgroundImage:
-            "radial-gradient(circle at 50% 0%, white 0%, transparent 70%)",
+          backgroundImage: "radial-gradient(circle at 50% 0%, white 0%, transparent 70%)",
         }}
       />
 
-      {/* الحاجز العلوي */}
       <div className="border-t border-white/[0.08]" />
 
       <div className="relative mx-auto max-w-5xl px-5 py-10 md:py-12">
-
-        {/* ── شبكة المحتوى الرئيسية ───────────────────────────── */}
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6">
 
           {/* العمود الأول: الشعار والرسالة */}
           <div className="flex flex-col items-center text-center md:items-start md:text-right">
-            {/* الشعار */}
             <div className="mb-3 flex items-center gap-2.5">
-              <div
-                className="flex h-9 w-9 items-center justify-center rounded-xl
-                           bg-white/[0.12] backdrop-blur-sm"
-              >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.12] backdrop-blur-sm">
                 <span
                   className="material-symbols-outlined text-[20px] text-white"
                   style={{ fontVariationSettings: "'FILL' 1" }}
@@ -46,7 +37,7 @@ export default function Footer() {
                   volunteer_activism
                 </span>
               </div>
-              <span className="text-xl font-black tracking-tight">عـون</span>
+              <span className="text-xl font-black tracking-tight">{platformName}</span>
             </div>
 
             <p className="max-w-xs text-[13px] leading-relaxed text-white/60">
@@ -54,13 +45,11 @@ export default function Footer() {
               بالمحتاجين، تعزيزاً للتكافل الاجتماعي.
             </p>
 
-            {/* شارة المبادرة */}
-            <div
-              className="mt-4 flex items-center gap-1.5 rounded-full border
-                         border-white/[0.12] bg-white/[0.06] px-3 py-1.5"
-            >
-              <span className="material-symbols-outlined text-[13px] text-emerald-400"
-                style={{ fontVariationSettings: "'FILL' 1" }}>
+            <div className="mt-4 flex items-center gap-1.5 rounded-full border border-white/[0.12] bg-white/[0.06] px-3 py-1.5">
+              <span
+                className="material-symbols-outlined text-[13px] text-emerald-400"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
                 verified
               </span>
               <span className="text-[11px] font-bold text-white/70">
@@ -76,21 +65,18 @@ export default function Footer() {
             </p>
             <nav className="flex flex-col gap-1.5" aria-label="روابط التذييل">
               {[
-                { href: "/browse",             label: "تصفح الأغراض",    icon: "explore" },
-                { href: "/donation-requests",   label: "طلبات التبرع",    icon: "volunteer_activism" },
-                { href: "/leaderboard",         label: "المتصدرون",       icon: "leaderboard" },
-                { href: "/hubs",                label: "مراكز التسليم",   icon: "warehouse" },
+                { href: "/browse",           label: "تصفح الأغراض",  icon: "explore"           },
+                { href: "/donation-requests", label: "طلبات التبرع",  icon: "volunteer_activism" },
+                { href: "/leaderboard",       label: "المتصدرون",     icon: "leaderboard"        },
+                { href: "/hubs",              label: "مراكز التسليم", icon: "warehouse"          },
               ].map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
-                  className="group flex items-center gap-2 rounded-lg px-2 py-1.5
-                             text-[13px] font-bold text-white/60 transition-all
-                             duration-150 hover:bg-white/[0.06] hover:text-white"
+                  className="group flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold text-white/60 transition-all duration-150 hover:bg-white/[0.06] hover:text-white"
                 >
                   <span
-                    className="material-symbols-outlined text-[15px] text-white/30
-                               transition-colors group-hover:text-emerald-400"
+                    className="material-symbols-outlined text-[15px] text-white/30 transition-colors group-hover:text-emerald-400"
                     style={{ fontVariationSettings: "'FILL' 0" }}
                   >
                     {link.icon}
@@ -108,27 +94,24 @@ export default function Footer() {
             </p>
 
             <div className="flex flex-col gap-2 w-full max-w-xs">
-              {/* البريد الإلكتروني */}
+              {/* البريد الإلكتروني من DB */}
               <a
-                href="https://mail.google.com/mail/?view=cm&fs=1&to=aoun.project.jo@gmail.com"
+                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${contactEmail}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center gap-2.5 rounded-xl border
-                           border-white/[0.10] bg-white/[0.05] px-3 py-2.5
-                           transition-all duration-200 hover:border-white/20
-                           hover:bg-white/[0.09]"
+                className="group flex items-center gap-2.5 rounded-xl border border-white/[0.10] bg-white/[0.05] px-3 py-2.5 transition-all duration-200 hover:border-white/20 hover:bg-white/[0.09]"
               >
-                <span className="material-symbols-outlined text-[16px] text-white/50
-                               transition-colors group-hover:text-white"
-                  style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span
+                  className="material-symbols-outlined text-[16px] text-white/50 transition-colors group-hover:text-white"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
                   mail
                 </span>
                 <span
                   dir="ltr"
-                  className="text-[12px] font-bold text-white/60 transition-colors
-                             group-hover:text-white truncate"
+                  className="text-[12px] font-bold text-white/60 transition-colors group-hover:text-white truncate"
                 >
-                  aoun.help.center@gmail.com
+                  {contactEmail}
                 </span>
               </a>
 
@@ -137,14 +120,12 @@ export default function Footer() {
                 href="https://wa.me/962797283384"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center justify-center gap-2 rounded-xl
-                           bg-[#25d366]/20 px-4 py-2.5 text-[13px] font-bold
-                           text-[#25d366] transition-all duration-200
-                           hover:bg-[#25d366]/30 hover:shadow-lg
-                           hover:shadow-[#25d366]/10"
+                className="group flex items-center justify-center gap-2 rounded-xl bg-[#25d366]/20 px-4 py-2.5 text-[13px] font-bold text-[#25d366] transition-all duration-200 hover:bg-[#25d366]/30 hover:shadow-lg hover:shadow-[#25d366]/10"
               >
-                <span className="material-symbols-outlined text-[16px]"
-                  style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span
+                  className="material-symbols-outlined text-[16px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
                   support_agent
                 </span>
                 الدعم الفني عبر واتساب
@@ -153,16 +134,16 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* ── Divider مع نص ─────────────────────────────────── */}
+        {/* Divider */}
         <div className="mt-10 flex items-center gap-4">
           <div className="h-px flex-1 bg-white/[0.08]" />
           <span className="text-[11px] font-black tracking-widest text-white/20">
-            عـون
+            {platformName}
           </span>
           <div className="h-px flex-1 bg-white/[0.08]" />
         </div>
 
-        {/* ── Copyright ─────────────────────────────────────── */}
+        {/* Copyright */}
         <p className="mt-4 text-center text-[11px] font-bold text-white/30">
           © {new Date().getFullYear()} منصة {platformName} المجتمعية — جميع الحقوق محفوظة
         </p>

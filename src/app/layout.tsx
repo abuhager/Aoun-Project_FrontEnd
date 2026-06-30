@@ -24,7 +24,7 @@ const cairo = Cairo({
   display: "swap",
 });
 
-// ── Metadata ديناميكية تقرأ اسم المنصة من DB ────────────────────────────────
+// ── Metadata ديناميكية ───────────────────────────────────────────────────────
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getPublicSettings();
   const name = settings?.platformName ?? siteConfig.name;
@@ -39,7 +39,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  // استدعاء واحد فقط — نفس النتيجة تُستخدم في generateMetadata والـ Provider
   const settings = await getPublicSettings();
 
   return (
@@ -47,6 +46,7 @@ export default async function RootLayout({
       lang="ar"
       dir="rtl"
       className={`${cairo.variable} ${tajawal.variable}`}
+      suppressHydrationWarning
     >
       <head>
         <link
@@ -59,14 +59,22 @@ export default async function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-surface min-h-screen text-on-surface antialiased">
-        {/* SiteConfigProvider يلف الكل حتى أي مكون يقدر يقرأ platformName */}
-        <SiteConfigProvider settings={settings}>
+      {/* تم جعل الـ body عبارة عن flex column لضمان توزيع العناصر بداخله بشكل مرن وسليم */}
+      <body className="flex min-h-screen flex-col bg-surface text-on-surface antialiased">
+        <SiteConfigProvider
+          settings={
+            settings?.platformName
+              ? {
+                  platformName: settings.platformName,
+                  contactEmail: settings.contactEmail ?? "aoun.help.center@gmail.com",
+                }
+              : null
+          }
+        >
           <AuthProvider>
             <GlobalRatingModal />
-            <main className="flex min-h-screen flex-col">
-              {children}
-            </main>
+            {/* إزالة وسم <main> من هنا لتجنب التضارب مع الـ Layouts الداخلية التي تحتوي على الـ Navbar والـ Footer */}
+            {children}
           </AuthProvider>
         </SiteConfigProvider>
       </body>

@@ -188,10 +188,9 @@ export default function AdminUsersPage() {
     const total = users.length;
     const banned = users.filter((u) => u.isBanned).length;
     const active = users.filter((u) => !u.isBanned).length;
-    const lvl3 = users.filter((u) => u.trustLevel === 3).length;
     const lvl2 = users.filter((u) => u.trustLevel === 2).length;
     const lvl1 = users.filter((u) => u.trustLevel === 1).length;
-    return { total, banned, active, lvl1, lvl2, lvl3 };
+    return { total, banned, active, lvl1, lvl2, };
   }, [users]);
 
   return (
@@ -365,13 +364,7 @@ export default function AdminUsersPage() {
             wrap: "bg-blue-50 text-blue-600",
             span: "lg:col-span-1",
           },
-          {
-            label: "Level 3",
-            value: stats.lvl3,
-            icon: "workspace_premium",
-            wrap: "bg-purple-50 text-purple-600",
-            span: "lg:col-span-1",
-          },
+          
           {
             label: "Level 1",
             value: stats.lvl1,

@@ -1,159 +1,173 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuth }   from "@/context/AuthContext";
-import { useSocket } from "./useSocket";
+import { useCallback, useEffect, useRef, useState } from "react";
+import axios from "axios";
 import axiosInstance from "@/lib/api/axiosInstance";
-import type { ChatMessage, ConversationInfo } from "@/types/chat.types";
 
-interface ConversationResponse extends ConversationInfo {
-  messages?: ChatMessage[];
-}
+export type ChatUser = {
+  _id: string;
+  name: string;
+  avatar?: string;
+};
 
-export function useChat(itemId: string, isOpen = false) {
-  const { user, isLoggedIn } = useAuth();
-  const socketRef = useSocket();
-  const convIdRef = useRef<string | null>(null);
-  const isOpenRef = useRef(isOpen);
-  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+export type ChatMessage = {
+  _id: string;
+  conversation: string;
+  sender: string | ChatUser;
+  text: string;
+  read: boolean;
+  createdAt: string;
+  updatedAt?: string;
+};
 
-  const [messages,   setMessages]   = useState<ChatMessage[]>([]);
-  const [convInfo,   setConvInfo]   = useState<ConversationInfo | null>(null);
-  const [loading,    setLoading]    = useState(false);
-  const [sending,    setSending]    = useState(false);
-  const [text,       setText]       = useState("");
-  const [typingUser, setTypingUser] = useState<string | null>(null);
+export type ChatConversation = {
+  _id: string;
+  item: {
+    _id: string;
+    title: string;
+    images?: string[];
+  } | null;
+  owner: ChatUser | null;
+  requester: ChatUser | null;
+  participants: string[];
+  unreadCount?: number;
+  lastMessage?: string;
+  lastMessageAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
-  // ─── فتح / جلب المحادثة ───────────────────────────────────────────────────
-  const initConversation = useCallback(async () => {
-    if (!isOpenRef.current || !itemId || !user?._id || !isLoggedIn) return;
-    setLoading(true);
+type GetMessagesResponse = {
+  status: string;
+  results: number;
+  page: number;
+  totalPages: number;
+  data: ChatMessage[];
+};
+
+type GetConversationsResponse = {
+  status: string;
+  results: number;
+  data: ChatConversation[];
+};
+
+type InitConversationResponse = {
+  status: string;
+  data: ChatConversation;
+};
+
+export default function useChat(itemId?: string) {
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [activeConversation, setActiveConversation] = useState<ChatConversation | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
+  const initRequestedRef = useRef(false);
+
+  const fetchConversations = useCallback(async () => {
     try {
-      const { data } = await axiosInstance.post<ConversationResponse>(
-        "/api/conversations",
-        { itemId }
-      );
-
-      convIdRef.current = data._id;
-      setConvInfo({ _id: data._id, item: data.item });
-      setMessages(Array.isArray(data.messages) ? data.messages : []);
-
-      // [FIX] الباكيند ينضم على user_${id} — نُعلمه بالغرفة الصحيحة
-      socketRef.current?.emit("joinConversation", {
-        itemId,
-        convId: data._id,
-      });
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status !== 400) console.error("[useChat] initConversation error:", err);
-      convIdRef.current = null;
-      setConvInfo(null);
-      setMessages([]);
+      setLoadingConversations(true);
+      const { data } = await axiosInstance.get<GetConversationsResponse>("/api/conversations");
+      setConversations(data.data ?? []);
+      return data.data ?? [];
+    } catch (error) {
+      console.error("[useChat] fetch conversations error:", error);
+      setConversations([]);
+      return [];
     } finally {
-      setLoading(false);
+      setLoadingConversations(false);
     }
-  }, [user?._id, isLoggedIn, itemId, socketRef]);
+  }, []);
 
-  useEffect(() => {
-    if (isOpen && itemId && isLoggedIn) initConversation();
-  }, [isOpen, itemId, isLoggedIn, initConversation]);
+  const fetchMessages = useCallback(async (conversationId: string, page = 1) => {
+    try {
+      setLoadingMessages(true);
+      const { data } = await axiosInstance.get<GetMessagesResponse>(
+        `/api/conversations/${conversationId}/messages?page=${page}`
+      );
+      setMessages(data.data ?? []);
+      return data.data ?? [];
+    } catch (error) {
+      console.error("[useChat] fetch messages error:", error);
+      setMessages([]);
+      return [];
+    } finally {
+      setLoadingMessages(false);
+    }
+  }, []);
 
-  // ─── إرسال رسالة ──────────────────────────────────────────────────────────
-  const sendMessage = useCallback(async () => {
-    if (!text.trim() || !convIdRef.current || sending) return;
-    const tempId  = `temp-${Date.now()}`;
-    const trimmed = text.trim();
-
-    const tempMsg: ChatMessage = {
-      _id:       tempId,
-      sender:    user?._id ?? "",
-      text:      trimmed,
-      createdAt: new Date().toISOString(),
-      read:      false,
-    };
-
-    setMessages((p) => [...p, tempMsg]);
-    setText("");
-    setSending(true);
+  const initConversation = useCallback(async () => {
+    if (!itemId || initRequestedRef.current) return null;
 
     try {
-      await axiosInstance.post(
-        `/api/conversations/${convIdRef.current}/messages`,
-        { text: trimmed }
+      initRequestedRef.current = true;
+      const { data } = await axiosInstance.post<InitConversationResponse>("/api/conversations", {
+        itemId,
+      });
+      setActiveConversation(data.data);
+      return data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        const list = await fetchConversations();
+        const existing = list.find((c) => c.item?._id === itemId) ?? null;
+        if (existing) {
+          setActiveConversation(existing);
+          return existing;
+        }
+      }
+      console.error("[useChat] initConversation error:", error);
+      return null;
+    }
+  }, [itemId, fetchConversations]);
+
+  const sendMessage = useCallback(async (conversationId: string, text: string) => {
+    if (!text.trim()) return null;
+
+    try {
+      setSending(true);
+      const { data } = await axiosInstance.post<{ status: string; data: ChatMessage }>(
+        `/api/conversations/${conversationId}/messages`,
+        { text: text.trim() }
       );
-      // الرسالة الحقيقية ستصل عبر socket message:new وتستبدل الـ tempMsg
-    } catch {
-      setMessages((p) => p.filter((m) => m._id !== tempId));
-      setText(trimmed);
+
+      setMessages((prev) => [...prev, data.data]);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c._id === conversationId
+            ? {
+                ...c,
+                lastMessage: data.data.text,
+                lastMessageAt: data.data.createdAt,
+              }
+            : c
+        )
+      );
+
+      return data.data;
+    } catch (error) {
+      console.error("[useChat] sendMessage error:", error);
+      return null;
     } finally {
       setSending(false);
     }
-  }, [text, sending, user?._id]);
+  }, []);
 
-  // ─── استقبال رسائل الـ Socket ─────────────────────────────────────────────
   useEffect(() => {
-    const s = socketRef.current;
-    if (!s) return;
-
-    // [FIX] استقبال message:new وإزالة الـ tempMsg المقابل
-    const onMsg = (payload: { conversationId?: string; message: ChatMessage & { correlationId?: string } }) => {
-      // دعم الصيغتين: { message } أو الرسالة مباشرةً
-      const msg = (payload as { message?: ChatMessage & { correlationId?: string } }).message ?? payload as unknown as ChatMessage;
-
-      setMessages((prev) => {
-        // استبدال tempMsg إذا كان هناك correlationId
-        if (msg.correlationId) {
-          const i = prev.findIndex((m) => m._id === msg.correlationId);
-          if (i !== -1) {
-            const updated = [...prev];
-            updated[i] = { ...msg };
-            return updated;
-          }
-        }
-        // استبدال tempMsg المبني على التوقيت (temp-xxx)
-        const tempIdx = prev.findIndex(
-          (m) => m._id.startsWith("temp-") && m.sender === msg.sender && m.text === msg.text
-        );
-        if (tempIdx !== -1) {
-          const updated = [...prev];
-          updated[tempIdx] = { ...msg };
-          return updated;
-        }
-        // تجنب التكرار
-        if (prev.some((m) => m._id === msg._id)) return prev;
-        return [...prev, msg];
-      });
-    };
-
-    const onTyping = (d: { userId: string; name: string }) => {
-      if (d.userId === user?._id) return;
-      setTypingUser(d.name);
-      setTimeout(() => setTypingUser(null), 2500);
-    };
-
-    s.on("message:new", onMsg);
-    s.on("user:typing", onTyping);
-    return () => {
-      s.off("message:new", onMsg);
-      s.off("user:typing", onTyping);
-    };
-  }, [socketRef, user?._id]);
-
-  // ─── إشارة الكتابة ────────────────────────────────────────────────────────
-  const sendTyping = useCallback(() => {
-    if (!convIdRef.current) return;
-    socketRef.current?.emit("typing", { convId: convIdRef.current });
-  }, [socketRef]);
+    fetchConversations();
+  }, [fetchConversations]);
 
   return {
+    conversations,
+    activeConversation,
+    setActiveConversation,
     messages,
-    convInfo,
-    loading,
+    loadingConversations,
+    loadingMessages,
     sending,
-    text,
-    setText,
-    typingUser,
+    fetchConversations,
+    fetchMessages,
+    initConversation,
     sendMessage,
-    sendTyping,
   };
 }

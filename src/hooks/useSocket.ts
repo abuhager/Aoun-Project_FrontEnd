@@ -1,79 +1,72 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "@/context/AuthContext";
 import { getAccessToken } from "@/lib/api/axiosInstance";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-let socketSingleton: Socket | null = null;
-let socketUserId:    string | null = null;
+// singleton — اتصال واحد للتطبيق كله
+let _socket: Socket | null = null;
+let _userId: string | null  = null;
+
+function getOrCreateSocket(userId: string): Socket {
+  // نفس المستخدم + متصل → أعد الـ socket الحالي
+  if (_socket?.connected && _userId === userId) return _socket;
+
+  // مستخدم مختلف أو socket مغلق → أنشئ جديد
+  if (_socket) {
+    _socket.disconnect();
+    _socket = null;
+    _userId = null;
+  }
+
+  _socket = io(SOCKET_URL, {
+    auth: (cb) => cb({ token: getAccessToken() }),
+    withCredentials: true,
+    transports: ["websocket"],
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1500,
+    timeout: 8000,
+  });
+  _userId = userId;
+  return _socket;
+}
 
 export function useSocket() {
   const { user, isAuthenticated } = useAuth();
   const socketRef = useRef<Socket | null>(null);
 
-  const connectSocket = useCallback((userId: string) => {
-    if (socketSingleton?.connected && socketUserId === userId) {
-      socketRef.current = socketSingleton;
-      return socketSingleton;
-    }
-
-    if (socketSingleton) {
-      socketSingleton.removeAllListeners();
-      socketSingleton.disconnect();
-      socketSingleton = null;
-      socketUserId    = null;
-    }
-
-    socketSingleton = io(SOCKET_URL, {
-      // ✅ auth كـ callback ديناميكي — يُستدعى عند كل reconnect تلقائياً
-      auth: (cb: (data: { token: string | null }) => void) =>
-        cb({ token: getAccessToken() }),
-      withCredentials:      true,
-      transports:           ["websocket"],
-      reconnection:         true,
-      reconnectionAttempts: 10,
-      reconnectionDelay:    1500,
-      timeout:              8000,
-    });
-
-    socketUserId      = userId;
-    socketRef.current = socketSingleton;
-    return socketSingleton;
-  }, []);
-
   useEffect(() => {
     if (!user?._id || !isAuthenticated) {
-      if (socketSingleton) {
-        socketSingleton.removeAllListeners();
-        socketSingleton.disconnect();
-        socketSingleton = null;
-        socketUserId    = null;
+      if (_socket) {
+        _socket.disconnect();
+        _socket = null;
+        _userId = null;
       }
       socketRef.current = null;
       return;
     }
 
-    const socket = connectSocket(user._id);
-    if (!socket) return;
+    const socket = getOrCreateSocket(user._id);
+    socketRef.current = socket;
 
-    const handleConnectError = (err: Error) => {
-      const msg = err?.message || "";
+    const onConnectError = (err: Error) => {
+      const msg = err?.message ?? "";
       if (msg === "TOKEN_EXPIRED" || msg === "INVALID_TOKEN") {
-        // auth callback يجلب fresh token تلقائياً عند reconnect
         setTimeout(() => {
-          if (socketSingleton && !socketSingleton.connected) {
-            socketSingleton.connect();
-          }
+          if (_socket && !_socket.connected) _socket.connect();
         }, 1200);
       }
     };
 
-    socket.on("connect_error", handleConnectError);
-    return () => { socket.off("connect_error", handleConnectError); };
-  }, [user?._id, isAuthenticated, connectSocket]);
+    socket.on("connect_error", onConnectError);
+    return () => {
+      socket.off("connect_error", onConnectError);
+    };
+  }, [user?._id, isAuthenticated]);
 
   return socketRef;
 }

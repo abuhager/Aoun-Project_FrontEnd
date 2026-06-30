@@ -2,9 +2,11 @@
 "use client";
 
 import { useSiteConfig } from "@/context/SiteConfigContext";
-
+import { usePathname } from "next/navigation";
 export default function Footer() {
   const { platformName, contactEmail } = useSiteConfig(); // ← contactEmail من DB
+ const pathname = usePathname();
+   if (pathname.startsWith("/admin")) return null;
 
   return (
     <footer

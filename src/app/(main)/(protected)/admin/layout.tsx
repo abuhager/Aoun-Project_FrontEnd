@@ -23,7 +23,7 @@ export default function AdminLayout({
   return (
     <div dir="rtl" className="min-h-screen bg-[#f6f4ef] text-[#1f2328]">
       {/* ── Desktop Sidebar ───────────────────────────── */}
-      <aside className="fixed inset-y-0 right-0 z-40 hidden w-[290px] border-l border-[#e6e0d7] bg-white/95 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-md lg:flex lg:flex-col">
+      <aside className="fixed top-[64px] bottom-0 right-0 z-40 hidden w-[290px] border-l border-[#e6e0d7] bg-white/95 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-md lg:flex lg:flex-col">
         {/* Brand / top */}
         <div className="border-b border-[#f0ebe4] px-5 pb-5 pt-6">
           <div className="rounded-[24px] border border-[#ebe5dc] bg-[linear-gradient(180deg,#fffdfa_0%,#f8f5ef_100%)] p-4 shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
@@ -133,40 +133,8 @@ export default function AdminLayout({
       </header>
 
       {/* ── Main area ───────────────────────────────── */}
-      <div className="lg:mr-[290px]">
-        {/* Desktop inner top bar */}
-        <div className="sticky top-0 z-30 hidden border-b border-[#ebe5dc] bg-[#f6f4ef]/85 backdrop-blur-md lg:block">
-          <div className="px-8 py-5 xl:px-10">
-            <div className="flex items-center justify-between rounded-[24px] border border-[#e7e1d8] bg-white/80 px-5 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-              <div>
-                <p className="text-[11px] font-extrabold tracking-[0.18em] text-[#a39b92]">
-                  CONTROL CENTER
-                </p>
-                <p className="mt-1 text-sm font-black text-[#1f312f]">
-                  إدارة شاملة للمنصة
-                </p>
-              </div>
+      <div className="pt-[64px] lg:mr-[290px]">
 
-              <div className="flex items-center gap-2">
-                {[
-                  { icon: "monitoring", label: "مؤشرات" },
-                  { icon: "shield", label: "حماية" },
-                  { icon: "bolt", label: "استجابة" },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="inline-flex items-center gap-2 rounded-full border border-[#ece6de] bg-[#faf8f4] px-3 py-1.5 text-xs font-bold text-[#625e58]"
-                  >
-                    <span className="material-symbols-outlined text-[15px] text-primary">
-                      {item.icon}
-                    </span>
-                    {item.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* page content wrapper */}
         <main className="px-4 pb-24 pt-5 sm:px-5 md:px-6 lg:px-8 lg:pb-10 lg:pt-6 xl:px-10">

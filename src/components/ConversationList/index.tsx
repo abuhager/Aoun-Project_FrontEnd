@@ -273,7 +273,7 @@ export default function ConversationsDrawer({
                               hasUnread ? "font-bold text-[#5f6d67]" : "text-[#9b948c]"
                             }`}
                           >
-                            {other?.name || "مستخدم عون"}
+                            {other?.name || `مستخدم غير معروف`}
                           </p>
 
                           {hasUnread && (

@@ -1,37 +1,40 @@
-// src/app/(auth)/login/page.tsx
 "use client";
 
 import Link from "next/link";
 import Image from "next/image";
 import { useRedirectIfAuth } from "../hooks/useRedirectIfAuth";
 import { useLogin } from "./hooks/useLogin";
-import { useSettings } from "@/hooks/useSettings"; 
+import { useSiteConfig } from "@/context/SiteConfigContext";
+// ✅ حذف: useSettings — لا حاجة له، SiteConfigProvider يكفي
 
 export default function LoginPage() {
   useRedirectIfAuth();
   const { formData, loading, error, handleChange, handleSubmit } = useLogin();
 
-  // ✅ جلب الإعدادات الحية
-  const { settings, isLoading: settingsLoading } = useSettings();
-  
-  // ✅ معالجة الـ Type-safety للحقل المغلّف بدون any نهائياً وبطريقة توافق الـ Build
-  const platformName = settings?.platformName ?? "عون";
+  // ✅ مصدر واحد فقط لاسم المنصة
+  const { platformName } = useSiteConfig();
 
   return (
-    <main className="grow flex flex-row-reverse overflow-hidden min-h-screen bg-background" dir="rtl">
-
+    <main
+      className="grow flex flex-row-reverse overflow-hidden min-h-screen bg-background"
+      dir="rtl"
+    >
       {/* ─── القسم الأيمن: الفورم ─── */}
       <section className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 lg:p-24 bg-surface z-10 relative">
         <div className="w-full max-w-md space-y-10">
 
           {/* العنوان */}
           <div className="flex flex-col items-start gap-2">
-            {/* عرض الاسم الحي ديناميكياً بدون مشاكل كاش أو تايب */}
+            {/* ✅ platformName جاهز فوراً من Context — لا loading state */}
             <span className="text-3xl font-black text-primary tracking-tight">
-              {settingsLoading ? "..." : platformName}
+              {platformName}
             </span>
-            <h1 className="text-4xl font-extrabold text-on-background leading-tight">مرحباً بك مجدداً</h1>
-            <p className="text-on-surface-variant">سجل دخولك لتستمر in رحلة العطاء والمساعدة</p>
+            <h1 className="text-4xl font-extrabold text-on-background leading-tight">
+              مرحباً بك مجدداً
+            </h1>
+            <p className="text-on-surface-variant">
+              سجل دخولك لتستمر في رحلة العطاء والمساعدة
+            </p>
           </div>
 
           {/* رسالة الخطأ */}
@@ -47,7 +50,9 @@ export default function LoginPage() {
 
               {/* البريد الإلكتروني */}
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-on-surface-variant px-2">البريد الإلكتروني</label>
+                <label className="text-sm font-bold text-on-surface-variant px-2">
+                  البريد الإلكتروني
+                </label>
                 <div className="relative group">
                   <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors">
                     mail
@@ -68,8 +73,13 @@ export default function LoginPage() {
               {/* كلمة المرور */}
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center px-2">
-                  <label className="text-sm font-bold text-on-surface-variant">كلمة المرور</label>
-                  <a href="/forgot-password" className="text-sm font-bold text-primary hover:text-primary-container transition-colors">
+                  <label className="text-sm font-bold text-on-surface-variant">
+                    كلمة المرور
+                  </label>
+                  <a
+                    href="/forgot-password"
+                    className="text-sm font-bold text-primary hover:text-primary-container transition-colors"
+                  >
                     نسيت كلمة المرور؟
                   </a>
                 </div>
@@ -102,7 +112,10 @@ export default function LoginPage() {
 
           <p className="text-center text-on-surface-variant">
             ليس لديك حساب؟{" "}
-            <Link href="/register" className="text-primary font-bold hover:underline underline-offset-4 decoration-primary/30">
+            <Link
+              href="/register"
+              className="text-primary font-bold hover:underline underline-offset-4 decoration-primary/30"
+            >
               إنشاء حساب جديد
             </Link>
           </p>
@@ -134,7 +147,9 @@ export default function LoginPage() {
                   +١٥٠
                 </div>
               </div>
-              <p className="text-sm font-medium text-white/90">انضم لأكثر من ١٥٠ متطوع ومتبرع اليوم</p>
+              <p className="text-sm font-medium text-white/90">
+                انضم لأكثر من ١٥٠ متطوع ومتبرع اليوم
+              </p>
             </div>
           </div>
         </div>

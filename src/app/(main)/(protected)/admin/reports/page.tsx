@@ -117,10 +117,10 @@ export default function AdminReportsPage() {
         adminNote: trimmedNote,
       };
 
-      await axiosInstance.patch(
-        `/api/admin/reports/${selected._id}/resolve`,
-        payload
-      );
+      await axiosInstance.post(
+  `/api/admin/reports/${selected._id}/resolve`,
+  payload
+);
 
       await globalMutate(swrKey);
       showToast("تم تنفيذ الإجراء بنجاح ✅", true);
@@ -139,10 +139,10 @@ export default function AdminReportsPage() {
       if (loadingId) return;
       setLoadingId(reportId);
       try {
-        await axiosInstance.patch(`/api/admin/reports/${reportId}/resolve`, {
-          status: "dismissed" satisfies ReportStatus,
-          adminNote: "تم الرفض تلقائياً",
-        });
+        await axiosInstance.post(`/api/admin/reports/${reportId}/resolve`, {
+  status: "dismissed" satisfies ReportStatus,
+  adminNote: "تم الرفض تلقائياً",
+});
         await globalMutate(swrKey);
         showToast("تم رفض البلاغ ✅", true);
       } catch (err) {

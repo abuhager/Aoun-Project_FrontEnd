@@ -4,9 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRedirectIfAuth } from "../hooks/useRedirectIfAuth";
 import { useRegister } from "./hooks/useRegister";
+import { useSiteConfig } from "@/context/SiteConfigContext";
 
 export default function RegisterPage() {
   useRedirectIfAuth("/browse");
+    const { platformName } = useSiteConfig();
+
   const { formData, loading, error, success, handleChange, handleSubmit } = useRegister();
 
   const phoneValid   = formData.phone.length === 9;
@@ -49,7 +52,7 @@ export default function RegisterPage() {
               </div>
 
               <h2 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
-                انضم إلى <br /> مجتمع <span className="text-[#96f7e9]">عون</span>
+                انضم إلى <br /> مجتمع <span className="text-[#96f7e9]">{platformName}</span>
               </h2>
 
               <p className="text-white/90 text-base md:text-lg leading-relaxed mb-8">
@@ -78,7 +81,7 @@ export default function RegisterPage() {
 
             {/* العنوان */}
             <div className="mb-6 md:mb-8 text-right">
-              <div className="text-3xl md:text-4xl font-black text-primary tracking-tight mb-1 brand-font">عون</div>
+              <div className="text-3xl md:text-4xl font-black text-primary tracking-tight mb-1 brand-font">{platformName}</div>
               <h1 className="text-xl md:text-2xl font-bold text-on-background">إنشاء حساب جديد</h1>
               <p className="text-sm text-on-surface-variant mt-1">ابدأ رحلتك في العمل المجتمعي اليوم</p>
             </div>

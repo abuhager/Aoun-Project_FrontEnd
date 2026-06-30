@@ -4,6 +4,8 @@
 // ✅ DC-10 FIX: page.tsx يجب أن يستخدم هذا الملف مباشرةً — لا تكرار للـ axiosInstance
 
 import axiosInstance from "@/lib/api/axiosInstance";
+import { siteConfig } from "@/config/site.config";
+
 import type {
   PublicSettings,
   SystemSettings,
@@ -11,10 +13,19 @@ import type {
 } from "@/types/settings.types";
 
 // ── قراءة الإعدادات العامة (بدون Auth) ──────────────────────────────────────
-export const getPublicSettings = async (): Promise<PublicSettings> => {
-  const { data } = await axiosInstance.get<PublicSettings>("/api/settings/public");
-  return data;
-};
+
+export async function getPublicSettings() {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/settings/public`,
+      { next: { revalidate: 3600 } } // ← يُجدد كل ساعة تلقائياً
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null; // ← يرجع null → يستخدم الـ fallback
+  }
+}
 
 // ── قراءة الإعدادات الكاملة (Admin فقط) ────────────────────────────────────
 export const getAdminSettings = async (): Promise<SystemSettings> => {

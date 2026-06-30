@@ -2,35 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { getAdminSettings, updateAdminSettings } from "@/lib/api/settingsApi";
-import type { UpdateSettingsPayload } from "@/types/settings.types";
+import type { SystemSettings, UpdateSettingsPayload } from "@/types/settings.types";
 import { useToast } from "@/hooks/useToast";
 
 // ─── Interface ───────────────────────────────────────────────────────────────
-interface SystemSettings {
-  defaultQuota: number;
-  level2Quota: number;
-  maxBookingsPerUser: number;
-  maxActiveRequestsPerMonth: number;
-  requestExpiryDays: number;
-  maxActiveDonationsPerUser: number;
-  maxActiveDonationsLevel2Plus: number;
-  categories: string[];
-  reportReasons: string[];
-  autoReportBanThreshold: number;
-  universityEmailDomains: string[];
-  requireHubForBooking: boolean;
-  maintenanceMode: boolean;
-  platformName: string;
-  contactEmail: string;
-  quotaResetDayOfMonth: number;
-  donorQuotaReward: number;
-  bookingExpiryHours: number;
-  trustScorePerDonation: number;
-  trustScorePerRequest: number;
-}
 
 const EDITABLE_FIELDS: (keyof SystemSettings)[] = [
-  "defaultQuota",
+  "defaultUserQuota",         
+  "studentQuota",             
+  "studentDefaultTrustLevel", 
   "level2Quota",
   "maxBookingsPerUser",
   "maxActiveRequestsPerMonth",
@@ -41,6 +21,15 @@ const EDITABLE_FIELDS: (keyof SystemSettings)[] = [
   "bookingExpiryHours",
   "trustScorePerDonation",
   "trustScorePerRequest",
+  "ratingThresholdExcellent",
+  "ratingThresholdGood",
+  "ratingThresholdNeutral",
+  "ratingThresholdBad",
+  "adminPageSize",
+  "adminReportsPageSize",
+  "minTrustLevelForRequests",
+  "minTrustLevelForDonating",
+  "maxPendingOffersPerDonor",
   "categories",
   "reportReasons",
   "autoReportBanThreshold",
@@ -413,9 +402,7 @@ export default function AdminSettingsPage() {
           <div className="absolute -left-10 top-0 h-28 w-28 rounded-full bg-primary/5 blur-3xl" />
           <div className="flex items-start justify-between gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <span className="material-symbols-outlined text-[24px]">
-                tune
-              </span>
+              <span className="material-symbols-outlined text-[24px]">tune</span>
             </div>
 
             <span className="rounded-full border border-[#ece6de] bg-[#faf8f4] px-3 py-1 text-[10px] font-extrabold tracking-[0.18em] text-[#9a9289]">
@@ -446,7 +433,7 @@ export default function AdminSettingsPage() {
           <StatCard
             icon="inventory_2"
             label="كوتا Level 1"
-            value={String(settings.defaultQuota)}
+            value={String(settings.defaultUserQuota)}
             tone="bg-blue-50 text-blue-600"
           />
         </div>
@@ -570,8 +557,8 @@ export default function AdminSettingsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <NumberField
                 label="كوتا مستوى 1"
-                value={settings.defaultQuota}
-                onChange={(v) => update("defaultQuota", v)}
+                value={settings.defaultUserQuota}
+                onChange={(v) => update("defaultUserQuota", v)}
                 min={1}
                 max={20}
                 hint="بريد موثق فقط"
@@ -721,8 +708,8 @@ export default function AdminSettingsPage() {
         <div className="space-y-6">
           <SectionCard
             icon="star"
-            title="نقاط الثقة"
-            subtitle="القيم التي تؤثر مباشرة على تراكم الثقة داخل المنصة."
+            title="نقاط الثقة والتقييم"
+            subtitle="القيم وعتبات التقييم التي تؤثر مباشرة على تراكم الثقة داخل المنصة."
             iconTone="bg-yellow-50 text-yellow-700"
           >
             <div className="space-y-4">
@@ -741,6 +728,69 @@ export default function AdminSettingsPage() {
                 min={0}
                 max={10}
                 hint="تُضاف عند إتمام الطلب"
+              />
+              
+              {/* ✅ حقول حدود التقييم المضافة بعد trustScorePerRequest */}
+              <NumberField  
+                label="حد تقييم ممتاز (+2 نقطة)"  
+                value={settings.ratingThresholdExcellent}  
+                onChange={(v) => update("ratingThresholdExcellent", v)}  
+                min={1} max={10}  
+                hint="درجة ≥ هذه القيمة ← +2 نقطة ثقة"
+              />
+              <NumberField  
+                label="حد تقييم جيد (+1 نقطة)"  
+                value={settings.ratingThresholdGood}  
+                onChange={(v) => update("ratingThresholdGood", v)}  
+                min={1} max={10}  
+                hint="درجة ≥ هذه القيمة ← +1 نقطة ثقة"
+              />
+              <NumberField  
+                label="حد تقييم محايد (0)"  
+                value={settings.ratingThresholdNeutral}  
+                onChange={(v) => update("ratingThresholdNeutral", v)}  
+                min={1} max={10}
+              />
+              <NumberField  
+                label="حد تقييم سيئ (-1 نقطة)"  
+                value={settings.ratingThresholdBad}  
+                onChange={(v) => update("ratingThresholdBad", v)}  
+                min={1} max={10}
+              />
+            </div>
+          </SectionCard>
+
+          {/* ✅ قسم جديد مستقل: أهلية العمليات والطلبات لتغطية حقول الأهلية في مصفوفة التعديل */}
+          <SectionCard
+            icon="gavel"
+            title="أهلية العمليات والطلبات"
+            subtitle="الحدود الدنيا لمستويات الثقة المطلوبة لإنشاء العروض والطلبات والحد الأقصى للعروض."
+            iconTone="bg-orange-50 text-orange-700"
+          >
+            <div className="space-y-4">
+              <NumberField
+                label="الحد الأدنى للثقة لطلب غرض"
+                value={settings.minTrustLevelForRequests}
+                onChange={(v) => update("minTrustLevelForRequests", v)}
+                min={0}
+                max={5}
+                hint="مستوى الثقة المطلوب لفتح طلب"
+              />
+              <NumberField
+                label="الحد الأدنى للثقة للتبرع"
+                value={settings.minTrustLevelForDonating}
+                onChange={(v) => update("minTrustLevelForDonating", v)}
+                min={0}
+                max={5}
+                hint="مستوى الثقة المطلوب لإضافة عرض تبرع"
+              />
+              <NumberField
+                label="أقصى عروض معلقة لكل متبرع"
+                value={settings.maxPendingOffersPerDonor}
+                onChange={(v) => update("maxPendingOffersPerDonor", v)}
+                min={1}
+                max={50}
+                hint="الحد الأقصى للعروض التي لم تُحسم بعد"
               />
             </div>
           </SectionCard>
@@ -763,7 +813,7 @@ export default function AdminSettingsPage() {
                 },
                 {
                   label: "الكوتا الشهرية Level 1 / Level 2",
-                  value: `${settings.defaultQuota} / ${settings.level2Quota}`,
+                  value: `${settings.defaultUserQuota} / ${settings.level2Quota}`,
                 },
                 {
                   label: "حد الطلبات الشهرية",

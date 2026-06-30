@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useLeaderboard } from "./hooks/useLeaderboard";
+import { useSiteConfig } from "@/context/SiteConfigContext";
 
 function medalColor(rank: number) {
   if (rank === 1) return "text-yellow-500";
@@ -140,6 +141,9 @@ function TopThreeCard({
 }
 
 export default function LeaderboardPage() {
+
+    const { platformName } = useSiteConfig();
+
   const { leaderboard, myRank, loading } = useLeaderboard();
 
   const topThree = leaderboard.slice(0, 3);
@@ -166,7 +170,7 @@ export default function LeaderboardPage() {
                 لوحة المتصدرين
               </h1>
               <p className="mt-1 text-sm text-gray-500">
-                أكثر الأعضاء نشاطاً وموثوقيةً على منصة عون
+                أكثر الأعضاء نشاطاً وموثوقيةً على منصة {platformName}
               </p>
             </div>
 

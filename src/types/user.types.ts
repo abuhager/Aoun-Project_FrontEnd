@@ -5,7 +5,7 @@ import type { Item } from './item.types';
 export type DashboardItem = Item & { reportId: string | null };
 
 export type UserRole   = 'user' | 'admin' | 'super_admin';
-export type TrustLevel = 1 | 2 | 3 | 4;
+export type TrustLevel = 1 | 2;
 
 // FIXED [BUG-PROFILE-03]: يعكس ما يُرجعه buildGamificationProfile فقط
 export interface Gamification {

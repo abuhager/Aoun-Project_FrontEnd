@@ -5,6 +5,7 @@ import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import { useBrowse } from "./hooks/useBrowse";
 import { useSettings } from "@/hooks/useSettings";
+import { useSiteConfig } from "@/context/SiteConfigContext";
 
 const CITIES = ["عمان", "إربد", "الزرقاء", "العقبة"] as const;
 
@@ -111,6 +112,7 @@ export default function BrowsePage() {
     selectedCategory,
     setSelectedCategory,
   } = useBrowse();
+  const { platformName } = useSiteConfig();
 
   const { categories, isLoading: settingsLoading } = useSettings();
 
@@ -148,7 +150,7 @@ export default function BrowsePage() {
               </h1>
 
               <p className="mt-4 max-w-2xl text-sm leading-8 text-[#776f67] md:text-base">
-                استكشف المواد والخدمات المتاحة داخل مجتمع عون عبر تجربة تصفح أوضح،
+                استكشف المواد والخدمات المتاحة داخل مجتمع {platformName} عبر تجربة تصفح أوضح،
                 أسرع، وأسهل في الفرز والمقارنة.
               </p>
 

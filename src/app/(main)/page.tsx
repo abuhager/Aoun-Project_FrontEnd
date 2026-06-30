@@ -3,8 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useHomePage, FEATURES, HIGHLIGHTS } from "./hooks/useHomePage";
+import { useSiteConfig } from "@/context/SiteConfigContext";
 
 function SkeletonCard() {
+
   return (
     <div className="overflow-hidden rounded-[30px] border border-[#e9e3da] bg-white shadow-[0_10px_35px_rgba(15,23,42,0.05)]">
       <div className="h-56 w-full animate-pulse bg-gradient-to-br from-[#f4f0ea] via-[#ece7df] to-[#f8f5f0]" />
@@ -20,6 +22,7 @@ function SkeletonCard() {
 
 export default function HomePage() {
   const { items, loading, getImageUrl } = useHomePage();
+    const { platformName } = useSiteConfig();
 
   return (
     <div
@@ -63,7 +66,7 @@ export default function HomePage() {
                 </h1>
 
                 <p className="mt-6 max-w-xl text-base leading-8 text-[#665f58] md:text-lg">
-                  عون منصة مجتمعية لتبادل الخير بثقة؛ تساعدك على التبرع بالمواد والخدمات بسهولة،
+                  {platformName} منصة مجتمعية لتبادل الخير بثقة؛ تساعدك على التبرع بالمواد والخدمات بسهولة،
                   وتُمكّن الآخرين من الوصول لما يحتاجونه بسرعة واحترام.
                 </p>
 
@@ -116,7 +119,7 @@ export default function HomePage() {
                     <div className="relative h-[360px] overflow-hidden rounded-[30px] md:h-[540px]">
                       <Image
                         src="/Home.png"
-                        alt="منصة عون للتكافل الاجتماعي"
+                        alt="منصة {platformName} للتكافل الاجتماعي"
                         fill
                         priority
                         sizes="(max-width: 768px) 100vw, 50vw"
@@ -408,7 +411,7 @@ export default function HomePage() {
                 </span>
                 <h2 className="mt-4 text-3xl font-black leading-tight text-[#173335] md:text-5xl">
                   أحدث ما أُضيف
-                  <span className="block text-[#01696f]">على منصة عون</span>
+                  <span className="block text-[#01696f]">على منصة {platformName}</span>
                 </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-[#736d65] md:text-base">
                   قسم واضح وسريع المسح يسهّل على المستخدم استكشاف المواد المتاحة بأقل جهد بصري.
@@ -524,7 +527,7 @@ export default function HomePage() {
                 </div>
 
                 <p className="text-lg font-bold leading-9 text-[#2a2621]">
-                  “الشيء الأجمل في عون أن الواجهة تشعرك أن التبرع ليس عملية معقدة، بل خطوة طبيعية وسريعة،
+                  “الشيء الأجمل في {platformName} أن الواجهة تشعرك أن التبرع ليس عملية معقدة، بل خطوة طبيعية وسريعة،
                   ومع الوقت صار من السهل علينا مشاركة ما لا نحتاجه مع من ينتفع به.”
                 </p>
 
@@ -643,7 +646,7 @@ export default function HomePage() {
                     <span className="block text-white/80">قد يكون مهمًا جدًا لشخص آخر</span>
                   </h2>
                   <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/80 lg:mx-0 md:text-base">
-                    انضم إلى مجتمع عون وشارك ما لديك من أدوات أو مواد أو خدمات، ضمن تجربة
+                    انضم إلى مجتمع {platformName} وشارك ما لديك من أدوات أو مواد أو خدمات، ضمن تجربة
                     أنيقة وواضحة ومصممة لتشجع العطاء.
                   </p>
                 </div>

@@ -1,5 +1,11 @@
 // src/components/Footer.tsx — ✅ REDESIGNED
+"use client";
+
+import { useSiteConfig } from "@/context/SiteConfigContext";
+
 export default function Footer() {
+    const { platformName } = useSiteConfig();
+
   return (
     <footer
       dir="rtl"
@@ -158,7 +164,7 @@ export default function Footer() {
 
         {/* ── Copyright ─────────────────────────────────────── */}
         <p className="mt-4 text-center text-[11px] font-bold text-white/30">
-          © {new Date().getFullYear()} منصة عون المجتمعية — جميع الحقوق محفوظة
+          © {new Date().getFullYear()} منصة {platformName} المجتمعية — جميع الحقوق محفوظة
         </p>
       </div>
     </footer>

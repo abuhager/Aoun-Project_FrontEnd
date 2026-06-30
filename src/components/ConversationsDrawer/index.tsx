@@ -253,7 +253,7 @@ export default function ConversationsDrawer({
                         </div>
                         <div className="mt-1 flex items-center gap-2">
                           <p className={`truncate text-xs ${hasUnread ? "font-bold text-[#5f6d67]" : "text-[#9b948c]"}`}>
-                            {other?.name ?? "مستخدم عون"}
+                            {other?.name ?? "مستخدم غير معروف"}
                           </p>
                           {hasUnread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
                         </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Item } from "../hooks/useDashboard";
 import { DeliveryConfirmFlow } from "./DeliveryConfirmFlow";
+import type { BookedByUser } from "@/types/user.types";
 
 type DashboardItem = Item & { reportId?: string | null };
 
@@ -35,7 +36,7 @@ function getBookedByName(bookedBy: DashboardItem["bookedBy"]): string {
 }
 
 // [FIX-CHAT] هل يوجد حاجز (للتأكد قبل عرض زر المحادثة في تاب المتبرع)
-function hasBookedBy(bookedBy: DashboardItem["bookedBy"]): boolean {
+function hasBookedBy(bookedBy: BookedByUser | string | null | undefined): boolean {
   if (!bookedBy) return false;
   if (typeof bookedBy === "string") return bookedBy.length > 0;
   return !!bookedBy._id;

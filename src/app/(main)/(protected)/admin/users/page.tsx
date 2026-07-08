@@ -108,7 +108,7 @@ export default function AdminUsersPage() {
           }
         );
 
-        const newLevel = res.data.user?.trustLevel ?? 2;
+        const newLevel = (res.data.user?.trustLevel ?? 2) as 1 | 2;
 
         showToast(`تمت ترقية المستخدم إلى المستوى ${newLevel}`, true);
 
@@ -126,7 +126,7 @@ export default function AdminUsersPage() {
           }
         );
 
-        const newLevel = res.data.user?.trustLevel ?? 1;
+        const newLevel = (res.data.user?.trustLevel ?? 1) as 1 | 2;
 
         showToast(`تم تخفيض المستخدم إلى المستوى ${newLevel}`, true);
 
@@ -190,7 +190,7 @@ export default function AdminUsersPage() {
     const active = users.filter((u) => !u.isBanned).length;
     const lvl2 = users.filter((u) => u.trustLevel === 2).length;
     const lvl1 = users.filter((u) => u.trustLevel === 1).length;
-    return { total, banned, active, lvl1, lvl2, };
+    return { total, banned, active, lvl1, lvl2 };
   }, [users]);
 
   return (
@@ -364,7 +364,6 @@ export default function AdminUsersPage() {
             wrap: "bg-blue-50 text-blue-600",
             span: "lg:col-span-1",
           },
-          
           {
             label: "Level 1",
             value: stats.lvl1,
@@ -541,9 +540,7 @@ export default function AdminUsersPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={`rounded-xl px-3 py-1.5 text-[11px] font-black ${
-                              u.trustLevel === 3
-                                ? "bg-purple-50 text-purple-600"
-                                : u.trustLevel === 2
+                              u.trustLevel === 2
                                 ? "bg-blue-50 text-blue-600"
                                 : "bg-slate-100 text-slate-600"
                             }`}
@@ -564,7 +561,7 @@ export default function AdminUsersPage() {
                             </button>
                           )}
 
-                          {u.trustLevel > 1 && (
+                          {u.trustLevel === 2 && (
                             <button
                               onClick={() => openConfirm(u, "demote")}
                               disabled={busy[userId]}

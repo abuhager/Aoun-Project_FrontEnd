@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import useChat from "@/hooks/useChat";
 
@@ -16,29 +16,29 @@ interface ChatDrawerProps {
 }
 
 export default function ChatDrawer({
-  itemId,
   itemTitle,
   isOpen,
   onClose,
 }: ChatDrawerProps) {
   const { user } = useAuth();
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
 
   const {
+    activeConversation,
     messages = [],
-    loading = false,
-    sending = false,
-    text,
-    setText,
-    typingUser = "",
     sendMessage,
-    sendTyping,
-  } = useChat(itemId, isOpen);
+  } = useChat();
 
+  const activeConversationId = activeConversation?._id ?? "";
   const safeText = typeof text === "string" ? text : "";
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const canSend = useMemo(() => !!safeText.trim() && !sending, [safeText, sending]);
+  const canSend = useMemo(
+    () => !!safeText.trim() && !sending && !!activeConversationId,
+    [safeText, sending, activeConversationId]
+  );
 
   useEffect(() => {
     if (isOpen) inputRef.current?.focus();
@@ -59,16 +59,29 @@ export default function ChatDrawer({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
 
+  const handleSend = async () => {
+    if (!canSend || !activeConversationId) return;
+    try {
+      setSending(true);
+      await sendMessage(activeConversationId, safeText);
+      setText("");
+    } catch {
+      // Error is handled upstream
+    } finally {
+      setSending(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120]" dir="rtl">
+    <div className="fixed inset-0 z-120" dir="rtl">
       <div
         className="absolute inset-0 bg-[#0f1720]/45 backdrop-blur-[3px] transition-opacity duration-300"
         onClick={onClose}
       />
 
-      <aside className="fixed inset-y-0 right-0 z-[121] flex h-dvh w-full max-w-md flex-col overflow-hidden border-l border-black/[0.06] bg-[#fcfbf8] shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
+      <aside className="fixed inset-y-0 right-0 z-121 flex h-dvh w-full max-w-md flex-col overflow-hidden border-l border-black/6 bg-[#fcfbf8] shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
         <div className="relative shrink-0 border-b border-[#ece7de] bg-white/95 px-4 py-4 backdrop-blur-xl">
           <div className="absolute left-0 top-0 h-24 w-24 -translate-x-1/3 -translate-y-1/3 rounded-full bg-primary/10 blur-2xl" />
           <div className="relative flex items-start justify-between gap-3">
@@ -98,18 +111,7 @@ export default function ChatDrawer({
           role="log"
           aria-live="polite"
         >
-          {loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
-                  <div className="max-w-[82%] space-y-2">
-                    <div className="h-4 w-16 animate-pulse rounded-full bg-[#e6e0d8]" />
-                    <div className="h-12 w-44 animate-pulse rounded-[22px] bg-[#ebe5dd]" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : messages.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="flex min-h-full flex-col items-center justify-center px-6 py-20 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary shadow-sm">
                 <span className="material-symbols-outlined text-3xl">chat_bubble_outline</span>
@@ -125,14 +127,14 @@ export default function ChatDrawer({
                 const senderId =
                   typeof msg.sender === "string"
                     ? msg.sender
-                    : (msg.sender as { _id: string })?._id ?? "";
+                    : (msg.sender as { _id?: string })?._id ?? "";
 
                 const isMe = senderId === user?._id;
                 const prev = messages[index - 1];
                 const prevSenderId =
                   typeof prev?.sender === "string"
                     ? prev.sender
-                    : (prev?.sender as { _id: string })?._id ?? "";
+                    : (prev?.sender as { _id?: string })?._id ?? "";
 
                 const isSameSenderAsPrev = prevSenderId === senderId;
                 const isTemp = typeof msg._id === "string" && msg._id.startsWith("temp-");
@@ -162,7 +164,7 @@ export default function ChatDrawer({
                             : "rounded-tr-md border border-[#ece7de] bg-white text-[#1f2526]"
                         }`}
                       >
-                        <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                        <p className="whitespace-pre-wrap wrap-break-word">{msg.text}</p>
                         <p
                           className={`mt-1 text-[10px] font-semibold ${
                             isMe ? "text-white/70" : "text-[#aaa39b]"
@@ -181,19 +183,6 @@ export default function ChatDrawer({
                 );
               })}
 
-              {!!typingUser && (
-                <div className="flex justify-end">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-3 py-1.5 text-[11px] font-bold text-[#8a837b] shadow-sm">
-                    <span className="flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.2s]" />
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.1s]" />
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
-                    </span>
-                    {typingUser} يكتب الآن...
-                  </div>
-                </div>
-              )}
-
               <div ref={bottomRef} />
             </div>
           )}
@@ -204,7 +193,7 @@ export default function ChatDrawer({
             <div className="flex items-end gap-2">
               <button
                 type="button"
-                onClick={() => void sendMessage()}
+                onClick={handleSend}
                 disabled={!canSend}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
                 aria-label="إرسال"
@@ -218,19 +207,15 @@ export default function ChatDrawer({
                   type="text"
                   dir="rtl"
                   value={safeText}
-                  onChange={(e) => {
-                    const value = e.target.value ?? "";
-                    setText(value);
-                    if (value.trim()) sendTyping();
-                  }}
+                  onChange={(e) => setText(e.target.value ?? "")}
                   onKeyDown={async (e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      await sendMessage();
+                      await handleSend();
                     }
                   }}
                   placeholder="اكتب رسالة لتنسيق التسليم..."
-                  className="h-11 w-full rounded-2xl border border-transparent bg-transparent px-4 text-sm text-right text-[#1f2526] outline-none transition-all placeholder:text-[#a8a29a] focus:border-primary/20 focus:bg-white focus:ring-2 focus:ring-primary/10"
+                  className="h-11 w-full rounded-2xl border border-transparent bg-transparent px-4 text-right text-sm text-[#1f2526] outline-none transition-all placeholder:text-[#a8a29a] focus:border-primary/20 focus:bg-white focus:ring-2 focus:ring-primary/10"
                   aria-label="حقل كتابة الرسالة"
                 />
               </div>

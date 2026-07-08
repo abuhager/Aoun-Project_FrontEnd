@@ -1,11 +1,14 @@
 import useSWR from "swr";
-import { getPublicSettings } from "@/lib/api/settingsApi";
+import { getPublicSettings } from "@/lib/api/settingsApi"; // المسار الصحيح للمشروع
 import type { PublicSettings } from "@/types/settings.types";
 
 export function useSettings() {
-  const { data, error, isLoading } = useSWR<PublicSettings>(
+  const { data, error, isLoading } = useSWR<PublicSettings | null>(
     "public-settings",
-    getPublicSettings,
+    async () => {
+      const res = await getPublicSettings();
+      return res;
+    },
     {
       revalidateOnFocus: false,
       dedupingInterval: 5 * 60_000,

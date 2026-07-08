@@ -194,11 +194,12 @@ export default function DonationRequestsClient() {
 
   useEffect(() => {
     getPublicSettings()
-      .then((s) => {
-        if (s.categories?.length) setSettingsCategories(s.categories);
-        if (s.locations?.length) setSettingsLocations(s.locations);
-      })
-      .catch(() => {});
+  .then((s) => {
+    if (!s) return; // حماية كاملة للسطور التالية
+    if (s.categories?.length) setSettingsCategories(s.categories);
+    if (s.locations?.length) setSettingsLocations(s.locations);
+  })
+  .catch(() => {});
 
     axiosInstance
       .get("/api/hubs")

@@ -1,18 +1,9 @@
-// src/app/(auth)/verify/page.tsx
 "use client";
 
 import { Suspense } from "react";
 import { useVerifyEmail } from "./hooks/useVerifyEmail";
 
-interface OtpInputProps {
-  digit:    string;
-  index:    number;
-  inputRef: (el: HTMLInputElement | null) => void;
-  onChange:  (index: number, e: React.ChangeEvent<HTMLInputElement>) => void;
-  onKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
-}
-
-function OtpInput({ digit, index, inputRef, onChange, onKeyDown }: OtpInputProps) {
+function OtpInput({ digit, index, inputRef, onChange, onKeyDown }) {
   return (
     <input
       ref={inputRef}
@@ -80,10 +71,8 @@ function VerifyContent() {
           </div>
         )}
 
-        {/* ✅ إصلاح #3: زر Resend دائم الظهور، مقيّد بالـ Cooldown */}
         <div className="mb-6 min-h-[40px] flex flex-col items-center gap-1">
           {cooldown > 0 ? (
-            // ✅ إصلاح #4: عداد تنازلي مرئي
             <p className="text-sm text-gray-400 font-bold">
               يمكنك إعادة الإرسال بعد{" "}
               <span className="text-primary font-black tabular-nums">
@@ -112,7 +101,6 @@ function VerifyContent() {
             </p>
           )}
 
-          {/* ✅ زر إعادة إرسال إضافي عند OTP_ATTEMPTS_EXCEEDED أو OTP_EXPIRED */}
           {shouldResend && cooldown === 0 && (
             <p className="text-xs text-orange-500 font-bold mt-1">
               انتهت صلاحية الرمز أو تجاوزت عدد المحاولات — اطلب رمزاً جديداً 👆
@@ -122,7 +110,7 @@ function VerifyContent() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="flex justify-center gap-2" dir="ltr">
-            {otp.map((digit: string, index: number) => (
+            {otp.map((digit, index) => (
               <OtpInput
                 key={index}
                 digit={digit}

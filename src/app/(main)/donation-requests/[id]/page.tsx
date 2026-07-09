@@ -16,7 +16,9 @@ import type {
 export default function DonationRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const socketRef = useSocket();
+  
+  // تفكيك الـ socket مباشرة من الـ context لحل مشكلة التايب سكريبت
+  const { socket } = useSocket();
 
   const [request, setRequest] = useState<DonationRequest | null>(null);
   const [offers, setOffers] = useState<DonationOffer[]>([]);
@@ -45,6 +47,7 @@ export default function DonationRequestDetailPage() {
     setToast({ msg, ok });
     toastTimer.current = setTimeout(() => setToast(null), 3500);
   }, []);
+  
   useEffect(
     () => () => {
       if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -87,7 +90,7 @@ export default function DonationRequestDetailPage() {
   }, [fetchRequest, fetchOffers]);
 
   useEffect(() => {
-    const socket = socketRef.current;
+    // التحقق المباشر من الـ socket بدون .current
     if (!socket || !id) return;
 
     const handleRecipientConfirmed = (data: { itemId: string }) => {
@@ -124,11 +127,12 @@ export default function DonationRequestDetailPage() {
 
     socket.on("recipient:confirmed", handleRecipientConfirmed);
     socket.on("delivery:completed", handleDeliveryCompleted);
+    
     return () => {
       socket.off("recipient:confirmed", handleRecipientConfirmed);
       socket.off("delivery:completed", handleDeliveryCompleted);
     };
-  }, [id, socketRef, showToast]);
+  }, [id, socket, showToast]);
 
   const handleAcceptOffer = async (offerId: string) => {
     setAccepting(offerId);
@@ -278,10 +282,10 @@ export default function DonationRequestDetailPage() {
       : (request.fulfilledByItem?.donor as unknown as string);
 
   const isAuthorizedForChat =
-    !!currentUserId &&
+    !currentUserId &&
     (currentUserId === request.requester._id || currentUserId === donorId);
 
-  const showChat = !!respondedItem && !fullyDone && isAuthorizedForChat;
+  const showChat = !respondedItem && !fullyDone && isAuthorizedForChat;
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
@@ -583,8 +587,10 @@ export default function DonationRequestDetailPage() {
                   {showChat ? (
                     <button
                       onClick={() => {
+                        // استخدام type آمن ومقبول من ESLint بدلاً من any
+                        const itemObj = respondedItem as { _id?: string };
                         setChatTarget({
-                          itemId: respondedItem._id,
+                          itemId: itemObj?._id || "",
                           itemTitle: request.title,
                         });
                         setIsChatOpen(true);
@@ -603,9 +609,11 @@ export default function DonationRequestDetailPage() {
                   ) : null}
 
                   <button
-                    onClick={() =>
-                      router.push(`/items/${respondedItem._id}?ref=donation-request`)
-                    }
+                    onClick={() => {
+                      // نفس الشيء هنا للزر الثاني
+                      const itemObj = respondedItem as { _id?: string };
+                      router.push(`/items/${itemObj?._id || ""}?ref=donation-request`);
+                    }}
                     className="w-full rounded-2xl bg-[#f3f1ec] py-3 text-xs font-black text-[#615b54] transition-all hover:bg-[#ebe6df]"
                   >
                     عرض صفحة الغرض كاملة ←

@@ -9,7 +9,7 @@ import type { Notification } from '@/types/notification.types';
 
 export function useNotifications() {
   const { user, isLoggedIn } = useAuth();
-  const socketRef = useSocket();
+  const { socket } = useSocket(); // 👈 Fixed: Destructured socket directly instead of acting like it's a Ref
 
   const [notifications,  setNotifications]  = useState<Notification[]>([]);
   const [unreadCount,    setUnreadCount]     = useState(0);
@@ -18,7 +18,7 @@ export function useNotifications() {
   const [unreadMessages, setUnreadMessages]  = useState(0);
 
   const attachedRef  = useRef(false);
-  const isMountedRef = useRef(true); // ✅ FL13-06
+  const isMountedRef = useRef(true); 
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -30,7 +30,7 @@ export function useNotifications() {
     setIsLoading(true);
     try {
       const data = await getNotifications();
-      if (!isMountedRef.current) return; // ✅ FL13-06: فحص بعد async
+      if (!isMountedRef.current) return; 
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
       setUnreadMessages(
@@ -47,24 +47,26 @@ export function useNotifications() {
   }, [user?._id, isLoggedIn, fetchNotifications]);
 
   useEffect(() => {
-    if (!user?._id || !isLoggedIn) return;
+    if (!user?._id || !isLoggedIn || !socket) return; // 👈 Ensure socket is defined
     let cancelled = false;
 
     const tryAttach = () => {
-      const s = socketRef.current;
-      if (!s || attachedRef.current || cancelled) return undefined;
+      if (attachedRef.current || cancelled) return undefined;
+      
       const onNew = (n: Notification) => {
         if (!isMountedRef.current) return;
         setNotifications((p) => p.some((x) => x._id === n._id) ? p : [n, ...p]);
         setUnreadCount((p) => p + 1);
         if (n.type === 'new_message') setUnreadMessages((p) => p + 1);
       };
-      s.on('notification:new', onNew);
-      s.on('connect', fetchNotifications);
+
+      socket.on('notification:new', onNew);
+      socket.on('connect', fetchNotifications);
       attachedRef.current = true;
+
       return () => {
-        s.off('notification:new', onNew);
-        s.off('connect', fetchNotifications);
+        socket.off('notification:new', onNew);
+        socket.off('connect', fetchNotifications);
         attachedRef.current = false;
       };
     };
@@ -76,13 +78,13 @@ export function useNotifications() {
     return () => {
       cancelled = true;
       clearTimeout(t);
-      if (attachedRef.current && socketRef.current) {
-        socketRef.current.off('notification:new');
-        socketRef.current.off('connect', fetchNotifications);
+      if (attachedRef.current) {
+        socket.off('notification:new');
+        socket.off('connect', fetchNotifications);
         attachedRef.current = false;
       }
     };
-  }, [user?._id, isLoggedIn, fetchNotifications, socketRef]);
+  }, [user?._id, isLoggedIn, fetchNotifications, socket]); // 👈 Added stable socket to dependencies
 
   const handleMarkAllRead = useCallback(async () => {
     setNotifications((p) => p.map((n) => ({ ...n, isRead: true })));

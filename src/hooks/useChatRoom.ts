@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "@/context/SocketContext";
-import { useAuth } from "@/context/AuthContext"; // 👈 استيراد الـ AuthContext لجلب بيانات المستخدم
+import { useAuth } from "@/context/AuthContext"; 
 
 export type ChatUser = {
   _id: string;
@@ -26,29 +26,31 @@ interface UseChatRoomOptions {
 
 export function useChatRoom({ convId }: UseChatRoomOptions) {
   const { socket } = useSocket();
-  const { user } = useAuth(); // 👈 🌟 تفعيل جلب الـ user هنا لحل مشكلة الـ ReferenceError نهائياً
+  const { user } = useAuth(); 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isJoined, setIsJoined] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // 🌟 Track the previous convId to safely reset state during render (avoids cascading effect loops)
+  const [prevConvId, setPrevConvId] = useState<string | null>(convId);
+
+  if (convId !== prevConvId) {
+    setPrevConvId(convId);
+    setMessages([]);
+    setIsJoined(false);
+    setIsTyping(false);
+    setLoading(!!(socket && convId)); 
+  }
+
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const joinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!socket || !convId) {
-      setMessages([]);
-      setIsJoined(false);
-      setIsTyping(false);
-      setLoading(false);
       return;
     }
-
-    setLoading(true);
-    setMessages([]);
-    setIsJoined(false);
-    setIsTyping(false);
 
     const onRoomJoined = ({
       convId: joinedConvId,
@@ -79,31 +81,26 @@ export function useChatRoom({ convId }: UseChatRoomOptions) {
       if (msgConvId !== convId) return;
 
       setMessages((prev) => {
-        // 1. استخراج الـ ID الفعلي للمرسل بشكل آمن
         const incomingSenderId = 
           typeof message.sender === "string" 
             ? message.sender 
             : message.sender?._id || "";
 
-        // 2. البحث عن الرسالة المؤقتة المقابلة باستخدام الـ correlationId
         const isOptimisticMatch = prev.some(
           (m) => m.correlationId && message.correlationId && m.correlationId === message.correlationId
         );
 
         if (isOptimisticMatch) {
-          // استبدال الرسالة المؤقتة بالرسمية، وتثبيتها فوراً لتأكيد نجاح الإرسال
           return prev.map((m) =>
             m.correlationId === message.correlationId
               ? { 
                   ...message, 
-                  // الآن أصبح الـ user معرّفاً وسيعمل السطر بدون كراش
                   sender: incomingSenderId === user?._id ? "me" : message.sender 
                 }
               : m
           );
         }
 
-        // لمنع تكرار الرسالة إذا وصلت عبر البث العام
         if (prev.some((m) => m._id === message._id)) {
           return prev;
         }
@@ -165,7 +162,7 @@ export function useChatRoom({ convId }: UseChatRoomOptions) {
       setIsTyping(false);
       setLoading(false);
     };
-  }, [socket, convId, user?._id]); // إضافة user?._id للمصفوفة لضمان دقة التحديث
+  }, [socket, convId, user?._id]); 
 
   const sendMessage = useCallback(
     (text: string): Promise<boolean> => {
@@ -210,7 +207,7 @@ export function useChatRoom({ convId }: UseChatRoomOptions) {
         socket.emit(
           "send_message",
           { convId, text: cleanText, correlationId },
-          (ack?: { ok?: boolean; error?: string; message?: any }) => {
+          (ack?: { ok?: boolean; error?: string; message?: unknown }) => { // 👈 Change `any` to `unknown` here
             if (settled) return;
             settled = true;
             clearTimeout(ackTimeout);

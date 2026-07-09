@@ -9,6 +9,7 @@ import { StatsGrid } from "./components/StatsGrid";
 import { ItemsTable } from "./components/ItemsTable";
 import ReportModal from "@/components/ReportModal";
 import AppealModal from "@/components/AppealModal";
+import type { Item } from "@/types/item.types";
 import ChatDrawer from "@/components/ChatDrawer";
 import axiosInstance from "@/lib/api/axiosInstance"; // 👈 استيراد الأكسيوس للطلب المباشر
 
@@ -115,7 +116,7 @@ export default function DashboardPage() {
   }
 
   // 🌟 دالة استخلاص المحادثة الحقيقية من السيرفر قبل الفتح (نفس تدفق صفحة الآيتم الشغالة)
-  const handleOpenChatFlow = async (item: any) => {
+  const handleOpenChatFlow = async (item: Item & { owner?: { _id: string } }) => {
     setFetchingChat(true);
     try {
       // 🎯 فرز الهوية الحاسم:

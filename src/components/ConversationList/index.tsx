@@ -28,6 +28,7 @@ interface Conversation {
   unreadCount: number;
   lastMessage?: string;
   lastMessageAt?: string | null;
+  updatedAt?: string; // إضافة الحقل هنا لتجنب الحاجة للـ any لاحقاً
 }
 
 interface Props {
@@ -97,17 +98,22 @@ export default function ConversationList({ isOpen, onClose, onUnreadCountChange 
       .get("/api/conversations")
       .then((r) => {
         const responseData = r.data;
-        let raw: any[] = [];
+        let raw: unknown[] = [];
 
         if (responseData && typeof responseData === "object") {
           raw = responseData.data || responseData.conversations || responseData;
         }
 
         const data = Array.isArray(raw) ? raw : [];
-        const normalized = data.map((conv: any) => ({
-          ...conv,
-          _id: conv._id || conv.id || ""
-        }));
+        
+        // تعديل الـ map ليتوافق مع الـ unknown[] بدون صياغة any صريحة
+        const normalized = data.map((item) => {
+          const conv = item as Record<string, unknown>;
+          return {
+            ...(conv as unknown as Conversation),
+            _id: String(conv._id || conv.id || "")
+          };
+        });
 
         setConversations(normalized);
         setHasFetched(true);
@@ -139,8 +145,8 @@ export default function ConversationList({ isOpen, onClose, onUnreadCountChange 
     };
   }, [socket, fetchConversations]);
 
-  const openConversation = useCallback(async (conv: any) => {
-    const secureId = conv._id || conv.id;
+  const openConversation = useCallback(async (conv: Conversation) => {
+    const secureId = conv._id;
     if (!secureId) return;
 
     setSelected({ ...conv, _id: secureId });
@@ -246,7 +252,7 @@ export default function ConversationList({ isOpen, onClose, onUnreadCountChange 
                   <div className="flex flex-col items-end shrink-0 justify-between h-12 py-0.5">
                     {/* التوقيت المطور */}
                     <span className="text-[10px] font-bold text-[#9b948c] tracking-tight">
-                      {formatTimestamp(conv.lastMessageAt || conv.item ? (conv as any).updatedAt : null)}
+                      {formatTimestamp(conv.lastMessageAt || (conv.item ? conv.updatedAt : null))}
                     </span>
                     
                     {/* شارة العداد غير المقروء في مكانها الهندسي المتزن أقصى اليسار */}

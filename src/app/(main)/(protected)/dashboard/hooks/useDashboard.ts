@@ -39,7 +39,8 @@ export function getBookedByName(val: DashboardItem["bookedBy"]): string {
 
 export function useDashboard() {
   const router = useRouter();
-  const socketRef = useSocket();
+  // تفكيك الـ socket مباشرة من الـ context
+  const { socket } = useSocket();
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +67,7 @@ export function useDashboard() {
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const appealReportIdRef = useRef<string>("");
 
   const showToast = useCallback((msg: string, type: "success" | "error") => {
@@ -137,7 +138,6 @@ export function useDashboard() {
   }, []);
 
   useEffect(() => {
-    const socket = socketRef.current;
     if (!socket) return;
 
     const handleRecipientConfirmed = ({
@@ -188,7 +188,7 @@ export function useDashboard() {
       socket.off("delivery:recipient_confirmed", handleRecipientConfirmed);
       socket.off("delivery:completed", handleDeliveryCompleted);
     };
-  }, [socketRef, showToast]);
+  }, [socket, showToast]);
 
   const handleRecipientConfirm = useCallback(
     async (itemId: string) => {
@@ -230,9 +230,9 @@ export function useDashboard() {
       setDeliveryLoading(true);
 
       try {
-const { msg } = await confirmDelivery(itemId, {
-  confirmationType: "donor_confirm",
-});
+        const { msg } = await confirmDelivery(itemId, {
+          confirmationType: "donor_confirm",
+        });
         setData((prev) =>
           prev
             ? {

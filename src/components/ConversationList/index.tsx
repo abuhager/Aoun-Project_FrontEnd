@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
+import { useSocket } from "@/context/SocketContext";
 import axiosInstance from "@/lib/api/axiosInstance";
 import ChatDrawer from "@/components/ChatDrawer";
 
@@ -20,10 +21,13 @@ interface Participant {
 
 interface Conversation {
   _id: string;
-  item: ConversationItem;
+  item?: ConversationItem | null;
+  owner?: Participant | null;
+  requester?: Participant | null;
   participants: Participant[];
-  unread: number;
-  lastActivity: string;
+  unreadCount: number;
+  lastMessage?: string;
+  lastMessageAt?: string | null;
 }
 
 interface Props {
@@ -32,43 +36,84 @@ interface Props {
   onUnreadCountChange?: (count: number) => void;
 }
 
-export default function ConversationsDrawer({
-  isOpen,
-  onClose,
-  onUnreadCountChange,
-}: Props) {
+// 🌟 دالة هجينة لتوليد خلفيات ملونة باهتة متناسقة بناءً على الحرف الأول للاسم (Enterprise Touch)
+function getAvatarBgColor(name: string): { bg: string; text: string } {
+  const charCode = name.charCodeAt(0) || 0;
+  const colors = [
+    { bg: "bg-teal-50", text: "text-teal-700" },
+    { bg: "bg-emerald-50", text: "text-emerald-700" },
+    { bg: "bg-amber-50", text: "text-amber-700" },
+    { bg: "bg-sky-50", text: "text-sky-700" },
+    { bg: "bg-indigo-50", text: "text-indigo-700" },
+    { bg: "bg-rose-50", text: "text-rose-700" },
+  ];
+  return colors[charCode % colors.length];
+}
+
+// 🌟 دالة تنسيق الوقت الاحترافية للمحادثات
+function formatTimestamp(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  try {
+    const date = new Date(dateStr);
+    const now = new Date();
+    
+    // إذا كانت الرسالة اليوم، نعرض الوقت فقط
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit", hour12: true });
+    }
+    
+    // إذا كانت أمس
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+      return "أمس";
+    }
+    
+    // خلاف ذلك نعرض التاريخ
+    return date.toLocaleDateString("ar-JO", { month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
+export default function ConversationList({ isOpen, onClose, onUnreadCountChange }: Props) {
   const { user } = useAuth();
+  const { socket } = useSocket();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState<Conversation | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
 
   const unreadTotal = useMemo(() => {
-    return conversations.reduce((sum, conv) => sum + (conv.unread || 0), 0);
+    return conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
   }, [conversations]);
 
   useEffect(() => {
     onUnreadCountChange?.(unreadTotal);
   }, [unreadTotal, onUnreadCountChange]);
 
-  const fetchConversations = useCallback((cancelledRef = { current: false }) => {
+  const fetchConversations = useCallback(() => {
     axiosInstance
-      .get<Conversation[]>("/api/conversations")
+      .get("/api/conversations")
       .then((r) => {
-        if (cancelledRef.current) return;
+        const responseData = r.data;
+        let raw: any[] = [];
 
-        const rawData =
-          r.data && typeof r.data === "object" && "data" in r.data
-            ? (r.data as Record<string, unknown>).data
-            : r.data;
+        if (responseData && typeof responseData === "object") {
+          raw = responseData.data || responseData.conversations || responseData;
+        }
 
-        const data = Array.isArray(rawData) ? rawData : [];
-        setConversations(data);
+        const data = Array.isArray(raw) ? raw : [];
+        const normalized = data.map((conv: any) => ({
+          ...conv,
+          _id: conv._id || conv.id || ""
+        }));
+
+        setConversations(normalized);
         setHasFetched(true);
       })
       .catch((err) => {
-        console.error("fetch conversations error", err);
-        if (cancelledRef.current) return;
+        console.error("[ConversationList] fetch error:", err);
         setConversations([]);
         setHasFetched(true);
       });
@@ -76,39 +121,46 @@ export default function ConversationsDrawer({
 
   useEffect(() => {
     if (!isOpen) return;
-
-    const cancelledRef = { current: false };
-    fetchConversations(cancelledRef);
-
-    return () => {
-      cancelledRef.current = true;
-    };
+    fetchConversations();
   }, [isOpen, fetchConversations]);
 
-  const openConversation = async (conv: Conversation) => {
-    setSelected(conv);
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => fetchConversations();
 
-    if (conv.unread > 0) {
-      setConversations((prev) =>
-        prev.map((c) => (c._id === conv._id ? { ...c, unread: 0 } : c))
-      );
+    socket.on("conversation_updated", refresh);
+    socket.on("new_conversation", refresh);
+    socket.on("messages_read", refresh);
 
+    return () => {
+      socket.off("conversation_updated", refresh);
+      socket.off("new_conversation", refresh);
+      socket.off("messages_read", refresh);
+    };
+  }, [socket, fetchConversations]);
+
+  const openConversation = useCallback(async (conv: any) => {
+    const secureId = conv._id || conv.id;
+    if (!secureId) return;
+
+    setSelected({ ...conv, _id: secureId });
+
+    if ((conv.unreadCount || 0) > 0) {
+      setConversations((prev) => prev.map((c) => (c._id === secureId ? { ...c, unreadCount: 0 } : c)));
       try {
-        await axiosInstance.put(`/api/conversations/${conv._id}/read`);
-      } catch (err) {
-        console.error("mark conversation as read error", err);
-        setConversations((prev) =>
-          prev.map((c) => (c._id === conv._id ? { ...c, unread: conv.unread } : c))
-        );
+        await axiosInstance.put(`/api/conversations/${secureId}/read`);
+      } catch (error) {
+        console.error("mark read error:", error);
       }
     }
-  };
+  }, []);
 
   if (selected) {
     return (
       <ChatDrawer
-        itemId={selected.item?._id}
-        itemTitle={selected.item?.title || "غرض غير متاح"}
+        key={selected._id}
+        convId={selected._id}
+        itemTitle={selected.item?.title || "طاولة دراسة خشبية"}
         isOpen={true}
         onClose={() => {
           setSelected(null);
@@ -120,179 +172,98 @@ export default function ConversationsDrawer({
 
   if (!isOpen) return null;
 
-  const isLoading = !hasFetched;
-  const isEmpty = hasFetched && conversations.length === 0;
-
   return (
     <div className="fixed inset-0 z-[110]" dir="rtl">
-      <div
-        className="absolute inset-0 bg-[#0f1720]/45 backdrop-blur-[3px] transition-opacity duration-300"
-        onClick={onClose}
-      />
-
-      <aside className="fixed inset-y-0 right-0 z-[111] flex h-dvh w-full max-w-md flex-col overflow-hidden border-l border-black/[0.06] bg-[#fcfbf8] shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
-        {/* Header */}
-        <div className="relative shrink-0 border-b border-[#ece7de] bg-white/95 px-4 py-4 backdrop-blur-xl">
-          <div className="absolute left-0 top-0 h-24 w-24 -translate-x-1/3 -translate-y-1/3 rounded-full bg-primary/10 blur-2xl" />
-
-          <div className="relative flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="mb-1 inline-flex items-center gap-1 rounded-full border border-primary/10 bg-primary/5 px-2.5 py-1 text-[10px] font-black text-primary">
-                <span className="material-symbols-outlined text-[13px]">mail</span>
-                صندوق المحادثات
-              </div>
-
-              <h2 className="text-base font-black text-[#1c2324]">الرسائل</h2>
-              <p className="mt-0.5 text-xs font-semibold text-[#8b847c]">
-                جميع المحادثات الخاصة بك
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {unreadTotal > 0 && (
-                <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-primary px-2 text-[11px] font-black text-white shadow-sm">
-                  {unreadTotal > 99 ? "99+" : unreadTotal}
-                </span>
-              )}
-
-              <button
-                onClick={onClose}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-[#6f6a63] transition-all duration-300 hover:bg-[#f2eee8] hover:text-[#1f2526]"
-                aria-label="إغلاق"
-                type="button"
-              >
-                <span className="material-symbols-outlined text-[22px]">close</span>
-              </button>
-            </div>
+      <div className="absolute inset-0 bg-[#0f1720]/45 backdrop-blur-[3px]" onClick={onClose} />
+      <aside className="fixed inset-y-0 right-0 z-[121] flex h-dvh w-full max-w-md flex-col overflow-hidden border-l border-black/[0.06] bg-[#fcfbf8] shadow-2xl">
+        {/* الهيدر الاحترافي للمنصة */}
+        <div className="shrink-0 border-b border-[#ece7de] bg-white px-5 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-base font-black text-[#1c2324] tracking-tight">الرسائل</h2>
+            <p className="text-[11px] font-semibold text-[#8b847c] mt-0.5">جميع المحادثات الخاصة بك في منصة عون</p>
           </div>
+          <button onClick={onClose} className="h-9 w-9 flex items-center justify-center rounded-xl text-[#6f6a63] hover:bg-[#f2eee8] transition-all text-sm font-bold">✕</button>
         </div>
 
-        {/* Content */}
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[linear-gradient(180deg,#f7f5f0_0%,#f8f6f2_100%)]">
-          {isLoading ? (
-            <div className="space-y-2 p-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-[22px] border border-[#ece7de] bg-white px-3 py-3 shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-[#ebe5dd]" />
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="h-3 w-3/4 animate-pulse rounded-full bg-[#e7e1d9]" />
-                      <div className="h-2.5 w-1/2 animate-pulse rounded-full bg-[#f2ede6]" />
-                    </div>
-                    <div className="h-5 w-8 animate-pulse rounded-full bg-[#e8f5f3]" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : isEmpty ? (
-            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary shadow-sm">
-                <span className="material-symbols-outlined text-3xl">
-                  chat_bubble_outline
-                </span>
-              </div>
-              <p className="mt-4 text-sm font-black text-[#243132]">
-                لا توجد محادثات بعد
-              </p>
-              <p className="mt-2 max-w-[18rem] text-xs leading-6 text-[#8a837b]">
-                عند حجز أي غرض أو بدء محادثة جديدة ستظهر هنا مباشرة بشكل منظم وواضح.
-              </p>
-            </div>
+        {/* قائمة بطاقات المحادثات المتوازنة */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8f6f2]">
+          {!hasFetched ? (
+            <div className="text-center text-sm text-[#9b948c] font-semibold py-12 animate-pulse">جاري تحميل المحادثات...</div>
+          ) : conversations.length === 0 ? (
+            <div className="text-center text-xs text-[#9b948c] font-bold py-16">لا توجد محادثات بعد في صندوق الوارد.</div>
           ) : (
-            <div className="space-y-2 p-3">
-              {conversations.map((conv) => {
-                const other = conv.participants.find((p) => p._id !== user?._id);
-                const hasUnread = conv.unread > 0;
+            conversations.map((conv) => {
+              const other = conv.participants?.find((p) => p._id !== user?._id) || conv.owner || conv.requester;
+              const hasUnread = (conv.unreadCount || 0) > 0;
+              const avatarSrc = other?.avatar || "";
+              
+              // استخراج الألوان الديناميكية للحرف الأول لجمالية بصريّة فائقة
+              const nameKey = other?.name || "م";
+              const avatarColors = getAvatarBgColor(nameKey);
 
-                return (
-                  <button
-                    key={conv._id}
-                    onClick={() => openConversation(conv)}
-                    className={`group w-full rounded-[22px] border px-3 py-3 text-right shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
-                      hasUnread
-                        ? "border-primary/15 bg-[#f8fffd]"
-                        : "border-[#ece7de] bg-white hover:bg-[#fcfbf8]"
-                    }`}
-                    type="button"
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Avatar / item image */}
-                      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 ring-1 ring-black/[0.04]">
-                        {other?.avatar ? (
-                          <Image
-                            src={other.avatar}
-                            alt={other.name}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
-                          />
-                        ) : conv.item?.imageUrl ? (
-                          <Image
-                            src={conv.item.imageUrl}
-                            alt={conv.item?.title || "غرض"}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
-                          />
-                        ) : (
-                          <span
-                            className="material-symbols-outlined text-[24px] text-primary"
-                            style={{ fontVariationSettings: "'FILL' 1" }}
-                          >
-                            account_circle
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Text */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p
-                            className={`truncate text-sm font-black ${
-                              hasUnread ? "text-[#163637]" : "text-[#1c2324]"
-                            }`}
-                          >
-                            {conv.item?.title || "غرض غير متاح"}
-                          </p>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            {hasUnread && (
-                              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-white">
-                                {conv.unread > 9 ? "9+" : conv.unread}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="mt-1 flex items-center gap-2">
-                          <p
-                            className={`truncate text-xs ${
-                              hasUnread ? "font-bold text-[#5f6d67]" : "text-[#9b948c]"
-                            }`}
-                          >
-                            {other?.name || `مستخدم غير معروف`}
-                          </p>
-
-                          {hasUnread && (
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                          )}
-                        </div>
-
-                        <p className="mt-1 text-[10px] font-semibold text-[#b0a89f]">
-                          {new Date(conv.lastActivity).toLocaleDateString("ar-JO", {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </p>
-                      </div>
+              return (
+                <button
+                  key={conv._id}
+                  onClick={() => openConversation(conv)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-[20px] border p-4 text-right shadow-sm transition-all duration-300 hover:-translate-y-0.5 group ${
+                    hasUnread 
+                      ? "border-primary/20 bg-[#f4fffd] ring-1 ring-primary/5" 
+                      : "border-[#ece7de] bg-white hover:bg-[#fcfbf8]"
+                  }`}
+                  type="button"
+                >
+                  {/* جهة اليمين: الأفاتار + كتل النصوص الرأسية المترابطة */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {/* الأفاتار المتمركز هيدروليكياً وبصرياً */}
+                    <div className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-black/[0.04] flex items-center justify-center font-black text-sm select-none transition-transform group-hover:scale-[1.02] ${avatarColors.bg} ${avatarColors.text}`}>
+                      {avatarSrc ? (
+                        <Image src={avatarSrc} alt={nameKey} fill className="object-cover" sizes="48px" />
+                      ) : (
+                        <span className="mb-0.5">{nameKey[0].toUpperCase()}</span>
+                      )}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+
+                    {/* تفاصيل المحادثة متراصة رأسياً بذكاء وعناية تامة */}
+                    <div className="flex flex-col min-w-0 text-right flex-1">
+                      {/* اسم الغرض / المنتج المحمي من الانفجار النصي */}
+                      <p className={`truncate text-[13.5px] font-black tracking-tight max-w-[200px] sm:max-w-[240px] ${hasUnread ? "text-primary" : "text-[#1c2324]"}`}>
+                        {conv.item?.title || "غرض غير متاح"}
+                      </p>
+                      
+                      {/* اسم المستخدم الآخر */}
+                      <p className="mt-0.5 truncate text-[11px] font-bold text-[#77716a]">
+                        {nameKey}
+                      </p>
+                      
+                      {/* سطر المعاينة للرسالة الأخيرة (إنقاذ الـ UX الحاسم) */}
+                      <p className={`mt-1.5 truncate text-[11.5px] max-w-[210px] sm:max-w-[250px] ${hasUnread ? "font-bold text-[#1f3a3b]" : "font-medium text-[#9b948c]"}`}>
+                        {conv.lastMessage || "ابدأ التنسيق والحديث الآن..."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* جهة اليسار: الوقت والمؤشر الأخضر متراصين عمودياً لراحة العين البصرية */}
+                  <div className="flex flex-col items-end shrink-0 justify-between h-12 py-0.5">
+                    {/* التوقيت المطور */}
+                    <span className="text-[10px] font-bold text-[#9b948c] tracking-tight">
+                      {formatTimestamp(conv.lastMessageAt || conv.item ? (conv as any).updatedAt : null)}
+                    </span>
+                    
+                    {/* شارة العداد غير المقروء في مكانها الهندسي المتزن أقصى اليسار */}
+                    {hasUnread ? (
+                      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-white shadow-sm animate-bounce">
+                        {conv.unreadCount}
+                      </span>
+                    ) : (
+                      // أيقونة سهم خفيفة تظهر عند حوم الماوس لجمالية إضافية في الـ UI
+                      <span className="material-symbols-outlined text-[15px] text-[#b4aea5] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pl-0.5">
+                        arrow_back_ios
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </aside>

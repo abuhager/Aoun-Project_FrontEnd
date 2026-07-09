@@ -10,22 +10,17 @@ import { ItemsTable } from "./components/ItemsTable";
 import ReportModal from "@/components/ReportModal";
 import AppealModal from "@/components/AppealModal";
 import ChatDrawer from "@/components/ChatDrawer";
+import axiosInstance from "@/lib/api/axiosInstance"; // 👈 استيراد الأكسيوس للطلب المباشر
 
 /* ─── Skeleton ──────────────────────────────────────────────── */
 function DashboardSkeleton() {
   return (
-    <div
-      className="min-h-screen bg-[#f7f6f2] pb-16 pt-20 md:pt-24"
-      dir="rtl"
-    >
+    <div className="min-h-screen bg-[#f7f6f2] pb-16 pt-20 md:pt-24" dir="rtl">
       <div className="mx-auto max-w-7xl space-y-4 px-4 md:px-6">
-        {/* Top heading skeleton */}
         <div className="animate-pulse space-y-2">
           <div className="h-6 w-48 rounded-xl bg-gray-200" />
           <div className="h-4 w-72 rounded-xl bg-gray-100" />
         </div>
-
-        {/* Profile skeleton */}
         <div className="animate-pulse rounded-3xl border border-black/[0.06] bg-white p-4 shadow-sm md:p-5">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 shrink-0 rounded-full bg-gray-100" />
@@ -36,32 +31,20 @@ function DashboardSkeleton() {
             </div>
           </div>
         </div>
-
-        {/* Stats skeleton */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-24 rounded-3xl border border-black/[0.06] bg-white p-4"
-            />
+            <div key={i} className="h-24 rounded-3xl border border-black/[0.06] bg-white p-4" />
           ))}
         </div>
-
-        {/* Tabs skeleton */}
         <div className="animate-pulse rounded-2xl border border-black/[0.06] bg-white p-1 shadow-sm">
           <div className="grid grid-cols-2 gap-1">
             <div className="h-11 rounded-xl bg-gray-100" />
             <div className="h-11 rounded-xl bg-gray-100" />
           </div>
         </div>
-
-        {/* Items skeleton */}
         <div className="space-y-3 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="flex items-center gap-4 rounded-3xl border border-black/[0.06] bg-white p-4"
-            >
+            <div key={i} className="flex items-center gap-4 rounded-3xl border border-black/[0.06] bg-white p-4">
               <div className="h-14 w-14 shrink-0 rounded-2xl bg-gray-100" />
               <div className="flex-1 space-y-2">
                 <div className="h-4 w-3/5 rounded-lg bg-gray-100" />
@@ -107,29 +90,21 @@ export default function DashboardPage() {
     itemId?: string;
   } | null>(null);
 
-  const [chatTarget, setChatTarget] = useState<{
-    itemId: string;
-    itemTitle: string;
-  } | null>(null);
+  // 🌟 حالات الشات المتطابقة بالملي مع صفحة الآيتم
+  const [chatOpen, setChatOpen] = useState(false);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [activeItemTitle, setActiveItemTitle] = useState("");
+  const [fetchingChat, setFetchingChat] = useState(false);
 
   if (loading) return <DashboardSkeleton />;
 
   if (!data) {
     return (
-      <div
-        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f7f6f2] p-8"
-        dir="rtl"
-      >
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f7f6f2] p-8" dir="rtl">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50">
-          <span className="material-symbols-outlined text-4xl text-red-400">
-            error_outline
-          </span>
+          <span className="material-symbols-outlined text-4xl text-red-400">error_outline</span>
         </div>
-
-        <p className="text-sm font-bold text-gray-500">
-          حدث خطأ في تحميل البيانات، يرجى تحديث الصفحة
-        </p>
-
+        <p className="text-sm font-bold text-gray-500">حدث خطأ في تحميل البيانات، يرجى تحديث الصفحة</p>
         {process.env.NODE_ENV === "development" && error && (
           <pre className="max-w-lg w-full overflow-auto rounded-xl bg-gray-900 p-4 text-left text-xs text-yellow-400">
             {error}
@@ -139,14 +114,45 @@ export default function DashboardPage() {
     );
   }
 
-  const activeItems =
-    activeTab === "donations" ? data.myDonations : data.myRequests;
+  // 🌟 دالة استخلاص المحادثة الحقيقية من السيرفر قبل الفتح (نفس تدفق صفحة الآيتم الشغالة)
+  const handleOpenChatFlow = async (item: any) => {
+    setFetchingChat(true);
+    try {
+      // 🎯 فرز الهوية الحاسم:
+      // إذا كنا في تاب تبرعاتي (donations) -> الطرف المستهدف هو المستلم (item.bookedBy)
+      // إذا كنا في تاب طلباتي (requests) -> الطرف المستهدف هو المتبرع (item.donor)
+      const targetUserId = activeTab === "donations"
+        ? (item.bookedBy?._id || item.bookedBy)
+        : (item.donor?._id || item.owner?._id);
+
+      // نرسل الـ targetUserId في حقل donorId إجبارياً لإرضاء دالة السيرفر openConversationLogic
+      const response = await axiosInstance.post("/api/conversations", {
+        itemId: item._id,
+        donorId: targetUserId 
+      });
+
+      const realId =
+        response.data?.data?.conversation?._id ||
+        response.data?.data?._id ||
+        response.data?.conversation?._id;
+
+      if (realId) {
+        setActiveConvId(realId);
+        setActiveItemTitle(item.title);
+        setChatOpen(true);
+      } else {
+        console.warn("⚠️ لم يتم العثور على المعرف _id في استجابة السيرفر", response.data);
+      }
+    } catch (err) {
+      console.error("❌ فشل جلب معرف المحادثة الرسمي في الداشبورد:", err);
+    } finally {
+      setFetchingChat(false);
+    }
+  };
+  const activeItems = activeTab === "donations" ? data.myDonations : data.myRequests;
 
   return (
-    <div
-      className="min-h-screen bg-[#f7f6f2] pb-16 font-body text-[#191c1d]"
-      dir="rtl"
-    >
+    <div className="min-h-screen bg-[#f7f6f2] pb-16 font-body text-[#191c1d]" dir="rtl">
       {/* ── Modals & Overlays ────────────────────────────────── */}
       {confirmModal.open && (
         <ActionModal
@@ -157,13 +163,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {toast && (
-        <Toast
-          msg={toast.msg}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
       {reportTarget && (
         <ReportModal
@@ -175,19 +175,17 @@ export default function DashboardPage() {
       )}
 
       {appealModal.open && (
-        <AppealModal
-          reportId={appealModal.reportId}
-          onClose={closeAppealModal}
-          onSuccess={onAppealSuccess}
-        />
+        <AppealModal reportId={appealModal.reportId} onClose={closeAppealModal} onSuccess={onAppealSuccess} />
       )}
 
-      {chatTarget && (
+      {/* 🌟 فتح الـ ChatDrawer بناءً على المعرف الحقيقي الصافي الشغال تماماً */}
+      {chatOpen && activeConvId && (
         <ChatDrawer
-          itemId={chatTarget.itemId}
-          itemTitle={chatTarget.itemTitle}
-          isOpen={!!chatTarget}
-          onClose={() => setChatTarget(null)}
+          key={activeConvId}
+          convId={activeConvId}
+          itemTitle={activeItemTitle}
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
         />
       )}
 
@@ -196,12 +194,9 @@ export default function DashboardPage() {
         {/* Header */}
         <section className="flex flex-col gap-2">
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/10 bg-primary/5 px-3 py-1 text-[11px] font-black text-primary">
-            <span className="material-symbols-outlined text-[14px]">
-              dashboard
-            </span>
+            <span className="material-symbols-outlined text-[14px]">dashboard</span>
             لوحة التحكم
           </div>
-
           <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-2xl font-black tracking-tight text-[#1d2324] md:text-3xl">
@@ -211,26 +206,14 @@ export default function DashboardPage() {
                 راقب تبرعاتك وطلباتك، وتابع حالة العناصر والإجراءات الجارية من مكان واحد.
               </p>
             </div>
-
-            <div className="text-xs font-bold text-[#9b948d]">
-              آخر تحديث للبيانات من جلستك الحالية
-            </div>
+            <div className="text-xs font-bold text-[#9b948d]">آخر تحديث للبيانات من جلستك الحالية</div>
           </div>
         </section>
 
         {/* Summary cards */}
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <ProfileCard
-            name={data.user?.name}
-            email={data.user?.email}
-            trustScore={data.user?.trustScore}
-          />
-
-          <StatsGrid
-            trustScore={data.user?.trustScore}
-            quota={data.user?.quota}
-            donationsCount={data.myDonations.length}
-          />
+          <ProfileCard name={data.user?.name} email={data.user?.email} trustScore={data.user?.trustScore} />
+          <StatsGrid trustScore={data.user?.trustScore} quota={data.user?.quota} donationsCount={data.myDonations.length} />
         </section>
 
         {/* Work area */}
@@ -250,26 +233,17 @@ export default function DashboardPage() {
                 >
                   <span
                     className="material-symbols-outlined text-[18px]"
-                    style={{
-                      fontVariationSettings:
-                        activeTab === t ? "'FILL' 1" : "'FILL' 0",
-                    }}
+                    style={{ fontVariationSettings: activeTab === t ? "'FILL' 1" : "'FILL' 0" }}
                   >
                     {t === "donations" ? "volunteer_activism" : "inventory_2"}
                   </span>
-
                   <span>{t === "donations" ? "تبرعاتي" : "طلباتي"}</span>
-
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${
-                      activeTab === t
-                        ? "bg-white/15 text-white"
-                        : "bg-[#f1efea] text-gray-600"
+                      activeTab === t ? "bg-white/15 text-white" : "bg-[#f1efea] text-gray-600"
                     }`}
                   >
-                    {t === "donations"
-                      ? data.myDonations.length
-                      : data.myRequests.length}
+                    {t === "donations" ? data.myDonations.length : data.myRequests.length}
                   </span>
                 </button>
               ))}
@@ -289,7 +263,6 @@ export default function DashboardPage() {
                     : "راجع العناصر التي قمت بحجزها أو تنتظرها."}
                 </p>
               </div>
-
               <div className="rounded-full bg-[#f6f3ee] px-3 py-1 text-[11px] font-black text-[#5f5952]">
                 {activeItems.length} عنصر
               </div>
@@ -307,12 +280,10 @@ export default function DashboardPage() {
                 deliveryLoading={deliveryLoading}
                 onRecipientConfirm={handleRecipientConfirm}
                 onDonorConfirm={handleDonorConfirm}
-                onOpenChat={(item) =>
-                  setChatTarget({
-                    itemId: item._id,
-                    itemTitle: item.title,
-                  })
-                }
+                
+                // 🌟 تفعيل تدفق الاستدعاء الصريح والآمن فوراً عند الضغط
+                onOpenChat={handleOpenChatFlow}
+                
                 onReport={(item, target) => {
                   const isDonor = target === "donor";
                   const userId = isDonor
@@ -326,11 +297,7 @@ export default function DashboardPage() {
                     ? item.bookedBy?.name ?? "المستلم"
                     : "المستلم";
 
-                  setReportTarget({
-                    userId,
-                    userName,
-                    itemId: item._id,
-                  });
+                  setReportTarget({ userId, userName, itemId: item._id });
                 }}
                 onAppeal={openAppealModal}
               />

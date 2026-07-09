@@ -8,6 +8,7 @@ import GlobalRatingModal from "@/components/GlobalRatingModal";
 import { SiteConfigProvider } from "@/context/SiteConfigContext";
 import { getPublicSettings } from "@/lib/api/settingsApi";
 import { siteConfig } from "@/config/site.config";
+import { SocketProvider } from "@/context/SocketContext";
 
 // ── الخطوط ──────────────────────────────────────────────────────────────────
 const tajawal = Tajawal({
@@ -74,7 +75,9 @@ export default async function RootLayout({
           <AuthProvider>
             <GlobalRatingModal />
             {/* إزالة وسم <main> من هنا لتجنب التضارب مع الـ Layouts الداخلية التي تحتوي على الـ Navbar والـ Footer */}
+             <SocketProvider>   {/* ← أضف هذا */}
             {children}
+          </SocketProvider>
           </AuthProvider>
         </SiteConfigProvider>
       </body>

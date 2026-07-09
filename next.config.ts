@@ -1,6 +1,6 @@
-// next.config.ts — Flow 1 Fixed
+// next.config.ts — تم الإصلاح الشامل لحظر السوكت (CSP)
 // ✅ ARCH-WARN-02: localhost/127.0.0.1 في remotePatterns مقيّدان بـ !isProduction فقط
-// ✅ تمت إضافة Content-Security-Policy مع السماح بخطوط وأيقونات Google
+// ✅ تم تعديل connect-src لتوليد بروتوكولات ws و wss ديناميكياً ومنع حظر المتصفح
 
 import type { NextConfig } from 'next';
 
@@ -21,6 +21,9 @@ if (!API_URL) {
   }
 }
 
+// 🛠️ استخلاص النطاق الصافي (بدون http:// أو https://) لحقنه في السوكت
+const cleanDomain = API_URL ? API_URL.replace(/^https?:\/\//, '') : '';
+
 const nextConfig: NextConfig = {
 
   // ── Security Headers ────────────────────────────────────────
@@ -29,13 +32,13 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'X-Frame-Options',       value: 'DENY' },
+          { key: 'X-Frame-Options',        value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy',        value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy',     value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           
-          // ✅ إضافة CSP header
+          // ✅ إضافة وتصليح ترويسة الـ CSP للسوكت
           {
             key: 'Content-Security-Policy',
             value: [
@@ -47,7 +50,10 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", 
               // ✅ السماح بتحميل ملفات الخطوط والأيقونات
               "font-src 'self' https://fonts.gstatic.com", 
-              `connect-src 'self' ${API_URL || ''}`,
+              
+              // ✅ الإصلاح الحرج: السماح بالاتصال العادي + اتصال السوكت اللحظي (ws:// و wss://) بناءً على رابط السيرفر
+              `connect-src 'self' ${API_URL || ''} ${cleanDomain ? `ws://${cleanDomain} wss://${cleanDomain}` : ''}`,
+              
               "frame-ancestors 'none'",
             ].join('; ').replace(/\s+/g, ' ').trim(), 
           },

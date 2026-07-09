@@ -10,6 +10,7 @@ import LevelGate from "@/components/LevelGate";
 import ChatDrawer from "@/components/ChatDrawer";
 import { useRouter } from "next/navigation";
 import { useDeliveryConfirmation } from "@/components/DeliveryConfirmButton";
+import axiosInstance from "@/lib/api/axiosInstance"; 
 
 export default function ItemDetailsPage() {
   const router = useRouter();
@@ -30,6 +31,8 @@ export default function ItemDetailsPage() {
   } = useItemDetails();
 
   const [chatOpen, setChatOpen] = useState(false);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null); 
+  const [fetchingChat, setFetchingChat] = useState(false);
 
   const currentUserRole = loading
     ? undefined
@@ -39,22 +42,53 @@ export default function ItemDetailsPage() {
     ? "recipient"
     : undefined;
 
-  const delivery = useDeliveryConfirmation({
+  // مزامنة دالة الاستلام والتسليم مع الهوك الفولاذي المحدث
+ const delivery = useDeliveryConfirmation({
     itemId: item?._id ?? "",
     userRole: (currentUserRole ?? "recipient") as "donor" | "recipient",
     initialRecipientConfirmed: item?.recipientConfirmed ?? false,
-    onSuccess: () => {
-      fetchItem();
+    onSuccess: async () => {
+      // جلب صامت لتحديث الداتا كاملة بالـ State من خلال الهوك الأساسي
+      if (typeof fetchItem === "function") {
+        await fetchItem(true, true); 
+      }
       router.refresh();
     },
   });
 
+  // 🌟 إصلاح دالة الشات: استبدال item.owner بـ item.donor لحل مشكلة النوع المفقود
+  const handleOpenChatFlow = async () => {
+    if (!item) return;
+    setFetchingChat(true);
+    try {
+      const targetUserId = isDonor
+        ? (item.bookedBy?._id || item.bookedBy)
+        : (item.donor?._id); // 👈 تم حذف الـ owner نهائياً هنا
+
+      const response = await axiosInstance.post("/api/conversations", {
+        itemId: item._id,
+        donorId: targetUserId
+      });
+      
+      const realId = 
+        response.data?.data?.conversation?._id || 
+        response.data?.data?._id || 
+        response.data?.conversation?._id;
+
+      if (realId) {
+        setActiveConvId(realId);
+        setChatOpen(true);
+      }
+    } catch {
+      console.error("❌ فشل إنشاء أو جلب معرف المحادثة الرسمي");
+    } finally {
+      setFetchingChat(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div
-        className="flex min-h-screen items-center justify-center bg-[#f7f6f2]"
-        dir="rtl"
-      >
+      <div className="flex min-h-screen items-center justify-center bg-[#f7f6f2]" dir="rtl">
         <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
@@ -62,10 +96,7 @@ export default function ItemDetailsPage() {
 
   if (!item) {
     return (
-      <div
-        className="flex min-h-screen items-center justify-center bg-[#f7f6f2] px-4"
-        dir="rtl"
-      >
+      <div className="flex min-h-screen items-center justify-center bg-[#f7f6f2] px-4" dir="rtl">
         <div className="rounded-2xl border border-gray-200 bg-white px-8 py-10 text-center shadow-sm">
           <p className="text-sm font-bold text-gray-700">🛑 القطعة غير موجودة</p>
         </div>
@@ -74,30 +105,27 @@ export default function ItemDetailsPage() {
   }
 
   const imageUrl = item.imageUrl ?? "/placeholder-item.png";
-  const showCountdown =
-    item.status === "محجوز" && (isBooker || isDonor);
-  const showChat =
-    (isDonor || isBooker) && item.status === "محجوز";
+  const showCountdown = item.status === "محجوز" && (isBooker || isDonor);
+  const showChat = (isDonor || isBooker) && item.status === "محجوز";
+
+  // لقاط حالة التوثيق الحقيقية المتزامنة بلحظتها
+  const isRecipientConfirmedActual = item.recipientConfirmed || delivery.isRecipientConfirmed;
 
   return (
-    <div
-      className="min-h-screen bg-[#f7f6f2] pb-20 text-[#191c1d]"
-      dir="rtl"
-    >
+    <div className="min-h-screen bg-[#f7f6f2] pb-20 text-[#191c1d]" dir="rtl">
       {confirmModal.show && (
         <ConfirmModal
           message={confirmModal.msg}
           isDanger={confirmModal.isDanger}
           onConfirm={confirmModal.onConfirm}
-          onCancel={() =>
-            setConfirmModal((p) => ({ ...p, show: false }))
-          }
+          onCancel={() => setConfirmModal((p) => ({ ...p, show: false }))}
         />
       )}
 
-      {showChat && (
+      {showChat && chatOpen && activeConvId && (
         <ChatDrawer
-          itemId={item._id}
+          key={activeConvId}
+          convId={activeConvId}
           itemTitle={item.title}
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}
@@ -105,21 +133,13 @@ export default function ItemDetailsPage() {
       )}
 
       <main className="mx-auto max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
-
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-xs font-medium text-gray-400">
-          <Link
-            href="/browse"
-            className="font-bold transition-colors hover:text-primary"
-          >
+          <Link href="/browse" className="font-bold transition-colors hover:text-primary">
             تصفح التبرعات
           </Link>
-          <span className="material-symbols-outlined text-[11px] text-gray-300">
-            chevron_left
-          </span>
-          <span className="truncate font-black text-gray-700">
-            {item.title}
-          </span>
+          <span className="material-symbols-outlined text-[11px] text-gray-300">chevron_left</span>
+          <span className="truncate font-black text-gray-700">{item.title}</span>
         </nav>
 
         <div className="grid grid-cols-1 gap-8 md:gap-10 lg:grid-cols-2">
@@ -151,9 +171,7 @@ export default function ItemDetailsPage() {
                 </span>
                 {(item.waitlist?.length ?? 0) > 0 && (
                   <div className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1">
-                    <span className="material-symbols-outlined text-sm text-blue-500">
-                      group
-                    </span>
+                    <span className="material-symbols-outlined text-sm text-blue-500">group</span>
                     <p className="text-[10px] font-black text-blue-700">
                       {item.waitlist?.length ?? 0} ينتظرون
                     </p>
@@ -161,10 +179,7 @@ export default function ItemDetailsPage() {
                 )}
               </div>
 
-              <h1 className="text-2xl font-black leading-tight md:text-3xl">
-                {item.title}
-              </h1>
-
+              <h1 className="text-2xl font-black leading-tight md:text-3xl">{item.title}</h1>
               <p className="rounded-2xl border border-gray-100 bg-white p-4 text-sm leading-7 text-gray-600 shadow-sm">
                 {item.description}
               </p>
@@ -185,91 +200,46 @@ export default function ItemDetailsPage() {
             {/* معلومات الغرض */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                {
-                  label: "الموقع",
-                  val: item.location || "غير محدد",
-                  ic: "distance",
-                },
-                {
-                  label: "التاريخ",
-                  val: new Date(item.createdAt).toLocaleDateString(
-                    "ar-EG"
-                  ),
-                  ic: "event",
-                },
+                { label: "الموقع", val: item.location || "غير محدد", ic: "distance" },
+                { label: "التاريخ", val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event" },
               ].map((s, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white p-3 text-center shadow-sm"
-                >
-                  <span className="mb-1 material-symbols-outlined text-xl text-primary">
-                    {s.ic}
-                  </span>
-                  <p className="text-[10px] font-bold text-gray-400">
-                    {s.label}
-                  </p>
-                  <p className="mt-1 truncate text-[11px] font-black text-primary">
-                    {s.val}
-                  </p>
+                <div key={i} className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white p-3 text-center shadow-sm">
+                  <span className="mb-1 material-symbols-outlined text-xl text-primary">{s.ic}</span>
+                  <p className="text-[10px] font-bold text-gray-400">{s.label}</p>
+                  <p className="mt-1 truncate text-[11px] font-black text-primary">{s.val}</p>
                 </div>
               ))}
             </div>
 
             {/* بطاقة المتبرع */}
-            <Link
-              href={`/profile/${item.donor?._id}`}
-              className="group flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
-            >
+            <Link href={`/profile/${item.donor?._id}`} className="group flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
               <div className="flex items-center gap-3">
                 <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-gray-50">
                   {item.donor?.avatar ? (
-                    <Image
-                      src={item.donor.avatar}
-                      alt="avatar"
-                      fill
-                      className="object-cover"
-                    />
+                    <Image src={item.donor.avatar} alt="avatar" fill className="object-cover" />
                   ) : (
-                    <span className="material-symbols-outlined text-gray-300">
-                      account_circle
-                    </span>
+                    <span className="material-symbols-outlined text-gray-300">account_circle</span>
                   )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-gray-800 transition-colors group-hover:text-primary">
-                    {item.donor?.name}
-                  </h3>
-                  <p className="text-[10px] font-bold text-gray-400">
-                    ملف المتبرع
-                  </p>
+                  <h3 className="text-sm font-black text-gray-800 transition-colors group-hover:text-primary">{item.donor?.name}</h3>
+                  <p className="text-[10px] font-bold text-gray-400">ملف المتبرع</p>
                 </div>
               </div>
-              <span className="material-symbols-outlined text-gray-300 transition-transform group-hover:-translate-x-1">
-                chevron_left
-              </span>
+              <span className="material-symbols-outlined text-gray-300 transition-transform group-hover:-translate-x-1">chevron_left</span>
             </Link>
 
             {/* مركز التسليم */}
             {item.safeHub && (
               <div className="space-y-2 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
                 <div className="mb-1 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-xl text-primary">
-                    warehouse
-                  </span>
-                  <p className="text-sm font-black text-gray-800">
-                    مركز التسليم
-                  </p>
+                  <span className="material-symbols-outlined text-xl text-primary">warehouse</span>
+                  <p className="text-sm font-black text-gray-800">مركز التسليم</p>
                 </div>
-                <p className="text-sm font-bold text-gray-800">
-                  {item.safeHub.name}
-                </p>
-                <p className="text-[11px] text-gray-500">
-                  {item.safeHub.address} — {item.safeHub.city}
-                </p>
+                <p className="text-sm font-bold text-gray-800">{item.safeHub.name}</p>
+                <p className="text-[11px] text-gray-500">{item.safeHub.address} — {item.safeHub.city}</p>
                 <p className="flex items-center gap-1 text-[11px] text-gray-500">
-                  <span className="material-symbols-outlined text-xs">
-                    schedule
-                  </span>
+                  <span className="material-symbols-outlined text-xs">schedule</span>
                   {item.safeHub.workingHours}
                 </p>
               </div>
@@ -278,19 +248,13 @@ export default function ItemDetailsPage() {
             {/* أزرار الحالات والعمليات */}
             <div className="space-y-4">
               {message.text && (
-                <div
-                  className={`rounded-2xl border p-4 text-center text-xs font-bold ${
-                    message.type === "success"
-                      ? "border-emerald-100 bg-emerald-50 text-emerald-700"
-                      : "border-red-100 bg-red-50 text-red-700"
-                  }`}
-                >
+                <div className={`rounded-2xl border p-4 text-center text-xs font-bold ${message.type === "success" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-red-100 bg-red-50 text-red-700"}`}>
                   {message.text}
                 </div>
               )}
 
               <div className="flex flex-col gap-3">
-                {/* حالة المتبرع */}
+                {/* 🌟 شجرة الرندرة المحصنة المتسلسلة تمنع بقاء البلوك الأزرق نهائياً عند تحقق الـ isBooker محلياً */}
                 {isDonor ? (
                   <div className="space-y-3">
                     <div className="w-full rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-4 text-center text-sm font-bold text-gray-500">
@@ -301,26 +265,17 @@ export default function ItemDetailsPage() {
                         <button
                           onClick={delivery.confirmDelivery}
                           disabled={delivery.isLoading}
-                          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-sm transition-all ${
-                            item.recipientConfirmed
-                              ? "bg-primary text-white hover:bg-[#004d44]"
-                              : "border border-amber-200 bg-amber-50 text-amber-700"
-                          }`}
+                          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-sm transition-all ${isRecipientConfirmedActual ? "bg-primary text-white hover:bg-[#004d44]" : "border border-amber-200 bg-amber-50 text-amber-700"}`}
                         >
                           {delivery.isLoading ? (
                             <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                          ) : item.recipientConfirmed ? (
+                          ) : isRecipientConfirmedActual ? (
                             "تأكيد تسليم الغرض للمستلم 📦"
                           ) : (
                             "بانتظار تأكيد الاستلام من المستلم أولاً ⏳"
                           )}
                         </button>
-
-                        <button
-                          onClick={handleCancelAction}
-                          disabled={actionLoading}
-                          className="w-full rounded-2xl border border-red-100 bg-red-50 py-3 text-xs font-bold text-red-600 transition-all hover:bg-red-100"
-                        >
+                        <button onClick={handleCancelAction} disabled={actionLoading} className="w-full rounded-2xl border border-red-100 bg-red-50 py-3 text-xs font-bold text-red-600 transition-all hover:bg-red-100">
                           إلغاء حجز المستلم الحالي
                         </button>
                       </>
@@ -335,83 +290,56 @@ export default function ItemDetailsPage() {
                     لا يمكنك حجز هذا الغرض مرة أخرى 🚫
                   </div>
                 ) : isBooker ? (
-                  <div className="space-y-3">
+                  /* 🎯 بلوك الحاجز المحمي: يختفي كود الحجز القديم ويحل مكانه فوراً وبدون ريفريش */
+                  <div className="space-y-3 w-full">
                     {item.status === "محجوز" && (
                       <button
                         onClick={delivery.confirmReceipt}
-                        disabled={
-                          delivery.isLoading || item.recipientConfirmed
-                        }
-                        className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-sm transition-all ${
-                          !item.recipientConfirmed
-                            ? "bg-[#005a8c] text-white hover:bg-[#004a75]"
-                            : "cursor-not-allowed border border-amber-200 bg-amber-50 text-amber-700"
-                        }`}
+                        disabled={delivery.isLoading || isRecipientConfirmedActual}
+                        className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-sm transition-all ${!isRecipientConfirmedActual ? "bg-[#005a8c] text-white hover:bg-[#004a75]" : "cursor-not-allowed border border-amber-200 bg-amber-50 text-amber-700"}`}
                       >
                         {delivery.isLoading ? (
                           <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                        ) : item.recipientConfirmed ? (
+                        ) : isRecipientConfirmedActual ? (
                           "تم تأكيد استلامك، بانتظار المتبرع... ⏳"
                         ) : (
                           "تأكيد استلام الغرض عيناً 👍"
                         )}
                       </button>
                     )}
-
-                    <button
-                      onClick={handleCancelAction}
-                      disabled={actionLoading}
-                      className="w-full rounded-2xl border border-red-200 bg-red-50 py-4 text-sm font-bold text-red-600 shadow-sm transition-all hover:bg-red-100"
-                    >
-                      إلغاء الحجز ⚠️
+                    <button onClick={handleCancelAction} disabled={actionLoading} className="w-full rounded-2xl border border-red-200 bg-red-50 py-4 text-sm font-bold text-red-600 shadow-sm transition-all hover:bg-red-100">
+                      {actionLoading ? <div className="h-5 w-5 rounded-full border-2 border-red-600 border-t-transparent animate-spin mx-auto" /> : "إلغاء الحجز ⚠️"}
                     </button>
                   </div>
                 ) : isWaitlisted ? (
-                  <button
-                    onClick={handleCancelAction}
-                    disabled={actionLoading}
-                    className="w-full rounded-2xl border border-orange-200 bg-orange-50 py-4 text-sm font-bold text-orange-600 transition-all hover:bg-orange-100"
-                  >
-                    الانسحاب من الانتظار 🚶‍♂️
+                  <button onClick={handleCancelAction} disabled={actionLoading} className="w-full rounded-2xl border border-orange-200 bg-orange-50 py-4 text-sm font-bold text-orange-600 transition-all hover:bg-orange-100">
+                    {actionLoading ? <div className="h-5 w-5 rounded-full border-2 border-orange-600 border-t-transparent animate-spin mx-auto" /> : "الانسحاب من الانتظار 🚶‍♂️"}
                   </button>
                 ) : item.status === "متاح" ? (
                   <LevelGate>
-                    <button
-                      onClick={handleRequestItem}
-                      disabled={actionLoading}
-                      className="w-full rounded-2xl bg-primary py-4 text-sm font-black text-white shadow-md shadow-primary/20 transition-all hover:bg-[#004d44]"
-                    >
-                      احجز هذه القطعة الآن
+                    <button onClick={handleRequestItem} disabled={actionLoading} className="w-full rounded-2xl bg-primary py-4 text-sm font-black text-white shadow-md shadow-primary/20 transition-all hover:bg-[#004d44]">
+                      {actionLoading ? <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin mx-auto" /> : "احجز هذه القطعة الآن"}
                     </button>
                   </LevelGate>
                 ) : (
-                  <LevelGate
-                    fallback={
-                      <div className="w-full rounded-2xl bg-gray-100 py-4 text-center text-sm font-bold text-gray-500">
-                        🔐 يجب رفع مستوى الثقة للانضمام لقائمة الانتظار
-                      </div>
-                    }
-                  >
-                    <button
-                      onClick={handleRequestItem}
-                      disabled={actionLoading}
-                      className="w-full rounded-2xl bg-[#005a8c] py-4 text-sm font-black text-white shadow-md transition-all hover:bg-[#004a75]"
-                    >
-                      انضم لقائمة الانتظار 🕒
+                  <LevelGate fallback={<div className="w-full rounded-2xl bg-gray-100 py-4 text-center text-sm font-bold text-gray-500">🔐 يجب رفع مستوى الثقة للانضمام لقائمة الانتظار</div>}>
+                    <button onClick={handleRequestItem} disabled={actionLoading} className="w-full rounded-2xl bg-[#005a8c] py-4 text-sm font-black text-white shadow-md transition-all hover:bg-[#004a75]">
+                      {actionLoading ? <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin mx-auto" /> : "انضم لقائمة الانتظار 🕒"}
                     </button>
                   </LevelGate>
                 )}
 
-                {/* زر التواصل عند الحجز */}
+                {/* زر التواصل التابع لحالة الحجز النشط */}
                 {showChat && (
                   <button
-                    onClick={() => setChatOpen(true)}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/10"
+                    onClick={handleOpenChatFlow}
+                    disabled={fetchingChat}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/10 disabled:opacity-50"
                   >
                     <span className="material-symbols-outlined text-base">
-                      chat
+                      {fetchingChat ? "sync" : "chat"}
                     </span>
-                    تواصل مع {isDonor ? "الحاجز" : "المتبرع"}
+                    {fetchingChat ? "جاري تجهيز غرفة المحادثة..." : `تواصل مع ${isDonor ? "الحاجز" : "المتبرع"}`}
                   </button>
                 )}
               </div>

@@ -4,7 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavbar } from "./useNavbar";
-import { useSiteConfig } from "@/context/SiteConfigContext"; // ← أضف هذا
+import { useSiteConfig } from "@/context/SiteConfigContext";
+import { useSocket } from "@/context/SocketContext"; // ← استيراد السوكت للاستماع اللحظي
 import NotificationBell from "@/components/NotificationBell";
 import ConversationsDrawer from "@/components/ConversationsDrawer";
 import axiosInstance from "@/lib/api/axiosInstance";
@@ -19,11 +20,12 @@ const NAV_LINKS = [
 
 interface ConversationUnreadItem {
   _id: string;
-  unread: number;
+  unreadCount: number; // 👈 تصحيح التسمية لتتطابق مع الـ Backend
 }
 
 export default function Navbar() {
-  const { platformName } = useSiteConfig(); // ← أضف هذا
+  const { platformName } = useSiteConfig();
+  const { socket } = useSocket(); // 👈 جلب كائن السوكت
 
   const {
     pathname,
@@ -65,26 +67,15 @@ export default function Navbar() {
           ? (response.data as Record<string, unknown>).data
           : response.data;
       const data = Array.isArray(rawData) ? rawData : [];
-      return data.reduce((sum, conv) => sum + (conv.unread || 0), 0);
+      
+      // 👈 تصحيح الحساب ليعتمد على unreadCount بدلاً من unread الميتة
+      return data.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
     } catch {
       return 0;
     }
   }, []);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsProfileDropdownOpen(false);
-      }
-    }
-    if (isProfileDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isProfileDropdownOpen, setIsProfileDropdownOpen]);
-
+  // 1️⃣ تحديث العداد دورياً عند تحميل الصفحة وتغير حالة المستخدم
   useEffect(() => {
     if (!isReadyForUserData) return;
     let cancelled = false;
@@ -108,6 +99,60 @@ export default function Navbar() {
     return () => { cancelled = true; };
   }, [isReadyForUserData, fetchUnreadCount]);
 
+  // 2️⃣ 🌟 الاستماع اللحظي لتحديث شارة الرسائل فوراً وبدون ريفريش
+  useEffect(() => {
+    if (!socket || !isReadyForUserData) return;
+
+    const handleRefresh = () => {
+      fetchUnreadCount().then((total) => setServerChatUnreadCount(total));
+    };
+
+    socket.on("conversation_updated", handleRefresh);
+    socket.on("messages_read", handleRefresh);
+
+    return () => {
+      socket.off("conversation_updated", handleRefresh);
+      socket.off("messages_read", handleRefresh);
+    };
+  }, [socket, isReadyForUserData, fetchUnreadCount]);
+
+  // 3️⃣ 🌟 الاستماع لحدث الإشعارات المنبثقة ومنع ظهورها للمرسل نفسه
+  useEffect(() => {
+    if (!socket || !isReadyForUserData) return;
+
+    const onNotificationNew = (payload: {
+      type: string;
+      conversationId: string;
+      from: { _id: string; name: string };
+      preview: string;
+    }) => {
+      // إذا كان المستخدم الحالي هو نفسه مرسل الرسالة، نبتلع الإشعار تماماً من شاشته
+      if (payload.from?._id === user?._id) return;
+
+      console.log(`🔔 إشعار منبثق جديد لـ ${firstName} من ${payload.from?.name}`);
+      // هنا يمكنك إطلاق الـ Toast الخاص بك مثل: toast(payload.preview)
+    };
+
+    socket.on("notification_new", onNotificationNew);
+    return () => {
+      socket.off("notification_new", onNotificationNew);
+    };
+  }, [socket, isReadyForUserData, user?._id, firstName]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsProfileDropdownOpen(false);
+      }
+    }
+    if (isProfileDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isProfileDropdownOpen, setIsProfileDropdownOpen]);
+
   const isNavLinkActive = (href: string) => {
     if (href.startsWith("/#")) return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
@@ -130,7 +175,6 @@ export default function Navbar() {
               </span>
             </div>
             <div className="leading-none">
-              {/* ↓ الموضع الأول — كان "عـون" hardcoded */}
               <span className="text-xl font-black tracking-tight text-[#171717]">{platformName}</span>
               <p className="mt-1 text-[10px] font-semibold text-[#91897f]">
                 عطاء يصل لمن يحتاجه
@@ -160,7 +204,6 @@ export default function Navbar() {
                 </span>
               </div>
               <div className="hidden sm:block leading-none">
-                {/* ↓ الموضع الثاني — كان "عـون" hardcoded أو {settings.platformName} بدون import */}
                 <span className="text-lg font-black tracking-tight text-[#171717] md:text-xl">
                   {platformName}
                 </span>
@@ -171,7 +214,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* باقي الكود بدون أي تعديل ↓ */}
           <div className="hidden min-w-0 flex-1 items-center justify-center px-6 md:flex">
             <div className="flex items-center gap-1.5">
               {visibleLinks.map((link) => {

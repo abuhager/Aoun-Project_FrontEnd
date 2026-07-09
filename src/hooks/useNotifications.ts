@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSocket } from './useSocket';
+import { useSocket } from '@/context/SocketContext';
 import { useAuth }   from '@/context/AuthContext';
 import { getNotifications, markAllRead } from '@/lib/api/notificationApi';
 import type { Notification } from '@/types/notification.types';

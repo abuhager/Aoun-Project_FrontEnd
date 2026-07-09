@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import axiosInstance from "@/lib/api/axiosInstance";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
-import { useSocket } from "@/hooks/useSocket";
+import { useSocket } from '@/context/SocketContext';
 import ChatDrawer from "@/components/ChatDrawer";
 import type {
   DonationRequest,

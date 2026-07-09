@@ -23,6 +23,6 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   'join:user'        : (userId: string) => void;
   'leave:user'       : (userId: string) => void;
-  'joinConversation' : (data: { itemId: string; convId: string }) => void;
+  'join_room' : (data: { itemId: string; convId: string }) => void;
   'typing'           : (data: { convId: string }) => void;
 }

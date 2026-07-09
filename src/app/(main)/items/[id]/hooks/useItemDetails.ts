@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter }             from "next/navigation";
 import { getItemById, bookItem, cancelBooking } from "@/lib/api/itemApi";
@@ -27,7 +29,7 @@ export function useItemDetails() {
   const { user, isLoading: authLoading, isLoggedIn } = useAuth();
 
   const [item,          setItem]          = useState<Item | null>(null);
-  const [loading,       setLoading]       = useState(true);
+  const [loading,       setLoading]       = useState(true); // الـ Loading الأولية فقط
   const [message,       setMessage]       = useState({ type: "", text: "" });
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmModal,  setConfirmModal]  = useState<ConfirmModalState>({
@@ -38,28 +40,31 @@ export function useItemDetails() {
   const isDonor           = !!currentUserId && getId(item?.donor)    === currentUserId;
   const isBooker          = !!currentUserId && getId(item?.bookedBy) === currentUserId;
   const isWaitlisted      = !!currentUserId && !!item?.waitlist?.some((w) => getId(w.user) === currentUserId);
-const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid: string) => getId(uid) === currentUserId);
-  const fetchItem = useCallback(async (isMounted = true) => {
+  const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid: string) => getId(uid) === currentUserId);
+
+  // 🌟 تعديل دالة جلب البيانات: أضفنا متغير silent لمنع وميض الشاشة والتعليق عند التحديث الخلفي
+  const fetchItem = useCallback(async (isMounted = true, silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true); // لا تفعل الـ Loading العام إذا كان الطلب صامتاً خلف الكواليس
       const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
       const data = await getItemById(itemId);
       if (isMounted) setItem(data);
-      return data; // ✅ إرجاع البيانات لتسهيل التتبع
+      return data;
     } catch (err) {
       if (isMounted) setMessage({ type: "error", text: "حدث خطأ أثناء تحميل بيانات الطلب" });
       return null;
     } finally {
-      if (isMounted) setLoading(false);
+      if (isMounted && !silent) setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
     let isMounted = true;
-    fetchItem(isMounted);
+    fetchItem(isMounted, false); // أول جلب يكون طبيعي مع شاشة التحميل
     return () => { isMounted = false; };
   }, [fetchItem]);
 
+  // ─── دالة حجز الغرض ───────────────────────────────────────────
   const handleRequestItem = useCallback(async () => {
     if (authLoading) return;
     if (!isLoggedIn) {
@@ -68,7 +73,6 @@ const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid: str
     }
     setConfirmModal({
       show:     true,
-      // ✅ [FIX-A] رسائل بدون أي ذكر لـ OTP
       msg:      item?.status === "متاح"
         ? "هل تريد حجز هذا الغرض؟ ستحتاج للتوجه إلى مركز التسليم وتأكيد الاستلام."
         : "هل تريد الانضمام لقائمة الانتظار؟",
@@ -79,19 +83,36 @@ const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid: str
         try {
           const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
           const res    = await bookItem(itemId);
-          setMessage({ type: "success", text: res.msg ?? "تم طلبك بنجاح" });          fetchItem();
-        } catch (err: unknown) {
-          const msg = axios.isAxiosError(err)
-            ? err.response?.data?.msg ?? "حدث خطأ أثناء الطلب"
+          
+          setMessage({ type: "success", text: res.msg ?? "تم طلبك بنجاح" });
+
+          // جلب صامت تحديثي للداتابيز بدون تخريب الـ States
+          const updatedItem = await fetchItem(true, true); 
+
+          if (updatedItem) {
+            setItem(updatedItem);
+          } else if (currentUserId && user) {
+            // 🌟 تطابق كامل مع الـ Type المعرّف للحاجز كـ Object
+            setItem((prev) => prev ? { 
+              ...prev, 
+              status: "محجوز", 
+              bookedBy: { _id: currentUserId, name: user.name || "المستلم", avatar: user.avatar } 
+            } : null);
+          }
+
+        } catch (error: unknown) {
+          const msg = axios.isAxiosError(error)
+            ? error.response?.data?.msg ?? "حدث خطأ أثناء الطلب"
             : "حدث خطأ أثناء الطلب";
           setMessage({ type: "error", text: msg });
         } finally {
-          setActionLoading(false);
+          setActionLoading(false); 
         }
       },
     });
-  }, [authLoading, isLoggedIn, id, router, fetchItem, item?.status]);
+  }, [authLoading, isLoggedIn, id, router, fetchItem, item?.status, currentUserId, user]);
 
+  // ─── دالة إلغاء الحجز المعدلة والمحمية بالـ Types ──────────────────────────
   const handleCancelAction = useCallback(() => {
     const isDanger   = isBooker || isDonor;
     const confirmMsg = isBooker
@@ -110,25 +131,32 @@ const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some((uid: str
         try {
           const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
           const res    = await cancelBooking(itemId);
+          
           setMessage({ type: "success", text: res.msg ?? "تم الإلغاء بنجاح" });
-          fetchItem();
-        } catch (err: unknown) {
-          const msg = axios.isAxiosError(err)
-            ? err.response?.data?.msg ?? "حدث خطأ أثناء الإلغاء"
+          
+          const updatedItem = await fetchItem(true, true);
+          
+          if (updatedItem) {
+            setItem(updatedItem);
+          } else {
+            setItem((prev) => prev ? { ...prev, status: "متاح", bookedBy: undefined } : null);
+          }
+        } catch (error: unknown) {
+          const msg = axios.isAxiosError(error)
+            ? error.response?.data?.msg ?? "حدث خطأ أثناء الإلغاء"
             : "حدث خطأ أثناء الإلغاء";
           setMessage({ type: "error", text: msg });
         } finally {
-          setActionLoading(false);
+          setActionLoading(false); 
         }
       },
     });
   }, [id, isBooker, isDonor, fetchItem]);
-
   return {
     item, loading, message, setMessage,
     actionLoading, currentUserId,
     isDonor, isBooker, isWaitlisted, isCancelledBefore,
     confirmModal, setConfirmModal,
-    handleRequestItem, handleCancelAction, fetchItem, // ✅ موجودة
+    handleRequestItem, handleCancelAction, fetchItem,
   };
 }

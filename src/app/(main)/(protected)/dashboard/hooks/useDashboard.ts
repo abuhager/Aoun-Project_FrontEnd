@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/lib/api/axiosInstance";
 import { confirmReceipt, confirmDelivery } from "@/lib/api/itemApi";
-import { useSocket } from "@/hooks/useSocket";
+import { useSocket } from '@/context/SocketContext';
 import type { Item as DashboardItem, MyItemsResponse } from "@/types/item.types";
 
 export type { DashboardItem as Item };

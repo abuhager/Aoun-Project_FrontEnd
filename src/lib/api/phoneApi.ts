@@ -14,7 +14,7 @@ import {
   type ConfirmationResult,
 } from 'firebase/auth';
 import { firebaseAuth }  from '@/lib/firebase';
-import axiosInstance     from '@/lib/axiosInstance';
+import axiosInstance     from '@/lib/api/axiosInstance';
 
 // ─── الحالة الداخلية ──────────────────────────────────────────
 let _confirmationResult: ConfirmationResult | null = null;
@@ -65,7 +65,7 @@ export async function verifyPhoneOtp(
     msg: string;
     phone: string;
     requiresRefresh: boolean;
-  }>('/phone/verify-token', { idToken });
+  }>('/api/phone/verify-token', { idToken });
 
   // 4. نظّف الحالة
   _confirmationResult = null;

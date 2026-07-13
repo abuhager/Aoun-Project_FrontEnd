@@ -1,6 +1,7 @@
 // next.config.ts — تم الإصلاح الشامل لحظر السوكت (CSP)
 // ✅ ARCH-WARN-02: localhost/127.0.0.1 في remotePatterns مقيّدان بـ !isProduction فقط
 // ✅ تم تعديل connect-src لتوليد بروتوكولات ws و wss ديناميكياً ومنع حظر المتصفح
+// ✅ تم إضافة Google/Firebase/reCAPTCHA Enterprise إلى connect-src و script-src
 
 import type { NextConfig } from 'next';
 
@@ -44,17 +45,18 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "img-src 'self' https://res.cloudinary.com data:",
-              `script-src 'self' 'unsafe-inline' ${!isProduction ? "'unsafe-eval'" : ""}`,
+              `script-src 'self' 'unsafe-inline' ${!isProduction ? "'unsafe-eval'" : ""} https://www.gstatic.com https://www.recaptcha.net https://recaptchaenterprise.googleapis.com`,
 
               // ✅ السماح بـ CSS الخاص بخطوط جوجل
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", 
               // ✅ السماح بتحميل ملفات الخطوط والأيقونات
               "font-src 'self' https://fonts.gstatic.com", 
               
-              // ✅ الإصلاح الحرج: السماح بالاتصال العادي + اتصال السوكت اللحظي (ws:// و wss://) بناءً على رابط السيرفر
-              `connect-src 'self' ${API_URL || ''} ${cleanDomain ? `ws://${cleanDomain} wss://${cleanDomain}` : ''}`,
+              // ✅ الإصلاح الحرج: السماح بالاتصال العادي + اتصال السوكت اللحظي + Google/Firebase/reCAPTCHA
+              `connect-src 'self' ${API_URL || ''} ${cleanDomain ? `ws://${cleanDomain} wss://${cleanDomain}` : ''} https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://recaptchaenterprise.googleapis.com https://www.recaptcha.net https://*.firebase.com https://*.firebaseio.com`,
               
               "frame-ancestors 'none'",
+              "frame-src https://www.recaptcha.net https://recaptchaenterprise.googleapis.com",
             ].join('; ').replace(/\s+/g, ' ').trim(), 
           },
 

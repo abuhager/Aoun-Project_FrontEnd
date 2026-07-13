@@ -1,26 +1,30 @@
 // src/components/PhoneVerifyModal.tsx
-// ✅ Phase 2 — نموذج التحقق من الهاتف عبر WhatsApp OTP
+// ✅ Firebase Phone Auth — استبدال Twilio
 // خطوتان: 1) إدخال رقم الهاتف  2) إدخال OTP
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { sendPhoneOtp, verifyPhoneOtp } from "@/lib/api/phoneApi";
 import { useAuth } from "@/context/AuthContext";
 import type { VerifyStep } from "@/types/phone.types";
 
 interface PhoneVerifyModalProps {
-  isOpen:   boolean;
-  onClose:  () => void;
+  isOpen:    boolean;
+  onClose:   () => void;
   onSuccess?: () => void;
 }
 
-// ─── تحقق من صيغة رقم الهاتف ───────────────────────────────
-// ⚠️ DEV: يقبل أي رقم دولي للتجربة — غيّره لأردني فقط في Production
-// PROD: /^(\+962|00962|0)?7[789]\d{7}$/
-const IS_DEV      = process.env.NODE_ENV !== "production";
-const PHONE_REGEX = IS_DEV
-  ? /^[+]?[\d\s\-().]{7,15}$/        // DEV: يقبل أي رقم دولي
-  : /^(\+962|00962|0)?7[789]\d{7}$/; // PROD: أردني فقط
+// ─── تحقق من صيغة رقم الهاتف ────────────────────────────────
+// يقبل الأرقام الأردنية بكل الصيغ ويحوّلها داخلياً لـ E.164
+const PHONE_REGEX = /^(\+962|00962|0)?7[789]\d{7}$/;
+
+const toE164 = (raw: string): string => {
+  const p = raw.replace(/[\s\-().]/g, "");
+  if (p.startsWith("+"))   return p;
+  if (p.startsWith("00"))  return "+" + p.slice(2);
+  if (p.startsWith("0"))   return "+962" + p.slice(1);
+  return "+962" + p;
+};
 
 export default function PhoneVerifyModal({
   isOpen,
@@ -28,6 +32,7 @@ export default function PhoneVerifyModal({
   onSuccess,
 }: PhoneVerifyModalProps) {
   const { refreshSession } = useAuth();
+  const btnId = useId(); // id فريد لـ reCAPTCHA في حال تعدد المكونات
 
   const [step,      setStep]      = useState<VerifyStep>("phone");
   const [phone,     setPhone]     = useState("");
@@ -43,33 +48,35 @@ export default function PhoneVerifyModal({
     onClose();
   }
 
+  // ─── خطوة 1: إرسال OTP ───────────────────────────────────
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     if (!PHONE_REGEX.test(phone.trim())) {
-      setError(
-        IS_DEV
-          ? "رقم الهاتف غير صالح — أدخل رقماً صحيحاً"
-          : "رقم الهاتف غير صالح — يجب أن يكون رقماً أردنياً (07x)"
-      );
+      setError("رقم الهاتف غير صالح — يجب أن يكون رقماً أردنياً (07x)");
       return;
     }
 
     setIsLoading(true);
     try {
-      await sendPhoneOtp({ phone: phone.trim() });
+      await sendPhoneOtp(
+        { phone: toE164(phone.trim()) },
+        `send-otp-btn-${btnId}` // id الزر لـ reCAPTCHA
+      );
       setStep("otp");
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { msg?: string } } })
-          ?.response?.data?.msg ?? "فشل الإرسال، حاول مجدداً";
+          ?.response?.data?.msg ??
+        (err instanceof Error ? err.message : "فشل الإرسال، حاول مجدداً");
       setError(msg);
     } finally {
       setIsLoading(false);
     }
   }
 
+  // ─── خطوة 2: تأكيد OTP ───────────────────────────────────
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -83,18 +90,16 @@ export default function PhoneVerifyModal({
     try {
       const res = await verifyPhoneOtp(otp);
 
-      if (res.requiresRefresh) {
-        await refreshSession();
-      }
+      if (res.requiresRefresh) await refreshSession();
 
       setStep("success");
       onSuccess?.();
-
       setTimeout(handleClose, 2000);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { msg?: string } } })
-          ?.response?.data?.msg ?? "رمز غير صحيح أو انتهت صلاحيته";
+          ?.response?.data?.msg ??
+        (err instanceof Error ? err.message : "رمز غير صحيح أو انتهت صلاحيته");
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -120,13 +125,14 @@ export default function PhoneVerifyModal({
           ✕
         </button>
 
+        {/* ─── خطوة 1: إدخال رقم الهاتف ─── */}
         {step === "phone" && (
           <form onSubmit={handleSendOtp} className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">
               تحقق من رقم هاتفك 📱
             </h2>
             <p className="text-sm text-zinc-500">
-              سنرسل رمز تحقق إلى WhatsApp الخاص بك لرفع مستوى ثقتك
+              سنرسل رمز تحقق إلى هاتفك عبر الرسائل النصية لرفع مستوى ثقتك
             </p>
 
             <div className="flex flex-col gap-1">
@@ -140,7 +146,7 @@ export default function PhoneVerifyModal({
                 id="phone"
                 type="tel"
                 dir="ltr"
-                placeholder={IS_DEV ? "+13322568356" : "مثال: 0791234567"}
+                placeholder="مثال: 0791234567"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="rounded-lg border border-zinc-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
@@ -149,28 +155,25 @@ export default function PhoneVerifyModal({
               />
             </div>
 
-            {IS_DEV && (
-              <p className="text-xs text-amber-500">
-                ⚠️ وضع التطوير — يقبل أي رقم دولي
-              </p>
-            )}
-
             {error && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20">
                 {error}
               </p>
             )}
 
+            {/* زر الإرسال — id مطلوب لـ reCAPTCHA Invisible */}
             <button
+              id={`send-otp-btn-${btnId}`}
               type="submit"
               disabled={isLoading}
               className="rounded-lg bg-teal-600 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60"
             >
-              {isLoading ? "جارٍ الإرسال..." : "إرسال الرمز عبر WhatsApp"}
+              {isLoading ? "جارٍ الإرسال..." : "إرسال رمز التحقق"}
             </button>
           </form>
         )}
 
+        {/* ─── خطوة 2: إدخال OTP ─── */}
         {step === "otp" && (
           <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">
@@ -227,6 +230,7 @@ export default function PhoneVerifyModal({
           </form>
         )}
 
+        {/* ─── خطوة 3: نجاح ─── */}
         {step === "success" && (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
             <span className="text-5xl">🎉</span>

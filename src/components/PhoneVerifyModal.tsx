@@ -11,11 +11,16 @@ import type { VerifyStep } from "@/types/phone.types";
 interface PhoneVerifyModalProps {
   isOpen:   boolean;
   onClose:  () => void;
-  onSuccess?: () => void; // ← callback اختياري بعد النجاح
+  onSuccess?: () => void;
 }
 
-// ─── تحقق من صيغة رقم الهاتف الأردني ────────────────────────
-const PHONE_REGEX = /^(\+962|00962|0)?7[789]\d{7}$/;
+// ─── تحقق من صيغة رقم الهاتف ───────────────────────────────
+// ⚠️ DEV: يقبل أي رقم دولي للتجربة — غيّره لأردني فقط في Production
+// PROD: /^(\+962|00962|0)?7[789]\d{7}$/
+const IS_DEV      = process.env.NODE_ENV !== "production";
+const PHONE_REGEX = IS_DEV
+  ? /^[+]?[\d\s\-().]{7,15}$/        // DEV: يقبل أي رقم دولي
+  : /^(\+962|00962|0)?7[789]\d{7}$/; // PROD: أردني فقط
 
 export default function PhoneVerifyModal({
   isOpen,
@@ -24,14 +29,12 @@ export default function PhoneVerifyModal({
 }: PhoneVerifyModalProps) {
   const { refreshSession } = useAuth();
 
-  // ─── State ────────────────────────────────────────────────
   const [step,      setStep]      = useState<VerifyStep>("phone");
   const [phone,     setPhone]     = useState("");
   const [otp,       setOtp]       = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error,     setError]     = useState<string | null>(null);
 
-  // ─── إغلاق + reset ────────────────────────────────────────
   function handleClose() {
     setStep("phone");
     setPhone("");
@@ -40,21 +43,23 @@ export default function PhoneVerifyModal({
     onClose();
   }
 
-  // ─── الخطوة 1: إرسال OTP ──────────────────────────────────
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    // تحقق من الصيغة على الـ client قبل الإرسال
     if (!PHONE_REGEX.test(phone.trim())) {
-      setError("رقم الهاتف غير صالح — يجب أن يكون رقماً أردنياً (07x)");
+      setError(
+        IS_DEV
+          ? "رقم الهاتف غير صالح — أدخل رقماً صحيحاً"
+          : "رقم الهاتف غير صالح — يجب أن يكون رقماً أردنياً (07x)"
+      );
       return;
     }
 
     setIsLoading(true);
     try {
       await sendPhoneOtp({ phone: phone.trim() });
-      setStep("otp"); // ← انتقل للخطوة الثانية
+      setStep("otp");
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { msg?: string } } })
@@ -65,7 +70,6 @@ export default function PhoneVerifyModal({
     }
   }
 
-  // ─── الخطوة 2: التحقق من OTP ──────────────────────────────
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -79,7 +83,6 @@ export default function PhoneVerifyModal({
     try {
       const res = await verifyPhoneOtp(otp);
 
-      // ✅ Backend رفع trustLevel → نجدد الـ JWT ليعكس التغيير
       if (res.requiresRefresh) {
         await refreshSession();
       }
@@ -87,7 +90,6 @@ export default function PhoneVerifyModal({
       setStep("success");
       onSuccess?.();
 
-      // إغلاق تلقائي بعد ثانيتين
       setTimeout(handleClose, 2000);
     } catch (err: unknown) {
       const msg =
@@ -99,21 +101,17 @@ export default function PhoneVerifyModal({
     }
   }
 
-  // ─── لا تعرض شيئاً لو المودال مغلق ──────────────────────
   if (!isOpen) return null;
 
   return (
-    // Backdrop
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={handleClose}
     >
-      {/* المودال — يوقف انتشار الحدث */}
       <div
         className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* زر الإغلاق */}
         <button
           onClick={handleClose}
           className="absolute left-4 top-4 text-zinc-400 hover:text-zinc-600"
@@ -122,7 +120,6 @@ export default function PhoneVerifyModal({
           ✕
         </button>
 
-        {/* ─── خطوة 1: إدخال رقم الهاتف ─────────────────── */}
         {step === "phone" && (
           <form onSubmit={handleSendOtp} className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">
@@ -143,7 +140,7 @@ export default function PhoneVerifyModal({
                 id="phone"
                 type="tel"
                 dir="ltr"
-                placeholder="مثال: 0791234567"
+                placeholder={IS_DEV ? "+13322568356" : "مثال: 0791234567"}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="rounded-lg border border-zinc-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
@@ -152,7 +149,12 @@ export default function PhoneVerifyModal({
               />
             </div>
 
-            {/* رسالة الخطأ */}
+            {IS_DEV && (
+              <p className="text-xs text-amber-500">
+                ⚠️ وضع التطوير — يقبل أي رقم دولي
+              </p>
+            )}
+
             {error && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20">
                 {error}
@@ -169,7 +171,6 @@ export default function PhoneVerifyModal({
           </form>
         )}
 
-        {/* ─── خطوة 2: إدخال OTP ─────────────────────────── */}
         {step === "otp" && (
           <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">
@@ -216,7 +217,6 @@ export default function PhoneVerifyModal({
               {isLoading ? "جارٍ التحقق..." : "تأكيد الرمز"}
             </button>
 
-            {/* إعادة الإرسال */}
             <button
               type="button"
               onClick={() => { setStep("phone"); setOtp(""); setError(null); }}
@@ -227,7 +227,6 @@ export default function PhoneVerifyModal({
           </form>
         )}
 
-        {/* ─── خطوة 3: النجاح ────────────────────────────── */}
         {step === "success" && (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
             <span className="text-5xl">🎉</span>

@@ -1,7 +1,7 @@
 // next.config.ts — تم الإصلاح الشامل لحظر السوكت (CSP)
 // ✅ ARCH-WARN-02: localhost/127.0.0.1 في remotePatterns مقيّدان بـ !isProduction فقط
 // ✅ تم تعديل connect-src لتوليد بروتوكولات ws و wss ديناميكياً ومنع حظر المتصفح
-// ✅ تم إضافة Google/Firebase/reCAPTCHA Enterprise إلى connect-src و script-src
+// ✅ تم إضافة Google/Firebase/reCAPTCHA Enterprise إلى connect-src و script-src و frame-src
 
 import type { NextConfig } from 'next';
 
@@ -38,26 +38,29 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy',        value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy',     value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
-          
-          // ✅ إضافة وتصليح ترويسة الـ CSP للسوكت
+
           {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
               "img-src 'self' https://res.cloudinary.com data:",
-              `script-src 'self' 'unsafe-inline' ${!isProduction ? "'unsafe-eval'" : ""} https://www.gstatic.com https://www.recaptcha.net https://recaptchaenterprise.googleapis.com`,
+
+              // ✅ script-src: إضافة google.com/recaptcha + gstatic + recaptcha.net
+              `script-src 'self' 'unsafe-inline' ${!isProduction ? "'unsafe-eval'" : ""} https://www.gstatic.com https://www.recaptcha.net https://recaptchaenterprise.googleapis.com https://www.google.com`,
 
               // ✅ السماح بـ CSS الخاص بخطوط جوجل
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", 
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               // ✅ السماح بتحميل ملفات الخطوط والأيقونات
-              "font-src 'self' https://fonts.gstatic.com", 
-              
-              // ✅ الإصلاح الحرج: السماح بالاتصال العادي + اتصال السوكت اللحظي + Google/Firebase/reCAPTCHA
-              `connect-src 'self' ${API_URL || ''} ${cleanDomain ? `ws://${cleanDomain} wss://${cleanDomain}` : ''} https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://recaptchaenterprise.googleapis.com https://www.recaptcha.net https://*.firebase.com https://*.firebaseio.com`,
-              
+              "font-src 'self' https://fonts.gstatic.com",
+
+              // ✅ connect-src: السماح بالاتصال بـ Firebase + reCAPTCHA + السوكت
+              `connect-src 'self' ${API_URL || ''} ${cleanDomain ? `ws://${cleanDomain} wss://${cleanDomain}` : ''} https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://recaptchaenterprise.googleapis.com https://www.recaptcha.net https://www.google.com https://*.firebase.com https://*.firebaseio.com`,
+
               "frame-ancestors 'none'",
-              "frame-src https://www.recaptcha.net https://recaptchaenterprise.googleapis.com",
-            ].join('; ').replace(/\s+/g, ' ').trim(), 
+
+              // ✅ frame-src: السماح لـ reCAPTCHA iframe
+              "frame-src https://www.recaptcha.net https://recaptchaenterprise.googleapis.com https://www.google.com",
+            ].join('; ').replace(/\s+/g, ' ').trim(),
           },
 
           ...(isProduction

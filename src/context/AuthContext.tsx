@@ -2,6 +2,7 @@
 // ✅ [FLOW2-FIX-05] refreshSession يستخدم user من استجابة /refresh مباشرة
 //    بدل إشعال /api/auth/me في كل مرة → يوفر طلب HTTP لكل تجديد جلسة
 // ✅ [FLOW2-FIX-07] معالجة ACCOUNT_FROZEN في refresh errors
+// ✅ [FLOW3-FIX-01] trustLevel cookie validation تقبل [1, 2] فقط — متوافق مع TrustLevel type
 
 "use client";
 
@@ -45,6 +46,9 @@ const SAFETY_TIMEOUT_MS =
   parseInt(process.env.NEXT_PUBLIC_AUTH_SAFETY_TIMEOUT ?? "8000", 10) || 8000;
 
 const REQUIRED_CACHED_FIELDS: (keyof CachedUser)[] = ["_id", "name", "email"];
+
+// ✅ [FLOW3-FIX-01] مصفوفة المستويات الصحيحة — مصدر وحيد لجميع validations
+const VALID_TRUST_LEVELS: TrustLevel[] = [1, 2];
 
 function isValidCachedUser(obj: unknown): obj is CachedUser {
   if (!obj || typeof obj !== "object") return false;
@@ -122,7 +126,8 @@ function loadUserCookie(): CachedUser | null {
       name: decoded.name,
       email: decoded.email,
       avatar: typeof decoded.avatar === "string" ? decoded.avatar : "",
-      trustLevel: ([1, 2, 3, 4].includes(decoded.trustLevel as number)
+      // ✅ [FLOW3-FIX-01] يستخدم VALID_TRUST_LEVELS — أي قيمة خارج [1,2] تُعامَل كـ 1
+      trustLevel: (VALID_TRUST_LEVELS.includes(decoded.trustLevel as TrustLevel)
         ? decoded.trustLevel : 1) as TrustLevel,
       role: (["user", "admin", "super_admin"].includes(decoded.role as string)
         ? decoded.role : "user") as UserRole,
@@ -217,7 +222,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const status = axios.isAxiosError(err) ? err.response?.status : null;
 
         if (isNetworkError) {
-          // خطأ شبكة — نحتفظ بـ user المُخزَّن ونُهيئ بدون token
           console.warn("[AuthContext] network error during refresh — keeping cached user");
           setInitialized(false);
           return false;

@@ -1,13 +1,16 @@
-// src/types/user.types.ts — ✅ FULLY FIXED
+// src/types/user.types.ts
 import type { Item } from './item.types';
 
-// ✅ إصلاح جذر المشكلة: نقوم ببناء وتصدير النوع الجديد باستخدام Item لتصفية أخطاء TypeScript و ESLint معاً
 export type DashboardItem = Item & { reportId: string | null };
 
-export type UserRole   = 'user' | 'admin' | 'super_admin';
-export type TrustLevel = 1 | 2;
+export type UserRole = 'user' | 'admin' | 'super_admin';
 
-// FIXED [BUG-PROFILE-03]: يعكس ما يُرجعه buildGamificationProfile فقط
+// ✅ [FLOW2-FIX-06] TrustLevel يدعم 4 مستويات — متوافق مع 4-Level Verification System
+// المشكلة القديمة: TrustLevel = 1 | 2 فقط → TypeScript errors صامتة عند مستوى 3 أو 4
+// والأخطر: مقارنات trustLevel >= 3 في الـ UI كانت تُعامَل كـ never type
+export type TrustLevel = 1 | 2 | 3 | 4;
+
+// FIXED [BUG-PROFILE-03]
 export interface Gamification {
   level:        number;
   title:        string;
@@ -16,7 +19,6 @@ export interface Gamification {
   pointsToNext: number | null;
 }
 
-// ─── ما يُرجعه /api/auth/login و /api/auth/me ───────────────
 export interface AuthUser {
   _id:               string;
   name:              string;
@@ -24,10 +26,13 @@ export interface AuthUser {
   phone?:            string;
   avatar:            string;
   role:              UserRole;
-  trustLevel:        TrustLevel;
+  trustLevel:        TrustLevel; // ← الآن 1|2|3|4 ✅
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
+  // ✅ [FLOW2-FIX-07] إضافة isFrozen — buildSafeUser في Backend يُرسله دائماً
+  isFrozen?:         boolean;
+  isBanned?:         boolean;
   createdAt:         string;
   gamification?: {
     trustScore:     number;
@@ -40,7 +45,6 @@ export interface AuthUser {
   };
 }
 
-// ─── ما يُرجعه /api/auth/profile كاملاً ──────────────────────
 export interface ProfileUser {
   _id:               string;
   name:              string;
@@ -48,7 +52,7 @@ export interface ProfileUser {
   avatar:            string;
   role:              UserRole;
   trustScore:        number;
-  trustLevel:        TrustLevel;
+  trustLevel:        TrustLevel; // ← الآن 1|2|3|4 ✅
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
@@ -57,11 +61,10 @@ export interface ProfileUser {
   gamification:      Gamification;
 }
 
-// ─── مستخدم عام ─────────────────────────────────────────────
 export interface PublicUser {
   name:              string;
   avatar:            string;
-  trustLevel:        1 | 2 | 3 | 4;
+  trustLevel:        1 | 2 | 3 | 4; // ← لم يتغير، كان صحيحاً ✅
   isVerifiedStudent: boolean;
   createdAt:         string;
   gamification: {
@@ -81,8 +84,8 @@ export interface ProfileResponse {
     receivedCount:      number;
     totalRatings:       number;
   };
-  allDonations:      DashboardItem[]; // ✅ سيعمل الآن لأن DashboardItem معرّف في السطر 4
-  completedRequests: DashboardItem[]; // ✅ سيعمل الآن لأن DashboardItem معرّف في السطر 4
+  allDonations:      DashboardItem[];
+  completedRequests: DashboardItem[];
 }
 
 export interface BookedByUser {
@@ -99,6 +102,21 @@ export interface DonorUser extends PublicUser {
 export interface DashboardStats {
   quota:        number;
   trustScore:   number;
-  trustLevel:   TrustLevel;
+  trustLevel:   TrustLevel; // ← الآن 1|2|3|4 ✅
   gamification: Gamification;
+}
+
+// ✅ [FLOW2-FIX-04] نوع جديد لاستجابة getMeLogic مع pagination كامل
+export interface GetMeResponse {
+  user:               AuthUser;
+  donations:          DashboardItem[];
+  received:           DashboardItem[];
+  page:               number;
+  pageSize:           number;
+  donationsTotal:     number;
+  receivedTotal:      number;
+  hasMoreDonations:   boolean;
+  hasMoreReceived:    boolean;
+  totalDonationPages: number;
+  totalReceivedPages: number;
 }

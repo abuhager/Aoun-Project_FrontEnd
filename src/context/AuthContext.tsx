@@ -1,3 +1,8 @@
+// src/context/AuthContext.tsx
+// ✅ [FLOW2-FIX-05] refreshSession يستخدم user من استجابة /refresh مباشرة
+//    بدل إشعال /api/auth/me في كل مرة → يوفر طلب HTTP لكل تجديد جلسة
+// ✅ [FLOW2-FIX-07] معالجة ACCOUNT_FROZEN في refresh errors
+
 "use client";
 
 import {
@@ -74,19 +79,13 @@ function toMinimalUser(u: AuthUser): CachedUser {
 }
 
 function encodeCookieValue(obj: CachedUser): string {
-  try {
-    return btoa(encodeURIComponent(JSON.stringify(obj)));
-  } catch {
-    return "";
-  }
+  try { return btoa(encodeURIComponent(JSON.stringify(obj))); }
+  catch { return ""; }
 }
 
 function decodeCookieValue(raw: string): unknown {
-  try {
-    return JSON.parse(decodeURIComponent(atob(raw)));
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(decodeURIComponent(atob(raw))); }
+  catch { return null; }
 }
 
 function saveUserCookie(u: CachedUser) {
@@ -112,40 +111,31 @@ function loadUserCookie(): CachedUser | null {
   try {
     const raw = Cookies.get(USER_COOKIE);
     if (!raw) return null;
-
     const decoded = decodeCookieValue(raw);
-    if (!isValidCachedUser(decoded)) {
-      clearUserCookie();
-      return null;
-    }
-
+    if (!isValidCachedUser(decoded)) { clearUserCookie(); return null; }
     const g =
       decoded.gamification && typeof decoded.gamification === "object"
         ? (decoded.gamification as Record<string, unknown>)
         : null;
-
     return {
       _id: decoded._id,
       name: decoded.name,
       email: decoded.email,
       avatar: typeof decoded.avatar === "string" ? decoded.avatar : "",
       trustLevel: ([1, 2, 3, 4].includes(decoded.trustLevel as number)
-        ? decoded.trustLevel
-        : 1) as TrustLevel,
+        ? decoded.trustLevel : 1) as TrustLevel,
       role: (["user", "admin", "super_admin"].includes(decoded.role as string)
-        ? decoded.role
-        : "user") as UserRole,
+        ? decoded.role : "user") as UserRole,
       gamification: {
-        trustScore: typeof g?.trustScore === "number" ? g.trustScore : 0,
+        trustScore:    typeof g?.trustScore    === "number" ? g.trustScore    : 0,
         totalDonations: typeof g?.totalDonations === "number" ? g.totalDonations : 0,
-        level: typeof g?.level === "number" ? g.level : 1,
-        title: typeof g?.title === "string" ? g.title : "مبتدئ",
-        badge: typeof g?.badge === "string" ? g.badge : "🌱",
-        progress: typeof g?.progress === "number" ? g.progress : 0,
+        level:         typeof g?.level         === "number" ? g.level         : 1,
+        title:         typeof g?.title         === "string" ? g.title         : "مبتدئ",
+        badge:         typeof g?.badge         === "string" ? g.badge         : "🌱",
+        progress:      typeof g?.progress      === "number" ? g.progress      : 0,
         pointsToNext:
           typeof g?.pointsToNext === "number" || g?.pointsToNext === null
-            ? g.pointsToNext
-            : null,
+            ? g.pointsToNext : null,
       },
     };
   } catch {
@@ -154,13 +144,19 @@ function loadUserCookie(): CachedUser | null {
   }
 }
 
+// ✅ [FLOW2-FIX-05] نوع استجابة /refresh يشمل user الاختياري
+interface RefreshResponse {
+  accessToken: string;
+  user?:       AuthUser; // Backend يُرسله — استخدمه مباشرة لتوفير طلب /me
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState] = useState<CachedUser | null>(loadUserCookie);
+  const [user, setUserState]   = useState<CachedUser | null>(loadUserCookie);
   const [fullUser, setFullUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const initialized = useRef(false);
-  const refreshing = useRef<Promise<boolean> | null>(null);
+  const initialized  = useRef(false);
+  const refreshing   = useRef<Promise<boolean> | null>(null);
   const isLoggingOut = useRef(false);
 
   const setUser = useCallback((u: AuthUser | null) => {
@@ -178,11 +174,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
     if (isLoggingOut.current) return false;
-    if (refreshing.current) return refreshing.current;
+    if (refreshing.current)   return refreshing.current;
 
     refreshing.current = (async () => {
       try {
-        const { data } = await axiosInstance.post<{ accessToken: string }>(
+        const { data } = await axiosInstance.post<RefreshResponse>(
           "/api/auth/refresh",
           {},
           { withCredentials: true }
@@ -190,15 +186,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const token = data.accessToken;
         setAccessToken(token);
-        setInitialized(true);
 
+        // ✅ [FLOW2-FIX-05] إذا أرسل Backend المستخدم مع refresh → استخدمه فوراً
+        // هذا يوفر طلب HTTP إضافي لـ /api/auth/me في كل تحميل صفحة
+        if (data.user) {
+          setUser(data.user);
+          setInitialized(true);
+          return true;
+        }
+
+        // Fallback: /me فقط إذا لم يُرسل Backend المستخدم (backward compatibility)
         try {
           const meRes = await axiosInstance.get<AuthUser>("/api/auth/me", {
-            headers: { Authorization: `Bearer ${token}` },
+            headers:         { Authorization: `Bearer ${token}` },
             withCredentials: true,
           });
-
           setUser(meRes.data);
+          setInitialized(true);
           return true;
         } catch (meError) {
           console.error("[AuthContext] /api/auth/me failed after refresh:", meError);
@@ -207,18 +211,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setInitialized(false);
           return false;
         }
+
       } catch (err) {
         const isNetworkError = axios.isAxiosError(err) && !err.response;
-        const is401 = axios.isAxiosError(err) && err.response?.status === 401;
-        const is403 = axios.isAxiosError(err) && err.response?.status === 403;
+        const status = axios.isAxiosError(err) ? err.response?.status : null;
 
         if (isNetworkError) {
+          // خطأ شبكة — نحتفظ بـ user المُخزَّن ونُهيئ بدون token
           console.warn("[AuthContext] network error during refresh — keeping cached user");
           setInitialized(false);
           return false;
         }
 
-        if (is401 || is403) {
+        if (status === 401 || status === 403) {
+          // ✅ [FLOW2-FIX-07] 403 يشمل ACCOUNT_FROZEN الآن
           setAccessToken(null);
           setUser(null);
           setInitialized(false);
@@ -248,47 +254,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetAuthState();
       setUser(null);
       initialized.current = false;
-      refreshing.current = null;
-      if (typeof window !== "undefined") {
-        window.location.replace("/login");
-      }
-      setTimeout(() => {
-        isLoggingOut.current = false;
-      }, 2000);
+      refreshing.current  = null;
+      if (typeof window !== "undefined") window.location.replace("/login");
+      setTimeout(() => { isLoggingOut.current = false; }, 2000);
     }
   }, [setUser]);
 
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-
     const safetyTimer = setTimeout(() => {
       setInitialized(false);
       setIsLoading(false);
     }, SAFETY_TIMEOUT_MS);
-
     refreshSession()
-      .then(() => clearTimeout(safetyTimer))
-      .catch(() => {
-        clearTimeout(safetyTimer);
-        setInitialized(false);
-      })
+      .then(()  => clearTimeout(safetyTimer))
+      .catch(() => { clearTimeout(safetyTimer); setInitialized(false); })
       .finally(() => setIsLoading(false));
   }, [refreshSession]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        fullUser,
-        isLoading,
-        isLoggedIn: !!user,
-        isAuthenticated: !!user,
-        setUser,
-        refreshSession,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      fullUser,
+      isLoading,
+      isLoggedIn:      !!user,
+      isAuthenticated: !!user,
+      setUser,
+      refreshSession,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -297,10 +292,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-
   return {
     ...ctx,
-    user: ctx.fullUser ?? ctx.user,
+    user:         ctx.fullUser ?? ctx.user,
     isFullyLoaded: !!ctx.fullUser,
   };
 }

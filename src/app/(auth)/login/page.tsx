@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { useRedirectIfAuth } from "../hooks/useRedirectIfAuth";
 import { useLogin } from "./hooks/useLogin";
 import { useSiteConfig } from "@/context/SiteConfigContext";
-// ✅ حذف: useSettings — لا حاجة له، SiteConfigProvider يكفي
 
 export default function LoginPage() {
   useRedirectIfAuth();
   const { formData, loading, error, handleChange, handleSubmit } = useLogin();
-
-  // ✅ مصدر واحد فقط لاسم المنصة
   const { platformName } = useSiteConfig();
+
+  // [UX-01] ✅ حالة إظهار/إخفاء كلمة المرور
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <main
@@ -23,9 +24,7 @@ export default function LoginPage() {
       <section className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 lg:p-24 bg-surface z-10 relative">
         <div className="w-full max-w-md space-y-10">
 
-          {/* العنوان */}
           <div className="flex flex-col items-start gap-2">
-            {/* ✅ platformName جاهز فوراً من Context — لا loading state */}
             <span className="text-3xl font-black text-primary tracking-tight">
               {platformName}
             </span>
@@ -37,33 +36,51 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* رسالة الخطأ */}
+          {/* [UX-07] ✅ role="alert" لقارئات الشاشة */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <div
+              role="alert"
+              aria-live="polite"
+              className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"
+            >
               {error}
             </div>
           )}
 
-          {/* الفورم */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {/* [UX-05] ✅ aria-label على الفورم + noValidate */}
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6"
+            aria-label="نموذج تسجيل الدخول"
+            noValidate
+          >
             <div className="space-y-4">
 
               {/* البريد الإلكتروني */}
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-on-surface-variant px-2">
+                <label
+                  htmlFor="login-email"
+                  className="text-sm font-bold text-on-surface-variant px-2"
+                >
                   البريد الإلكتروني
                 </label>
                 <div className="relative group">
-                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors">
+                  {/* [UX-05] ✅ aria-hidden على الأيقونات الزخرفية */}
+                  <span
+                    aria-hidden="true"
+                    className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors"
+                  >
                     mail
                   </span>
                   <input
+                    id="login-email"
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
                     required
                     dir="ltr"
+                    autoComplete="email"
                     placeholder="name@example.com"
                     className="w-full pr-12 pl-6 py-4 bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all text-on-surface placeholder:text-outline outline-none text-left"
                   />
@@ -73,40 +90,72 @@ export default function LoginPage() {
               {/* كلمة المرور */}
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center px-2">
-                  <label className="text-sm font-bold text-on-surface-variant">
+                  <label
+                    htmlFor="login-password"
+                    className="text-sm font-bold text-on-surface-variant"
+                  >
                     كلمة المرور
                   </label>
-                  <a
+                  {/* [UX-04] ✅ Link بدلاً من <a href> */}
+                  <Link
                     href="/forgot-password"
                     className="text-sm font-bold text-primary hover:text-primary-container transition-colors"
                   >
                     نسيت كلمة المرور؟
-                  </a>
+                  </Link>
                 </div>
                 <div className="relative group">
-                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors">
+                  <span
+                    aria-hidden="true"
+                    className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors"
+                  >
                     lock
                   </span>
                   <input
-                    type="password"
+                    id="login-password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
                     required
                     dir="ltr"
+                    autoComplete="current-password"
                     placeholder="••••••••"
-                    className="w-full pr-12 pl-6 py-4 bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all text-on-surface placeholder:text-outline outline-none text-left"
+                    className="w-full pr-12 pl-12 py-4 bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all text-on-surface placeholder:text-outline outline-none text-left"
                   />
+                  {/* [UX-01] ✅ زر إظهار/إخفاء كلمة المرور */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                    aria-pressed={showPassword}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined text-xl">
+                      {showPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
 
+            {/* [UX-08] ✅ btn-primary بدلاً من gradient */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 px-8 bg-linear-to-br from-primary to-primary-container text-white font-bold rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] transition-all text-lg disabled:opacity-70 flex justify-center items-center"
+              className="btn-primary text-lg"
             >
-              {loading ? "جاري الدخول..." : "تسجيل الدخول"}
+              {loading ? (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
+                  />
+                  <span>جاري الدخول...</span>
+                </>
+              ) : (
+                "تسجيل الدخول"
+              )}
             </button>
           </form>
 
@@ -122,12 +171,15 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ─── القسم الأيسر: الصورة ─── */}
-      <section className="hidden lg:block lg:w-1/2 relative overflow-hidden">
+      {/* ─── القسم الأيسر: الصورة (decorative) ─── */}
+      <section
+        className="hidden lg:block lg:w-1/2 relative overflow-hidden"
+        aria-hidden="true"
+      >
         <div className="absolute inset-0 w-full h-full bg-primary">
           <Image
             src="/Volunteer-Background.png"
-            alt="Volunteer Background"
+            alt=""
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 50vw"
@@ -153,7 +205,6 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
-
         <div className="absolute top-12 left-12 w-32 h-32 bg-secondary/40 rounded-full blur-3xl" />
       </section>
     </main>

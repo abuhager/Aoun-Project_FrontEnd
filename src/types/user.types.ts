@@ -5,10 +5,9 @@ export type DashboardItem = Item & { reportId: string | null };
 
 export type UserRole = 'user' | 'admin' | 'super_admin';
 
-// ✅ [FLOW2-FIX-06] TrustLevel يدعم 4 مستويات — متوافق مع 4-Level Verification System
-// المشكلة القديمة: TrustLevel = 1 | 2 فقط → TypeScript errors صامتة عند مستوى 3 أو 4
-// والأخطر: مقارنات trustLevel >= 3 في الـ UI كانت تُعامَل كـ never type
-export type TrustLevel = 1 | 2 | 3 | 4;
+// ✅ [FLOW3-FIX-01] TrustLevel = 1 | 2 فقط — متوافق مع Backend (User.js max:2)
+// المستويات 3 و 4 مخططة لمرحلة لاحقة — لا تُعرَّف حتى تُطبَّق في Backend
+export type TrustLevel = 1 | 2;
 
 // FIXED [BUG-PROFILE-03]
 export interface Gamification {
@@ -26,7 +25,7 @@ export interface AuthUser {
   phone?:            string;
   avatar:            string;
   role:              UserRole;
-  trustLevel:        TrustLevel; // ← الآن 1|2|3|4 ✅
+  trustLevel:        TrustLevel; // ← 1 | 2
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
@@ -52,7 +51,7 @@ export interface ProfileUser {
   avatar:            string;
   role:              UserRole;
   trustScore:        number;
-  trustLevel:        TrustLevel; // ← الآن 1|2|3|4 ✅
+  trustLevel:        TrustLevel; // ← 1 | 2
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
@@ -64,7 +63,7 @@ export interface ProfileUser {
 export interface PublicUser {
   name:              string;
   avatar:            string;
-  trustLevel:        1 | 2 | 3 | 4; // ← لم يتغير، كان صحيحاً ✅
+  trustLevel:        TrustLevel; // ← 1 | 2
   isVerifiedStudent: boolean;
   createdAt:         string;
   gamification: {
@@ -102,7 +101,7 @@ export interface DonorUser extends PublicUser {
 export interface DashboardStats {
   quota:        number;
   trustScore:   number;
-  trustLevel:   TrustLevel; // ← الآن 1|2|3|4 ✅
+  trustLevel:   TrustLevel; // ← 1 | 2
   gamification: Gamification;
 }
 

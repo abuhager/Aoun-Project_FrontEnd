@@ -1,11 +1,10 @@
-// next.config.ts — تم الإصلاح الشامل لحظر السوكت (CSP)
-// ✅ ARCH-WARN-02: localhost/127.0.0.1 في remotePatterns مقيّدان بـ !isProduction فقط
-// ✅ تم تعديل connect-src لتوليد بروتوكولات ws و wss ديناميكياً ومنع حظر المتصفح
-// ✅ تم إضافة Google/Firebase/reCAPTCHA Enterprise إلى connect-src و script-src و frame-src
+// next.config.ts — ARCH-02 FIXED
+// ✅ ARCH-02: إضافة redirects() — HTTP → HTTPS في production
+//             بدون هذا: HSTS يعمل فقط بعد الزيارة الأولى، الطلب الأول عبر http يصل غير مشفَّر
 
 import type { NextConfig } from 'next';
 
-const API_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
+const API_URL      = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
 const isProduction = process.env.NODE_ENV === 'production';
 
 if (!API_URL) {
@@ -22,12 +21,11 @@ if (!API_URL) {
   }
 }
 
-// 🛠️ استخلاص النطاق الصافي (بدون http:// أو https://) لحقنه في السوكت
 const cleanDomain = API_URL ? API_URL.replace(/^https?:\/\//, '') : '';
 
 const nextConfig: NextConfig = {
 
-  // ── Security Headers ────────────────────────────────────────
+  // ── Security Headers ──────────────────────────────────────────
   async headers() {
     return [
       {
@@ -38,31 +36,19 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy',        value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy',     value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
-
           {
-            key: 'Content-Security-Policy',
+            key:   'Content-Security-Policy',
             value: [
               "default-src 'self'",
               "img-src 'self' https://res.cloudinary.com data:",
-
-              // ✅ script-src: إضافة google.com/recaptcha + gstatic + recaptcha.net
               `script-src 'self' 'unsafe-inline' ${!isProduction ? "'unsafe-eval'" : ""} https://www.gstatic.com https://www.recaptcha.net https://recaptchaenterprise.googleapis.com https://www.google.com`,
-
-              // ✅ السماح بـ CSS الخاص بخطوط جوجل
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              // ✅ السماح بتحميل ملفات الخطوط والأيقونات
               "font-src 'self' https://fonts.gstatic.com",
-
-              // ✅ connect-src: السماح بالاتصال بـ Firebase + reCAPTCHA + السوكت
               `connect-src 'self' ${API_URL || ''} ${cleanDomain ? `ws://${cleanDomain} wss://${cleanDomain}` : ''} https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://recaptchaenterprise.googleapis.com https://www.recaptcha.net https://www.google.com https://*.firebase.com https://*.firebaseio.com`,
-
               "frame-ancestors 'none'",
-
-              // ✅ frame-src: السماح لـ reCAPTCHA iframe
               "frame-src https://www.recaptcha.net https://recaptchaenterprise.googleapis.com https://www.google.com",
             ].join('; ').replace(/\s+/g, ' ').trim(),
           },
-
           ...(isProduction
             ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
             : []
@@ -72,17 +58,27 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // ── Images ──────────────────────────────────────────────────
+  // ✅ ARCH-02: redirect HTTP → HTTPS في production فقط
+  // السبب: HSTS وحده لا يكفي — يعمل فقط بعد الزيارة الأولى عبر HTTPS
+  // المستخدم الذي يكتب http:// يصل للموقع غير مشفَّر في الزيارة الأولى
+  // هذا الـ redirect يضمن التشفير من أول طلب
+  async redirects() {
+    if (!isProduction) return []; // في dev: لا redirect حتى لا نكسر localhost
+    return [
+      {
+        source:      '/:path*',
+        has:         [{ type: 'header', key: 'x-forwarded-proto', value: 'http' }],
+        destination: 'https://:host/:path*', // :host يحافظ على الدومين الأصلي
+        permanent:   true,                   // 301 — يُخزَّن في cache المتصفح
+      },
+    ];
+  },
+
+  // ── Images ────────────────────────────────────────────────────
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname:  'res.cloudinary.com',
-      },
-      {
-        protocol: 'https',
-        hostname:  '*.googleusercontent.com',
-      },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: '*.googleusercontent.com' },
       ...(!isProduction
         ? [
             { protocol: 'http' as const, hostname: 'localhost',  port: '5000' },
@@ -97,7 +93,7 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // ── API Proxy ────────────────────────────────────────────────
+  // ── API Proxy ──────────────────────────────────────────────────
   async rewrites() {
     if (!API_URL) return [];
     return [

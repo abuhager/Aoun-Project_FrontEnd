@@ -101,16 +101,17 @@ export default function ItemDetailsPage() {
     );
   }
 
-  const imageUrl    = item.imageUrl ?? "/placeholder-item.png";
+  const imageUrl      = item.imageUrl ?? "/placeholder-item.png";
   const showCountdown = item.status === "محجوز" && (isBooker || isDonor);
   const showChat      = (isDonor || isBooker) && item.status === "محجوز";
 
   const isRecipientConfirmedActual = item.recipientConfirmed || delivery.isRecipientConfirmed;
 
-  // ✅ FIX [UX-02]: مصدر مزدوج لحالة الطابور
-  // — isWaitlisted: يعمل بعد Optimistic Update (الضغط على الزر)
-  // — item.isInWaitlist: يعمل عند أول تحميل الصفحة (من الـ Backend مباشرة)
-  const isEffectivelyWaitlisted = isWaitlisted || !!(item as { isInWaitlist?: boolean }).isInWaitlist;
+  // ✅ [FIX-WAITLIST-BTN]: isWaitlisted من useItemDetails يشمل بالفعل:
+  //   — item.isInWaitlist  (من الـ Backend عند أول تحميل)
+  //   — Optimistic Update  (بعد الضغط على الزر مباشرة)
+  //   — item.waitlist?.some() (كـ fallback للمتبرع)
+  // لا حاجة لـ isEffectivelyWaitlisted هنا — استخدم isWaitlisted مباشرة
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] pb-20 text-[#191c1d]" dir="rtl">
@@ -348,10 +349,10 @@ export default function ItemDetailsPage() {
                     </button>
                   </div>
 
-                ) : isEffectivelyWaitlisted ? (
-                  // ✅ FIX [UX-02]: يعتمد على isEffectivelyWaitlisted بدل isWaitlisted
-                  // — يعمل عند أول تحميل الصفحة عبر item.isInWaitlist
-                  // — يعمل بعد الضغط على الزر عبر Optimistic Update
+                ) : isWaitlisted ? (
+                  // ✅ [FIX-WAITLIST-BTN]: isWaitlisted من useItemDetails يشمل كل الحالات:
+                  //   — item.isInWaitlist من الـ Backend (بعد الريفرش)
+                  //   — Optimistic Update (فور الضغط على الزر)
                   <button
                     onClick={handleCancelAction}
                     disabled={actionLoading}

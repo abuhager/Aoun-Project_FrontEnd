@@ -25,6 +25,7 @@ function SkeletonCard() {
 }
 
 /* ── Item Card ────────────────────────────────────────────────── */
+/* ── Item Card ─────────────────────────────────────────────────── */
 function ItemCard({
   item,
   index,
@@ -38,13 +39,22 @@ function ItemCard({
     location?: string;
     condition?: string;
     category?: string;
+    status?: string;          // ✅ FIX [BROWSE-03]
+    waitlistCount?: number;   // ✅ FIX [BROWSE-04]
   };
   index: number;
 }) {
+  // ✅ FIX [BROWSE-03]: تحديد هل الـ item محجوز
+  const isBooked = item.status === 'محجوز';
+
   return (
     <Link
       href={`/items/${item._id}`}
-      className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-[#e9e3da] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_20px_40px_rgba(1,105,111,0.12)]"
+      className={`group flex h-full flex-col overflow-hidden rounded-[28px] border bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(1,105,111,0.12)]
+        ${isBooked
+          ? 'border-orange-200 opacity-85 hover:border-orange-300'  // ✅ محجوز = border برتقالي
+          : 'border-[#e9e3da] hover:border-primary/20'              // متاح = border عادي
+        }`}
     >
       <div className="relative h-56 w-full overflow-hidden bg-[#f3efe9]">
         <Image
@@ -54,9 +64,28 @@ function ItemCard({
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           unoptimized
           priority={index < 4}
-          className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+          className={`object-cover transition-transform duration-500 ease-out group-hover:scale-105
+            ${isBooked ? 'grayscale-[30%]' : ''}`} // ✅ محجوز = تعتيم خفيف
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+
+        {/* ✅ FIX [BROWSE-03]: Badge "محجوز" واضح فوق الصورة */}
+        {isBooked && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="rounded-2xl border border-orange-300/60 bg-orange-500/85 px-5 py-2.5 backdrop-blur-sm shadow-lg">
+              <div className="flex items-center gap-2 text-white">
+                <span className="material-symbols-outlined text-[18px]">schedule</span>
+                <span className="text-[13px] font-black">محجوز</span>
+              </div>
+              {/* ✅ FIX [BROWSE-04]: عدد المنتظرين إن وُجد */}
+              {(item.waitlistCount ?? 0) > 0 && (
+                <p className="mt-1 text-center text-[11px] font-bold text-orange-100">
+                  {item.waitlistCount} في قائمة الانتظار
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
           {item.condition ? (
@@ -89,11 +118,23 @@ function ItemCard({
           {item.title || item.name}
         </h3>
 
-        <div className="mt-5 flex items-center justify-center gap-1.5 rounded-2xl border border-primary/15 bg-primary/[0.05] py-3 text-[13px] font-black text-primary transition-all duration-300 group-hover:border-primary group-hover:bg-primary group-hover:text-white">
-          عرض التفاصيل
-          <span className="material-symbols-outlined text-[15px]">
-            arrow_back
-          </span>
+        {/* ✅ FIX [BROWSE-03]: زر مختلف حسب الحالة */}
+        <div className={`mt-5 flex items-center justify-center gap-1.5 rounded-2xl border py-3 text-[13px] font-black transition-all duration-300
+          ${isBooked
+            ? 'border-orange-200 bg-orange-50 text-orange-600 group-hover:border-orange-400 group-hover:bg-orange-500 group-hover:text-white'
+            : 'border-primary/15 bg-primary/[0.05] text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-white'
+          }`}>
+          {isBooked ? (
+            <>
+              <span className="material-symbols-outlined text-[15px]">queue</span>
+              انضم لقائمة الانتظار
+            </>
+          ) : (
+            <>
+              عرض التفاصيل
+              <span className="material-symbols-outlined text-[15px]">arrow_back</span>
+            </>
+          )}
         </div>
       </div>
     </Link>

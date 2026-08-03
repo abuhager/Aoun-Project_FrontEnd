@@ -1,7 +1,10 @@
+// src/app/(auth)/register/hooks/useRegister.ts
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
+
 interface FormData {
   name:            string;
   email:           string;
@@ -30,7 +33,6 @@ export function useRegister() {
     setError("");
     setSuccess("");
 
-    // ─── التحقق من تطابق كلمتي المرور ───
     if (formData.password !== formData.confirmPassword) {
       return setError("كلمات المرور غير متطابقة! 🛑");
     }
@@ -38,11 +40,11 @@ export function useRegister() {
     try {
       setLoading(true);
       await axiosInstance.post("/api/auth/register", {
-  name:     formData.name,
-  email:    formData.email,
-  phone:    "962" + formData.phone,
-  password: formData.password,
-});
+        name:     formData.name,
+        email:    formData.email,
+        phone:    "+962" + formData.phone, // ✅ FIX: أضف + في البداية
+        password: formData.password,
+      });
 
       setSuccess("تم إنشاء الحساب بنجاح! جاري تحويلك للتفعيل... ⏳");
       router.push(`/verify?email=${formData.email}`);

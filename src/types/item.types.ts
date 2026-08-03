@@ -41,6 +41,7 @@ export interface Item {
   isRated?:             boolean;
   linkedRequestId?:     string | null;
   // فقط للمتبرع عند getItemById
+  isInWaitlist:  boolean;
   waitlist?:            WaitlistEntry[];
   waitlistCount:        number;
   // من الـ settings
@@ -65,10 +66,12 @@ export interface MyItemsResponse {
 }
 
 export interface BookingResponse {
-  success: boolean;
-  msg:     string;
-  itemId:  string;
-  status:  ItemStatus;
+  success:    boolean;
+  msg:        string;
+  itemId:     string;
+  status?:    ItemStatus;
+  waitlisted: boolean;   // ✅ جديد
+  position?:  number;    // ✅ جديد
 }
 
 export interface DeliveryResponse {

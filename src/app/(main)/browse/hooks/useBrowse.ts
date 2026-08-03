@@ -10,6 +10,8 @@ export interface ItemType {
   condition?: string;
   imageUrl?:  string;
   image?:     string;
+  status?:    'متاح' | 'محجوز' | 'تم التسليم'; // ✅ FIX [BROWSE-03]
+  waitlistCount?: number;                        // ✅ FIX [BROWSE-04]
 }
 
 export function useBrowse() {

@@ -30,9 +30,9 @@ export default function ItemDetailsPage() {
     fetchItem,
   } = useItemDetails();
 
-  const [chatOpen,      setChatOpen]      = useState(false);
-  const [activeConvId,  setActiveConvId]  = useState<string | null>(null);
-  const [fetchingChat,  setFetchingChat]  = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [fetchingChat, setFetchingChat] = useState(false);
 
   const currentUserRole = loading
     ? undefined
@@ -43,8 +43,8 @@ export default function ItemDetailsPage() {
     : undefined;
 
   const delivery = useDeliveryConfirmation({
-    itemId:                    item?._id ?? "",
-    userRole:                  (currentUserRole ?? "recipient") as "donor" | "recipient",
+    itemId: item?._id ?? "",
+    userRole: (currentUserRole ?? "recipient") as "donor" | "recipient",
     initialRecipientConfirmed: item?.recipientConfirmed ?? false,
     onSuccess: async () => {
       if (typeof fetchItem === "function") {
@@ -63,7 +63,7 @@ export default function ItemDetailsPage() {
         : item.donor?._id;
 
       const response = await axiosInstance.post("/api/conversations", {
-        itemId:  item._id,
+        itemId: item._id,
         donorId: targetUserId,
       });
 
@@ -101,17 +101,11 @@ export default function ItemDetailsPage() {
     );
   }
 
-  const imageUrl      = item.imageUrl ?? "/placeholder-item.png";
+  const imageUrl = item.imageUrl ?? "/placeholder-item.png";
   const showCountdown = item.status === "محجوز" && (isBooker || isDonor);
-  const showChat      = (isDonor || isBooker) && item.status === "محجوز";
+  const showChat = (isDonor || isBooker) && item.status === "محجوز";
 
   const isRecipientConfirmedActual = item.recipientConfirmed || delivery.isRecipientConfirmed;
-
-  // ✅ [FIX-WAITLIST-BTN]: isWaitlisted من useItemDetails يشمل بالفعل:
-  //   — item.isInWaitlist  (من الـ Backend عند أول تحميل)
-  //   — Optimistic Update  (بعد الضغط على الزر مباشرة)
-  //   — item.waitlist?.some() (كـ fallback للمتبرع)
-  // لا حاجة لـ isEffectivelyWaitlisted هنا — استخدم isWaitlisted مباشرة
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] pb-20 text-[#191c1d]" dir="rtl">
@@ -172,7 +166,6 @@ export default function ItemDetailsPage() {
                   {item.condition || "حالة جيدة"}
                 </span>
 
-                {/* ✅ FIX: waitlistCount بدل waitlist?.length — لأن الـ array محذوفة للمستخدم العادي */}
                 {(item.waitlistCount ?? 0) > 0 && (
                   <div className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1">
                     <span className="material-symbols-outlined text-sm text-blue-500">group</span>
@@ -204,8 +197,8 @@ export default function ItemDetailsPage() {
             {/* معلومات الغرض */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "الموقع",  val: item.location || "غير محدد",                                   ic: "distance" },
-                { label: "التاريخ", val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event"    },
+                { label: "الموقع", val: item.location || "غير محدد", ic: "distance" },
+                { label: "التاريخ", val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event" },
               ].map((s, i) => (
                 <div key={i} className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white p-3 text-center shadow-sm">
                   <span className="mb-1 material-symbols-outlined text-xl text-primary">{s.ic}</span>
@@ -350,9 +343,6 @@ export default function ItemDetailsPage() {
                   </div>
 
                 ) : isWaitlisted ? (
-                  // ✅ [FIX-WAITLIST-BTN]: isWaitlisted من useItemDetails يشمل كل الحالات:
-                  //   — item.isInWaitlist من الـ Backend (بعد الريفرش)
-                  //   — Optimistic Update (فور الضغط على الزر)
                   <button
                     onClick={handleCancelAction}
                     disabled={actionLoading}

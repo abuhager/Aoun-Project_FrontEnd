@@ -87,7 +87,12 @@ axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const url = config.url ?? "";
     const method = config.method ?? "get";
-    const skipInitCheck = isAuthSafeUrl(url) || isPublicUrl(url, method);
+
+    // ✅ [FIX-WAITLIST-BTN]: إذا في accessToken موجود → لا نتخطى init check
+    // حتى لو المسار "public" — المستخدم المسجل يحتاج req.user يكون صحيح
+    // (isInWaitlist, isOwner, إلخ تعتمد على Authorization header)
+    const skipInitCheck =
+      !accessToken && (isAuthSafeUrl(url) || isPublicUrl(url, method));
 
     if (!isInitialized && !skipInitCheck) {
       return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {

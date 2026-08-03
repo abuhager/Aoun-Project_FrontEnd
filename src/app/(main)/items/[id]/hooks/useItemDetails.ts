@@ -42,9 +42,15 @@ export function useItemDetails() {
   const currentUserId     = user?._id ?? null;
   const isDonor           = !!currentUserId && getId(item?.donor)    === currentUserId;
   const isBooker          = !!currentUserId && getId(item?.bookedBy) === currentUserId;
-  const isWaitlisted      = !!currentUserId && !!item?.waitlist?.some(
-    (w) => getId(w.user) === currentUserId
+
+  // ✅ [FIX-WAITLIST-BTN]: اقرأ isInWaitlist من الـ API أولاً
+  // الباك-إند لا يُرجع item.waitlist للمستخدم العادي — فـ .some() كان يرجع false دائماً بعد الريفرش
+  // الحل: item.isInWaitlist هي القيمة الصحيحة من الـ DTO، مع .some() كـ fallback لمشاهدة المتبرع
+  const isWaitlisted      = !!currentUserId && (
+    !!item?.isInWaitlist ||
+    !!item?.waitlist?.some((w) => getId(w.user) === currentUserId)
   );
+
   const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some(
     (uid: string) => getId(uid) === currentUserId
   );
@@ -113,17 +119,16 @@ export function useItemDetails() {
 
           // ✅ FIX [TYPE-01]: معالجة استجابة waitlisted بشكل صريح
           if (res.waitlisted) {
-            // ✅ FIX [UX-02]: Optimistic Update فوري للـ Waitlist
-            // السبب: الـ Backend لا يُرجع waitlist للمستخدم العادي عند fetchItem
-            // فـ isWaitlisted يبقى false ويظل زر "انضم" ظاهراً بدون هذا الإصلاح
+            // ✅ [FIX-WAITLIST-BTN]: Optimistic Update — ضع isInWaitlist: true فوراً
+            // حتى قبل الريفرش يظهر زر الانسحاب مباشرة
             setItem((prev) => {
               if (!prev || !currentUserId) return prev;
-              const alreadyIn = prev.waitlist?.some(
-                (w) => getId(w.user) === currentUserId
-              );
+              const alreadyIn = prev.isInWaitlist ||
+                prev.waitlist?.some((w) => getId(w.user) === currentUserId);
               if (alreadyIn) return prev;
               return {
                 ...prev,
+                isInWaitlist:  true,
                 waitlistCount: (prev.waitlistCount ?? 0) + 1,
                 waitlist: [
                   ...(prev.waitlist ?? []),
@@ -212,8 +217,9 @@ export function useItemDetails() {
           if (updatedItem) {
             setItem(updatedItem);
           } else {
+            // ✅ [FIX-WAITLIST-BTN]: عند الانسحاب أيضاً امسح isInWaitlist
             setItem((prev) =>
-              prev ? { ...prev, status: "متاح", bookedBy: undefined } : null
+              prev ? { ...prev, status: "متاح", bookedBy: undefined, isInWaitlist: false } : null
             );
           }
         } catch (error: unknown) {

@@ -54,16 +54,33 @@ export default function ItemDetailsPage() {
     },
   });
 
+  // ✅ FIX [CHAT-01]: استخراج الـ ID بشكل صحيح بغض النظر عن نوع bookedBy
   const handleOpenChatFlow = async () => {
     if (!item) return;
     setFetchingChat(true);
     try {
-      const targetUserId = isDonor
-        ? (item.bookedBy?._id || item.bookedBy)
-        : item.donor?._id;
+      let targetUserId: string | null = null;
+
+      if (isDonor) {
+        // المتبرع يتحدث للحاجز
+        const bookedBy = item.bookedBy;
+        if (typeof bookedBy === "string") {
+          targetUserId = bookedBy;
+        } else if (bookedBy && typeof bookedBy === "object" && "_id" in bookedBy) {
+          targetUserId = String((bookedBy as { _id: unknown })._id);
+        }
+      } else {
+        // المستلم يتحدث للمتبرع
+        targetUserId = item.donor?._id ?? null;
+      }
+
+      if (!targetUserId) {
+        console.error("تعذّر تحديد معرف المستخدم الآخر");
+        return;
+      }
 
       const response = await axiosInstance.post("/api/conversations", {
-        itemId: item._id,
+        itemId:  item._id,
         donorId: targetUserId,
       });
 
@@ -77,7 +94,7 @@ export default function ItemDetailsPage() {
         setChatOpen(true);
       }
     } catch {
-      console.error("❌ فشل إنشاء أو جلب معرف المحادثة الرسمي");
+      console.error("فشل إنشاء أو جلب معرف المحادثة");
     } finally {
       setFetchingChat(false);
     }

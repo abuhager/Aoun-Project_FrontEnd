@@ -36,12 +36,15 @@ export function useItemDetails() {
     show: false, msg: "", isDanger: false, onConfirm: () => {},
   });
 
-  // ✅ [FIX-WAITLIST-PERSIST]: Optimistic waitlist state مع localStorage
+  // ✅ FIX [WAITLIST-PERSIST]: Optimistic waitlist state مع localStorage
   const [optimisticWaitlist, setOptimisticWaitlist] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
-    const saved = localStorage.getItem("aoun_waitlist_items");
-    console.log("🔍 Initial localStorage:", saved);
-    return saved ? new Set(JSON.parse(saved)) : new Set();
+    try {
+      const saved = localStorage.getItem("aoun_waitlist_items");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
   });
 
   const updateWaitlistStorage = useCallback((itemId: string, inWaitlist: boolean) => {
@@ -52,10 +55,14 @@ export function useItemDetails() {
       } else {
         next.delete(itemId);
       }
-      const arr = [...next];
-      localStorage.setItem("aoun_waitlist_items", JSON.stringify(arr));
-      console.log("💾 Updated localStorage:", arr);
-      return next;
+      try {
+        // ✅ FIX [LOCALSTORAGE-TTL]: حذف IDs القديمة — احتفظ بآخر 50 فقط
+        const arr = [...next].slice(-50);
+        localStorage.setItem("aoun_waitlist_items", JSON.stringify(arr));
+        return new Set(arr);
+      } catch {
+        return next;
+      }
     });
   }, []);
 
@@ -65,22 +72,14 @@ export function useItemDetails() {
   const isDonor = !!currentUserId && getId(item?.donor) === currentUserId;
   const isBooker = !!currentUserId && getId(item?.bookedBy) === currentUserId;
 
-  // ✅ [FIX-WAITLIST-BTN]: تحقق من localStorage كـ fallback
   const itemIdStr = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
+
+  // ✅ FIX [WAITLIST-SOURCE]: الاعتماد فقط على isInWaitlist + optimisticWaitlist
+  // item?.waitlist?.some() حُذف لأنه يكون undefined دائماً في toPublicItem
   const isWaitlisted = !!currentUserId && (
     !!item?.isInWaitlist ||
-    !!item?.waitlist?.some((w) => getId(w.user) === currentUserId) ||
     optimisticWaitlist.has(itemIdStr)
   );
-
-  // 🔍 Debug logs
-  useEffect(() => {
-    console.log("🔍 Current itemId:", itemIdStr);
-    console.log("🔍 optimisticWaitlist:", [...optimisticWaitlist]);
-    console.log("🔍 isWaitlisted:", isWaitlisted);
-    console.log("🔍 localStorage:", localStorage.getItem("aoun_waitlist_items"));
-    console.log("🔍 item?.isInWaitlist:", item?.isInWaitlist);
-  }, [optimisticWaitlist, itemIdStr, isWaitlisted, item?.isInWaitlist]);
 
   const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some(
     (uid: string) => getId(uid) === currentUserId
@@ -123,6 +122,13 @@ export function useItemDetails() {
     return () => { isMounted = false; };
   }, [fetchItem]);
 
+  // ✅ FIX [LOCALSTORAGE-CLEANUP]: تنظيف الـ localStorage عند اكتمال التسليم
+  useEffect(() => {
+    if (item?.status === "تم التسليم" && itemIdStr) {
+      updateWaitlistStorage(itemIdStr, false);
+    }
+  }, [item?.status, itemIdStr, updateWaitlistStorage]);
+
   const handleRequestItem = useCallback(async () => {
     if (authLoading) return;
     if (!isLoggedIn) {
@@ -143,22 +149,22 @@ export function useItemDetails() {
         setActionLoading(true);
         try {
           const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-          console.log("🚀 Starting booking for item:", itemId);
-          
           const res = await bookItem(itemId);
-          console.log("📦 Book API Response:", res);
 
-          // ✅ Regular booking (not waitlist)
-          console.log("🟢 Regular booking (not waitlist)");
           setTimedMessage({
             type: "success",
             text: res.msg ?? "تم حجز الغرض بنجاح ✅",
           });
 
+          // ✅ إذا كان waitlisted → احفظ في localStorage
+          if (res.waitlisted) {
+            updateWaitlistStorage(itemId, true);
+          }
+
           const updatedItem = await fetchItem(true, true);
           if (updatedItem) {
             setItem(updatedItem);
-          } else if (currentUserId && user) {
+          } else if (currentUserId && user && !res.waitlisted) {
             setItem((prev) =>
               prev
                 ? {
@@ -174,31 +180,24 @@ export function useItemDetails() {
             );
           }
         } catch (error: unknown) {
-          console.error("❌ Booking error:", error);
-          
-          // ✅ [FIX-WAITLIST]: تحقق إذا كان الخطأ "أنت مسجل في قائمة الانتظار بالفعل"
           if (axios.isAxiosError(error)) {
             const errorCode = error.response?.data?.code;
-            const errorMsg = error.response?.data?.message;
-            
-            console.log("❌ Error code:", errorCode);
-            console.log("❌ Error message:", errorMsg);
-            
-            // ✅ إذا كان الخطأ "ALREADY_WAITLISTED" → احفظ في localStorage
-            if (errorCode === "ALREADY_WAITLISTED" || errorMsg?.includes('قائمة الانتظار')) {
+            const errorMsg  = error.response?.data?.message;
+
+            // ✅ إذا كان الخطأ ALREADY_WAITLISTED → احفظ في localStorage
+            if (errorCode === "ALREADY_WAITLISTED" || errorMsg?.includes("قائمة الانتظار")) {
               const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-              console.log("🟢 Detected ALREADY_WAITLISTED - saving to localStorage:", itemId);
               updateWaitlistStorage(itemId, true);
-              
               setTimedMessage({
                 type: "success",
                 text: "أنت مسجل في قائمة الانتظار بالفعل ✅",
               });
-              return; // ✅ مهم: اخرج من الدالة
+              return;
             }
-            
-            // أخطاء أخرى
-            const msg = error.response?.data?.msg ?? error.response?.data?.message ?? "حدث خطأ أثناء الطلب";
+
+            const msg = error.response?.data?.msg
+              ?? error.response?.data?.message
+              ?? "حدث خطأ أثناء الطلب";
             setTimedMessage({ type: "error", text: msg });
           } else {
             setTimedMessage({ type: "error", text: "حدث خطأ أثناء الطلب" });
@@ -231,14 +230,10 @@ export function useItemDetails() {
         setActionLoading(true);
         try {
           const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-          console.log("🚀 Starting cancel for item:", itemId);
-          
           const res = await cancelBooking(itemId);
-          console.log("📦 Cancel API Response:", res);
 
-          // ✅ Remove from localStorage
+          // ✅ احذف من localStorage عند الإلغاء
           updateWaitlistStorage(itemId, false);
-          console.log("🗄️ localStorage after cancel:", localStorage.getItem("aoun_waitlist_items"));
 
           setTimedMessage({ type: "success", text: res.msg ?? "تم الإلغاء بنجاح ✅" });
 
@@ -251,7 +246,6 @@ export function useItemDetails() {
             );
           }
         } catch (error: unknown) {
-          console.error("❌ Cancel error:", error);
           const msg = axios.isAxiosError(error)
             ? error.response?.data?.msg ?? error.response?.data?.message ?? "حدث خطأ أثناء الإلغاء"
             : "حدث خطأ أثناء الإلغاء";

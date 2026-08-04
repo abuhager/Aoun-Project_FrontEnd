@@ -11,7 +11,8 @@ import ReportModal from "@/components/ReportModal";
 import AppealModal from "@/components/AppealModal";
 import type { Item } from "@/types/item.types";
 import ChatDrawer from "@/components/ChatDrawer";
-import axiosInstance from "@/lib/api/axiosInstance"; // 👈 استيراد الأكسيوس للطلب المباشر
+import GlobalRatingModal from "@/components/GlobalRatingModal";
+import axiosInstance from "@/lib/api/axiosInstance";
 
 /* ─── Skeleton ──────────────────────────────────────────────── */
 function DashboardSkeleton() {
@@ -91,11 +92,11 @@ export default function DashboardPage() {
     itemId?: string;
   } | null>(null);
 
-  // 🌟 حالات الشات المتطابقة بالملي مع صفحة الآيتم
+  // حالات الشات
   const [chatOpen, setChatOpen] = useState(false);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [activeItemTitle, setActiveItemTitle] = useState("");
-  const [fetchingChat, setFetchingChat] = useState(false);
+  const [, setFetchingChat] = useState(false);
 
   if (loading) return <DashboardSkeleton />;
 
@@ -115,18 +116,14 @@ export default function DashboardPage() {
     );
   }
 
-  // 🌟 دالة استخلاص المحادثة الحقيقية من السيرفر قبل الفتح (نفس تدفق صفحة الآيتم الشغالة)
+  // دالة فتح المحادثة
   const handleOpenChatFlow = async (item: Item & { owner?: { _id: string } }) => {
     setFetchingChat(true);
     try {
-      // 🎯 فرز الهوية الحاسم:
-      // إذا كنا في تاب تبرعاتي (donations) -> الطرف المستهدف هو المستلم (item.bookedBy)
-      // إذا كنا في تاب طلباتي (requests) -> الطرف المستهدف هو المتبرع (item.donor)
       const targetUserId = activeTab === "donations"
         ? (item.bookedBy?._id || item.bookedBy)
         : (item.donor?._id || item.owner?._id);
 
-      // نرسل الـ targetUserId في حقل donorId إجبارياً لإرضاء دالة السيرفر openConversationLogic
       const response = await axiosInstance.post("/api/conversations", {
         itemId: item._id,
         donorId: targetUserId 
@@ -150,11 +147,14 @@ export default function DashboardPage() {
       setFetchingChat(false);
     }
   };
+
   const activeItems = activeTab === "donations" ? data.myDonations : data.myRequests;
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] pb-16 font-body text-[#191c1d]" dir="rtl">
       {/* ── Modals & Overlays ────────────────────────────────── */}
+      <GlobalRatingModal />
+
       {confirmModal.open && (
         <ActionModal
           message={confirmModal.message}
@@ -179,7 +179,7 @@ export default function DashboardPage() {
         <AppealModal reportId={appealModal.reportId} onClose={closeAppealModal} onSuccess={onAppealSuccess} />
       )}
 
-      {/* 🌟 فتح الـ ChatDrawer بناءً على المعرف الحقيقي الصافي الشغال تماماً */}
+      {/* ChatDrawer */}
       {chatOpen && activeConvId && (
         <ChatDrawer
           key={activeConvId}
@@ -281,10 +281,7 @@ export default function DashboardPage() {
                 deliveryLoading={deliveryLoading}
                 onRecipientConfirm={handleRecipientConfirm}
                 onDonorConfirm={handleDonorConfirm}
-                
-                // 🌟 تفعيل تدفق الاستدعاء الصريح والآمن فوراً عند الضغط
                 onOpenChat={handleOpenChatFlow}
-                
                 onReport={(item, target) => {
                   const isDonor = target === "donor";
                   const userId = isDonor

@@ -183,7 +183,7 @@ export default function PublicProfilePage() {
                     {(trustScore / 20).toFixed(1)} / 5
                   </span>
                   <span className="font-normal text-gray-400">
-                    ({stats.totalRatings} تقييم)
+                    ({stats?.totalRatings ?? 0} تقييم)
                   </span>
                 </div>
 
@@ -222,12 +222,12 @@ export default function PublicProfilePage() {
           <div className="grid grid-cols-3 gap-3">
             <StatCard value={trustScore} label="نقاط الثقة" tone="text-primary" />
             <StatCard
-              value={stats.donationsCount}
+              value={stats?.donationsCount ?? 0}
               label="إجمالي العطاء"
               tone="text-emerald-600"
             />
             <StatCard
-              value={stats.receivedCount}
+              value={stats?.receivedCount ?? 0}
               label="أغراض مستلمة"
               tone="text-[#005a8c]"
             />

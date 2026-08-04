@@ -55,12 +55,10 @@ export function useGlobalRating() {
         setSelectedItem(item);
         setShowModal(true);
       } else {
-        setShowModal(false);
-        setSelectedItem(null);
+        resetRatingState();
       }
     } catch {
-      setShowModal(false);
-      setSelectedItem(null);
+      resetRatingState();
     }
   }, [pathname, resetRatingState]);
 
@@ -79,37 +77,55 @@ export function useGlobalRating() {
   }, [isLoading, pathname, user?._id, checkPendingRatings]);
 
   const handleRate = async () => {
-    if (!selectedItem?._id) {
-      setErrorMsg("تعذر تحديد الغرض المراد تقييمه، أعد تحميل الصفحة");
-      return;
-    }
+  if (!selectedItem?._id) {
+    setErrorMsg("تعذر تحديد الغرض المراد تقييمه، أعد تحميل الصفحة");
+    return;
+  }
 
-    if (rating === 0) {
-      setErrorMsg("اختر تقييم أولاً ⭐");
-      return;
-    }
+  if (rating === 0) {
+    setErrorMsg("اختر تقييم أولاً ⭐");
+    return;
+  }
 
-    setErrorMsg("");
-    setRatingLoading(true);
+  setErrorMsg("");
+  setRatingLoading(true);
 
-    try {
-      await axiosInstance.post("/api/ratings", {
-        itemId: selectedItem._id,
-        score: rating * 2,
-      });
+  try {
+    await axiosInstance.post("/api/ratings", {
+      itemId: selectedItem._id,
+      score: rating * 2,
+    });
 
-      resetRatingState();
-      await checkPendingRatings();
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setErrorMsg(err.response?.data?.msg || "حدث خطأ أثناء التقييم ❌");
-      } else {
-        setErrorMsg("حدث خطأ أثناء التقييم ❌");
+    // 🎯 1. إغلاق النافذة وإعادة ضبط الحالة فوراً للمستخدم
+    resetRatingState();
+
+    // 🎯 2. انتظر 500ms حتى تكتمل عملية الحفظ في قاعدة البيانات ثم افحص الأغراض المتبقية
+    setTimeout(() => {
+      void checkPendingRatings();
+    }, 500);
+
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      const code = err.response?.data?.code;
+      const msg = err.response?.data?.message || err.response?.data?.msg;
+
+      // إذا كان التقييم قد أُرسل بالفعل مسبقاً، أغلق المودال ولا تكرر المطالبة
+      if (code === "ALREADY_RATED" || err.response?.status === 409) {
+        resetRatingState();
+        setTimeout(() => {
+          void checkPendingRatings();
+        }, 500);
+        return;
       }
-    } finally {
-      setRatingLoading(false);
+
+      setErrorMsg(msg || "حدث خطأ أثناء التقييم ❌");
+    } else {
+      setErrorMsg("حدث خطأ أثناء التقييم ❌");
     }
-  };
+  } finally {
+    setRatingLoading(false);
+  }
+};
 
   return {
     showModal,

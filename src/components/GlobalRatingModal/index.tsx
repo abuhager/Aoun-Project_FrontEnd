@@ -15,12 +15,14 @@ export default function GlobalRatingModal() {
 
   if (!showModal || !selectedItem) return null;
 
+  const targetName = selectedItem.donor?.name || selectedItem.bookedBy?.name || "الطرف الآخر";
+
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md px-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto select-none"
       dir="rtl"
     >
-      <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl">
+      <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl border border-gray-100">
         <p className="mb-1 text-sm font-bold text-primary">
           العطاء بيكمل بكلمة شكر 💚
         </p>
@@ -28,7 +30,7 @@ export default function GlobalRatingModal() {
         <h3 className="mb-5 text-lg font-bold text-[#191c1d]">
           قيم تجربتك مع{" "}
           <span className="text-primary">
-            {selectedItem.donor?.name || "المتبرع"}
+            {targetName}
           </span>
         </h3>
 
@@ -67,7 +69,7 @@ export default function GlobalRatingModal() {
           type="button"
           onClick={handleRate}
           disabled={ratingLoading || rating === 0}
-          className="w-full rounded-2xl bg-primary py-4 font-bold text-white shadow-lg transition-opacity disabled:opacity-50"
+          className="w-full rounded-2xl bg-primary py-4 font-bold text-white shadow-lg transition-opacity disabled:opacity-50 hover:bg-primary/90"
         >
           {ratingLoading ? "جاري الحفظ..." : "إرسال التقييم"}
         </button>

@@ -1,9 +1,10 @@
+// src/components/ReportModal/index.tsx
 "use client";
 
 import { useState } from "react";
 import { createReport } from "@/lib/api/reportApi";
-// ✅ إصلاح الاستيراد باستخدام (as) ليطابق الاسم الفعلي المصدّر في ملف الأنواع
-import { REPORT_REASONS_FALLBACK as REPORT_REASONS, type ReportReason } from "@/types/report.types";
+import { useSettings } from "@/context/SettingsContext"; // ← جلب الأسباب ديناميكياً
+import { REPORT_REASONS_FALLBACK, type ReportReason } from "@/types/report.types";
 
 interface Props {
   reportedUserId: string;
@@ -18,6 +19,11 @@ export default function ReportModal({
   itemId,
   onClose,
 }: Props) {
+  const { settings } = useSettings();
+  // ✅ FIX [DC-14]: أسباب البلاغ من الـ settings — fallback للقيمة الثابتة فقط عند الفشل
+  const reportReasons: ReportReason[] =
+    settings?.reportReasons ?? REPORT_REASONS_FALLBACK;
+
   const [reason,   setReason]   = useState<ReportReason | "">("");
   const [details,  setDetails]  = useState("");
   const [loading,  setLoading]  = useState(false);
@@ -78,7 +84,7 @@ export default function ReportModal({
             {/* سبب البلاغ */}
             <p className="text-xs text-gray-500 mb-2 font-medium">سبب البلاغ *</p>
             <div className="flex flex-col gap-2 mb-4">
-              {REPORT_REASONS.map((r) => (
+              {reportReasons.map((r) => (
                 <button
                   key={r}
                   type="button"

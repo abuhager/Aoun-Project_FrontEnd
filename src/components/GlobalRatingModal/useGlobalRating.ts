@@ -1,7 +1,8 @@
+// src/components/GlobalRatingModal/useGlobalRating.ts
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import axios from "axios";
 import axiosInstance, { getAccessToken } from "@/lib/api/axiosInstance";
 import { useAuth } from "@/context/AuthContext";
@@ -19,14 +20,13 @@ const BLOCKED_FROM_CHECK = ["/login", "/register", "/verify"];
 
 export function useGlobalRating() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, isLoading } = useAuth();
 
-  const [showModal, setShowModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [rating, setRating] = useState(0);
+  const [showModal,     setShowModal]     = useState(false);
+  const [selectedItem,  setSelectedItem]  = useState<Item | null>(null);
+  const [rating,        setRating]        = useState(0);
   const [ratingLoading, setRatingLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg,      setErrorMsg]      = useState("");
 
   const resetRatingState = useCallback(() => {
     setShowModal(false);
@@ -38,18 +38,12 @@ export function useGlobalRating() {
 
   const checkPendingRatings = useCallback(async () => {
     const token = getAccessToken();
-
-    if (!token) {
-      resetRatingState();
-      return;
-    }
-
-    if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) {
-      return;
-    }
+    if (!token) { resetRatingState(); return; }
+    if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
 
     try {
-const res = await axiosInstance.get('/api/ratings/pending'); // 
+      const res = await axiosInstance.get("/api/ratings/pending");
+      // ✅ FIX [RATING-FE-01]: السيرفر يُرجع { pendingRating: item | null }
       if (res.data?.pendingRating) {
         setSelectedItem(res.data.pendingRating);
         setShowModal(true);
@@ -64,25 +58,15 @@ const res = await axiosInstance.get('/api/ratings/pending'); //
   }, [pathname, resetRatingState]);
 
   useEffect(() => {
-    if (!user) {
-      resetRatingState();
-    }
+    if (!user) resetRatingState();
   }, [user, resetRatingState]);
 
   useEffect(() => {
     if (isLoading) return;
     if (!user?._id) return;
     if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
-
     void checkPendingRatings();
   }, [isLoading, pathname, user?._id, checkPendingRatings]);
-
-  useEffect(() => {
-    if (!showModal) return;
-    if (BLOCKED_FROM_CHECK.some((p) => pathname.startsWith(p))) return;
-
-    router.replace(pathname, { scroll: false });
-  }, [pathname, showModal, router]);
 
   const handleRate = async () => {
     if (!selectedItem || rating === 0) {
@@ -94,12 +78,11 @@ const res = await axiosInstance.get('/api/ratings/pending'); //
     setRatingLoading(true);
 
     try {
-      // ✅ الـ endpoint الصحيح + تحويل 5 نجوم → 10 نقاط
-      await axiosInstance.post(`/api/ratings`, {
+      // ✅ FIX [RATING-FE-02]: تحويل 5 نجوم → 10 نقاط (scale × 2)
+      await axiosInstance.post("/api/ratings", {
         itemId: selectedItem._id,
         score:  rating * 2,
       });
-
       resetRatingState();
       await checkPendingRatings();
     } catch (err) {
@@ -113,6 +96,7 @@ const res = await axiosInstance.get('/api/ratings/pending'); //
     }
   };
 
+  // ✅ FIX [RATING-FE-03]: منع الإغلاق الفعلي — إجبار المستخدم على التقييم
   const handleClose = () => {
     setErrorMsg("يجب تقييم المتبرع أولاً قبل المتابعة 🌟");
   };

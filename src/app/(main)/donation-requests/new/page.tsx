@@ -1,5 +1,5 @@
 // src/app/(main)/donation-requests/new/page.tsx
-// [FIX-2] /api/settings/public بدل /api/settings — صمت تام عند خطأ
+// [FIX-2] /api/settings/public بدل /api/settings — جلب التصنيفات والمناطق ديناميكياً
 // [FIX-4] جلب quota عند mount + تحذير + تعطيل زر النشر عند remaining=0
 "use client";
 import Link from 'next/link';
@@ -8,25 +8,26 @@ import { useRouter } from 'next/navigation';
 import axiosInstance from '@/lib/api/axiosInstance';
 import { createDonationRequest, getMyDonationRequests } from '@/lib/api/donationRequestApi';
 
-const DEFAULT_CATEGORIES = ['كتب','إلكترونيات','أثاث','ملابس','أخرى'];
-const DEFAULT_LOCATIONS  = ['عمان','الزرقاء','إربد','العقبة','السلط','مادبا'];
+const DEFAULT_CATEGORIES = ['كتب', 'إلكترونيات', 'أثاث', 'ملابس', 'أخرى'];
+const DEFAULT_LOCATIONS  = ['عمان', 'الزرقاء', 'إربد', 'العقبة', 'السلط', 'مادبا'];
 
 export default function NewDonationRequestPage() {
   const router = useRouter();
   const [submitting,   setSubmitting]   = useState(false);
-  const [toast,        setToast]        = useState<{msg:string;ok:boolean}|null>(null);
+  const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
   const [categories,   setCategories]   = useState(DEFAULT_CATEGORIES);
   const [locations,    setLocations]    = useState(DEFAULT_LOCATIONS);
-  const [quota,        setQuota]        = useState<{used:number;max:number;remaining:number}|null>(null);
+  const [quota,        setQuota]        = useState<{ used: number; max: number; remaining: number } | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
-  const [form, setForm] = useState({ title:'', description:'', category:'', location:'' });
+  const [form, setForm] = useState({ title: '', description: '', category: '', location: '' });
 
-  // [FIX-2] جلب التصنيفات من endpoint العام
+  // [FIX-2] جلب التصنيفات من الـ Endpoint العام المفتوح
   useEffect(() => {
-    axiosInstance.get('/api/settings')
+    axiosInstance.get('/api/settings/public')
       .then((r) => {
-        if (Array.isArray(r.data?.categories) && r.data.categories.length) setCategories(r.data.categories);
-        if (Array.isArray(r.data?.locations)  && r.data.locations.length)  setLocations(r.data.locations);
+        const data = r.data?.data || r.data;
+        if (Array.isArray(data?.categories) && data.categories.length) setCategories(data.categories);
+        if (Array.isArray(data?.locations)  && data.locations.length)  setLocations(data.locations);
       })
       .catch(() => console.warn('[Settings] fallback إلى القيم الافتراضية'));
   }, []);
@@ -50,17 +51,24 @@ export default function NewDonationRequestPage() {
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isFormInvalid)   { setToast({ msg:'يرجى تعبئة جميع الحقول', ok:false }); return; }
-    if (isQuotaExceeded) { setToast({ msg:`وصلت الحد الأقصى (${quota!.max} طلبات)`, ok:false }); return; }
+    if (isFormInvalid)   { setToast({ msg: 'يرجى تعبئة جميع الحقول', ok: false }); return; }
+    if (isQuotaExceeded) { setToast({ msg: `وصلت الحد الأقصى (${quota!.max} طلبات)`, ok: false }); return; }
     setSubmitting(true);
     try {
-      const res = await createDonationRequest({ title:form.title.trim(), description:form.description.trim(), category:form.category, location:form.location });
-      setToast({ msg: res.msg ?? 'تم نشر الطلب بنجاح', ok:true });
+      const res = await createDonationRequest({ 
+        title: form.title.trim(), 
+        description: form.description.trim(), 
+        category: form.category, 
+        location: form.location 
+      });
+      setToast({ msg: res.msg ?? 'تم نشر الطلب بنجاح', ok: true });
       setTimeout(() => router.push('/donation-requests?mine=true'), 700);
     } catch (err: unknown) {
-      const msg = (err as {response?:{data?:{msg?:string}}})?.response?.data?.msg ?? 'حدث خطأ';
-      setToast({ msg, ok:false });
-    } finally { setSubmitting(false); }
+      const msg = (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ?? 'حدث خطأ';
+      setToast({ msg, ok: false });
+    } finally { 
+      setSubmitting(false); 
+    }
   };
 
   return (
@@ -93,33 +101,57 @@ export default function NewDonationRequestPage() {
         <form onSubmit={submit} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 md:p-6 space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-black text-gray-700">عنوان الطلب *</label>
-            <input value={form.title} onChange={(e)=>setForm(p=>({...p,title:e.target.value}))} maxLength={120} placeholder="مثال: أحتاج لابتوب للدراسة" className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary" />
+            <input 
+              value={form.title} 
+              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} 
+              maxLength={120} 
+              placeholder="مثال: أحتاج لابتوب للدراسة" 
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary" 
+            />
             <p className="text-[11px] text-gray-400 text-left">{form.title.length} / 120</p>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-black text-gray-700">التصنيف *</label>
-              <select value={form.category} onChange={(e)=>setForm(p=>({...p,category:e.target.value}))} className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary">
+              <select 
+                value={form.category} 
+                onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} 
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+              >
                 <option value="">اختر التصنيف</option>
-                {categories.map((c)=><option key={c} value={c}>{c}</option>)}
+                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-xs font-black text-gray-700">المنطقة *</label>
-              <select value={form.location} onChange={(e)=>setForm(p=>({...p,location:e.target.value}))} className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary">
+              <select 
+                value={form.location} 
+                onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} 
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+              >
                 <option value="">اختر المنطقة</option>
-                {locations.map((l)=><option key={l} value={l}>{l}</option>)}
+                {locations.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
           </div>
           <div className="space-y-1">
             <label className="text-xs font-black text-gray-700">الوصف *</label>
-            <textarea value={form.description} onChange={(e)=>setForm(p=>({...p,description:e.target.value}))} rows={7} maxLength={600} placeholder="اشرح حاجتك بوضوح" className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary resize-none" />
+            <textarea 
+              value={form.description} 
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} 
+              rows={7} 
+              maxLength={600} 
+              placeholder="اشرح حاجتك بوضوح" 
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary resize-none" 
+            />
             <p className="text-[11px] text-gray-400 text-left">{form.description.length} / 600</p>
           </div>
           {/* [FIX-4] زر معطّل عند تجاوز الحد */}
-          <button type="submit" disabled={submitting || isFormInvalid || isQuotaExceeded}
-            className="w-full py-3 rounded-2xl bg-primary text-white text-sm font-black hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+          <button 
+            type="submit" 
+            disabled={submitting || isFormInvalid || isQuotaExceeded}
+            className="w-full py-3 rounded-2xl bg-primary text-white text-sm font-black hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
             {submitting ? 'جارٍ النشر...' : isQuotaExceeded ? '🚫 وصلت الحد الأقصى' : 'نشر الطلب'}
           </button>
         </form>

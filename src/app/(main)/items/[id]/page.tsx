@@ -10,10 +10,12 @@ import LevelGate from "@/components/LevelGate";
 import ChatDrawer from "@/components/ChatDrawer";
 import { useRouter } from "next/navigation";
 import { useDeliveryConfirmation } from "@/components/DeliveryConfirmButton";
+import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/api/axiosInstance";
 
 export default function ItemDetailsPage() {
   const router = useRouter();
+  const { isLoggedIn } = useAuth();
   const {
     item,
     loading,
@@ -54,7 +56,6 @@ export default function ItemDetailsPage() {
     },
   });
 
-  // ✅ FIX [CHAT-01]: استخراج الـ ID بشكل صحيح بغض النظر عن نوع bookedBy
   const handleOpenChatFlow = async () => {
     if (!item) return;
     setFetchingChat(true);
@@ -62,7 +63,6 @@ export default function ItemDetailsPage() {
       let targetUserId: string | null = null;
 
       if (isDonor) {
-        // المتبرع يتحدث للحاجز
         const bookedBy = item.bookedBy;
         if (typeof bookedBy === "string") {
           targetUserId = bookedBy;
@@ -70,7 +70,6 @@ export default function ItemDetailsPage() {
           targetUserId = String((bookedBy as { _id: unknown })._id);
         }
       } else {
-        // المستلم يتحدث للمتبرع
         targetUserId = item.donor?._id ?? null;
       }
 
@@ -80,7 +79,7 @@ export default function ItemDetailsPage() {
       }
 
       const response = await axiosInstance.post("/api/conversations", {
-        itemId:  item._id,
+        itemId: item._id,
         donorId: targetUserId,
       });
 
@@ -98,6 +97,11 @@ export default function ItemDetailsPage() {
     } finally {
       setFetchingChat(false);
     }
+  };
+
+  const redirectToLogin = () => {
+    if (!item?._id) return;
+    router.push(`/login?redirect=/items/${item._id}`);
   };
 
   if (loading) {
@@ -283,7 +287,22 @@ export default function ItemDetailsPage() {
               )}
 
               <div className="flex flex-col gap-3">
-                {isDonor ? (
+                {/* 🔒 1. إذا كان المستخدم غير مسجل دخول */}
+                {!isLoggedIn ? (
+                  item.status === "تم التسليم" ? (
+                    <div className="w-full rounded-2xl bg-emerald-50 py-4 text-center text-sm font-bold text-emerald-600">
+                      تم التسليم بنجاح ✅
+                    </div>
+                  ) : (
+                    <button
+                      onClick={redirectToLogin}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-sm font-black text-white shadow-md shadow-primary/20 transition-all hover:bg-[#004d44]"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">lock</span>
+                      سجل دخولك لحجز هذا الغرض 🎁
+                    </button>
+                  )
+                ) : isDonor ? (
                   <div className="space-y-3">
                     <div className="w-full rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-4 text-center text-sm font-bold text-gray-500">
                       هذا التبرع مقدم منك 🎁
@@ -358,7 +377,6 @@ export default function ItemDetailsPage() {
                       )}
                     </button>
                   </div>
-
                 ) : isWaitlisted ? (
                   <button
                     onClick={handleCancelAction}
@@ -371,7 +389,6 @@ export default function ItemDetailsPage() {
                       "الانسحاب من الانتظار 🚶‍♂️"
                     )}
                   </button>
-
                 ) : item.status === "متاح" ? (
                   <LevelGate>
                     <button
@@ -386,7 +403,6 @@ export default function ItemDetailsPage() {
                       )}
                     </button>
                   </LevelGate>
-
                 ) : (
                   <LevelGate
                     fallback={

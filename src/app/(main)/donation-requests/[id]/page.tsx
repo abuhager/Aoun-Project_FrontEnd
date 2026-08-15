@@ -5,8 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import axiosInstance from "@/lib/api/axiosInstance";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
-import { useSocket } from "@/context/SocketContext";
-import ChatDrawer from "@/components/ChatDrawer";
 import type {
   DonationRequest,
   DonationOffer,
@@ -16,28 +14,13 @@ export default function DonationRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
-  const { socket } = useSocket();
-
   const [request, setRequest] = useState<DonationRequest | null>(null);
   const [offers, setOffers] = useState<DonationOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
   const [accepting, setAccepting] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  const [chatTarget, setChatTarget] = useState<{
-    itemId: string;
-    itemTitle: string;
-  } | null>(null);
-
-  const [isChatOpen, setIsChatOpen] = useState(false);
-
-  const requestRef = useRef<DonationRequest | null>(null);
-  useEffect(() => {
-    requestRef.current = request;
-  }, [request]);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((msg: string, ok: boolean) => {
@@ -87,50 +70,6 @@ export default function DonationRequestDetailPage() {
     fetchOffers();
   }, [fetchRequest, fetchOffers]);
 
-  useEffect(() => {
-    if (!socket || !id) return;
-
-    const handleRecipientConfirmed = (data: { itemId: string }) => {
-      if (requestRef.current?.fulfilledByItem?._id !== data.itemId) return;
-      setRequest((prev) => {
-        if (!prev?.fulfilledByItem) return prev;
-        return {
-          ...prev,
-          fulfilledByItem: {
-            ...prev.fulfilledByItem,
-            recipientConfirmed: true,
-          },
-        };
-      });
-    };
-
-    const handleDeliveryCompleted = (data: { itemId: string }) => {
-      if (requestRef.current?.fulfilledByItem?._id !== data.itemId) return;
-      setRequest((prev) => {
-        if (!prev?.fulfilledByItem) return prev;
-        return {
-          ...prev,
-          status: "fulfilled",
-          fulfilledByItem: {
-            ...prev.fulfilledByItem,
-            donorConfirmed: true,
-            recipientConfirmed: true,
-            status: "تم التسليم",
-          },
-        };
-      });
-      showToast("🎉 تم التسليم بنجاح!", true);
-    };
-
-    socket.on("recipient:confirmed", handleRecipientConfirmed);
-    socket.on("delivery:completed", handleDeliveryCompleted);
-
-    return () => {
-      socket.off("recipient:confirmed", handleRecipientConfirmed);
-      socket.off("delivery:completed", handleDeliveryCompleted);
-    };
-  }, [id, socket, showToast]);
-
   const handleAcceptOffer = async (offerId: string) => {
     setAccepting(offerId);
     try {
@@ -142,48 +81,10 @@ export default function DonationRequestDetailPage() {
       setOffers([]);
       await fetchRequest();
     } catch (err) {
-      setIsChatOpen(false);
-      setChatTarget(null);
       await fetchRequest();
       showToast(extractErrorMsg(err, "تعذر قبول العرض"), false);
     } finally {
       setAccepting(null);
-    }
-  };
-
-  const handleConfirmReceipt = async () => {
-    if (!request?.fulfilledByItem?._id) return;
-    setConfirming(true);
-
-    setRequest((prev) => {
-      if (!prev?.fulfilledByItem) return prev;
-      return {
-        ...prev,
-        fulfilledByItem: { ...prev.fulfilledByItem, recipientConfirmed: true },
-      };
-    });
-
-    try {
-      await axiosInstance.put(
-        `/api/items/complete/${request.fulfilledByItem._id}`,
-        { confirmationType: "recipient_confirm" }
-      );
-      showToast("✅ تم تأكيدك — في انتظار تأكيد المتبرع", true);
-      setTimeout(() => fetchRequest(), 800);
-    } catch (err) {
-      setRequest((prev) => {
-        if (!prev?.fulfilledByItem) return prev;
-        return {
-          ...prev,
-          fulfilledByItem: {
-            ...prev.fulfilledByItem,
-            recipientConfirmed: false,
-          },
-        };
-      });
-      showToast(extractErrorMsg(err, "تعذر تأكيد الاستلام"), false);
-    } finally {
-      setConfirming(false);
     }
   };
 
@@ -224,42 +125,12 @@ export default function DonationRequestDetailPage() {
   }
 
   const isOwner = currentUserId === request.requester?._id;
-
   const respondedItem = request.fulfilledByItem ?? null;
   const isAccepted = request.status === "fulfilled" || !!respondedItem;
-
-  const recipientDone = respondedItem?.recipientConfirmed ?? false;
-  const donorDone = respondedItem?.donorConfirmed ?? false;
-  const fullyDone = (recipientDone && donorDone) || respondedItem?.status === "تم التسليم";
-
   const showCaseB = request.status === "active" && !isOwner && !isAccepted;
-
-  const donorObj = respondedItem?.donor;
-  const donorId =
-    donorObj && typeof donorObj === "object" && "_id" in donorObj
-      ? (donorObj as { _id: string })._id
-      : (donorObj as unknown as string);
-
-  const isAuthorizedForChat =
-    !!currentUserId &&
-    (currentUserId === request.requester?._id || currentUserId === donorId);
-
-  const showChat = isAccepted && !fullyDone && isAuthorizedForChat;
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
-      {showChat && chatTarget && isChatOpen && (
-        <ChatDrawer
-          itemId={chatTarget.itemId}
-          itemTitle={chatTarget.itemTitle}
-          isOpen={isChatOpen}
-          onClose={() => {
-            setIsChatOpen(false);
-            setChatTarget(null);
-          }}
-        />
-      )}
-
       {toast && (
         <div
           className={`fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-2xl px-6 py-3 text-sm font-bold text-white shadow-[0_14px_35px_rgba(0,0,0,0.16)] transition-all ${
@@ -339,7 +210,7 @@ export default function DonationRequestDetailPage() {
               />
               <MiniStat
                 label="الحالة الحالية"
-                value={fullyDone ? "مكتمل" : isAccepted ? "قيد التسليم" : "مفتوح"}
+                value={isAccepted ? "تمت تلبيته" : "مفتوح"}
                 tone="text-[#1f2526]"
               />
             </div>
@@ -394,7 +265,7 @@ export default function DonationRequestDetailPage() {
               </section>
             )}
 
-            {/* CASE C: تم قبول عرض ومرحلة التسليم جارية */}
+            {/* CASE C: تم قبول عرض */}
             {isAccepted && respondedItem && (
               <section className="rounded-[28px] border border-primary/20 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2">
@@ -402,57 +273,16 @@ export default function DonationRequestDetailPage() {
                     handshake
                   </span>
                   <h2 className="text-base font-black text-[#1d2324]">
-                    {fullyDone ? "تم استلام الغرض 🎉" : "مرحلة التسليم والمتابعة"}
+                    تفاصيل التبرع المقبول 🎉
                   </h2>
                 </div>
-
-                <p className="mt-2 text-sm leading-7 text-[#6d665f]">
-                  {fullyDone
-                    ? "أكمل الطرفان عملية التسليم بنجاح، وتم تسليم الغرض بالكامل."
-                    : "تم اختيار متبرع لهذا الطلب، والخطوة التالية هي التنسيق وإتمام التسليم عبر النقطة الآمنة المحددة."}
-                </p>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <InfoRow label="المتبرع" value={respondedItem.donor?.name ?? "—"} />
                   <InfoRow label="حالة الغرض" value={respondedItem.condition ?? "—"} />
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <ConfirmIndicator label="تأكيد المستلم" done={recipientDone} />
-                  <ConfirmIndicator label="تأكيد المتبرع" done={donorDone} />
-                </div>
-
-                {/* زر التأكيد لصاحب الطلب */}
-                {isOwner && (
-                  <div className="mt-4 pt-3 border-t border-[#f1ece5]">
-                    {!recipientDone ? (
-                      <button
-                        onClick={handleConfirmReceipt}
-                        disabled={confirming}
-                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-black text-white transition-all hover:bg-primary/90 disabled:opacity-50"
-                      >
-                        {confirming ? (
-                          <>
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                            جاري التأكيد...
-                          </>
-                        ) : (
-                          "✅ تأكيد استلام الغرض"
-                        )}
-                      </button>
-                    ) : !donorDone ? (
-                      <div className="w-full rounded-2xl border border-yellow-100 bg-yellow-50 py-3 text-center text-sm font-black text-yellow-700">
-                        ⏳ تم تأكيدك — في انتظار تأكيد المتبرع
-                      </div>
-                    ) : (
-                      <div className="w-full rounded-2xl border border-green-100 bg-green-50 py-3 text-center text-sm font-black text-green-700">
-                        🎉 تم التسليم بنجاح!
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {!fullyDone && respondedItem.safeHub && (
+                {respondedItem.safeHub && (
                   <div className="mt-4 rounded-2xl border border-primary/10 bg-primary/5 p-4">
                     <p className="text-xs font-black text-primary">
                       📍 نقطة التسليم الآمنة
@@ -497,44 +327,21 @@ export default function DonationRequestDetailPage() {
 
           {/* Right Column */}
           <div className="space-y-5">
-            {/* التنسيق والمحادثة */}
+            {/* عرض صفحة الغرض */}
             {isAccepted && respondedItem && (
               <section className="rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-sm">
-                <h2 className="text-sm font-black text-[#1f2526]">التنسيق والمتابعة</h2>
+                <h2 className="text-sm font-black text-[#1f2526]">متابعة الغرض</h2>
                 <p className="mt-2 text-sm leading-7 text-[#716a62]">
-                  استخدم المحادثة لتنسيق موعد ومكان الاستلام عبر النقطة الآمنة.
+                  يمكنك استعراض الصفحة الكاملة للغرض المرتبط بهذا الطلب لمشاهدة التفاصيل والصور.
                 </p>
 
-                <div className="mt-4 space-y-2">
-                  {showChat ? (
-                    <button
-                      onClick={() => {
-                        const itemObj = respondedItem as { _id?: string };
-                        setChatTarget({
-                          itemId: itemObj?._id || "",
-                          itemTitle: request.title,
-                        });
-                        setIsChatOpen(true);
-                      }}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary/5 py-3 text-sm font-black text-primary transition-all hover:bg-primary/10"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">
-                        chat
-                      </span>
-                      محادثة لتنسيق التسليم
-                    </button>
-                  ) : !fullyDone ? (
-                    <div className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-3 text-center text-[11px] font-bold text-gray-400">
-                      🔒 التنسيق والمراسلة متاحان فقط لأطراف عملية التبرع
-                    </div>
-                  ) : null}
-
+                <div className="mt-4">
                   <button
                     onClick={() => {
                       const itemObj = respondedItem as { _id?: string };
                       router.push(`/items/${itemObj?._id || ""}?ref=donation-request`);
                     }}
-                    className="w-full rounded-2xl bg-[#f3f1ec] py-3 text-xs font-black text-[#615b54] transition-all hover:bg-[#ebe6df]"
+                    className="w-full rounded-2xl bg-primary py-3 text-xs font-black text-white transition-all hover:bg-primary/90"
                   >
                     عرض صفحة الغرض كاملة ←
                   </button>
@@ -582,21 +389,6 @@ function MiniStat({
     <div className="rounded-2xl border border-black/[0.05] bg-[#fcfbf8] p-3 text-center">
       <p className={`text-base font-black ${tone}`}>{value}</p>
       <p className="mt-1 text-[10px] font-bold text-gray-400">{label}</p>
-    </div>
-  );
-}
-
-function ConfirmIndicator({ label, done }: { label: string; done: boolean }) {
-  return (
-    <div
-      className={`flex items-center gap-2 rounded-2xl px-3 py-3 text-xs font-black ${
-        done ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-400"
-      }`}
-    >
-      <span className="material-symbols-outlined text-[16px]">
-        {done ? "check_circle" : "radio_button_unchecked"}
-      </span>
-      {label}
     </div>
   );
 }

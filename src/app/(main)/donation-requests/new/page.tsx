@@ -1,6 +1,7 @@
 // src/app/(main)/donation-requests/new/page.tsx
 // [FIX-2] /api/settings/public بدل /api/settings — جلب التصنيفات والمناطق ديناميكياً
 // [FIX-4] جلب quota عند mount + تحذير + تعطيل زر النشر عند remaining=0
+// [FIX-ROUTING] التوجيه لصفحة طلبات التبرع العامة بعد النشر
 "use client";
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -62,7 +63,8 @@ export default function NewDonationRequestPage() {
         location: form.location 
       });
       setToast({ msg: res.msg ?? 'تم نشر الطلب بنجاح', ok: true });
-      setTimeout(() => router.push('/donation-requests?mine=true'), 700);
+      // ✅ التوجيه إلى صفحة قائمة طلبات التبرع
+      setTimeout(() => router.push('/donation-requests'), 700);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ?? 'حدث خطأ';
       setToast({ msg, ok: false });

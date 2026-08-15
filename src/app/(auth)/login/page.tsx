@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
 import { useRedirectIfAuth } from "../hooks/useRedirectIfAuth";
 import { useLogin } from "./hooks/useLogin";
 import { useSiteConfig } from "@/context/SiteConfigContext";
@@ -12,8 +11,14 @@ export default function LoginPage() {
   const { formData, loading, error, handleChange, handleSubmit } = useLogin();
   const { platformName } = useSiteConfig();
 
-  // [UX-01] ✅ حالة إظهار/إخفاء كلمة المرور
-  const [showPassword, setShowPassword] = useState(false);
+  // ⚡ دالة مساعدة لتعبئة بيانات الحساب التجريبي بنقرة واحدة
+  const handleQuickFill = (email: string) => {
+    const syntheticEvent = (name: string, value: string) =>
+      ({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
+
+    handleChange(syntheticEvent("email", email));
+    handleChange(syntheticEvent("password", "1870547aA"));
+  };
 
   return (
     <main
@@ -22,7 +27,7 @@ export default function LoginPage() {
     >
       {/* ─── القسم الأيمن: الفورم ─── */}
       <section className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 lg:p-24 bg-surface z-10 relative">
-        <div className="w-full max-w-md space-y-10">
+        <div className="w-full max-w-md space-y-8">
 
           <div className="flex flex-col items-start gap-2">
             <span className="text-3xl font-black text-primary tracking-tight">
@@ -36,7 +41,37 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* [UX-07] ✅ role="alert" لقارئات الشاشة */}
+          {/* 🌟 بطاقات سريعة لتسجيل حسابات الديمو (Demo Accounts) */}
+          <div className="p-4 rounded-xl bg-surface-container-highest border border-outline-variant/30 space-y-2">
+            <p className="text-xs font-bold text-on-surface-variant">
+              ⚡ تجربة سريعة (Demo Accounts):
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickFill("admin@aoun.jo")}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                🛡️ مسؤول (Admin)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill("donor@gmail.com")}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+              >
+                🎁 متبرع (Donor)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill("sara@student.ju.edu.jo")}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
+              >
+                🎓 مستلمة (Student)
+              </button>
+            </div>
+          </div>
+
+          {/* رسالة الخطأ */}
           {error && (
             <div
               role="alert"
@@ -47,10 +82,9 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* [UX-05] ✅ aria-label على الفورم + noValidate */}
           <form
             onSubmit={handleSubmit}
-            className="space-y-6"
+            className="space-y-5"
             aria-label="نموذج تسجيل الدخول"
             noValidate
           >
@@ -65,7 +99,6 @@ export default function LoginPage() {
                   البريد الإلكتروني
                 </label>
                 <div className="relative group">
-                  {/* [UX-05] ✅ aria-hidden على الأيقونات الزخرفية */}
                   <span
                     aria-hidden="true"
                     className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors"
@@ -96,7 +129,6 @@ export default function LoginPage() {
                   >
                     كلمة المرور
                   </label>
-                  {/* [UX-04] ✅ Link بدلاً من <a href> */}
                   <Link
                     href="/forgot-password"
                     className="text-sm font-bold text-primary hover:text-primary-container transition-colors"
@@ -113,7 +145,7 @@ export default function LoginPage() {
                   </span>
                   <input
                     id="login-password"
-                    type={showPassword ? "text" : "password"}
+                    type="password"
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
@@ -121,29 +153,16 @@ export default function LoginPage() {
                     dir="ltr"
                     autoComplete="current-password"
                     placeholder="••••••••"
-                    className="w-full pr-12 pl-12 py-4 bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all text-on-surface placeholder:text-outline outline-none text-left"
+                    className="w-full pr-12 pl-6 py-4 bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all text-on-surface placeholder:text-outline outline-none text-left"
                   />
-                  {/* [UX-01] ✅ زر إظهار/إخفاء كلمة المرور */}
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
-                    aria-pressed={showPassword}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded"
-                  >
-                    <span aria-hidden="true" className="material-symbols-outlined text-xl">
-                      {showPassword ? "visibility_off" : "visibility"}
-                    </span>
-                  </button>
                 </div>
               </div>
             </div>
 
-            {/* [UX-08] ✅ btn-primary بدلاً من gradient */}
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary text-lg"
+              className="btn-primary text-lg w-full py-4 rounded-lg flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

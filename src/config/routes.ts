@@ -1,3 +1,5 @@
+// src/config/routes.ts
+
 export const PROTECTED_PREFIXES = [
   '/dashboard',
   '/profile',
@@ -9,8 +11,7 @@ export const PROTECTED_PREFIXES = [
   '/handover',
   '/conversations',
   '/notifications',
-  '/leaderboard',  // ✅ FL13-08: كانت مفقودة
-  '/items',        // ✅ FL13-08: كانت مفقودة
+  '/leaderboard',
 ] as const;
 
 export type ProtectedPrefix = typeof PROTECTED_PREFIXES[number];
@@ -35,8 +36,13 @@ export const AUTH_PUBLIC_PATHS = [
   '/auth/resend-otp',
 ] as const;
 
-export const isProtectedPath = (pathname: string): boolean =>
-  PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+// ✅ استثناء مسار تفاصيل الغرض /items/:id ليتمكن الزائر من مشاهدته
+export const isProtectedPath = (pathname: string): boolean => {
+  if (pathname.startsWith('/items/')) {
+    return false;
+  }
+  return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+};
 
 export const isAuthOnlyPath = (pathname: string): boolean =>
   AUTH_ONLY_PATHS.some((path) => pathname.startsWith(path));

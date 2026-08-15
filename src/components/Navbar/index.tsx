@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavbar } from "./useNavbar";
 import { useSiteConfig } from "@/context/SiteConfigContext";
-import { useSocket } from "@/context/SocketContext"; // ← استيراد السوكت للاستماع اللحظي
+import { useSocket } from "@/context/SocketContext";
 import NotificationBell from "@/components/NotificationBell";
 import ConversationsDrawer from "@/components/ConversationsDrawer";
 import axiosInstance from "@/lib/api/axiosInstance";
@@ -13,19 +13,19 @@ import axiosInstance from "@/lib/api/axiosInstance";
 const NAV_LINKS = [
   { href: "/#how-it-works", icon: "help", label: "كيف نعمل؟", authRequired: false },
   { href: "/hubs", icon: "warehouse", label: "مراكز التسليم", authRequired: false },
-  { href: "/leaderboard", icon: "leaderboard", label: "المتصدرون", authRequired: false },
+  { href: "/leaderboard", icon: "leaderboard", label: "المتصدرون", authRequired: true }, // ✅ محصور فقط للمسجلين
   { href: "/browse", icon: "explore", label: "تصفح الأغراض", authRequired: true },
   { href: "/donation-requests", icon: "volunteer_activism", label: "طلبات التبرع", authRequired: true },
 ] as const;
 
 interface ConversationUnreadItem {
   _id: string;
-  unreadCount: number; // 👈 تصحيح التسمية لتتطابق مع الـ Backend
+  unreadCount: number;
 }
 
 export default function Navbar() {
   const { platformName } = useSiteConfig();
-  const { socket } = useSocket(); // 👈 جلب كائن السوكت
+  const { socket } = useSocket();
 
   const {
     pathname,
@@ -68,14 +68,12 @@ export default function Navbar() {
           : response.data;
       const data = Array.isArray(rawData) ? rawData : [];
       
-      // 👈 تصحيح الحساب ليعتمد على unreadCount بدلاً من unread الميتة
       return data.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
     } catch {
       return 0;
     }
   }, []);
 
-  // 1️⃣ تحديث العداد دورياً عند تحميل الصفحة وتغير حالة المستخدم
   useEffect(() => {
     if (!isReadyForUserData) return;
     let cancelled = false;
@@ -99,7 +97,6 @@ export default function Navbar() {
     return () => { cancelled = true; };
   }, [isReadyForUserData, fetchUnreadCount]);
 
-  // 2️⃣ 🌟 الاستماع اللحظي لتحديث شارة الرسائل فوراً وبدون ريفريش
   useEffect(() => {
     if (!socket || !isReadyForUserData) return;
 
@@ -116,7 +113,6 @@ export default function Navbar() {
     };
   }, [socket, isReadyForUserData, fetchUnreadCount]);
 
-  // 3️⃣ 🌟 الاستماع لحدث الإشعارات المنبثقة ومنع ظهورها للمرسل نفسه
   useEffect(() => {
     if (!socket || !isReadyForUserData) return;
 
@@ -126,11 +122,8 @@ export default function Navbar() {
       from: { _id: string; name: string };
       preview: string;
     }) => {
-      // إذا كان المستخدم الحالي هو نفسه مرسل الرسالة، نبتلع الإشعار تماماً من شاشته
       if (payload.from?._id === user?._id) return;
-
       console.log(`🔔 إشعار منبثق جديد لـ ${firstName} من ${payload.from?.name}`);
-      // هنا يمكنك إطلاق الـ Toast الخاص بك مثل: toast(payload.preview)
     };
 
     socket.on("notification_new", onNotificationNew);

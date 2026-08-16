@@ -1,6 +1,1 @@
-# Aoun Project 🤝
-
-الموقع الرسمي لمشروع "عون". منصة تهدف إلى تقديم المساعدة للمجتمع.
-
-## 🔗 روابط المشروع
-* **رابط المعاينة المباشرة (Live Demo):** https://aoun-project-theta.vercel.app/
+Comprehensive technical documentation for Aoun Platform showcasing Next.js 14 App Router (Frontend) and Node.js Layered Architecture (Backend) with Repository-Service pattern, Socket.io, and TypeScript. DEMO : https://aoun-project-theta.vercel.app/

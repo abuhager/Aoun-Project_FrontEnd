@@ -5,7 +5,6 @@ import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import { useBrowse } from "./hooks/useBrowse";
 import { useSettings } from "@/hooks/useSettings";
-import { useSiteConfig } from "@/context/SiteConfigContext";
 
 const CITIES = ["عمان", "إربد", "الزرقاء", "العقبة"] as const;
 
@@ -24,7 +23,6 @@ function SkeletonCard() {
   );
 }
 
-/* ── Item Card ────────────────────────────────────────────────── */
 /* ── Item Card ─────────────────────────────────────────────────── */
 function ItemCard({
   item,
@@ -39,21 +37,21 @@ function ItemCard({
     location?: string;
     condition?: string;
     category?: string;
-    status?: string;          // ✅ FIX [BROWSE-03]
-    waitlistCount?: number;   // ✅ FIX [BROWSE-04]
+    status?: string;
+    waitlistCount?: number;
   };
   index: number;
 }) {
-  // ✅ FIX [BROWSE-03]: تحديد هل الـ item محجوز
-  const isBooked = item.status === 'محجوز';
+  const isBooked = item.status === "محجوز";
 
   return (
     <Link
       href={`/items/${item._id}`}
       className={`group flex h-full flex-col overflow-hidden rounded-[28px] border bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(1,105,111,0.12)]
-        ${isBooked
-          ? 'border-orange-200 opacity-85 hover:border-orange-300'  // ✅ محجوز = border برتقالي
-          : 'border-[#e9e3da] hover:border-primary/20'              // متاح = border عادي
+        ${
+          isBooked
+            ? "border-orange-200 opacity-85 hover:border-orange-300"
+            : "border-[#e9e3da] hover:border-primary/20"
         }`}
     >
       <div className="relative h-56 w-full overflow-hidden bg-[#f3efe9]">
@@ -65,19 +63,19 @@ function ItemCard({
           unoptimized
           priority={index < 4}
           className={`object-cover transition-transform duration-500 ease-out group-hover:scale-105
-            ${isBooked ? 'grayscale-[30%]' : ''}`} // ✅ محجوز = تعتيم خفيف
+            ${isBooked ? "grayscale-[30%]" : ""}`}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
 
-        {/* ✅ FIX [BROWSE-03]: Badge "محجوز" واضح فوق الصورة */}
         {isBooked && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="rounded-2xl border border-orange-300/60 bg-orange-500/85 px-5 py-2.5 backdrop-blur-sm shadow-lg">
               <div className="flex items-center gap-2 text-white">
-                <span className="material-symbols-outlined text-[18px]">schedule</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  schedule
+                </span>
                 <span className="text-[13px] font-black">محجوز</span>
               </div>
-              {/* ✅ FIX [BROWSE-04]: عدد المنتظرين إن وُجد */}
               {(item.waitlistCount ?? 0) > 0 && (
                 <p className="mt-1 text-center text-[11px] font-bold text-orange-100">
                   {item.waitlistCount} في قائمة الانتظار
@@ -104,7 +102,9 @@ function ItemCard({
         </div>
 
         <div className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur-md">
-          <span className="material-symbols-outlined text-[14px]">location_on</span>
+          <span className="material-symbols-outlined text-[14px]">
+            location_on
+          </span>
           {item.location || "غير محدد"}
         </div>
       </div>
@@ -118,21 +118,27 @@ function ItemCard({
           {item.title || item.name}
         </h3>
 
-        {/* ✅ FIX [BROWSE-03]: زر مختلف حسب الحالة */}
-        <div className={`mt-5 flex items-center justify-center gap-1.5 rounded-2xl border py-3 text-[13px] font-black transition-all duration-300
-          ${isBooked
-            ? 'border-orange-200 bg-orange-50 text-orange-600 group-hover:border-orange-400 group-hover:bg-orange-500 group-hover:text-white'
-            : 'border-primary/15 bg-primary/[0.05] text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-white'
-          }`}>
+        <div
+          className={`mt-5 flex items-center justify-center gap-1.5 rounded-2xl border py-3 text-[13px] font-black transition-all duration-300
+          ${
+            isBooked
+              ? "border-orange-200 bg-orange-50 text-orange-600 group-hover:border-orange-400 group-hover:bg-orange-500 group-hover:text-white"
+              : "border-primary/15 bg-primary/[0.05] text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-white"
+          }`}
+        >
           {isBooked ? (
             <>
-              <span className="material-symbols-outlined text-[15px]">queue</span>
+              <span className="material-symbols-outlined text-[15px]">
+                queue
+              </span>
               انضم لقائمة الانتظار
             </>
           ) : (
             <>
               عرض التفاصيل
-              <span className="material-symbols-outlined text-[15px]">arrow_back</span>
+              <span className="material-symbols-outlined text-[15px]">
+                arrow_back
+              </span>
             </>
           )}
         </div>
@@ -153,7 +159,6 @@ export default function BrowsePage() {
     selectedCategory,
     setSelectedCategory,
   } = useBrowse();
-  const { platformName } = useSiteConfig();
 
   const { categories, isLoading: settingsLoading } = useSettings();
 
@@ -170,76 +175,7 @@ export default function BrowsePage() {
     >
       <Navbar />
 
-      <main className="mx-auto max-w-7xl px-4 pb-24 pt-24 md:px-8 md:pt-28">
-        {/* ── Hero Header ───────────────────────────────────── */}
-        <section className="relative mb-7 overflow-hidden rounded-[34px] border border-[#e8e2d9] bg-[linear-gradient(180deg,#fffdfa_0%,#f7f4ee_100%)] p-6 shadow-[0_12px_30px_rgba(15,23,42,0.04)] md:p-8">
-          <div className="absolute -right-10 top-0 h-40 w-40 rounded-full bg-primary/5 blur-3xl" />
-          <div className="absolute -left-8 bottom-0 h-36 w-36 rounded-full bg-[#005a8c]/[0.05] blur-3xl" />
-
-          <div className="relative grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/5 px-3 py-1.5 text-[11px] font-extrabold text-primary">
-                <span className="material-symbols-outlined text-[15px]">
-                  travel_explore
-                </span>
-                Explore community donations
-              </div>
-
-              <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight text-[#1f312f] md:text-5xl">
-                تصفّح التبرعات
-                <span className="block text-primary">واختر ما يناسب حاجتك</span>
-              </h1>
-
-              <p className="mt-4 max-w-2xl text-sm leading-8 text-[#776f67] md:text-base">
-                استكشف المواد والخدمات المتاحة داخل مجتمع {platformName} عبر تجربة تصفح أوضح،
-                أسرع، وأسهل في الفرز والمقارنة.
-              </p>
-
-              <div className="mt-6 flex flex-wrap gap-2.5">
-                <span className="rounded-full border border-[#e8e2d9] bg-white px-4 py-2 text-xs font-black text-[#655f59] shadow-sm">
-                  {filteredItems.length} نتيجة متاحة
-                </span>
-                <span className="rounded-full border border-[#e8e2d9] bg-white px-4 py-2 text-xs font-black text-[#655f59] shadow-sm">
-                  {settingsLoading ? "..." : `${categories.length} تصنيف`}
-                </span>
-                <span className="rounded-full border border-[#e8e2d9] bg-white px-4 py-2 text-xs font-black text-[#655f59] shadow-sm">
-                  4 مدن رئيسية
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-[28px] border border-[#ebe4db] bg-white p-5 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <span className="material-symbols-outlined text-[20px]">
-                    search
-                  </span>
-                </div>
-                <p className="mt-6 text-2xl font-black text-[#1f312f]">
-                  سريع
-                </p>
-                <p className="mt-1 text-xs leading-6 text-[#8b847c]">
-                  بحث مباشر وفلاتر واضحة بدون تعقيد
-                </p>
-              </div>
-
-              <div className="rounded-[28px] border border-[#ebe4db] bg-white p-5 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eaf4fb] text-[#005a8c]">
-                  <span className="material-symbols-outlined text-[20px]">
-                    category
-                  </span>
-                </div>
-                <p className="mt-6 text-2xl font-black text-[#1f312f]">
-                  منظّم
-                </p>
-                <p className="mt-1 text-xs leading-6 text-[#8b847c]">
-                  تصفّح حسب المدينة أو التصنيف بسهولة
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
+      <main className="mx-auto max-w-7xl px-4 pb-24 pt-20 md:px-8 md:pt-24">
         {/* ── Filter Bar ───────────────────────────────────── */}
         <section className="mb-5 overflow-hidden rounded-[30px] border border-[#e8e2d9] bg-white shadow-[0_10px_26px_rgba(15,23,42,0.05)]">
           <div className="border-b border-[#f2ede6] bg-[#fcfaf7] px-5 py-4">
@@ -309,7 +245,9 @@ export default function BrowsePage() {
                   className="h-12 w-full appearance-none rounded-2xl border border-[#e7e1d8] bg-[#faf8f4] pr-12 pl-4 text-[13px] font-bold text-[#5e5852] outline-none transition-all duration-300 focus:border-primary/40 focus:bg-white focus:shadow-[0_0_0_4px_rgba(1,105,111,0.08)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">
-                    {settingsLoading ? "جاري تحميل التصنيفات..." : "كل التصنيفات"}
+                    {settingsLoading
+                      ? "جاري تحميل التصنيفات..."
+                      : "كل التصنيفات"}
                   </option>
                   {categories.map((category) => (
                     <option key={category} value={category}>
@@ -382,25 +320,6 @@ export default function BrowsePage() {
                 لا توجد تصنيفات متاحة حالياً
               </p>
             )}
-          </div>
-        </section>
-
-        {/* ── Listing Management ───────────────────────────── */}
-        <section className="mb-5 flex flex-col gap-3 rounded-[24px] border border-[#e8e2d9] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-black text-[#223433]">
-              نتائج التصفح
-            </p>
-            <p className="mt-1 text-xs text-[#918981]">
-              بطاقات مختصرة تركز على الصورة، العنوان، والمعلومة الأهم فقط.
-            </p>
-          </div>
-
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#f5f1eb] px-3 py-2 text-[12px] font-black text-[#5f5953]">
-            <span className="material-symbols-outlined text-[15px] text-primary">
-              grid_view
-            </span>
-            {loading ? "جاري التحميل..." : `${filteredItems.length} عنصر`}
           </div>
         </section>
 

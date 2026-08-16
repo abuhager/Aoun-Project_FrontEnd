@@ -2,7 +2,7 @@
 
 Comprehensive technical documentation for the Aoun Platform frontend, showcasing Next.js 14 App Router, TypeScript, and clean modular architecture.
 
-🔗 **Live Demo**: [https://aoun-project-theta.vercel.app/](https://aoun-project-theta.vercel.app/)[cite: 1]
+🔗 **Live Demo**: [https://aoun-project-theta.vercel.app/](https://aoun-project-theta.vercel.app/)
 
 ---
 

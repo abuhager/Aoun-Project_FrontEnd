@@ -21,7 +21,7 @@ export const AUTH_ONLY_PATHS = [
   '/register',
   '/forgot-password',
   '/reset-password',
-  '/verify-email',
+  '/verify',
 ] as const;
 
 export type AuthOnlyPath = typeof AUTH_ONLY_PATHS[number];
@@ -30,22 +30,38 @@ export const AUTH_PUBLIC_PATHS = [
   '/auth/refresh',
   '/auth/login',
   '/auth/register',
-  '/auth/verify',
-  '/auth/forgot',
-  '/auth/reset',
+  '/auth/verify-email',
+  '/auth/forgot-password',
+  '/auth/reset-password',
   '/auth/resend-otp',
 ] as const;
 
+export const matchesRoutePrefix = (pathname: string, prefix: string): boolean =>
+  pathname === prefix || pathname.startsWith(`${prefix}/`);
+
 // ✅ استثناء مسار تفاصيل الغرض /items/:id ليتمكن الزائر من مشاهدته
 export const isProtectedPath = (pathname: string): boolean => {
-  if (pathname.startsWith('/items/')) {
-    return false;
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments[0] === 'items') {
+    return segments.length > 2;
   }
-  return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  return PROTECTED_PREFIXES.some((prefix) => matchesRoutePrefix(pathname, prefix));
 };
 
 export const isAuthOnlyPath = (pathname: string): boolean =>
-  AUTH_ONLY_PATHS.some((path) => pathname.startsWith(path));
+  AUTH_ONLY_PATHS.some((path) => matchesRoutePrefix(pathname, path));
 
-export const isAuthSafeUrl = (url: string): boolean =>
-  AUTH_PUBLIC_PATHS.some((p) => url.includes(p));
+export const isAuthSafeUrl = (url: string): boolean => {
+  let pathname: string;
+  try {
+    pathname = new URL(url, 'http://aoun.local').pathname;
+  } catch {
+    pathname = url.split('?')[0];
+  }
+  const normalizedPath = pathname.replace(/^\/api(?=\/)/, '');
+  return AUTH_PUBLIC_PATHS.some((path) =>
+    path === '/auth/reset-password'
+      ? matchesRoutePrefix(normalizedPath, path)
+      : normalizedPath === path
+  );
+};

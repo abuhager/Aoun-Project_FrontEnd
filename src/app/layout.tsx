@@ -1,9 +1,4 @@
-// src/app/layout.tsx — FULLY PATCHED (Flow-1 Audit)
-// ✅ ARCH-01: ترتيب الـ Providers صحيح — SocketProvider يغلِّف GlobalRatingModal و children
-//             السبب: GlobalRatingModal قد تستمع لـ Socket events → يجب أن تكون داخل SocketProvider
-// ✅ LOGIC-03: getPublicSettings() محاطة بـ .catch(() => null) في موضعين
-//             السبب: هذه Server Component تعمل عند كل request — أي فشل في الـ API
-//             يُعطِّل الموقع كله بدون هذا الـ catch. مع الإصلاح: fallback للقيم الافتراضية
+/* eslint-disable @next/next/no-page-custom-font -- Material Symbols stylesheet provides icons. */
 
 import type { Metadata } from "next";
 import { Tajawal, Cairo } from "next/font/google";
@@ -12,7 +7,7 @@ import "./globals.css";
 import { AuthProvider }       from "@/context/AuthContext";
 import GlobalRatingModal      from "@/components/GlobalRatingModal";
 import { SiteConfigProvider } from "@/context/SiteConfigContext";
-import { getPublicSettings }  from "@/lib/api/settingsApi";
+import { getServerPublicSettings } from "@/lib/api/publicSettingsServer";
 import { siteConfig }         from "@/config/site.config";
 import { SocketProvider }     from "@/context/SocketContext";
 
@@ -33,8 +28,7 @@ const cairo = Cairo({
 
 // ── Metadata ديناميكية ─────────────────────────────────────────
 export async function generateMetadata(): Promise<Metadata> {
-  // ✅ LOGIC-03: فشل الـ API لا يكسر generateMetadata — يرجع لـ siteConfig كـ fallback
-  const settings = await getPublicSettings().catch(() => null);
+  const settings = await getServerPublicSettings();
   const name     = settings?.platformName ?? siteConfig.name;
 
   return {
@@ -48,15 +42,13 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
 
-  // ✅ LOGIC-03: .catch(() => null) — Backend بطيء أو معطَّل لا يكسر كل صفحة في الموقع
-  const settings = await getPublicSettings().catch(() => null);
+  const settings = await getServerPublicSettings();
 
   return (
     <html
       lang="ar"
       dir="rtl"
       className={`${cairo.variable} ${tajawal.variable}`}
-      suppressHydrationWarning
     >
       <head>
         <link
@@ -74,10 +66,10 @@ export default async function RootLayout({
       <body className="flex min-h-screen flex-col bg-surface text-on-surface antialiased">
         <SiteConfigProvider
           settings={
-            settings?.platformName
+            settings
               ? {
-                  platformName: settings.platformName,
-                  contactEmail: settings.contactEmail ?? "aoun.help.center@gmail.com",
+                  platformName: settings.platformName || siteConfig.name,
+                  contactEmail: settings.contactEmail ?? siteConfig.contactEmail,
                 }
               : null
           }

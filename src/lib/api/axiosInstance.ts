@@ -4,6 +4,8 @@ import { setSessionCookie, clearSessionCookie } from "@/lib/utils/cookieUtils";
 
 let accessToken: string | null = null;
 let isRefreshing = false;
+type AccessTokenListener = (token: string | null) => void;
+const accessTokenListeners = new Set<AccessTokenListener>();
 
 type RefreshQueueItem = {
   resolve: (token: string) => void;
@@ -19,13 +21,21 @@ const INIT_TIMEOUT_MS =
   parseInt(process.env.NEXT_PUBLIC_AUTH_INIT_TIMEOUT ?? "5000", 10) || 5000;
 
 export const setAccessToken = (t: string | null) => {
+  if (accessToken === t) return;
   accessToken = t;
+  accessTokenListeners.forEach((listener) => listener(t));
 };
 
 export const getAccessToken = () => accessToken;
 
+export const subscribeAccessToken = (listener: AccessTokenListener) => {
+  accessTokenListeners.add(listener);
+  listener(accessToken);
+  return () => accessTokenListeners.delete(listener);
+};
+
 export const resetAuthState = () => {
-  accessToken = null;
+  setAccessToken(null);
   isRefreshing = false;
 
   const authError = new Error("NOT_AUTHENTICATED");
@@ -56,7 +66,8 @@ function processRefreshQueue(error: Error | null, token: string | null = null) {
   refreshQueue = [];
 }
 
-const API_BASE_URL = typeof window !== "undefined" ? "" : process.env.NEXT_PUBLIC_API_URL ?? "";
+const rawServerApiUrl = process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
+const API_BASE_URL = typeof window !== "undefined" ? "" : rawServerApiUrl.replace(/\/$/, "");
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,

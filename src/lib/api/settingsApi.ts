@@ -4,7 +4,6 @@
 // ✅ DC-10 FIX: page.tsx يجب أن يستخدم هذا الملف مباشرةً — لا تكرار للـ axiosInstance
 
 import axiosInstance from "@/lib/api/axiosInstance";
-import { siteConfig } from "@/config/site.config";
 
 import type {
   PublicSettings,
@@ -16,9 +15,19 @@ import type {
 
 export async function getPublicSettings(): Promise<PublicSettings | null> {
   try {
+    const serverBaseUrl = (process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "")
+      .replace(/\/$/, "");
+    if (typeof window === "undefined" && !serverBaseUrl) return null;
+    const endpoint = typeof window === "undefined"
+      ? `${serverBaseUrl}/api/settings/public`
+      : "/api/settings/public";
+
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/settings/public`,
-      { cache: "no-store" } // ← دائماً أحدث قيمة من DB
+      endpoint,
+      {
+        cache: "no-store",
+        signal: AbortSignal.timeout(5_000),
+      }
     );
     if (!res.ok) return null;
     return res.json() as Promise<PublicSettings>;

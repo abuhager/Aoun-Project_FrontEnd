@@ -10,7 +10,7 @@ type SiteConfigType = {
 
 const SiteConfigContext = createContext<SiteConfigType>({
   platformName: siteConfig.name,
-  contactEmail: "aoun.help.center@gmail.com",
+  contactEmail: siteConfig.contactEmail,
 });
 
 export function SiteConfigProvider({
@@ -23,7 +23,7 @@ export function SiteConfigProvider({
   const config = useMemo<SiteConfigType>(
     () => ({
       platformName: settings?.platformName ?? siteConfig.name,
-      contactEmail: settings?.contactEmail ?? "aoun.help.center@gmail.com",
+      contactEmail: settings?.contactEmail ?? siteConfig.contactEmail,
     }),
     [settings?.platformName, settings?.contactEmail]
   );

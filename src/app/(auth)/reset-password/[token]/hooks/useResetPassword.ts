@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import Cookies from "js-cookie";
+import axiosInstance from "@/lib/api/axiosInstance";
 
 export function useResetPassword() {
   const { token } = useParams();
@@ -29,8 +30,9 @@ export function useResetPassword() {
 
     try {
       setLoading(true);
-      const res = await axios.put(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password/${token}`,
+      const tokenValue = Array.isArray(token) ? token[0] : token;
+      const res = await axiosInstance.post(
+        `/api/auth/reset-password/${encodeURIComponent(tokenValue ?? "")}`,
         { password }
       );
 
@@ -45,7 +47,8 @@ export function useResetPassword() {
       setTimeout(() => router.push("/login"), 3000);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.msg || "الرابط غير صالح أو انتهت صلاحيته.");
+        const data = err.response?.data as { msg?: string; message?: string } | undefined;
+        setError(data?.message || data?.msg || "الرابط غير صالح أو انتهت صلاحيته.");
       } else {
         setError("حدث خطأ غير متوقع، يرجى المحاولة لاحقاً.");
       }

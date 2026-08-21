@@ -27,15 +27,18 @@ export function useRegister() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
   const [success, setSuccess] = useState("");
+  const [emailAlreadyExists, setEmailAlreadyExists] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (e.target.name === "email") setEmailAlreadyExists(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+    setEmailAlreadyExists(false);
 
     if (formData.password !== formData.confirmPassword) {
       return setError("كلمات المرور غير متطابقة! 🛑");
@@ -57,6 +60,7 @@ export function useRegister() {
       router.push(`/verify?email=${encodeURIComponent(formData.email)}`);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
+        setEmailAlreadyExists(err.response?.data?.code === "EMAIL_ALREADY_EXISTS");
         setError(err.response?.data?.msg || "حدث خطأ أثناء إنشاء الحساب ❌");
       } else {
         setError("حدث خطأ غير متوقع ❌");
@@ -66,5 +70,13 @@ export function useRegister() {
     }
   };
 
-  return { formData, loading, error, success, handleChange, handleSubmit };
+  return {
+    formData,
+    loading,
+    error,
+    success,
+    emailAlreadyExists,
+    handleChange,
+    handleSubmit,
+  };
 }

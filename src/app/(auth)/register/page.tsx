@@ -13,7 +13,15 @@ const JORDAN_PHONE_REGEX = /^(77|78|79)\d{7}$/;
 export default function RegisterPage() {
   useRedirectIfAuth("/browse");
   const { platformName } = useSiteConfig();
-  const { formData, loading, error, success, handleChange, handleSubmit } = useRegister();
+  const {
+    formData,
+    loading,
+    error,
+    success,
+    emailAlreadyExists,
+    handleChange,
+    handleSubmit,
+  } = useRegister();
 
   // [UX-01] ✅ حالتا إظهار/إخفاء لكلمتَي المرور
   const [showPassword,        setShowPassword]        = useState(false);
@@ -78,7 +86,15 @@ export default function RegisterPage() {
             {/* [UX-07] ✅ role="alert" و role="status" */}
             {error && (
               <div role="alert" aria-live="polite" className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-xs md:text-sm text-center font-bold border border-red-200">
-                {error}
+                <p>{error}</p>
+                {emailAlreadyExists && (
+                  <Link
+                    href="/login"
+                    className="inline-block mt-2 underline underline-offset-2 hover:text-red-900"
+                  >
+                    الانتقال إلى تسجيل الدخول
+                  </Link>
+                )}
               </div>
             )}
             {success && (

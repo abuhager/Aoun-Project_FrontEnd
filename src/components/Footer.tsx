@@ -2,9 +2,11 @@
 "use client";
 
 import { useSiteConfig } from "@/context/SiteConfigContext";
+import { useAuth } from "@/context/AuthContext";
 import { usePathname } from "next/navigation";
 export default function Footer() {
   const { platformName, contactEmail } = useSiteConfig(); // ← contactEmail من DB
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
  const pathname = usePathname();
    if (pathname.startsWith("/admin")) return null;
 
@@ -67,11 +69,13 @@ export default function Footer() {
             </p>
             <nav className="flex flex-col gap-1.5" aria-label="روابط التذييل">
               {[
-                { href: "/browse",           label: "تصفح الأغراض",  icon: "explore"           },
-                { href: "/donation-requests", label: "طلبات التبرع",  icon: "volunteer_activism" },
-                { href: "/leaderboard",       label: "المتصدرون",     icon: "leaderboard"        },
-                { href: "/hubs",              label: "مراكز التسليم", icon: "warehouse"          },
-              ].map((link) => (
+                { href: "/browse",            label: "تصفح الأغراض",  icon: "explore",            authRequired: false },
+                { href: "/donation-requests", label: "طلبات التبرع",  icon: "volunteer_activism", authRequired: false },
+                { href: "/leaderboard",       label: "المتصدرون",     icon: "leaderboard",        authRequired: true  },
+                { href: "/hubs",              label: "مراكز التسليم", icon: "warehouse",          authRequired: false },
+              ]
+                .filter((link) => !link.authRequired || (!authLoading && isAuthenticated))
+                .map((link) => (
                 <a
                   key={link.href}
                   href={link.href}

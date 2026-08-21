@@ -60,7 +60,27 @@ export interface ItemsListResponse {
 }
 
 export interface MyItemsResponse {
-  user:        { _id: string; name: string; email: string; trustScore: number; quota: number };
+  user: {
+    _id:               string;
+    name:              string;
+    email:             string;
+    avatar:            string;
+    trustScore:        number;
+    trustLevel:        number;
+    quota:             number;
+    totalDonations:    number;
+    isVerifiedStudent: boolean;
+    badges:            string[];
+    gamification: {
+      trustScore:     number;
+      totalDonations: number;
+      level:          number;
+      title:          string;
+      badge:          string;
+      progress:       number;
+      pointsToNext:   number | null;
+    };
+  };
   myDonations: (Item & { reportId: string | null })[];
   myRequests:  (Item & { reportId: string | null })[];
 }

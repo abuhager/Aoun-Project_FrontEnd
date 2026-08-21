@@ -1,12 +1,14 @@
 interface ProfileCardProps {
   name?: string;
   email?: string;
+  avatar?: string;
   trustScore?: number;
 }
 
 export function ProfileCard({
   name,
   email,
+  avatar,
   trustScore = 0,
 }: ProfileCardProps) {
   const trustLabel =
@@ -22,10 +24,15 @@ export function ProfileCard({
     <section className="rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-sm md:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-50 ring-4 ring-primary/5">
-            <span className="material-symbols-outlined text-[38px] text-primary">
-              account_circle
-            </span>
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-50 ring-4 ring-primary/5">
+            {avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatar} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="material-symbols-outlined text-[38px] text-primary">
+                account_circle
+              </span>
+            )}
           </div>
 
           <div className="min-w-0">

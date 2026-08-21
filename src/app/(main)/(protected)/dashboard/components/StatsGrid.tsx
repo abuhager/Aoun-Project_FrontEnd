@@ -9,8 +9,7 @@ export function StatsGrid({
   quota = 0,
   donationsCount,
 }: StatsGridProps) {
-  const quotaUsed = Math.min(quota, 2);
-  const quotaFree = 2 - quotaUsed;
+  const availableRequests = Math.max(0, quota);
 
   const cards = [
     {
@@ -24,26 +23,12 @@ export function StatsGrid({
     },
     {
       icon: "bookmark",
-      value: `${quotaFree}`,
-      label: "حجوزات متاحة",
+      value: availableRequests,
+      label: "رصيد الطلبات المتاح",
       tone: "text-blue-600",
       iconBg: "bg-blue-50",
       iconColor: "text-blue-500",
       accent: "from-blue-500/[0.04]",
-      helper: (
-        <div className="mt-1 flex items-center gap-1.5">
-          {[0, 1].map((i) => (
-            <div
-              key={i}
-              className={`h-2.5 w-2.5 rounded-full border ${
-                i < quotaUsed
-                  ? "border-blue-400 bg-blue-400"
-                  : "border-gray-200 bg-gray-100"
-              }`}
-            />
-          ))}
-        </div>
-      ),
     },
     {
       icon: "volunteer_activism",
@@ -87,7 +72,6 @@ export function StatsGrid({
               {card.label}
             </p>
 
-            {"helper" in card && card.helper}
           </div>
         </div>
       ))}

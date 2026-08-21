@@ -10,11 +10,11 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/api/axiosInstance";
+import {
+  isStrongPassword,
+  PASSWORD_REQUIREMENTS_MESSAGE,
+} from "@/lib/validation/auth";
 import type { AuthUser } from "@/types/user.types";
-
-// ✅ FIX [SEC-PROF-01]: مطابق لـ strongPassword validator في authDto.js
-const PASSWORD_REGEX =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._\-#^])[A-Za-z\d@$!%*?&._\-#^]{8,}$/;
 
 // ✅ FIX [SEC-PROF-02]: استخراج msg أو message أياً كان — مطابق للـ Backend
 const extractMsg = (err: unknown, fallback: string): string => {
@@ -35,7 +35,7 @@ type EditForm = {
 
 export default function EditProfilePage() {
   // ✅ FIX [ARCH-PROF-01]: استخدام isFullyLoaded
-  const { user, setUser, isFullyLoaded, isLoading } = useAuth();
+  const { user, setUser, logout, isFullyLoaded, isLoading } = useAuth();
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -57,8 +57,22 @@ export default function EditProfilePage() {
   const [maxAvatarMB, setMaxAvatarMB] = useState<number>(5);
 
   const fileInputRef                      = useRef<HTMLInputElement>(null);
+  const avatarObjectUrlRef                = useRef<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [avatarFile, setAvatarFile]       = useState<File | null>(null);
+
+  const revokeAvatarObjectUrl = () => {
+    if (!avatarObjectUrlRef.current) return;
+    URL.revokeObjectURL(avatarObjectUrlRef.current);
+    avatarObjectUrlRef.current = null;
+  };
+
+  useEffect(() => () => {
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+      avatarObjectUrlRef.current = null;
+    }
+  }, []);
 
   // ✅ FIX [HC-PROF-01]: جلب الحد الأقصى لحجم الصورة من الـ Backend عند أول تحميل
   useEffect(() => {
@@ -94,12 +108,23 @@ export default function EditProfilePage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > maxAvatarMB * 1024 * 1024) {
-      setError(`حجم الصورة يجب أن يكون أقل من ${maxAvatarMB}MB`);
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("نوع الصورة غير مدعوم — اختر JPEG أو PNG أو WebP");
+      e.target.value = "";
       return;
     }
+    if (file.size > maxAvatarMB * 1024 * 1024) {
+      setError(`حجم الصورة يجب أن يكون أقل من ${maxAvatarMB}MB`);
+      e.target.value = "";
+      return;
+    }
+    revokeAvatarObjectUrl();
+    const objectUrl = URL.createObjectURL(file);
+    avatarObjectUrlRef.current = objectUrl;
     setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarPreview(objectUrl);
+    setError("");
+    setSuccess("");
   };
 
   // ── حفظ المعلومات ──
@@ -117,9 +142,12 @@ export default function EditProfilePage() {
         withCredentials: true,
       });
 
-      setUser(data.user ?? data);
+      const updatedUser = (data.user ?? data) as AuthUser;
+      setUser(updatedUser);
       setSuccess("تم تحديث المعلومات بنجاح ✓");
       setAvatarFile(null);
+      revokeAvatarObjectUrl();
+      setAvatarPreview(updatedUser.avatar ?? "");
     } catch (err: unknown) {
       // ✅ FIX [SEC-PROF-02]: extractMsg يبحث عن msg أولاً
       setError(extractMsg(err, "حدث خطأ، حاول مجدداً"));
@@ -134,10 +162,8 @@ export default function EditProfilePage() {
     if (!form.currentPassword) { setError("أدخل كلمة المرور الحالية"); return; }
 
     // ✅ FIX [SEC-PROF-01]: فحص strongPassword مطابق للـ Backend
-    if (!PASSWORD_REGEX.test(form.newPassword)) {
-      setError(
-        "كلمة المرور يجب أن تحتوي على: حرف كبير، حرف صغير، رقم، رمز خاص (@$!%*?&._-#^)، وطولها 8 أحرف على الأقل"
-      );
+    if (!isStrongPassword(form.newPassword)) {
+      setError(PASSWORD_REQUIREMENTS_MESSAGE);
       return;
     }
     if (form.newPassword !== form.confirmPassword) {
@@ -152,8 +178,9 @@ export default function EditProfilePage() {
         { currentPassword: form.currentPassword, newPassword: form.newPassword },
         { withCredentials: true }
       );
-      setSuccess("تم تغيير كلمة المرور بنجاح ✓");
+      setSuccess("تم تغيير كلمة المرور بنجاح ✓ — سيتم تحويلك لتسجيل الدخول");
       setForm(prev => ({ ...prev, currentPassword: "", newPassword: "", confirmPassword: "" }));
+      window.setTimeout(() => void logout(), 900);
     } catch (err: unknown) {
       // ✅ FIX [SEC-PROF-02]
       setError(extractMsg(err, "كلمة المرور الحالية غير صحيحة"));
@@ -218,13 +245,14 @@ export default function EditProfilePage() {
             </div>
             <button
               type="button"
+              aria-label="اختيار صورة شخصية"
               onClick={() => fileInputRef.current?.click()}
               className="absolute -bottom-1.5 -left-1.5 w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors"
             >
               <span className="material-symbols-outlined text-[14px]">photo_camera</span>
             </button>
             <input
-              ref={fileInputRef} type="file" accept="image/*"
+              ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
               className="hidden" onChange={handleAvatarChange}
             />
           </div>
@@ -380,7 +408,7 @@ export default function EditProfilePage() {
                 <label className="text-xs font-black text-on-surface-variant">
                   كلمة المرور الجديدة
                   <span className="text-[10px] text-on-surface-variant/60 font-medium mr-2">
-                    (8 أحرف+ • كبير وصغير • رقم • رمز خاص)
+                    (8 أحرف+ • كبير وصغير • رقم)
                   </span>
                 </label>
                 <div className="relative">
@@ -392,22 +420,21 @@ export default function EditProfilePage() {
                     className="w-full pr-12 pl-4 py-3.5 bg-surface-container-highest rounded-xl border-2 border-transparent outline-none focus:border-primary/30 focus:bg-white transition-all text-sm text-left"
                   />
                 </div>
-                {/* ✅ مؤشر القوة المُحسَّن — يعكس PASSWORD_REGEX */}
+                {/* مؤشر القوة مطابق لقواعد الخادم المشتركة */}
                 {form.newPassword && (() => {
                   const checks = {
                     length:  form.newPassword.length >= 8,
                     upper:   /[A-Z]/.test(form.newPassword),
                     lower:   /[a-z]/.test(form.newPassword),
                     digit:   /\d/.test(form.newPassword),
-                    special: /[@$!%*?&._\-#^]/.test(form.newPassword),
                   };
                   const score = Object.values(checks).filter(Boolean).length;
-                  const labels = ["", "ضعيفة جداً", "ضعيفة", "متوسطة", "جيدة", "قوية"];
-                  const colors = ["", "bg-red-400", "bg-orange-400", "bg-yellow-400", "bg-blue-400", "bg-green-500"];
+                  const labels = ["", "ضعيفة", "متوسطة", "جيدة", "قوية"];
+                  const colors = ["", "bg-red-400", "bg-orange-400", "bg-blue-400", "bg-green-500"];
                   return (
                     <div className="space-y-1 mt-1">
                       <div className="flex gap-1">
-                        {[1,2,3,4,5].map(n => (
+                        {[1,2,3,4].map(n => (
                           <div key={n} className={`h-1 flex-1 rounded-full transition-colors ${n <= score ? colors[score] : "bg-gray-200"}`} />
                         ))}
                         <span className="text-[10px] font-bold text-on-surface-variant mr-1">{labels[score]}</span>

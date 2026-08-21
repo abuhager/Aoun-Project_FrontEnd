@@ -213,7 +213,12 @@ export default function DashboardPage() {
 
         {/* Summary cards */}
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <ProfileCard name={data.user?.name} email={data.user?.email} trustScore={data.user?.trustScore} />
+          <ProfileCard
+            name={data.user?.name}
+            email={data.user?.email}
+            avatar={data.user?.avatar}
+            trustScore={data.user?.trustScore}
+          />
           <StatsGrid trustScore={data.user?.trustScore} quota={data.user?.quota} donationsCount={data.myDonations.length} />
         </section>
 

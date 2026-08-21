@@ -144,7 +144,7 @@ export default function LeaderboardPage() {
 
     const { platformName } = useSiteConfig();
 
-  const { leaderboard, myRank, loading } = useLeaderboard();
+  const { leaderboard, myRank, rankEligibility, loading } = useLeaderboard();
 
   const topThree = leaderboard.slice(0, 3);
   const rest = leaderboard.slice(3);
@@ -221,6 +221,22 @@ export default function LeaderboardPage() {
                   </p>
                   <p className="text-[10px] text-gray-400">تبرع</p>
                 </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {!loading && rankEligibility === false && (
+          <section className="mb-6">
+            <div className="flex items-start gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+              <span className="material-symbols-outlined mt-0.5 text-[20px]">
+                info
+              </span>
+              <div>
+                <p className="text-sm font-black">حسابك غير مشمول في الترتيب</p>
+                <p className="mt-0.5 text-xs font-medium text-amber-700">
+                  يمكنك مشاهدة اللوحة، لكن الترتيب مخصص لحسابات المستخدمين المفعّلة وغير المحظورة.
+                </p>
               </div>
             </div>
           </section>

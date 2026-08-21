@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { io, Socket } from "socket.io-client";
-import axios from "axios"; // ✅ إضافة استيراد axios هنا
-import axiosInstance, { getAccessToken } from "@/lib/api/axiosInstance";
+import axios from "axios";
+import axiosInstance from "@/lib/api/axiosInstance";
+import { useAuth } from "@/context/AuthContext";
+import { useSocket } from "@/context/SocketContext";
 
 export interface LeaderboardEntry {
   rank:           number;
@@ -20,6 +21,7 @@ export interface LeaderboardEntry {
 }
 
 export interface MyRank {
+  eligible:       true;
   rank:           number;
   trustScore:     number;
   totalDonations: number;
@@ -30,14 +32,23 @@ export interface MyRank {
   pointsToNext:   number | null;
 }
 
+interface IneligibleRank {
+  eligible: false;
+  reason:   string;
+}
+
+type MyRankResponse = MyRank | IneligibleRank;
+
 export function useLeaderboard() {
+  const { user, isLoading: authLoading } = useAuth();
+  const { socket } = useSocket();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [myRank,      setMyRank]      = useState<MyRank | null>(null);
+  const [rankEligibility, setRankEligibility] = useState<boolean | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const abortRef  = useRef<AbortController | null>(null);
-  const socketRef = useRef<Socket | null>(null);
 
   const fetchAll = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true);
@@ -47,36 +58,55 @@ export function useLeaderboard() {
     abortRef.current = controller;
 
     try {
-      // ✅ الإصلاح الجوهري:
-      // /api/leaderboard  → عام، يُطلب دائماً
-      // /api/leaderboard/me → محمي، يُطلب فقط إذا يوجد accessToken
-      const isLoggedIn = !!getAccessToken();
-
       const requests = [
         axiosInstance.get<{ leaderboard: LeaderboardEntry[] }>(
           "/api/leaderboard",
           { signal: controller.signal }
         ),
-        // ✅ إذا غير مسجّل → Promise.resolve(null) بدلاً من طلب محمي
-        isLoggedIn
-          ? axiosInstance.get<MyRank>(
+        user?._id
+          ? axiosInstance.get<MyRankResponse>(
               "/api/leaderboard/me",
               { signal: controller.signal }
             )
           : Promise.resolve(null),
       ] as const;
 
-      const [boardRes, rankRes] = await Promise.all(requests);
+      const [boardResult, rankResult] = await Promise.allSettled(requests);
 
       if (controller.signal.aborted) return;
 
-      setLeaderboard(boardRes.data.leaderboard);
-      // ✅ rankRes يكون null إذا غير مسجّل → myRank يبقى null
-      setMyRank(rankRes ? rankRes.data : null);
+      if (boardResult.status === "rejected") throw boardResult.reason;
+
+      setLeaderboard(boardResult.value.data.leaderboard);
+
+      if (rankResult.status === "fulfilled" && rankResult.value) {
+        const rankData = rankResult.value.data;
+        if (rankData.eligible) {
+          setMyRank(rankData);
+          setRankEligibility(true);
+        } else {
+          setMyRank(null);
+          setRankEligibility(false);
+        }
+      } else if (rankResult.status === "rejected") {
+        const isLegacyIneligibleResponse =
+          axios.isAxiosError(rankResult.reason) &&
+          rankResult.reason.response?.status === 404 &&
+          rankResult.reason.response?.data?.code === "LEADERBOARD_USER_NOT_ELIGIBLE";
+
+        setMyRank(null);
+        setRankEligibility(isLegacyIneligibleResponse ? false : null);
+
+        if (!isLegacyIneligibleResponse && process.env.NODE_ENV === "development") {
+          console.warn("[useLeaderboard] rank fetch error:", rankResult.reason);
+        }
+      } else {
+        setMyRank(null);
+        setRankEligibility(null);
+      }
       setLastUpdated(new Date());
 
     } catch (err: unknown) {
-      // ✅ الحل: التحقق مما إذا كان الخطأ بسبب الإلغاء (Abort) وتجاهله بصمت
       if (axios.isCancel(err)) {
         return;
       }
@@ -88,30 +118,37 @@ export function useLeaderboard() {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, []);
+  }, [user?._id]);
 
   useEffect(() => {
-    fetchAll(false);
-
-    const socket = io(process.env.NEXT_PUBLIC_API_URL!, {
-      withCredentials: true,
-      transports:      ["websocket"],
-    });
-    socketRef.current = socket;
-
-    socket.on("leaderboard:update", () => {
-      fetchAll(true);
-    });
+    if (authLoading) return;
+    if (!user?._id) {
+      setLeaderboard([]);
+      setMyRank(null);
+      setRankEligibility(null);
+      setLoading(false);
+      return;
+    }
+    void fetchAll(false);
 
     return () => {
       abortRef.current?.abort();
-      socket.disconnect();
     };
-  }, [fetchAll]);
+  }, [authLoading, fetchAll, user?._id]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => void fetchAll(true);
+    socket.on("leaderboard:update", handleUpdate);
+    return () => {
+      socket.off("leaderboard:update", handleUpdate);
+    };
+  }, [fetchAll, socket]);
 
   return {
     leaderboard,
     myRank,
+    rankEligibility,
     loading,
     lastUpdated,
     refetch: () => fetchAll(false),

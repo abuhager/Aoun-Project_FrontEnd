@@ -10,22 +10,27 @@ export type TrustLevel = 1 | 2;
 
 // FIXED [BUG-PROFILE-03]
 export interface Gamification {
-  level:        number;
-  title:        string;
-  badge:        string;
-  progress:     number;
-  pointsToNext: number | null;
+  trustScore:     number;
+  totalDonations: number;
+  level:          number;
+  title:          string;
+  badge:          string;
+  progress:       number;
+  pointsToNext:   number | null;
 }
 
 export interface AuthUser {
   _id:               string;
   name:              string;
   email:             string;
-  phone?:            string;
+  phone?:            string | null;
   avatar:            string;
   role:              UserRole;
+  trustScore:        number;
   trustLevel:        TrustLevel; // ← 1 | 2
   quota:             number;
+  totalDonations:    number;
+  badges:            string[];
   isVerified:        boolean;
   isVerifiedStudent: boolean;
   phoneVerified:     boolean;
@@ -33,31 +38,30 @@ export interface AuthUser {
   isFrozen?:         boolean;
   isBanned?:         boolean;
   createdAt:         string;
-  gamification?: {
-    trustScore:     number;
-    totalDonations: number;
-    level:          number;
-    title:          string;
-    badge:          string;
-    progress:       number;
-    pointsToNext:   number | null;
-  };
+  gamification?: Gamification;
 }
 
 export interface ProfileUser {
   _id:               string;
   name:              string;
-  email:             string;
   avatar:            string;
   role:              UserRole;
   trustScore:        number;
   trustLevel:        TrustLevel; // ← 1 | 2
-  quota:             number;
-  isVerified:        boolean;
+  totalDonations:    number;
   isVerifiedStudent: boolean;
   badges:            string[];
   createdAt:         string;
   gamification:      Gamification;
+}
+
+export interface ProfileActivityItem {
+  _id:       string;
+  title:     string;
+  category:  string;
+  status:    string;
+  imageUrl:  string;
+  createdAt: string;
 }
 
 export interface PublicUser {
@@ -76,15 +80,23 @@ export interface PublicUser {
 }
 
 export interface ProfileResponse {
-  user:         ProfileUser;
+  user: ProfileUser;
   stats: {
-    donationsCount:     number;
-    completedDonations: number;
-    receivedCount:      number;
-    totalRatings:       number;
+    donationsCount: number;
+    receivedCount:  number;
+    totalRatings:   number;
+    averageRating:  number;
   };
-  allDonations:      DashboardItem[];
-  completedRequests: DashboardItem[];
+  donations: ProfileActivityItem[];
+  received:  ProfileActivityItem[];
+  pagination: {
+    page:               number;
+    pageSize:           number;
+    totalDonationPages: number;
+    totalReceivedPages: number;
+    hasMoreDonations:   boolean;
+    hasMoreReceived:    boolean;
+  };
 }
 
 export interface BookedByUser {
@@ -108,8 +120,8 @@ export interface DashboardStats {
 // ✅ [FLOW2-FIX-04] نوع جديد لاستجابة getMeLogic مع pagination كامل
 export interface GetMeResponse {
   user:               AuthUser;
-  donations:          DashboardItem[];
-  received:           DashboardItem[];
+  donations:          ProfileActivityItem[];
+  received:           ProfileActivityItem[];
   page:               number;
   pageSize:           number;
   donationsTotal:     number;

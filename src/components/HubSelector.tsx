@@ -1,7 +1,7 @@
 // src/components/HubSelector.tsx — ✅ PATCHED [LOGIC-03]
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getHubs }             from "@/lib/api/hubApi";
 import type { SafeHub }        from "@/types/hub.types";
 
@@ -17,13 +17,28 @@ export function HubSelector({ value, onChange, error, required }: Props) {
   const [hubs,    setHubs]    = useState<SafeHub[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
+  const requestRef = useRef<AbortController | null>(null);
+
+  const loadHubs = useCallback(async () => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setLoading(true);
+    setFetchError("");
+    try {
+      const list = await getHubs(controller.signal);
+      if (!controller.signal.aborted) setHubs(list);
+    } catch {
+      if (!controller.signal.aborted) setFetchError("تعذر تحميل مراكز التسليم");
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    getHubs()
-      .then((list) => setHubs(list))  // ✅ LOGIC-02 cascade: الـ Backend يُعيد النشطة فقط
-      .catch(() => setFetchError("تعذر تحميل مراكز التسليم"))
-      .finally(() => setLoading(false));
-  }, []);
+    void loadHubs();
+    return () => requestRef.current?.abort();
+  }, [loadHubs]);
 
   const selectedHub = hubs.find((h) => h._id === value);
 
@@ -49,7 +64,16 @@ export function HubSelector({ value, onChange, error, required }: Props) {
 
       {/* خطأ في الجلب */}
       {fetchError && (
-        <p className="text-red-500 text-xs font-bold px-1">{fetchError}</p>
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2">
+          <p className="text-red-600 text-xs font-bold">{fetchError}</p>
+          <button
+            type="button"
+            onClick={() => void loadHubs()}
+            className="shrink-0 text-xs font-black text-primary hover:underline"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
       )}
 
       {/* القائمة */}
@@ -58,9 +82,10 @@ export function HubSelector({ value, onChange, error, required }: Props) {
           <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            // ✅ LOGIC-03: aria-required بدل required — يعمل مع كل أنواع الـ forms
+            required={required}
             aria-required={required}
             aria-invalid={!!error}
+            disabled={hubs.length === 0}
             className={`w-full appearance-none bg-surface-container-low text-sm md:text-base
               border rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none transition-all
               focus:ring-2 focus:ring-primary/20 focus:bg-white
@@ -69,7 +94,9 @@ export function HubSelector({ value, onChange, error, required }: Props) {
                 : "border-none"
               }`}
           >
-            <option value="" disabled>اختر مركز التسليم</option>
+            <option value="" disabled={required}>
+              {hubs.length === 0 ? "لا توجد مراكز متاحة" : "اختر مركز التسليم"}
+            </option>
             {hubs.map((hub) => (
               <option key={hub._id} value={hub._id}>
                 {hub.name} — {hub.city}

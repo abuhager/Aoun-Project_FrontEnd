@@ -4,7 +4,11 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/useToast";
-import type { SafeHub } from "@/types/hub.types";
+import type { CreateHubPayload, SafeHub, UpdateHubPayload } from "@/types/hub.types";
+import {
+  buildHubPayload,
+  DEFAULT_HUB_WORKING_HOURS,
+} from "@/lib/validation/hub";
 import {
   getAllHubsAdmin,
   createHub,
@@ -25,7 +29,7 @@ const EMPTY_FORM = {
   name: "",
   address: "",
   city: "",
-  workingHours: "9:00 ص — 5:00 م",
+  workingHours: DEFAULT_HUB_WORKING_HOURS,
   lat: "",
   lng: "",
 };
@@ -33,6 +37,7 @@ const EMPTY_FORM = {
 export default function AdminHubsPage() {
   const [hubs, setHubs] = useState<SafeHub[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
   const [search, setSearch] = useState("");
@@ -45,20 +50,26 @@ export default function AdminHubsPage() {
 
   const { show: showToast, ToastComponent } = useToast();
 
-  const loadHubs = useCallback(async (showLoader = true) => {
-    if (showLoader) setLoading(true);
+  const loadHubs = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    setLoadError("");
     try {
-      const data = await getAllHubsAdmin();
-      setHubs(data);
+      const data = await getAllHubsAdmin(signal);
+      if (!signal?.aborted) setHubs(data);
     } catch {
-      showToast("تعذر تحميل مراكز التسليم", false);
+      if (!signal?.aborted) {
+        setLoadError("تعذر تحميل مراكز التسليم");
+        showToast("تعذر تحميل مراكز التسليم", false);
+      }
     } finally {
-      if (showLoader) setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [showToast]);
 
   useEffect(() => {
-    loadHubs();
+    const controller = new AbortController();
+    void loadHubs(controller.signal);
+    return () => controller.abort();
   }, [loadHubs]);
 
   const availableCities = useMemo(
@@ -98,11 +109,11 @@ export default function AdminHubsPage() {
   };
 
   const saveForm = async () => {
-    const errors: string[] = [];
-    if (!form.name.trim()) errors.push("اسم المركز مطلوب");
-    if (!form.address.trim()) errors.push("العنوان مطلوب");
-    if (!form.city.trim()) errors.push("المدينة مطلوبة");
-    if (errors.length) {
+    const { errors, payload } = buildHubPayload(form, {
+      clearExistingCoordinates:
+        modal === "edit" && Boolean(editTarget?.coordinates),
+    });
+    if (errors.length || !payload) {
       setFormErrors(errors);
       return;
     }
@@ -110,26 +121,19 @@ export default function AdminHubsPage() {
     setFormBusy(true);
     setFormErrors([]);
 
-    const payload = {
-      name: form.name.trim(),
-      address: form.address.trim(),
-      city: form.city.trim(),
-      workingHours: form.workingHours.trim(),
-      ...(form.lat && form.lng
-        ? { coordinates: { lat: parseFloat(form.lat), lng: parseFloat(form.lng) } }
-        : {}),
-    };
-
     try {
       if (modal === "add") {
-        await createHub(payload as Parameters<typeof createHub>[0]);
+        const created = await createHub(payload as CreateHubPayload);
+        setHubs((current) => [created, ...current]);
         showToast("✅ تم إضافة المركز بنجاح", true);
       } else {
-        await updateHub(editTarget!._id, payload);
+        const updated = await updateHub(editTarget!._id, payload as UpdateHubPayload);
+        setHubs((current) =>
+          current.map((hub) => (hub._id === updated._id ? updated : hub))
+        );
         showToast("✅ تم تحديث المركز بنجاح", true);
       }
       setModal("closed");
-      await loadHubs(false);
     } catch (err) {
       showToast(extractErrorMsg(err, "حدث خطأ أثناء حفظ البيانات"), false);
     } finally {
@@ -141,14 +145,19 @@ export default function AdminHubsPage() {
     if (busy[hub._id]) return;
     setBusy((p) => ({ ...p, [hub._id]: true }));
     try {
+      const updated = hub.isActive
+        ? await deactivateHub(hub._id)
+        : await reactivateHub(hub._id);
+
+      setHubs((current) =>
+        current.map((item) => (item._id === updated._id ? updated : item))
+      );
+
       if (hub.isActive) {
-        await deactivateHub(hub._id);
         showToast("⏸ تم تعطيل المركز بنجاح", true);
       } else {
-        await reactivateHub(hub._id);
         showToast("✅ تم تفعيل المركز بنجاح", true);
       }
-      await loadHubs(false);
     } catch (err) {
       showToast(extractErrorMsg(err, "حدث خطأ أثناء تحديث حالة المركز"), false);
     } finally {
@@ -314,6 +323,18 @@ export default function AdminHubsPage() {
             />
           ))}
         </div>
+      ) : loadError ? (
+        <div className="rounded-[28px] border border-red-100 bg-white py-16 text-center shadow-sm">
+          <span className="material-symbols-outlined text-[32px] text-red-400">cloud_off</span>
+          <p className="mt-4 text-sm font-black text-[#5d5750]">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => void loadHubs()}
+            className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-xs font-black text-white"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
       ) : visible.length === 0 ? (
         <div className="rounded-[28px] border border-[#e8e2d9] bg-white py-20 text-center shadow-sm">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#f4f1eb] text-[#a89f95]">
@@ -385,7 +406,7 @@ export default function AdminHubsPage() {
                     </div>
                   </div>
 
-                  {hub.coordinates?.lat && (
+                  {hub.coordinates && (
                     <a
                       href={`https://maps.google.com/?q=${hub.coordinates.lat},${hub.coordinates.lng}`}
                       target="_blank"
@@ -438,12 +459,15 @@ export default function AdminHubsPage() {
       {modal !== "closed" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="hub-form-title"
             className="w-full max-w-xl rounded-[32px] border border-white/20 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.18)]"
             dir="rtl"
           >
             <div className="flex items-center justify-between border-b border-[#f0ebe4] px-6 py-5">
               <div>
-                <h2 className="text-lg font-black text-[#1f312f]">
+                <h2 id="hub-form-title" className="text-lg font-black text-[#1f312f]">
                   {modal === "add" ? "إضافة مركز جديد" : "تعديل المركز"}
                 </h2>
                 <p className="mt-1 text-xs text-[#938b82]">
@@ -452,6 +476,8 @@ export default function AdminHubsPage() {
               </div>
 
               <button
+                type="button"
+                aria-label="إغلاق نافذة المركز"
                 onClick={() => setModal("closed")}
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5f1eb] text-[#6e6860] transition-colors hover:bg-[#ece6de]"
               >
@@ -541,6 +567,9 @@ export default function AdminHubsPage() {
                   </label>
                   <input
                     type="number"
+                    min="-90"
+                    max="90"
+                    step="any"
                     value={form.lat}
                     onChange={(e) => setForm((p) => ({ ...p, lat: e.target.value }))}
                     placeholder="31.9539"
@@ -554,6 +583,9 @@ export default function AdminHubsPage() {
                   </label>
                   <input
                     type="number"
+                    min="-180"
+                    max="180"
+                    step="any"
                     value={form.lng}
                     onChange={(e) => setForm((p) => ({ ...p, lng: e.target.value }))}
                     placeholder="35.9106"

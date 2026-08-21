@@ -1,33 +1,70 @@
-// src/app/(main)/hubs/hooks/useHubs.ts — ✅ PATCHED [LOGIC-02]
 "use client";
-import { useEffect, useState } from "react";
-import { getHubs }             from "@/lib/api/hubApi";
-import { SafeHub }             from "@/types/hub.types";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getHubs } from "@/lib/api/hubApi";
+import type { SafeHub } from "@/types/hub.types";
 
 export function useHubs() {
-  const [hubs,    setHubs]    = useState<SafeHub[]>([]);
+  const [allHubs, setAllHubs] = useState<SafeHub[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState("");
-  const [search,  setSearch]  = useState("");
-  const [city,    setCity]    = useState("الكل");
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [city, setCity] = useState("الكل");
+  const requestRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    getHubs()
-      // ✅ LOGIC-02: حُذفت .filter((h) => h.isActive) — الـ Backend يكفل ذلك
-      // GET /api/hubs → findAllActive() → isActive: true فقط
-      .then((data) => setHubs(data))
-      .catch(() => setError("تعذر تحميل مراكز التسليم"))
-      .finally(() => setLoading(false));
+  const refetch = useCallback(async () => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await getHubs(controller.signal);
+      if (!controller.signal.aborted) setAllHubs(data);
+    } catch {
+      if (!controller.signal.aborted) {
+        setError("تعذر تحميل مراكز التسليم. تحقق من الاتصال وحاول مجدداً.");
+      }
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
   }, []);
 
-  // ✅ المدن مستخرجة ديناميكياً من البيانات المحملة — لا hardcoded
-  const cities = ["الكل", ...Array.from(new Set(hubs.map((h) => h.city))).sort()];
+  useEffect(() => {
+    void refetch();
+    return () => requestRef.current?.abort();
+  }, [refetch]);
 
-  const filtered = hubs.filter((h) => {
-    const matchCity   = city === "الكل" || h.city === city;
-    const matchSearch = h.name.includes(search) || h.address.includes(search);
-    return matchCity && matchSearch;
-  });
+  const cities = useMemo(
+    () => [
+      "الكل",
+      ...Array.from(new Set(allHubs.map((hub) => hub.city))).sort((a, b) =>
+        a.localeCompare(b, "ar")
+      ),
+    ],
+    [allHubs]
+  );
 
-  return { hubs: filtered, loading, error, search, setSearch, city, setCity, cities };
+  const hubs = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("ar");
+    return allHubs.filter((hub) => {
+      const matchesCity = city === "الكل" || hub.city === city;
+      const searchable = `${hub.name} ${hub.address} ${hub.city}`.toLocaleLowerCase("ar");
+      return matchesCity && (!query || searchable.includes(query));
+    });
+  }, [allHubs, city, search]);
+
+  return {
+    hubs,
+    total: allHubs.length,
+    loading,
+    error,
+    refetch,
+    search,
+    setSearch,
+    city,
+    setCity,
+    cities,
+  };
 }

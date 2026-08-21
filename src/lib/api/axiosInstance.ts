@@ -79,7 +79,8 @@ const isAuthMeUrl = (url: string): boolean => url.includes("/auth/me");
 
 const PUBLIC_PATH_PATTERNS: Array<{ pattern: RegExp; getOnly: boolean }> = [
   { pattern: /^\/api\/items(\/(?!me|complete|waitlist)[^/]+)?\/?$/, getOnly: true },
-  { pattern: /^\/api\/hubs/, getOnly: false },
+  // القائمة العامة فقط؛ مسارات /admin وعمليات الكتابة يجب أن تنتظر تهيئة الهوية.
+  { pattern: /^\/api\/hubs\/?$/, getOnly: true },
   { pattern: /^\/api\/public/, getOnly: false },
   { pattern: /^\/api\/settings\/public/, getOnly: true },
 ];

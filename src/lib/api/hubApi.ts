@@ -3,11 +3,17 @@
 // ✅ FIX [HUB-02]: إضافة reactivateHub + دوال Admin الناقصة
 
 import axiosInstance from '@/lib/api/axiosInstance';
-import type { SafeHub, HubSelectOption } from '@/types/hub.types';
+import type {
+  CreateHubPayload,
+  HubMutationResponse,
+  HubSelectOption,
+  SafeHub,
+  UpdateHubPayload,
+} from '@/types/hub.types';
 
 // ─── دالة 1: جلب الـ Hubs النشطة (Public) ──────────────────
-export const getHubs = async (): Promise<SafeHub[]> => {
-  const res = await axiosInstance.get<SafeHub[]>('/api/hubs');
+export const getHubs = async (signal?: AbortSignal): Promise<SafeHub[]> => {
+  const res = await axiosInstance.get<SafeHub[]>('/api/hubs', { signal });
   return res.data;
 };
 
@@ -22,14 +28,14 @@ export const getHubOptions = async (): Promise<HubSelectOption[]> => {
 };
 
 // ─── دالة 3: Admin — كل الـ Hubs (نشطة + معطّلة) ───────────
-export const getAllHubsAdmin = async (): Promise<SafeHub[]> => {
-  const res = await axiosInstance.get<SafeHub[]>('/api/hubs/admin/all');
+export const getAllHubsAdmin = async (signal?: AbortSignal): Promise<SafeHub[]> => {
+  const res = await axiosInstance.get<SafeHub[]>('/api/hubs/admin/all', { signal });
   return res.data;
 };
 
 // ─── دالة 4: Admin — إنشاء Hub جديد ────────────────────────
 export const createHub = async (
-  payload: Omit<SafeHub, '_id' | 'isActive' | 'createdAt' | 'updatedAt'>
+  payload: CreateHubPayload
 ): Promise<SafeHub> => {
   const res = await axiosInstance.post<SafeHub>('/api/hubs', payload);
   return res.data;
@@ -38,19 +44,20 @@ export const createHub = async (
 // ─── دالة 5: Admin — تعديل Hub ──────────────────────────────
 export const updateHub = async (
   id: string,
-  payload: Partial<Omit<SafeHub, '_id'>>
+  payload: UpdateHubPayload
 ): Promise<SafeHub> => {
   const res = await axiosInstance.patch<SafeHub>(`/api/hubs/${id}`, payload);
   return res.data;
 };
 
 // ─── دالة 6: Admin — تعطيل Hub ──────────────────────────────
-export const deactivateHub = async (id: string): Promise<void> => {
-  await axiosInstance.delete(`/api/hubs/${id}`);
+export const deactivateHub = async (id: string): Promise<SafeHub> => {
+  const res = await axiosInstance.delete<HubMutationResponse>(`/api/hubs/${id}`);
+  return res.data.hub;
 };
 
 // ─── دالة 7: Admin — ✅ FIX [HUB-02]: إعادة تفعيل Hub ──────
 export const reactivateHub = async (id: string): Promise<SafeHub> => {
-  const res = await axiosInstance.patch<SafeHub>(`/api/hubs/${id}/reactivate`);
-  return res.data;
+  const res = await axiosInstance.patch<HubMutationResponse>(`/api/hubs/${id}/reactivate`);
+  return res.data.hub;
 };

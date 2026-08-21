@@ -1,25 +1,30 @@
-// src/app/(main)/hubs/page.tsx  ✅ REDESIGNED
 "use client";
 
 import { useHubs } from "./hooks/useHubs";
-import Navbar from "@/components/Navbar";
 
 export default function HubsPage() {
-  const { hubs, loading } = useHubs();
+  const {
+    hubs,
+    total,
+    loading,
+    error,
+    refetch,
+    search,
+    setSearch,
+    city,
+    setCity,
+    cities,
+  } = useHubs();
 
   return (
     <div className="min-h-screen bg-[#f7f6f2]" dir="rtl">
-      <Navbar />
-
-      <main className="mx-auto max-w-5xl px-4 pb-20 pt-24 md:px-8 md:pt-28">
-
-        {/* ── Header ──────────────────────────────────────────── */}
+      <section className="mx-auto max-w-5xl px-4 pb-20 pt-24 md:px-8 md:pt-28">
         <div className="mb-8">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full
-                          border border-primary/15 bg-primary/[0.07] px-3.5
-                          py-1.5 text-[11px] font-black tracking-wide text-primary">
-            <span className="material-symbols-outlined text-[14px]"
-              style={{ fontVariationSettings: "'FILL' 1" }}>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.07] px-3.5 py-1.5 text-[11px] font-black tracking-wide text-primary">
+            <span
+              className="material-symbols-outlined text-[14px]"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
               warehouse
             </span>
             مواقع موثوقة على مستوى المملكة
@@ -33,14 +38,47 @@ export default function HubsPage() {
           </p>
         </div>
 
-        {/* ── Skeleton ────────────────────────────────────────── */}
+        {!loading && !error && total > 0 && (
+          <div className="mb-6 grid gap-3 rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm sm:grid-cols-[1fr_180px]">
+            <label className="relative block">
+              <span className="sr-only">البحث في مراكز التسليم</span>
+              <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-gray-400">
+                search
+              </span>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="ابحث بالاسم أو العنوان..."
+                className="w-full rounded-xl border border-gray-200 bg-[#faf9f6] py-3 pl-4 pr-10 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+              />
+            </label>
+
+            <label className="relative block">
+              <span className="sr-only">فلترة حسب المدينة</span>
+              <select
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+                className="w-full appearance-none rounded-xl border border-gray-200 bg-[#faf9f6] px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+              >
+                {cities.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "الكل" ? "كل المدن" : option}
+                  </option>
+                ))}
+              </select>
+              <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-gray-400">
+                expand_more
+              </span>
+            </label>
+          </div>
+        )}
+
         {loading && (
-          <div className="grid gap-4 md:grid-cols-2">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid gap-4 md:grid-cols-2" aria-label="جاري تحميل المراكز">
+            {[1, 2, 3, 4].map((item) => (
               <div
-                key={i}
-                className="animate-pulse rounded-2xl border border-black/[0.06]
-                           bg-white p-5 shadow-sm"
+                key={item}
+                className="animate-pulse rounded-2xl border border-black/[0.06] bg-white p-5 shadow-sm"
               >
                 <div className="flex items-start gap-4">
                   <div className="h-12 w-12 shrink-0 rounded-xl bg-gray-100" />
@@ -55,39 +93,36 @@ export default function HubsPage() {
           </div>
         )}
 
-        {/* ── Grid ────────────────────────────────────────────── */}
-        {!loading && hubs.length > 0 && (
+        {!loading && error && (
+          <div
+            role="alert"
+            className="flex flex-col items-center rounded-2xl border border-red-100 bg-white px-6 py-14 text-center shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[34px] text-red-400">
+              cloud_off
+            </span>
+            <p className="mt-3 text-sm font-black text-gray-800">{error}</p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="mt-5 rounded-xl bg-primary px-5 py-2.5 text-xs font-black text-white transition hover:bg-primary/90"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && hubs.length > 0 && (
           <div className="grid gap-4 md:grid-cols-2">
-            {hubs.map((hub: {
-              _id: string;
-              name: string;
-              city?: string;
-              address?: string;
-              phone?: string;
-              workingHours?: string;
-              isActive?: boolean;
-            }) => (
-              <div
+            {hubs.map((hub) => (
+              <article
                 key={hub._id}
-                className="group relative overflow-hidden rounded-2xl border
-                           border-black/[0.06] bg-white p-5 shadow-sm
-                           transition-all duration-200 hover:shadow-md
-                           hover:shadow-black/[0.06]"
+                className="group relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-black/[0.06]"
               >
-                {/* خلفية تدرج خفيف */}
-                <div
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-l
-                             from-primary/[0.03] to-transparent opacity-0
-                             transition-opacity duration-300 group-hover:opacity-100"
-                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-primary/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
                 <div className="relative flex items-start gap-4">
-                  {/* أيقونة المركز */}
-                  <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center
-                               rounded-xl bg-primary/[0.08] transition-colors
-                               duration-200 group-hover:bg-primary/[0.14]"
-                  >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/[0.08] transition-colors duration-200 group-hover:bg-primary/[0.14]">
                     <span
                       className="material-symbols-outlined text-[24px] text-primary"
                       style={{ fontVariationSettings: "'FILL' 1" }}
@@ -96,71 +131,69 @@ export default function HubsPage() {
                     </span>
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <h2 className="text-[15px] font-black text-gray-900">
                         {hub.name}
                       </h2>
-                      {hub.isActive !== undefined && (
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px]
-                                      font-black
-                                      ${hub.isActive
-                                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                        : "bg-gray-100 text-gray-400 border border-gray-200"
-                                      }`}
-                        >
-                          {hub.isActive ? "نشط" : "مغلق"}
-                        </span>
-                      )}
+                      <span className="shrink-0 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-600">
+                        متاح
+                      </span>
                     </div>
 
                     <div className="mt-2.5 space-y-1.5">
-                      {hub.city && (
-                        <div className="flex items-center gap-2 text-[12px] text-gray-500">
-                          <span className="material-symbols-outlined text-[15px] text-primary">
-                            location_on
-                          </span>
-                          {hub.city}
-                          {hub.address && ` — ${hub.address}`}
-                        </div>
-                      )}
-                      {hub.phone && (
-                        <div className="flex items-center gap-2 text-[12px] text-gray-500">
-                          <span className="material-symbols-outlined text-[15px] text-primary">
-                            phone
-                          </span>
-                          <span dir="ltr">{hub.phone}</span>
-                        </div>
-                      )}
-                      {hub.workingHours && (
-                        <div className="flex items-center gap-2 text-[12px] text-gray-500">
-                          <span className="material-symbols-outlined text-[15px] text-primary">
-                            schedule
-                          </span>
-                          {hub.workingHours}
-                        </div>
-                      )}
+                      <div className="flex items-start gap-2 text-[12px] text-gray-500">
+                        <span className="material-symbols-outlined mt-0.5 text-[15px] text-primary">
+                          location_on
+                        </span>
+                        <span>{hub.city} — {hub.address}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[12px] text-gray-500">
+                        <span className="material-symbols-outlined text-[15px] text-primary">
+                          schedule
+                        </span>
+                        {hub.workingHours}
+                      </div>
                     </div>
+
+                    {hub.coordinates && (
+                      <a
+                        href={`https://maps.google.com/?q=${hub.coordinates.lat},${hub.coordinates.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-1 text-[11px] font-black text-primary hover:underline"
+                      >
+                        فتح الموقع على الخريطة
+                        <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                      </a>
+                    )}
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
 
-        {/* ── Empty State ─────────────────────────────────────── */}
-        {!loading && hubs.length === 0 && (
-          <div
-            className="flex flex-col items-center justify-center rounded-2xl
-                       border border-dashed border-gray-200 bg-white py-16 text-center"
-          >
-            <div className="mb-4 flex h-14 w-14 items-center justify-center
-                            rounded-2xl bg-gray-50">
-              <span
-                className="material-symbols-outlined text-[30px] text-gray-300"
-                style={{ fontVariationSettings: "'FILL' 0" }}
-              >
+        {!loading && !error && total > 0 && hubs.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-14 text-center">
+            <p className="text-sm font-black text-gray-700">لا توجد نتائج مطابقة</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setCity("الكل");
+              }}
+              className="mt-3 text-xs font-black text-primary hover:underline"
+            >
+              مسح البحث والفلاتر
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && total === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
+              <span className="material-symbols-outlined text-[30px] text-gray-300">
                 warehouse
               </span>
             </div>
@@ -172,7 +205,7 @@ export default function HubsPage() {
             </p>
           </div>
         )}
-      </main>
+      </section>
     </div>
   );
 }

@@ -5,8 +5,7 @@ export type DashboardItem = Item & { reportId: string | null };
 
 export type UserRole = 'user' | 'admin' | 'super_admin';
 
-// ✅ [FLOW3-FIX-01] TrustLevel = 1 | 2 فقط — متوافق مع Backend (User.js max:2)
-// المستويات 3 و 4 مخططة لمرحلة لاحقة — لا تُعرَّف حتى تُطبَّق في Backend
+// trustLevel يعكس تحقق الهوية (1/2)، وهو منفصل عن gamification.level (1–5).
 export type TrustLevel = 1 | 2;
 
 // FIXED [BUG-PROFILE-03]
@@ -29,6 +28,7 @@ export interface AuthUser {
   quota:             number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
+  phoneVerified:     boolean;
   // ✅ [FLOW2-FIX-07] إضافة isFrozen — buildSafeUser في Backend يُرسله دائماً
   isFrozen?:         boolean;
   isBanned?:         boolean;

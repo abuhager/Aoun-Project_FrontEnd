@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
+import {
+  isStrongPassword,
+  PASSWORD_REQUIREMENTS_MESSAGE,
+} from "@/lib/validation/auth";
 
 interface FormData {
   name:            string;
@@ -36,6 +40,9 @@ export function useRegister() {
     if (formData.password !== formData.confirmPassword) {
       return setError("كلمات المرور غير متطابقة! 🛑");
     }
+    if (!isStrongPassword(formData.password)) {
+      return setError(PASSWORD_REQUIREMENTS_MESSAGE);
+    }
 
     try {
       setLoading(true);
@@ -47,7 +54,7 @@ export function useRegister() {
       });
 
       setSuccess("تم إنشاء الحساب بنجاح! جاري تحويلك للتفعيل... ⏳");
-      router.push(`/verify?email=${formData.email}`);
+      router.push(`/verify?email=${encodeURIComponent(formData.email)}`);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.msg || "حدث خطأ أثناء إنشاء الحساب ❌");

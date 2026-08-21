@@ -572,11 +572,19 @@ export default function AdminSettingsPage() {
                 hint="جامعي أو هاتف"
               />
               <NumberField
+                label="مستوى الثقة الافتراضي للطلاب"
+                value={settings.studentDefaultTrustLevel}
+                onChange={(v) => update("studentDefaultTrustLevel", v)}
+                min={1}
+                max={2}
+                hint="1 = بريد فقط، 2 = موثق"
+              />
+              <NumberField
                 label="مكافأة المتبرع"
                 value={settings.donorQuotaReward}
                 onChange={(v) => update("donorQuotaReward", v)}
-                min={0}
-                max={5}
+                min={1}
+                max={2}
                 hint="كوتا إضافية بعد التسليم"
               />
               <NumberField
@@ -772,8 +780,8 @@ export default function AdminSettingsPage() {
                 label="الحد الأدنى للثقة لطلب غرض"
                 value={settings.minTrustLevelForRequests}
                 onChange={(v) => update("minTrustLevelForRequests", v)}
-                min={0}
-                max={5}
+                min={1}
+                max={2}
                 hint="مستوى الثقة المطلوب لفتح طلب"
               />
               <NumberField

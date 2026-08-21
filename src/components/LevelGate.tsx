@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import type { TrustLevel } from '@/types/user.types'; // ✅ استيراد
 import PhoneVerifyModal from './PhoneVerifyModal';
+import { featureFlags } from '@/config/features';
 
 interface LevelGateProps {
-  requiredLevel?:           TrustLevel; // ✅ بدل 1 | 2 — يقبل الآن 1 | 2 | 3 | 4
+  requiredLevel?:           TrustLevel;
   children:                 React.ReactNode;
   fallback?:                React.ReactNode;
   unauthenticatedFallback?: React.ReactNode;
@@ -24,6 +25,7 @@ export default function LevelGate({
   const [showModal,  setShowModal]          = useState(false);
   const [refreshing, setRefreshing]         = useState(false);
   const router                              = useRouter();
+  const phoneVerificationEnabled            = featureFlags.phoneVerification;
 
   if (isLoading) return null;
 
@@ -58,16 +60,19 @@ export default function LevelGate({
         <span className="text-3xl" role="img" aria-label="مستوى ثقة مطلوب">🔐</span>
 
         <p className="text-sm text-amber-800 font-medium">
-          {/* ✅ الرسالة ديناميكية تعكس المستوى الفعلي المطلوب */}
-          يتطلب هذا الإجراء مستوى الثقة {requiredLevel} أو أعلى
+          {phoneVerificationEnabled
+            ? `يتطلب هذا الإجراء مستوى الثقة ${requiredLevel} أو أعلى`
+            : 'رفع مستوى الثقة عبر الهاتف متوقف مؤقتاً'}
         </p>
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700 transition"
-          >
-            ارفع مستواك الآن 📱
-          </button>
+          {phoneVerificationEnabled && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700 transition"
+            >
+              ارفع مستواك الآن 📱
+            </button>
+          )}
           <button
             onClick={handleRefreshLevel}
             disabled={refreshing}
@@ -78,14 +83,16 @@ export default function LevelGate({
         </div>
       </div>
 
-      <PhoneVerifyModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSuccess={() => {
-          setShowModal(false);
-          handleRefreshLevel();
-        }}
-      />
+      {phoneVerificationEnabled && (
+        <PhoneVerifyModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          onSuccess={() => {
+            setShowModal(false);
+            handleRefreshLevel();
+          }}
+        />
+      )}
     </>
   );
 }

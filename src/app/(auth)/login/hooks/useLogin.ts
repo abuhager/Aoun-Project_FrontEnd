@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import axiosInstance, { setAccessToken } from "@/lib/api/axiosInstance";
 import { useAuth } from "@/context/AuthContext";
 import type { AuthUser, UserRole, TrustLevel } from "@/types/user.types";
+import { getSafeRedirectPath } from "@/config/routes";
+import { login } from "@/lib/api/authApi";
 
 interface FormData {
   email:    string;
@@ -22,10 +23,13 @@ interface LoginResponse {
     email:              string;
     avatar?:            string;
     role:               string;
-    trustLevel?:        TrustLevel;   // ✅ إصلاح #5: ديناميكي 1|2|3|4 بدل 1|2 ثابت
+    trustLevel?:        TrustLevel;
     quota?:             number;
     isVerified?:        boolean;
     isVerifiedStudent?: boolean;
+    phoneVerified?:     boolean;
+    isFrozen?:          boolean;
+    isBanned?:          boolean;
     createdAt?:         string;
     gamification?: {
       trustScore:     number;
@@ -57,6 +61,11 @@ export function useLogin() {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const fillDemoCredentials = (email: string, password: string) => {
+    setFormData({ email, password });
+    setError("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -64,16 +73,14 @@ export function useLogin() {
     try {
       setLoading(true);
 
-      const res = await axiosInstance.post<LoginResponse>("/api/auth/login", {
+      const response = await login({
         email:    formData.email,
         password: formData.password,
       });
 
-      const { accessToken, user } = res.data;
+      const { user } = response as LoginResponse;
 
-      setAccessToken(accessToken);
-
-      const safeLevel = ([1, 2, 3, 4] as TrustLevel[]).includes(
+      const safeLevel = ([1, 2] as TrustLevel[]).includes(
         user.trustLevel as TrustLevel
       )
         ? (user.trustLevel as TrustLevel)
@@ -89,6 +96,9 @@ export function useLogin() {
         quota:             user.quota ?? 0,
         isVerified:        user.isVerified ?? false,
         isVerifiedStudent: user.isVerifiedStudent ?? false,
+        phoneVerified:     user.phoneVerified ?? false,
+        isFrozen:          user.isFrozen ?? false,
+        isBanned:          user.isBanned ?? false,
         createdAt:         user.createdAt ?? "",
         gamification: {
           trustScore:     user.gamification?.trustScore     ?? 0,
@@ -106,9 +116,7 @@ export function useLogin() {
       const params   = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
 
-      window.location.replace(
-        redirect && redirect !== "/login" ? redirect : "/browse"
-      );
+      window.location.replace(getSafeRedirectPath(redirect));
     } catch (err: unknown) {
       if (axios.isAxiosError<ErrorResponse>(err)) {
         const errorData = err.response?.data;
@@ -129,5 +137,12 @@ export function useLogin() {
     }
   };
 
-  return { formData, error, loading, handleChange, handleSubmit };
+  return {
+    formData,
+    error,
+    loading,
+    handleChange,
+    handleSubmit,
+    fillDemoCredentials,
+  };
 }

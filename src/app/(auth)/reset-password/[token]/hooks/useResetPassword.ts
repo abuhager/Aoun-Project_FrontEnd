@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
-import Cookies from "js-cookie";
-import axiosInstance from "@/lib/api/axiosInstance";
+import axiosInstance, { resetAuthState } from "@/lib/api/axiosInstance";
+import { clearSessionCookie } from "@/lib/utils/cookieUtils";
+import {
+  isStrongPassword,
+  PASSWORD_REQUIREMENTS_MESSAGE,
+} from "@/lib/validation/auth";
 
 export function useResetPassword() {
   const { token } = useParams();
@@ -24,8 +28,8 @@ export function useResetPassword() {
     if (password !== confirmPassword) {
       return setError("كلمتا المرور غير متطابقتين ❌");
     }
-    if (password.length < 6) {
-      return setError("كلمة المرور يجب أن تكون 6 أحرف على الأقل 🔒");
+    if (!isStrongPassword(password)) {
+      return setError(PASSWORD_REQUIREMENTS_MESSAGE);
     }
 
     try {
@@ -37,9 +41,8 @@ export function useResetPassword() {
       );
 
       // ─── تنظيف أمني: مسح البيانات القديمة ───
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      Cookies.remove("token");
+      resetAuthState();
+      clearSessionCookie();
 
       setMessage(res.data.msg);
       setIsSuccess(true);

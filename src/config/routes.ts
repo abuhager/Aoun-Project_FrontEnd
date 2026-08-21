@@ -51,6 +51,24 @@ export const isProtectedPath = (pathname: string): boolean => {
 export const isAuthOnlyPath = (pathname: string): boolean =>
   AUTH_ONLY_PATHS.some((path) => matchesRoutePrefix(pathname, path));
 
+export const getSafeRedirectPath = (
+  candidate: string | null | undefined,
+  fallback = '/browse'
+): string => {
+  if (!candidate || !candidate.startsWith('/') || candidate.startsWith('//')) {
+    return fallback;
+  }
+
+  try {
+    const base = new URL('https://aoun.local');
+    const target = new URL(candidate, base);
+    if (target.origin !== base.origin || target.pathname === '/login') return fallback;
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return fallback;
+  }
+};
+
 export const isAuthSafeUrl = (url: string): boolean => {
   let pathname: string;
   try {

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { isProtectedPath, isAuthOnlyPath } from '@/config/routes';
+import { isProtectedPath } from '@/config/routes';
 import { buildContentSecurityPolicy } from '@/config/csp';
 
 const hasSession = (request: NextRequest): boolean => {
@@ -35,10 +35,6 @@ export function proxy(request: NextRequest) {
       ),
       csp
     );
-  }
-
-  if (isAuthOnlyPath(pathname) && loggedIn) {
-    return addResponseCsp(NextResponse.redirect(new URL('/browse', request.url)), csp);
   }
 
   const requestHeaders = new Headers(request.headers);

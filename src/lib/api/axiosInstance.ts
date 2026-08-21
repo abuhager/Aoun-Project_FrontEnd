@@ -168,6 +168,29 @@ axiosInstance.interceptors.response.use(
     const url = originalRequest.url ?? "";
     const isAuthRoute = isAuthSafeUrl(url) || isAuthMeUrl(url);
 
+    const responseData = error.response?.data as
+      | { code?: string; msg?: string }
+      | undefined;
+    const disabledAccountCodes = new Set([
+      "ACCOUNT_BANNED",
+      "ACCOUNT_FROZEN",
+      "ACCOUNT_DISABLED",
+    ]);
+
+    if (
+      status === 403 &&
+      responseData?.code &&
+      disabledAccountCodes.has(responseData.code) &&
+      !isAuthRoute
+    ) {
+      resetAuthState();
+      clearSessionCookie();
+      if (typeof window !== "undefined" && isProtectedPath(window.location.pathname)) {
+        window.location.replace("/login?reason=account_unavailable");
+      }
+      return Promise.reject(error);
+    }
+
     if (status === 401 && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
 

@@ -1,20 +1,30 @@
-// src/lib/firebase.ts
-// تهيئة Firebase Client SDK للتحقق من الهاتف
-// ─────────────────────────────────────────────────────────────
-// متغيرات البيئة المطلوبة في .env.local:
-//   NEXT_PUBLIC_FIREBASE_API_KEY
-//   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-//   NEXT_PUBLIC_FIREBASE_PROJECT_ID
+import { getApp, getApps, initializeApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth }                         from 'firebase/auth';
+let cachedAuth: Auth | null = null;
 
-const firebaseConfig = {
-  apiKey:    process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-  projectId:  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-};
+export function getFirebaseAuth(): Auth {
+  if (cachedAuth) return cachedAuth;
+  if (typeof window === "undefined") {
+    throw new Error("Firebase Phone Auth is available in the browser only");
+  }
 
-// منع إعادة التهيئة عند Hot Reload
-const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const firebaseAuth = getAuth(app);
+  const config = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  };
+
+  const missing = Object.entries(config)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+  if (missing.length > 0) {
+    throw new Error(
+      `Firebase Phone Auth is not configured (${missing.join(", ")})`
+    );
+  }
+
+  const app = getApps().length > 0 ? getApp() : initializeApp(config);
+  cachedAuth = getAuth(app);
+  return cachedAuth;
+}

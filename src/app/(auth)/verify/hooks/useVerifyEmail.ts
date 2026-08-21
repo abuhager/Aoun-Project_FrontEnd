@@ -5,6 +5,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { verifyOtp, resendOtp } from "@/lib/api/authApi";
+import { resetAuthState } from "@/lib/api/axiosInstance";
+import { clearSessionCookie } from "@/lib/utils/cookieUtils";
 
 type OtpErrorCode =
   | "OTP_ATTEMPTS_EXCEEDED"
@@ -142,9 +144,13 @@ export function useVerifyEmail() {
 
       const data = await verifyOtp({ email, otp: otpCode });
 
-      if (data.accessToken) {
-        setUser(data.user ?? null);
+      if (data.accessToken && data.user?._id) {
+        setUser(data.user);
         router.push("/browse");
+      } else if (data.accessToken) {
+        resetAuthState();
+        clearSessionCookie();
+        setError("تعذّر إنشاء الجلسة، يرجى تسجيل الدخول مجدداً");
       } else {
         router.push("/login?verified=true");
       }

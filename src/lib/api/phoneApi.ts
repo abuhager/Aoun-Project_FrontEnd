@@ -13,7 +13,7 @@ import {
   RecaptchaVerifier,
   type ConfirmationResult,
 } from 'firebase/auth';
-import { firebaseAuth }  from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import axiosInstance     from '@/lib/api/axiosInstance';
 
 // ─── الحالة الداخلية ──────────────────────────────────────────
@@ -25,7 +25,7 @@ const getRecaptchaVerifier = (buttonId: string): RecaptchaVerifier => {
   if (_recaptchaVerifier) {
     try { _recaptchaVerifier.clear(); } catch { /* ignore */ }
   }
-  _recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, buttonId, {
+  _recaptchaVerifier = new RecaptchaVerifier(getFirebaseAuth(), buttonId, {
     size: 'invisible', // بدون UI ظاهرة للمستخدم
   });
   return _recaptchaVerifier;
@@ -40,7 +40,7 @@ export async function sendPhoneOtp(
 ): Promise<void> {
   const verifier = getRecaptchaVerifier(buttonId);
   _confirmationResult = await signInWithPhoneNumber(
-    firebaseAuth,
+    getFirebaseAuth(),
     payload.phone,
     verifier
   );

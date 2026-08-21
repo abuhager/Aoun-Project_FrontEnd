@@ -5,20 +5,20 @@ import Image from "next/image";
 import { useRedirectIfAuth } from "../hooks/useRedirectIfAuth";
 import { useLogin } from "./hooks/useLogin";
 import { useSiteConfig } from "@/context/SiteConfigContext";
+import { featureFlags } from "@/config/features";
+import { DEMO_ACCOUNTS } from "@/config/demoAccounts";
 
 export default function LoginPage() {
   useRedirectIfAuth();
-  const { formData, loading, error, handleChange, handleSubmit } = useLogin();
+  const {
+    formData,
+    loading,
+    error,
+    handleChange,
+    handleSubmit,
+    fillDemoCredentials,
+  } = useLogin();
   const { platformName } = useSiteConfig();
-
-  // ⚡ دالة مساعدة لتعبئة بيانات الحساب التجريبي بنقرة واحدة
-  const handleQuickFill = (email: string) => {
-    const syntheticEvent = (name: string, value: string) =>
-      ({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
-
-    handleChange(syntheticEvent("email", email));
-    handleChange(syntheticEvent("password", "1870547aA"));
-  };
 
   return (
     <main
@@ -41,35 +41,33 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* 🌟 بطاقات سريعة لتسجيل حسابات الديمو (Demo Accounts) */}
-          <div className="p-4 rounded-xl bg-surface-container-highest border border-outline-variant/30 space-y-2">
-            <p className="text-xs font-bold text-on-surface-variant">
-              ⚡ تجربة سريعة (Demo Accounts):
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickFill("admin@aoun.jo")}
-                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-              >
-                🛡️ مسؤول (Admin)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill("donor@gmail.com")}
-                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-              >
-                🎁 متبرع (Donor)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill("sara@student.ju.edu.jo")}
-                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors"
-              >
-                🎓 مستلمة (Student)
-              </button>
+          {featureFlags.demoLogin && (
+            <div className="space-y-3 rounded-xl border border-outline-variant/30 bg-surface-container-highest p-4">
+              <div>
+                <p className="text-sm font-bold text-on-surface">
+                  حسابات تجريبية
+                </p>
+                <p className="text-xs text-on-surface-variant">
+                  اختر حساباً لتعبئة بيانات الدخول تلقائياً
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {DEMO_ACCOUNTS.map((account) => (
+                  <button
+                    key={account.email}
+                    type="button"
+                    onClick={() =>
+                      fillDemoCredentials(account.email, account.password)
+                    }
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${account.buttonClassName}`}
+                  >
+                    <span aria-hidden="true">{account.icon}</span>{" "}
+                    {account.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* رسالة الخطأ */}
           {error && (

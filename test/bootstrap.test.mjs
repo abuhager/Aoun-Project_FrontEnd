@@ -46,6 +46,14 @@ test('يفصل المسارات المحمية ومسارات المصادقة �
   assert.equal(routeModule.isAuthSafeUrl('/api/auth/reset-password/token-value'), true);
 });
 
+test('يقبل redirect داخلياً فقط بعد الدخول', () => {
+  assert.equal(routeModule.getSafeRedirectPath('/profile?tab=security'), '/profile?tab=security');
+  assert.equal(routeModule.getSafeRedirectPath('https://evil.example'), '/browse');
+  assert.equal(routeModule.getSafeRedirectPath('//evil.example'), '/browse');
+  assert.equal(routeModule.getSafeRedirectPath('/\\evil.example'), '/browse');
+  assert.equal(routeModule.getSafeRedirectPath('/login'), '/browse');
+});
+
 test('ينشئ CSP nonce بدون unsafe-inline ويسمح بمصدر Socket العام', () => {
   const csp = cspModule.buildContentSecurityPolicy('unique-nonce');
   assert.match(csp, /'nonce-unique-nonce'/);

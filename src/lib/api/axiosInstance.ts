@@ -81,6 +81,8 @@ const PUBLIC_PATH_PATTERNS: Array<{ pattern: RegExp; getOnly: boolean }> = [
   { pattern: /^\/api\/items(\/(?!me|complete|waitlist)[^/]+)?\/?$/, getOnly: true },
   // القائمة العامة فقط؛ مسارات /admin وعمليات الكتابة يجب أن تنتظر تهيئة الهوية.
   { pattern: /^\/api\/hubs\/?$/, getOnly: true },
+  { pattern: /^\/api\/donation-requests\/?$/, getOnly: true },
+  { pattern: /^\/api\/donation-requests\/[a-f\d]{24}\/?$/i, getOnly: true },
   { pattern: /^\/api\/public/, getOnly: false },
   { pattern: /^\/api\/settings\/public/, getOnly: true },
 ];

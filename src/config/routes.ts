@@ -45,6 +45,9 @@ export const isProtectedPath = (pathname: string): boolean => {
   if (segments[0] === 'items') {
     return segments.length > 2;
   }
+  if (segments[0] === 'donation-requests') {
+    return segments[1] === 'new' || segments[2] === 'offer';
+  }
   return PROTECTED_PREFIXES.some((prefix) => matchesRoutePrefix(pathname, prefix));
 };
 

@@ -1,18 +1,12 @@
-// src/types/donationRequest.types.ts
-// ✅ DC-15 FIX: DonationOfferStatus في Frontend يشمل 'cancelled_by_requester'
-//    لكن DonationOffer Model في Backend لا يملك هذه القيمة في الـ enum!
-//    التزامن مطلوب: إما إضافة القيمة للـ Backend Model، أو حذفها من Frontend
-
 export type DonationRequestStatus  = 'active' | 'fulfilled' | 'expired' | 'cancelled';
 
-// ✅ DC-15: مزامنة مع DonationOffer Model في Backend
-// Backend enum: ['pending', 'accepted', 'rejected']
-// ← إضافة 'cancelled_by_requester' للـ Backend Model مطلوبة (انظر التعليقات أدناه)
 export type DonationOfferStatus =
   | 'pending'
   | 'accepted'
   | 'rejected'
-  | 'cancelled_by_requester'; // ← يجب إضافته لـ Backend Model أيضاً
+  | 'withdrawn'
+  | 'cancelled_by_requester'
+  | 'request_expired';
 
 export interface DonationRequestUser {
   _id:         string;
@@ -53,7 +47,12 @@ export interface DonationRequest {
   description?: string;
   location:     string;
   status:       DonationRequestStatus;
-  requester:    DonationRequestUser;
+  requester:    DonationRequestUser | null;
+  viewerOffer?: {
+    _id:       string;
+    status:    DonationOfferStatus;
+    createdAt: string;
+  } | null;
   fulfilledByItem?: {
     _id:                string;
     status:             string;
@@ -102,4 +101,9 @@ export interface CreateDonationRequestPayload {
   urgency?:     'low' | 'medium' | 'high';
   description?: string;
   location:     string;
+}
+
+export interface CreateDonationRequestResponse {
+  msg:     string;
+  request: DonationRequest;
 }

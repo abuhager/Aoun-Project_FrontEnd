@@ -1,6 +1,7 @@
 import axiosInstance from '@/lib/api/axiosInstance';
 import type {
   CreateDonationRequestPayload,
+  CreateDonationRequestResponse,
   DonationRequest,
   DonationRequestsListResponse,
   DonationOffer,
@@ -24,7 +25,7 @@ export async function getMyDonationRequests() {
 }
 
 export async function createDonationRequest(payload: CreateDonationRequestPayload) {
-  const { data } = await axiosInstance.post<{ msg: string }>(
+  const { data } = await axiosInstance.post<CreateDonationRequestResponse>(
     '/api/donation-requests',
     payload
   );
@@ -59,6 +60,20 @@ export async function acceptOffer(requestId: string, offerId: string) {
   return data;
 }
 
+export async function rejectOffer(requestId: string, offerId: string) {
+  const { data } = await axiosInstance.patch<{ msg: string }>(
+    `/api/donation-requests/${requestId}/offers/${offerId}/reject`
+  );
+  return data;
+}
+
+export async function withdrawOffer(requestId: string, offerId: string) {
+  const { data } = await axiosInstance.patch<{ msg: string }>(
+    `/api/donation-requests/${requestId}/offers/${offerId}/withdraw`
+  );
+  return data;
+}
+
 export type RespondPayload = {
   condition:    'جديد' | 'مستعمل ممتاز' | 'مستعمل جيد';
   safeHub:      string;
@@ -66,7 +81,11 @@ export type RespondPayload = {
   imageFile?:   File;
 };
 
-export type SubmitOfferResponse = { msg: string; offerId: string };
+export type SubmitOfferResponse = {
+  msg:     string;
+  offerId: string;
+  status:  'pending';
+};
 
 export async function respondToDonationRequest(
   requestId: string,
@@ -82,8 +101,7 @@ export async function respondToDonationRequest(
 
   const { data } = await axiosInstance.post<SubmitOfferResponse>(
     `/api/donation-requests/${requestId}/offer`,
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    formData
   );
   return data;
 }

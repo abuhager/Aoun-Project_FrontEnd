@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import axiosInstance from "@/lib/api/axiosInstance";
 import type { DonationRequest } from "@/types/donationRequest.types";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import { useAuth } from "@/context/AuthContext";
 
 import {
   getDonationRequests,
@@ -17,6 +19,8 @@ import { getPublicSettings } from "@/lib/api/settingsApi";
 const DEFAULT_CATEGORIES = ["كتب", "إلكترونيات", "أثاث", "ملابس", "أخرى"];
 const DEFAULT_LOCATIONS = ["عمان", "الزرقاء", "إربد", "العقبة", "السلط", "مادبا"];
 const CONDITIONS = ["جديد", "مستعمل ممتاز", "مستعمل جيد"] as const;
+const OFFER_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_OFFER_IMAGE_BYTES = 5 * 1024 * 1024;
 
 function RequestStatusBadge({ status }: { status: DonationRequest["status"] }) {
   const styles = {
@@ -72,6 +76,7 @@ function RequestCardSkeleton() {
 export default function DonationRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, isLoading: authLoading } = useAuth();
 
   const [myOnly, setMyOnly] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -80,6 +85,12 @@ export default function DonationRequestsClient() {
     setMounted(true);
     setMyOnly(searchParams.get("mine") === "true");
   }, [searchParams]);
+
+  useEffect(() => {
+    if (authLoading || user || !myOnly) return;
+    setMyOnly(false);
+    router.replace("/donation-requests");
+  }, [authLoading, myOnly, router, user]);
 
   const [requests, setRequests] = useState<DonationRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,6 +159,14 @@ export default function DonationRequestsClient() {
 
   const handleRespond = async () => {
     if (!respondingTo || !respondForm.safeHub) return;
+    if (!user) {
+      router.push(
+        `/login?redirect=${encodeURIComponent(`/donation-requests/${respondingTo._id}/offer`)}`
+      );
+      return;
+    }
+
+    const requestId = respondingTo._id;
     setSubmitting(true);
     try {
       const res = await respondToDonationRequest(respondingTo._id, {
@@ -159,13 +178,9 @@ export default function DonationRequestsClient() {
 
       setRespondingTo(null);
       setImagePreview(null);
-      setToast({ msg: res.msg ?? "تم التبرع بنجاح! جارٍ التحويل...", ok: true });
-
-      if (res.offerId) {
-        setTimeout(() => router.push(`/items/${res.offerId}`), 1200);
-      } else {
-        load(1);
-      }
+      setToast({ msg: res.msg ?? "تم إرسال العرض للمراجعة", ok: true });
+      await load(stateRef.current.page);
+      setTimeout(() => router.push(`/donation-requests/${requestId}`), 700);
     } catch (err) {
       setToast({ msg: extractErrorMsg(err, "تعذر الاستجابة للطلب"), ok: false });
     } finally {
@@ -188,9 +203,17 @@ export default function DonationRequestsClient() {
   };
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || authLoading || (myOnly && !user)) return;
     load(1, selectedCategory, myOnly, selectedLocation);
-  }, [load, selectedCategory, myOnly, selectedLocation, mounted]);
+  }, [
+    authLoading,
+    load,
+    mounted,
+    myOnly,
+    selectedCategory,
+    selectedLocation,
+    user,
+  ]);
 
   useEffect(() => {
     getPublicSettings()
@@ -229,6 +252,20 @@ export default function DonationRequestsClient() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     if (imagePreview) URL.revokeObjectURL(imagePreview);
+    if (file && !OFFER_IMAGE_TYPES.has(file.type)) {
+      e.target.value = "";
+      setRespondForm((prev) => ({ ...prev, imageFile: null }));
+      setImagePreview(null);
+      setToast({ msg: "الصورة يجب أن تكون JPG أو PNG أو WebP", ok: false });
+      return;
+    }
+    if (file && file.size > MAX_OFFER_IMAGE_BYTES) {
+      e.target.value = "";
+      setRespondForm((prev) => ({ ...prev, imageFile: null }));
+      setImagePreview(null);
+      setToast({ msg: "حجم الصورة يجب ألا يتجاوز 5MB", ok: false });
+      return;
+    }
     setRespondForm((prev) => ({ ...prev, imageFile: file }));
     setImagePreview(file ? URL.createObjectURL(file) : null);
   };
@@ -315,7 +352,13 @@ export default function DonationRequestsClient() {
               </button>
 
               <button
-                onClick={() => setMyOnly(true)}
+                onClick={() => {
+                  if (!user) {
+                    router.push("/login?redirect=/donation-requests?mine=true");
+                    return;
+                  }
+                  setMyOnly(true);
+                }}
                 className={`rounded-full px-4 py-2 text-xs font-black transition-all ${
                   myOnly
                     ? "bg-primary text-white shadow-sm"
@@ -444,10 +487,18 @@ export default function DonationRequestsClient() {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          {!myOnly && request.status === "active" && (
+                          {!myOnly &&
+                            request.status === "active" &&
+                            request.requester?._id !== user?._id && (
                             <button
                               type="button"
                               onClick={() => {
+                                if (!user) {
+                                  router.push(
+                                    `/login?redirect=${encodeURIComponent(`/donation-requests/${request._id}/offer`)}`
+                                  );
+                                  return;
+                                }
                                 resetRespondForm();
                                 setRespondingTo(request);
                               }}
@@ -530,8 +581,8 @@ export default function DonationRequestsClient() {
                 </h2>
 
                 <p className="mt-1 text-xs leading-6 text-[#7a736b]">
-                  سيُنشأ غرض ويُحجز تلقائياً لصاحب الطلب، ثم تنتقلان معاً إلى نقطة
-                  التسليم الآمنة لإتمام العملية.
+                  سيصل عرضك لصاحب الطلب أولاً. إذا اختارك، سيُنشأ الغرض ويُحجز له
+                  تلقائياً عند نقطة التسليم الآمنة.
                 </p>
               </div>
 
@@ -599,10 +650,13 @@ export default function DonationRequestsClient() {
                 <label className="relative flex h-32 w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#ddd7cf] bg-[#fcfbf8] transition-all hover:border-primary/40 hover:bg-primary/[0.03]">
                   {imagePreview ? (
                     <>
-                      <img
+                      <Image
                         src={imagePreview}
                         alt="معاينة الصورة"
-                        className="h-full w-full rounded-2xl object-cover"
+                        fill
+                        unoptimized
+                        sizes="(max-width: 640px) 100vw, 512px"
+                        className="rounded-2xl object-cover"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity hover:opacity-100">
                         <span className="text-xs font-black text-white">
@@ -674,7 +728,7 @@ export default function DonationRequestsClient() {
 
               {respondForm.safeHub && (
                 <div className="rounded-2xl border border-primary/10 bg-primary/5 p-3 text-xs font-bold text-primary">
-                  ✅ بعد التأكيد ستُوجَّه لصفحة الغرض مباشرة لمتابعة عملية التسليم
+                  ✅ سيبقى العرض معلّقاً حتى يراجعه صاحب الطلب ويختار المتبرع
                 </div>
               )}
 

@@ -15,7 +15,7 @@ import axiosInstance from "@/lib/api/axiosInstance";
 
 export default function ItemDetailsPage() {
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const {
     item,
     loading,
@@ -117,8 +117,11 @@ export default function ItemDetailsPage() {
     );
   }
 
+  const isRequestLinked = Boolean(item.linkedRequestId);
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const imageUrl = item.imageUrl ?? "/placeholder-item.png";
-  const showCountdown = item.status === "محجوز" && (isBooker || isDonor);
+  const showCountdown =
+    !isRequestLinked && item.status === "محجوز" && (isBooker || isDonor);
   const showChat = (isDonor || isBooker) && item.status === "محجوز";
 
   const isRecipientConfirmedActual = item.recipientConfirmed || delivery.isRecipientConfirmed;
@@ -147,8 +150,11 @@ export default function ItemDetailsPage() {
       <main className="mx-auto max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-xs font-medium text-gray-400">
-          <Link href="/browse" className="font-bold transition-colors hover:text-primary">
-            تصفح التبرعات
+          <Link
+            href={isRequestLinked ? `/donation-requests/${item.linkedRequestId}` : "/browse"}
+            className="font-bold transition-colors hover:text-primary"
+          >
+            {isRequestLinked ? "طلب التبرع" : "تصفح التبرعات"}
           </Link>
           <span className="material-symbols-outlined text-[11px] text-gray-300">chevron_left</span>
           <span className="truncate font-black text-gray-700">{item.title}</span>
@@ -275,6 +281,12 @@ export default function ItemDetailsPage() {
 
             {/* أزرار الحالات والعمليات */}
             <div className="space-y-4">
+              {isRequestLinked && (
+                <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-center text-xs font-bold leading-6 text-primary">
+                  هذا الغرض مخصص لتلبية طلب تبرع مقبول، ولا يظهر في التصفح العام أو قوائم الانتظار.
+                </div>
+              )}
+
               {message.text && (
                 <div
                   className={`rounded-2xl border p-4 text-center text-xs font-bold ${
@@ -305,6 +317,10 @@ export default function ItemDetailsPage() {
                         : "سجل دخولك لحجز هذا الغرض 🎁"}
                     </button>
                   )
+                ) : isAdmin && !isDonor && !isBooker ? (
+                  <div className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-4 text-center text-sm font-bold text-gray-600">
+                    عرض إداري فقط — لا يمكن حجز هذا الغرض أو دخول قائمة انتظاره.
+                  </div>
                 ) : isDonor ? (
                   <div className="space-y-3">
                     <div className="w-full rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-4 text-center text-sm font-bold text-gray-500">
@@ -329,7 +345,7 @@ export default function ItemDetailsPage() {
                             "بانتظار تأكيد الاستلام من المستلم أولاً ⏳"
                           )}
                         </button>
-                        {!isRecipientConfirmedActual && (
+                        {!isRecipientConfirmedActual && !isRequestLinked && (
                           <button
                             onClick={handleCancelAction}
                             disabled={actionLoading}
@@ -370,7 +386,7 @@ export default function ItemDetailsPage() {
                         )}
                       </button>
                     )}
-                    {!isRecipientConfirmedActual && (
+                    {!isRecipientConfirmedActual && !isRequestLinked && (
                       <button
                         onClick={handleCancelAction}
                         disabled={actionLoading}

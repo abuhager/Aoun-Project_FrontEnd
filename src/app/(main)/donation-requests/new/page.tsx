@@ -1,13 +1,10 @@
-// src/app/(main)/donation-requests/new/page.tsx
-// [FIX-2] /api/settings/public بدل /api/settings — جلب التصنيفات والمناطق ديناميكياً
-// [FIX-4] جلب quota عند mount + تحذير + تعطيل زر النشر عند remaining=0
-// [FIX-ROUTING] التوجيه لصفحة طلبات التبرع العامة بعد النشر
 "use client";
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import axiosInstance from '@/lib/api/axiosInstance';
 import { createDonationRequest, getMyDonationRequests } from '@/lib/api/donationRequestApi';
+import { getPublicSettings } from '@/lib/api/settingsApi';
+import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
 
 const DEFAULT_CATEGORIES = ['كتب', 'إلكترونيات', 'أثاث', 'ملابس', 'أخرى'];
 const DEFAULT_LOCATIONS  = ['عمان', 'الزرقاء', 'إربد', 'العقبة', 'السلط', 'مادبا'];
@@ -20,15 +17,19 @@ export default function NewDonationRequestPage() {
   const [locations,    setLocations]    = useState(DEFAULT_LOCATIONS);
   const [quota,        setQuota]        = useState<{ used: number; max: number; remaining: number } | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
-  const [form, setForm] = useState({ title: '', description: '', category: '', location: '' });
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    category: '',
+    location: '',
+    urgency: 'medium' as 'low' | 'medium' | 'high',
+  });
 
-  // [FIX-2] جلب التصنيفات من الـ Endpoint العام المفتوح
   useEffect(() => {
-    axiosInstance.get('/api/settings/public')
-      .then((r) => {
-        const data = r.data?.data || r.data;
-        if (Array.isArray(data?.categories) && data.categories.length) setCategories(data.categories);
-        if (Array.isArray(data?.locations)  && data.locations.length)  setLocations(data.locations);
+    getPublicSettings()
+      .then((data) => {
+        if (data?.categories?.length) setCategories(data.categories);
+        if (data?.locations?.length) setLocations(data.locations);
       })
       .catch(() => console.warn('[Settings] fallback إلى القيم الافتراضية'));
   }, []);
@@ -60,14 +61,14 @@ export default function NewDonationRequestPage() {
         title: form.title.trim(), 
         description: form.description.trim(), 
         category: form.category, 
-        location: form.location 
+        location: form.location,
+        urgency: form.urgency,
       });
       setToast({ msg: res.msg ?? 'تم نشر الطلب بنجاح', ok: true });
       // ✅ التوجيه إلى صفحة قائمة طلبات التبرع
       setTimeout(() => router.push('/donation-requests'), 700);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { msg?: string } } })?.response?.data?.msg ?? 'حدث خطأ';
-      setToast({ msg, ok: false });
+      setToast({ msg: extractErrorMsg(err, 'تعذر نشر الطلب'), ok: false });
     } finally { 
       setSubmitting(false); 
     }
@@ -106,11 +107,11 @@ export default function NewDonationRequestPage() {
             <input 
               value={form.title} 
               onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} 
-              maxLength={120} 
+              maxLength={100}
               placeholder="مثال: أحتاج لابتوب للدراسة" 
               className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary" 
             />
-            <p className="text-[11px] text-gray-400 text-left">{form.title.length} / 120</p>
+            <p className="text-[11px] text-gray-400 text-left">{form.title.length} / 100</p>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -137,16 +138,31 @@ export default function NewDonationRequestPage() {
             </div>
           </div>
           <div className="space-y-1">
+            <label className="text-xs font-black text-gray-700">درجة الاستعجال</label>
+            <select
+              value={form.urgency}
+              onChange={(e) => setForm((p) => ({
+                ...p,
+                urgency: e.target.value as 'low' | 'medium' | 'high',
+              }))}
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+            >
+              <option value="low">عادي</option>
+              <option value="medium">متوسط</option>
+              <option value="high">عاجل</option>
+            </select>
+          </div>
+          <div className="space-y-1">
             <label className="text-xs font-black text-gray-700">الوصف *</label>
             <textarea 
               value={form.description} 
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} 
               rows={7} 
-              maxLength={600} 
+              maxLength={500}
               placeholder="اشرح حاجتك بوضوح" 
               className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary resize-none" 
             />
-            <p className="text-[11px] text-gray-400 text-left">{form.description.length} / 600</p>
+            <p className="text-[11px] text-gray-400 text-left">{form.description.length} / 500</p>
           </div>
           {/* [FIX-4] زر معطّل عند تجاوز الحد */}
           <button 

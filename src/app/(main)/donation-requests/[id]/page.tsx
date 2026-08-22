@@ -3,8 +3,16 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import axiosInstance from "@/lib/api/axiosInstance";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import { useAuth } from "@/context/AuthContext";
+import {
+  acceptOffer,
+  cancelDonationRequest,
+  getDonationRequestById,
+  getOffersByRequest,
+  rejectOffer,
+  withdrawOffer,
+} from "@/lib/api/donationRequestApi";
 import type {
   DonationRequest,
   DonationOffer,
@@ -13,14 +21,17 @@ import type {
 export default function DonationRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
 
   const [request, setRequest] = useState<DonationRequest | null>(null);
   const [offers, setOffers] = useState<DonationOffer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [authLoading, setAuthLoading] = useState(true);
   const [accepting, setAccepting] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const currentUserId = user?._id ?? null;
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((msg: string, ok: boolean) => {
@@ -36,22 +47,15 @@ export default function DonationRequestDetailPage() {
     []
   );
 
-  useEffect(() => {
-    axiosInstance
-      .get("/api/auth/me")
-      .then((r) => setCurrentUserId(r.data?.user?._id ?? r.data?._id ?? null))
-      .catch(() => setCurrentUserId(null))
-      .finally(() => setAuthLoading(false));
-  }, []);
-
   const fetchRequest = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     try {
-      const r = await axiosInstance.get(`/api/donation-requests/${id}`);
-      setRequest(r.data?.request ?? r.data);
-    } catch {
-      showToast("تعذر تحميل الطلب", false);
+      const response = await getDonationRequestById(id);
+      setRequest(response.request);
+    } catch (error) {
+      setRequest(null);
+      showToast(extractErrorMsg(error, "تعذر تحميل الطلب"), false);
     } finally {
       setLoading(false);
     }
@@ -60,22 +64,31 @@ export default function DonationRequestDetailPage() {
   const fetchOffers = useCallback(async () => {
     if (!id) return;
     try {
-      const r = await axiosInstance.get(`/api/donation-requests/${id}/offers`);
-      setOffers(r.data?.offers ?? []);
-    } catch {}
-  }, [id]);
+      const response = await getOffersByRequest(id);
+      setOffers(response.offers ?? []);
+    } catch (error) {
+      showToast(extractErrorMsg(error, "تعذر تحميل العروض"), false);
+    }
+  }, [id, showToast]);
 
   useEffect(() => {
-    fetchRequest();
-    fetchOffers();
-  }, [fetchRequest, fetchOffers]);
+    if (authLoading) return;
+    void fetchRequest();
+  }, [authLoading, fetchRequest]);
+
+  useEffect(() => {
+    if (!request || request.requester?._id !== currentUserId) {
+      setOffers([]);
+      return;
+    }
+    void fetchOffers();
+  }, [currentUserId, fetchOffers, request]);
 
   const handleAcceptOffer = async (offerId: string) => {
     setAccepting(offerId);
     try {
-      await axiosInstance.post(
-        `/api/donation-requests/${id}/offers/${offerId}/accept`
-      );
+      if (!window.confirm("هل تريد اعتماد هذا العرض ورفض بقية العروض؟")) return;
+      await acceptOffer(id, offerId);
 
       showToast("🎉 تم اختيار المتبرع وحجز الغرض بنجاح!", true);
       setOffers([]);
@@ -85,6 +98,50 @@ export default function DonationRequestDetailPage() {
       showToast(extractErrorMsg(err, "تعذر قبول العرض"), false);
     } finally {
       setAccepting(null);
+    }
+  };
+
+  const handleRejectOffer = async (offerId: string) => {
+    if (!window.confirm("هل تريد رفض هذا العرض؟ لا يمكن التراجع عن ذلك.")) return;
+    setRejecting(offerId);
+    try {
+      const result = await rejectOffer(id, offerId);
+      showToast(result.msg, true);
+      await fetchOffers();
+    } catch (error) {
+      showToast(extractErrorMsg(error, "تعذر رفض العرض"), false);
+    } finally {
+      setRejecting(null);
+    }
+  };
+
+  const handleWithdrawOffer = async () => {
+    const offerId = request?.viewerOffer?._id;
+    if (!offerId || !window.confirm("هل تريد سحب عرضك؟ لا يمكنك تقديم عرض جديد لنفس الطلب.")) return;
+    setWithdrawing(true);
+    try {
+      const result = await withdrawOffer(id, offerId);
+      showToast(result.msg, true);
+      await fetchRequest();
+    } catch (error) {
+      showToast(extractErrorMsg(error, "تعذر سحب العرض"), false);
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!window.confirm("هل تريد إلغاء الطلب وكل العروض المعلقة عليه؟")) return;
+    setCanceling(true);
+    try {
+      const result = await cancelDonationRequest(id);
+      showToast(result.msg, true);
+      await fetchRequest();
+      await fetchOffers();
+    } catch (error) {
+      showToast(extractErrorMsg(error, "تعذر إلغاء الطلب"), false);
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -125,9 +182,16 @@ export default function DonationRequestDetailPage() {
   }
 
   const isOwner = currentUserId === request.requester?._id;
-  const respondedItem = request.fulfilledByItem ?? null;
+  const viewerOffer = request.viewerOffer ?? null;
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const canViewFulfilledItem = Boolean(
+    isOwner || isAdmin || viewerOffer?.status === "accepted"
+  );
+  const respondedItem = canViewFulfilledItem
+    ? request.fulfilledByItem ?? null
+    : null;
   const isAccepted = request.status === "fulfilled" || !!respondedItem;
-  const showCaseB = request.status === "active" && !isOwner && !isAccepted;
+  const showCaseB = request.status === "active" && !isOwner && !isAccepted && !viewerOffer;
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
@@ -205,7 +269,7 @@ export default function DonationRequestDetailPage() {
             <div className="grid min-w-[220px] grid-cols-2 gap-3">
               <MiniStat
                 label="عدد العروض"
-                value={isAccepted ? 1 : offers.length}
+                value={isOwner ? offers.length : viewerOffer ? 1 : isAccepted ? 1 : 0}
                 tone="text-primary"
               />
               <MiniStat
@@ -257,10 +321,36 @@ export default function DonationRequestDetailPage() {
                         key={offer._id}
                         offer={offer}
                         onAccept={() => handleAcceptOffer(offer._id)}
+                        onReject={() => handleRejectOffer(offer._id)}
                         isAccepting={accepting === offer._id}
+                        isRejecting={rejecting === offer._id}
                       />
                     ))}
                   </div>
+                )}
+              </section>
+            )}
+
+            {!isOwner && viewerOffer && (
+              <section className="rounded-[28px] border border-primary/20 bg-white p-6 text-center shadow-sm">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <span className="material-symbols-outlined text-3xl">inventory</span>
+                </div>
+                <h2 className="mt-4 text-base font-black text-[#1d2324]">
+                  {offerStatusLabel(viewerOffer.status)}
+                </h2>
+                <p className="mt-2 text-sm leading-7 text-[#6d665f]">
+                  {offerStatusDescription(viewerOffer.status)}
+                </p>
+                {viewerOffer.status === "pending" && request.status === "active" && (
+                  <button
+                    type="button"
+                    onClick={handleWithdrawOffer}
+                    disabled={withdrawing}
+                    className="mt-5 w-full rounded-2xl bg-red-50 py-3 text-sm font-black text-red-600 transition-all hover:bg-red-100 disabled:opacity-50"
+                  >
+                    {withdrawing ? "جارٍ سحب العرض..." : "سحب العرض"}
+                  </button>
                 )}
               </section>
             )}
@@ -319,7 +409,7 @@ export default function DonationRequestDetailPage() {
                   onClick={() => router.push(`/donation-requests/${id}/offer`)}
                   className="mt-5 w-full rounded-2xl bg-primary py-3 text-sm font-black text-white transition-all hover:bg-primary/90"
                 >
-                  🎁 أريد التبرع
+                  {user ? "🎁 أريد التبرع" : "سجّل دخولك لتقديم عرض"}
                 </button>
               </section>
             )}
@@ -327,6 +417,23 @@ export default function DonationRequestDetailPage() {
 
           {/* Right Column */}
           <div className="space-y-5">
+            {isOwner && request.status === "active" && (
+              <section className="rounded-[28px] border border-red-100 bg-white p-5 shadow-sm">
+                <h2 className="text-sm font-black text-[#1f2526]">إدارة الطلب</h2>
+                <p className="mt-2 text-xs leading-6 text-gray-500">
+                  إلغاء الطلب يوقف كل العروض المعلقة ويبلغ أصحابها.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCancelRequest}
+                  disabled={canceling || accepting !== null}
+                  className="mt-4 w-full rounded-2xl bg-red-50 py-3 text-xs font-black text-red-600 hover:bg-red-100 disabled:opacity-50"
+                >
+                  {canceling ? "جارٍ إلغاء الطلب..." : "إلغاء الطلب"}
+                </button>
+              </section>
+            )}
+
             {/* عرض صفحة الغرض */}
             {isAccepted && respondedItem && (
               <section className="rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-sm">
@@ -396,11 +503,15 @@ function MiniStat({
 function OfferCard({
   offer,
   onAccept,
+  onReject,
   isAccepting,
+  isRejecting,
 }: {
   offer: DonationOffer;
   onAccept: () => void;
+  onReject: () => void;
   isAccepting: boolean;
+  isRejecting: boolean;
 }) {
   return (
     <div className="overflow-hidden rounded-[26px] border border-black/[0.06] bg-[#fcfbf8] p-4 shadow-sm transition-all hover:shadow-md">
@@ -416,9 +527,14 @@ function OfferCard({
           </p>
         </div>
 
-        <span className="mr-auto rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#6b655e]">
-          {offer.condition}
-        </span>
+        <div className="mr-auto flex flex-col items-end gap-1">
+          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#6b655e]">
+            {offer.condition}
+          </span>
+          <span className="text-[10px] font-black text-primary">
+            {offerStatusLabel(offer.status)}
+          </span>
+        </div>
       </div>
 
       {offer.imageUrl && (
@@ -444,22 +560,56 @@ function OfferCard({
         {offer.safeHub?.name} — {offer.safeHub?.city}
       </div>
 
-      <button
-        onClick={onAccept}
-        disabled={isAccepting}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-black text-white transition-all hover:bg-primary/90 disabled:opacity-50"
-      >
-        {isAccepting ? (
-          <>
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            جاري الاختيار...
-          </>
-        ) : (
-          "✅ اختر هذا المتبرع"
-        )}
-      </button>
+      {offer.status === "pending" ? (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onAccept}
+            disabled={isAccepting || isRejecting}
+            className="flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-black text-white transition-all hover:bg-primary/90 disabled:opacity-50"
+          >
+            {isAccepting ? "جاري الاختيار..." : "✅ قبول"}
+          </button>
+          <button
+            type="button"
+            onClick={onReject}
+            disabled={isAccepting || isRejecting}
+            className="rounded-2xl bg-red-50 py-3 text-sm font-black text-red-600 transition-all hover:bg-red-100 disabled:opacity-50"
+          >
+            {isRejecting ? "جاري الرفض..." : "رفض"}
+          </button>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl bg-gray-100 py-3 text-center text-xs font-black text-gray-500">
+          {offerStatusLabel(offer.status)}
+        </div>
+      )}
     </div>
   );
+}
+
+function offerStatusLabel(status: DonationOffer["status"]) {
+  const labels: Record<DonationOffer["status"], string> = {
+    pending: "قيد المراجعة",
+    accepted: "تم القبول",
+    rejected: "مرفوض",
+    withdrawn: "تم سحبه",
+    cancelled_by_requester: "الطلب ملغي",
+    request_expired: "انتهت مدة الطلب",
+  };
+  return labels[status];
+}
+
+function offerStatusDescription(status: DonationOffer["status"]) {
+  const descriptions: Record<DonationOffer["status"], string> = {
+    pending: "عرضك وصل إلى صاحب الطلب وما زال بانتظار قراره.",
+    accepted: "تم اختيار عرضك. يمكنك متابعة الغرض وإجراءات التسليم من هذه الصفحة.",
+    rejected: "تم اختيار عرض آخر. حفاظاً على الخصوصية لن تظهر لك بيانات الغرض أو المتبرع الذي تم اختياره.",
+    withdrawn: "سحبت عرضك لهذا الطلب، ولن تظهر لك بيانات أي عرض يتم اختياره.",
+    cancelled_by_requester: "ألغى صاحب الطلب طلبه، لذلك أُغلق عرضك تلقائياً.",
+    request_expired: "انتهت مدة الطلب قبل اختيار عرضك.",
+  };
+  return descriptions[status];
 }
 
 function StatusBadge({ status }: { status: string }) {

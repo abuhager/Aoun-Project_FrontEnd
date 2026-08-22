@@ -1,22 +1,29 @@
-import { useState, useEffect, useCallback, ChangeEvent, FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import { useRouter } from "next/navigation";
-import axiosInstance from "@/lib/api/axiosInstance";
+import { getItemById, updateItem } from "@/lib/api/itemApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import type { ItemCondition } from "@/types/item.types";
 
 const CONDITIONS = ["جديد", "مستعمل ممتاز", "مستعمل جيد"] as const;
 const CITIES = ["عمان", "إربد", "الزرقاء", "العقبة"] as const;
-
-export type Condition = typeof CONDITIONS[number];
-export type Category = string;
-export type City = typeof CITIES[number];
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 export { CONDITIONS, CITIES };
 
-interface FormData {
+interface EditItemForm {
   title: string;
   description: string;
   category: string;
   location: string;
-  condition: string;
+  condition: ItemCondition;
   hubId: string;
 }
 
@@ -27,102 +34,128 @@ interface Message {
 
 export function useEditItem(itemId: string) {
   const router = useRouter();
-
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<EditItemForm>({
     title: "",
     description: "",
     category: "",
     location: "",
-    condition: "",
+    condition: "مستعمل ممتاز",
     hubId: "",
   });
-
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string>("");
+  const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [message, setMessage] = useState<Message>({ text: "", type: "" });
+  const objectUrlRef = useRef<string | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!itemId) return;
+    const controller = new AbortController();
 
     const fetchItem = async () => {
+      setFetching(true);
       try {
-        const { data } = await axiosInstance.get(`/api/items/${itemId}`);
-        const item = data.item ?? data;
-
+        const item = await getItemById(itemId, controller.signal);
+        if (controller.signal.aborted) return;
         setFormData({
           title: item.title ?? "",
           description: item.description ?? "",
           category: item.category ?? "",
           location: item.location ?? "",
-          condition: item.condition ?? "",
-          hubId: item.safeHub?._id ?? item.safeHub ?? "",
+          condition: item.condition ?? "مستعمل ممتاز",
+          hubId: item.safeHub?._id ?? "",
         });
-
-        if (item.imageUrl) {
-          setPreview(item.imageUrl);
+        setPreview(item.imageUrl ?? "");
+      } catch (requestError) {
+        if (!controller.signal.aborted) {
+          setMessage({
+            text: extractErrorMsg(requestError, "حدث خطأ في تحميل بيانات الغرض"),
+            type: "error",
+          });
         }
-      } catch {
-        setMessage({ text: "حدث خطأ في تحميل بيانات الغرض", type: "error" });
       } finally {
-        setFetching(false);
+        if (!controller.signal.aborted) setFetching(false);
       }
     };
 
-    fetchItem();
+    void fetchItem();
+    return () => controller.abort();
   }, [itemId]);
 
+  useEffect(() => () => {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+  }, []);
+
   const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      const { name, value } = e.target;
-      setFormData((prev) => ({ ...prev, [name]: value }));
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { name, value } = event.target;
+      setFormData((previous) => ({ ...previous, [name]: value } as EditItemForm));
     },
     []
   );
 
-  const handleImageChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      event.target.value = "";
+      setMessage({ text: "الصورة يجب أن تكون JPEG أو PNG أو WebP", type: "error" });
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      event.target.value = "";
+      setMessage({ text: "حجم الصورة كبير جداً، الحد الأقصى 5MB", type: "error" });
+      return;
+    }
+
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    const objectUrl = URL.createObjectURL(file);
+    objectUrlRef.current = objectUrl;
     setImageFile(file);
-    setPreview(URL.createObjectURL(file));
+    setPreview(objectUrl);
+    setMessage({ text: "", type: "" });
   }, []);
 
   const handleHubChange = useCallback((hubId: string) => {
-    setFormData((prev) => ({ ...prev, hubId }));
+    setFormData((previous) => ({ ...previous, hubId }));
   }, []);
 
-  const handleSubmit = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      setLoading(true);
-      setMessage({ text: "", type: "" });
+  const handleSubmit = useCallback(async (event: FormEvent) => {
+    event.preventDefault();
+    if (!formData.hubId) {
+      setMessage({ text: "الرجاء اختيار مركز التسليم", type: "error" });
+      return;
+    }
 
-      try {
-        const fd = new FormData();
-        fd.append("title", formData.title);
-        fd.append("description", formData.description);
-        fd.append("category", formData.category);
-        fd.append("location", formData.location);
-        fd.append("condition", formData.condition);
-
-        if (formData.hubId) fd.append("safeHub", formData.hubId);
-        if (imageFile) fd.append("image", imageFile);
-
-        await axiosInstance.put(`/api/items/${itemId}`, fd);
-
-        setMessage({ text: "تم تحديث الغرض بنجاح ✅", type: "success" });
-        setTimeout(() => router.push("/dashboard"), 1200);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "حدث خطأ أثناء التعديل";
-        setMessage({ text: msg, type: "error" });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [formData, imageFile, itemId, router]
-  );
+    setLoading(true);
+    setMessage({ text: "", type: "" });
+    let succeeded = false;
+    try {
+      await updateItem(itemId, {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        location: formData.location,
+        condition: formData.condition,
+        safeHub: formData.hubId,
+        image: imageFile ?? undefined,
+      });
+      setMessage({ text: "تم تحديث الغرض بنجاح ✅", type: "success" });
+      succeeded = true;
+      redirectTimerRef.current = setTimeout(() => router.push("/dashboard"), 1200);
+    } catch (requestError) {
+      setMessage({
+        text: extractErrorMsg(requestError, "حدث خطأ أثناء التعديل"),
+        type: "error",
+      });
+    } finally {
+      if (!succeeded) setLoading(false);
+    }
+  }, [formData, imageFile, itemId, router]);
 
   return {
     formData,

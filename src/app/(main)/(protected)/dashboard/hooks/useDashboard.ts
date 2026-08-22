@@ -2,8 +2,14 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import axiosInstance from "@/lib/api/axiosInstance";
-import { confirmReceipt, confirmDelivery } from "@/lib/api/itemApi";
+import {
+  cancelBooking,
+  confirmDelivery,
+  confirmReceipt,
+  deleteItem,
+  getMyItems,
+} from "@/lib/api/itemApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import { useSocket } from '@/context/SocketContext';
 import type { Item as DashboardItem, MyItemsResponse } from "@/types/item.types";
 
@@ -67,7 +73,7 @@ export function useDashboard() {
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
-const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const appealReportIdRef = useRef<string>("");
 
   const showToast = useCallback((msg: string, type: "success" | "error") => {
@@ -76,55 +82,36 @@ const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
     timeoutIdsRef.current.push(id);
   }, []);
 
+  const loadDashboard = useCallback(async (signal?: AbortSignal) => {
+    const response = await getMyItems(signal);
+    if (signal?.aborted) return;
+
+    const myDonations = response.myDonations ?? [];
+    const myRequests = response.myRequests ?? [];
+    setData({ user: response.user, myDonations, myRequests });
+    setError(null);
+
+    const waitingItem = myDonations.find(
+      (item) => item.status === "محجوز" && item.recipientConfirmed
+    );
+    setDeliveryState({
+      itemId: waitingItem?._id ?? null,
+      waitingForDonor: Boolean(waitingItem),
+    });
+  }, []);
+
   useEffect(() => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    (async () => {
+    void (async () => {
       try {
-        const { data: res } = await axiosInstance.get<MyItemsResponse>("/api/items/me", {
-          signal: controller.signal,
-        });
-
+        await loadDashboard(controller.signal);
+      } catch (requestError) {
         if (controller.signal.aborted) return;
-
-        const myDonations = res.myDonations ?? [];
-        const myRequests = res.myRequests ?? [];
-
-        setData({
-          user: res.user,
-          myDonations,
-          myRequests,
-        });
-
-        const waitingItem = myDonations.find(
-          (item) => item.status === "محجوز" && item.recipientConfirmed === true
-        );
-
-        if (waitingItem) {
-          setDeliveryState({
-            itemId: waitingItem._id,
-            waitingForDonor: true,
-          });
-        }
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name === "AbortError") return;
-
-        if (!controller.signal.aborted) {
-          let errorMsg = String(err);
-
-          if (err && typeof err === "object" && "isAxiosError" in err) {
-            const axiosError = err as {
-              response?: { status?: number; data?: { msg?: string } };
-              message?: string;
-            };
-            errorMsg = axiosError.response?.data?.msg || axiosError.message || errorMsg;
-          }
-
-          setError(errorMsg);
-          setData(null);
-        }
+        setError(extractErrorMsg(requestError, "تعذّر تحميل لوحة التحكم"));
+        setData(null);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -132,9 +119,12 @@ const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
     return () => {
       abortControllerRef.current?.abort();
-      timeoutIdsRef.current.forEach(clearTimeout);
-      timeoutIdsRef.current = [];
     };
+  }, [loadDashboard]);
+
+  useEffect(() => () => {
+    timeoutIdsRef.current.forEach(clearTimeout);
+    timeoutIdsRef.current = [];
   }, []);
 
   useEffect(() => {
@@ -181,14 +171,26 @@ const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
       showToast("تم التسليم بنجاح! شكراً لعطائك 💚", "success");
     };
 
-    socket.on("delivery:recipient_confirmed", handleRecipientConfirmed);
-    socket.on("delivery:completed", handleDeliveryCompleted);
+    const refreshLifecycle = () => {
+      void loadDashboard().catch(() => {});
+    };
+
+    socket.on("item:recipient_confirmed", handleRecipientConfirmed);
+    socket.on("item:delivered", handleDeliveryCompleted);
+    socket.on("item:booked", refreshLifecycle);
+    socket.on("item:booking_transferred", refreshLifecycle);
+    socket.on("item:booking_cancelled", refreshLifecycle);
+    socket.on("item:waitlist_promoted", refreshLifecycle);
 
     return () => {
-      socket.off("delivery:recipient_confirmed", handleRecipientConfirmed);
-      socket.off("delivery:completed", handleDeliveryCompleted);
+      socket.off("item:recipient_confirmed", handleRecipientConfirmed);
+      socket.off("item:delivered", handleDeliveryCompleted);
+      socket.off("item:booked", refreshLifecycle);
+      socket.off("item:booking_transferred", refreshLifecycle);
+      socket.off("item:booking_cancelled", refreshLifecycle);
+      socket.off("item:waitlist_promoted", refreshLifecycle);
     };
-  }, [socket, showToast]);
+  }, [loadDashboard, socket, showToast]);
 
   const handleRecipientConfirm = useCallback(
     async (itemId: string) => {
@@ -209,15 +211,8 @@ const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
         );
 
         showToast(msg || "✅ تم تسجيل تأكيدك، بانتظار تأكيد المتبرع النهائي ⏳", "success");
-      } catch (err) {
-        let msg = "حدث خطأ غير متوقع";
-
-        if (err && typeof err === "object" && "isAxiosError" in err) {
-          const axiosError = err as { response?: { data?: { msg?: string } } };
-          msg = axiosError.response?.data?.msg || msg;
-        }
-
-        showToast(msg, "error");
+      } catch (requestError) {
+        showToast(extractErrorMsg(requestError, "تعذّر تأكيد الاستلام"), "error");
       } finally {
         setDeliveryLoading(false);
       }
@@ -230,36 +225,18 @@ const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
       setDeliveryLoading(true);
 
       try {
-        const { msg } = await confirmDelivery(itemId, {
-          confirmationType: "donor_confirm",
-        });
-        setData((prev) =>
-          prev
-            ? {
-                ...prev,
-                myDonations: prev.myDonations.map((i) =>
-                  i._id === itemId ? { ...i, status: "تم التسليم" as const } : i
-                ),
-              }
-            : prev
-        );
+        const { msg } = await confirmDelivery(itemId);
+        await loadDashboard();
 
         setDeliveryState({ itemId: null, waitingForDonor: false });
         showToast(msg || "تم التسليم بنجاح واكتملت العملية! 💚", "success");
-      } catch (err) {
-        let msg = "حدث خطأ غير متوقع";
-
-        if (err && typeof err === "object" && "isAxiosError" in err) {
-          const axiosError = err as { response?: { data?: { msg?: string } } };
-          msg = axiosError.response?.data?.msg || msg;
-        }
-
-        showToast(msg, "error");
+      } catch (requestError) {
+        showToast(extractErrorMsg(requestError, "تعذّر تأكيد التسليم"), "error");
       } finally {
         setDeliveryLoading(false);
       }
     },
-    [showToast]
+    [loadDashboard, showToast]
   );
 
   const handleDelete = useCallback(
@@ -274,19 +251,19 @@ const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
         title: "حذف الغرض",
         message:
           status === "محجوز"
-            ? "هذا الغرض محجوز حالياً. هل أنت متأكد من حذفه؟ سيتم إلغاء الحجز تلقائياً وإرجاع الكوتا للمستلم."
+            ? "هذا الغرض محجوز حالياً. حذفه سيلغي الحجز ويُشعر الحاجز والمنتظرين. هل أنت متأكد؟"
             : "هل أنت متأكد من حذف هذا الغرض نهائياً؟ لا يمكن التراجع عن هذا الإجراء.",
         onConfirm: async () => {
           try {
-            await axiosInstance.delete(`/api/items/delete/${id}`);
+            await deleteItem(id);
             setData((prev) =>
               prev
                 ? { ...prev, myDonations: prev.myDonations.filter((i) => i._id !== id) }
                 : prev
             );
             showToast("تم حذف الغرض بنجاح", "success");
-          } catch {
-            showToast("حدث خطأ غير متوقع أثناء الحذف", "error");
+          } catch (requestError) {
+            showToast(extractErrorMsg(requestError, "تعذّر حذف الغرض"), "error");
           } finally {
             setConfirmModal((p) => ({ ...p, open: false }));
           }
@@ -304,15 +281,15 @@ const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
         message: "هل أنت متأكد من إلغاء حجزك لهذا الغرض؟",
         onConfirm: async () => {
           try {
-            await axiosInstance.put(`/api/items/cancel/${id}`, {});
+            const response = await cancelBooking(id);
             setData((prev) =>
               prev
                 ? { ...prev, myRequests: prev.myRequests.filter((i) => i._id !== id) }
                 : prev
             );
-            showToast("تم إلغاء الحجز بنجاح", "success");
-          } catch {
-            showToast("حدث خطأ أثناء إلغاء الحجز", "error");
+            showToast(response.msg, "success");
+          } catch (requestError) {
+            showToast(extractErrorMsg(requestError, "تعذّر إلغاء الحجز"), "error");
           } finally {
             setConfirmModal((p) => ({ ...p, open: false }));
           }
@@ -327,23 +304,31 @@ const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
       setConfirmModal({
         open: true,
         title: "فك الحجز عن الغرض",
-        message: "هل تريد إلغاء حجز هذا المستخدم وإعادة الغرض متاحاً للجميع؟",
+        message: "هل تريد إلغاء حجز هذا المستخدم؟ إذا وُجد منتظر مؤهل سينتقل الحجز إليه تلقائياً.",
         onConfirm: async () => {
           try {
-            await axiosInstance.put(`/api/items/cancel/${id}`, {});
+            const response = await cancelBooking(id);
             setData((prev) =>
               prev
                 ? {
                     ...prev,
-                    myDonations: prev.myDonations.map((i) =>
-                      i._id === id ? { ...i, status: "متاح" as const, bookedBy: null } : i
+                    myDonations: prev.myDonations.map((item) =>
+                      item._id === id
+                        ? {
+                            ...item,
+                            status: response.status,
+                            bookedBy: response.bookedBy,
+                            recipientConfirmed: false,
+                            donorConfirmed: false,
+                          }
+                        : item
                     ),
                   }
                 : prev
             );
-            showToast("تم فك الحجز بنجاح وإعادة الغرض كـ متاح", "success");
-          } catch {
-            showToast("حدث خطأ أثناء فك الحجز", "error");
+            showToast(response.msg, "success");
+          } catch (requestError) {
+            showToast(extractErrorMsg(requestError, "تعذّر فك الحجز"), "error");
           } finally {
             setConfirmModal((p) => ({ ...p, open: false }));
           }

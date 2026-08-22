@@ -241,7 +241,9 @@ export function ItemsTable({
                   />
                 )}
 
-                {activeTab === "donations" && item.status === "محجوز" && (
+                {activeTab === "donations" &&
+                  item.status === "محجوز" &&
+                  !item.recipientConfirmed && (
                   <button
                     onClick={() => onDonorCancelBooking(item._id)}
                     className="inline-flex items-center justify-center gap-1 rounded-xl bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-600 transition-all duration-150 hover:bg-orange-100 active:scale-[0.98]"
@@ -266,7 +268,9 @@ export function ItemsTable({
                     </button>
                   )}
 
-                {activeTab === "donations" && item.status !== "تم التسليم" && (
+                {activeTab === "donations" &&
+                  item.status !== "تم التسليم" &&
+                  !item.recipientConfirmed && (
                   <button
                     onClick={() => onDelete(item._id, item.status)}
                     className="inline-flex items-center justify-center gap-1 rounded-xl bg-gray-50 px-3 py-2 text-[12px] font-bold text-gray-600 transition-all duration-150 hover:bg-gray-100 active:scale-[0.98]"
@@ -278,7 +282,9 @@ export function ItemsTable({
                   </button>
                 )}
 
-                {activeTab === "requests" && item.status === "محجوز" && (
+                {activeTab === "requests" &&
+                  item.status === "محجوز" &&
+                  !item.recipientConfirmed && (
                   <button
                     onClick={() => onCancelBooking(item._id)}
                     className="inline-flex items-center justify-center gap-1 rounded-xl bg-red-50 px-3 py-2 text-[12px] font-bold text-red-600 transition-all duration-150 hover:bg-red-100 active:scale-[0.98]"

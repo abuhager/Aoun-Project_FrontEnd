@@ -9,7 +9,7 @@ import { useItemDetails } from "./hooks/useItemDetails";
 import LevelGate from "@/components/LevelGate";
 import ChatDrawer from "@/components/ChatDrawer";
 import { useRouter } from "next/navigation";
-import { useDeliveryConfirmation } from "@/components/DeliveryConfirmButton";
+import { useDeliveryConfirmation } from "@/hooks/useDeliveryConfirmation";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/api/axiosInstance";
 
@@ -19,7 +19,9 @@ export default function ItemDetailsPage() {
   const {
     item,
     loading,
+    loadError,
     message,
+    setMessage,
     actionLoading,
     confirmModal,
     setConfirmModal,
@@ -36,24 +38,15 @@ export default function ItemDetailsPage() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [fetchingChat, setFetchingChat] = useState(false);
 
-  const currentUserRole = loading
-    ? undefined
-    : isDonor
-    ? "donor"
-    : isBooker
-    ? "recipient"
-    : undefined;
-
   const delivery = useDeliveryConfirmation({
     itemId: item?._id ?? "",
-    userRole: (currentUserRole ?? "recipient") as "donor" | "recipient",
     initialRecipientConfirmed: item?.recipientConfirmed ?? false,
     onSuccess: async () => {
-      if (typeof fetchItem === "function") {
-        await fetchItem(true, true);
-      }
+      await fetchItem(true);
+      setMessage({ type: "success", text: "تم تحديث حالة التسليم بنجاح ✅" });
       router.refresh();
     },
+    onError: (text) => setMessage({ type: "error", text }),
   });
 
   const handleOpenChatFlow = async () => {
@@ -74,7 +67,7 @@ export default function ItemDetailsPage() {
       }
 
       if (!targetUserId) {
-        console.error("تعذّر تحديد معرف المستخدم الآخر");
+        setMessage({ type: "error", text: "تعذّر تحديد المستخدم لبدء المحادثة" });
         return;
       }
 
@@ -93,7 +86,7 @@ export default function ItemDetailsPage() {
         setChatOpen(true);
       }
     } catch {
-      console.error("فشل إنشاء أو جلب معرف المحادثة");
+      setMessage({ type: "error", text: "تعذّر فتح المحادثة" });
     } finally {
       setFetchingChat(false);
     }
@@ -116,7 +109,9 @@ export default function ItemDetailsPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f6f2] px-4" dir="rtl">
         <div className="rounded-2xl border border-gray-200 bg-white px-8 py-10 text-center shadow-sm">
-          <p className="text-sm font-bold text-gray-700">🛑 القطعة غير موجودة</p>
+          <p className="text-sm font-bold text-gray-700">
+            🛑 {loadError || "القطعة غير موجودة"}
+          </p>
         </div>
       </div>
     );
@@ -230,13 +225,14 @@ export default function ItemDetailsPage() {
             </div>
 
             {/* بطاقة المتبرع */}
-            <Link
-              href={`/profile/${item.donor?._id}`}
-              className="group flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
-            >
+            {item.donor ? (
+              <Link
+                href={`/profile/${item.donor._id}`}
+                className="group flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+              >
               <div className="flex items-center gap-3">
                 <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-gray-50">
-                  {item.donor?.avatar ? (
+                  {item.donor.avatar ? (
                     <Image src={item.donor.avatar} alt="avatar" fill className="object-cover" />
                   ) : (
                     <span className="material-symbols-outlined text-gray-300">account_circle</span>
@@ -244,7 +240,7 @@ export default function ItemDetailsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-gray-800 transition-colors group-hover:text-primary">
-                    {item.donor?.name}
+                    {item.donor.name}
                   </h3>
                   <p className="text-[10px] font-bold text-gray-400">ملف المتبرع</p>
                 </div>
@@ -252,7 +248,12 @@ export default function ItemDetailsPage() {
               <span className="material-symbols-outlined text-gray-300 transition-transform group-hover:-translate-x-1">
                 chevron_left
               </span>
-            </Link>
+              </Link>
+            ) : (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 text-sm font-bold text-gray-500">
+                بيانات المتبرع غير متاحة
+              </div>
+            )}
 
             {/* مركز التسليم */}
             {item.safeHub && (
@@ -299,7 +300,9 @@ export default function ItemDetailsPage() {
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-sm font-black text-white shadow-md shadow-primary/20 transition-all hover:bg-[#004d44]"
                     >
                       <span className="material-symbols-outlined text-[18px]">lock</span>
-                      سجل دخولك لحجز هذا الغرض 🎁
+                      {item.status === "محجوز"
+                        ? "سجل دخولك للانضمام لقائمة الانتظار"
+                        : "سجل دخولك لحجز هذا الغرض 🎁"}
                     </button>
                   )
                 ) : isDonor ? (
@@ -311,8 +314,8 @@ export default function ItemDetailsPage() {
                       <>
                         <button
                           onClick={delivery.confirmDelivery}
-                          disabled={delivery.isLoading}
-                          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-sm transition-all ${
+                          disabled={delivery.isLoading || !isRecipientConfirmedActual}
+                          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-sm transition-all disabled:cursor-not-allowed ${
                             isRecipientConfirmedActual
                               ? "bg-primary text-white hover:bg-[#004d44]"
                               : "border border-amber-200 bg-amber-50 text-amber-700"
@@ -326,13 +329,15 @@ export default function ItemDetailsPage() {
                             "بانتظار تأكيد الاستلام من المستلم أولاً ⏳"
                           )}
                         </button>
-                        <button
-                          onClick={handleCancelAction}
-                          disabled={actionLoading}
-                          className="w-full rounded-2xl border border-red-100 bg-red-50 py-3 text-xs font-bold text-red-600 transition-all hover:bg-red-100"
-                        >
-                          إلغاء حجز المستلم الحالي
-                        </button>
+                        {!isRecipientConfirmedActual && (
+                          <button
+                            onClick={handleCancelAction}
+                            disabled={actionLoading}
+                            className="w-full rounded-2xl border border-red-100 bg-red-50 py-3 text-xs font-bold text-red-600 transition-all hover:bg-red-100"
+                          >
+                            إلغاء حجز المستلم الحالي
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
@@ -365,17 +370,19 @@ export default function ItemDetailsPage() {
                         )}
                       </button>
                     )}
-                    <button
-                      onClick={handleCancelAction}
-                      disabled={actionLoading}
-                      className="w-full rounded-2xl border border-red-200 bg-red-50 py-4 text-sm font-bold text-red-600 shadow-sm transition-all hover:bg-red-100"
-                    >
-                      {actionLoading ? (
-                        <div className="h-5 w-5 rounded-full border-2 border-red-600 border-t-transparent animate-spin mx-auto" />
-                      ) : (
-                        "إلغاء الحجز ⚠️"
-                      )}
-                    </button>
+                    {!isRecipientConfirmedActual && (
+                      <button
+                        onClick={handleCancelAction}
+                        disabled={actionLoading}
+                        className="w-full rounded-2xl border border-red-200 bg-red-50 py-4 text-sm font-bold text-red-600 shadow-sm transition-all hover:bg-red-100"
+                      >
+                        {actionLoading ? (
+                          <div className="h-5 w-5 rounded-full border-2 border-red-600 border-t-transparent animate-spin mx-auto" />
+                        ) : (
+                          "إلغاء الحجز ⚠️"
+                        )}
+                      </button>
+                    )}
                   </div>
                 ) : isWaitlisted ? (
                   <button

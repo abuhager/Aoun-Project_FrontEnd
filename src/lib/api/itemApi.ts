@@ -9,27 +9,31 @@ import type {
   ItemFilters,
   CreateItemPayload,
   UpdateItemPayload,
+  CancelBookingResponse,
+  LeaveWaitlistResponse,
 } from "@/types/item.types";
 
 // ── جلب الأغراض المتاحة ─────────────────────────────────────────────────────
 export const getItems = async (
-  filters: ItemFilters = {}
+  filters: ItemFilters = {},
+  signal?: AbortSignal
 ): Promise<ItemsListResponse> => {
   const { data } = await axiosInstance.get<ItemsListResponse>("/api/items", {
     params: filters,
+    signal,
   });
   return data;
 };
 
 // ── جلب أغراضي ──────────────────────────────────────────────────────────────
-export const getMyItems = async (): Promise<MyItemsResponse> => {
-  const { data } = await axiosInstance.get<MyItemsResponse>("/api/items/me");
+export const getMyItems = async (signal?: AbortSignal): Promise<MyItemsResponse> => {
+  const { data } = await axiosInstance.get<MyItemsResponse>("/api/items/me", { signal });
   return data;
 };
 
 // ── جلب غرض بالـ ID ──────────────────────────────────────────────────────────
-export const getItemById = async (id: string): Promise<Item> => {
-  const { data } = await axiosInstance.get<Item>(`/api/items/${id}`);
+export const getItemById = async (id: string, signal?: AbortSignal): Promise<Item> => {
+  const { data } = await axiosInstance.get<Item>(`/api/items/${id}`, { signal });
   return data;
 };
 
@@ -45,8 +49,7 @@ export const createItem = async (
   });
   const { data } = await axiosInstance.post<{ success: boolean; item: Item }>(
     "/api/items",
-    formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    formData
   );
   return data;
 };
@@ -62,8 +65,8 @@ export const bookItem = async (id: string): Promise<BookingResponse> => {
 // ── إلغاء الحجز ──────────────────────────────────────────────────────────────
 export const cancelBooking = async (
   id: string
-): Promise<{ msg: string }> => {
-  const { data } = await axiosInstance.put<{ msg: string }>(
+): Promise<CancelBookingResponse> => {
+  const { data } = await axiosInstance.put<CancelBookingResponse>(
     `/api/items/cancel/${id}`
   );
   return data;
@@ -72,8 +75,8 @@ export const cancelBooking = async (
 // ── مغادرة Waitlist ───────────────────────────────────────────────────────────
 export const leaveWaitlist = async (
   id: string
-): Promise<{ msg: string }> => {
-  const { data } = await axiosInstance.put<{ msg: string }>(
+): Promise<LeaveWaitlistResponse> => {
+  const { data } = await axiosInstance.put<LeaveWaitlistResponse>(
     `/api/items/leave-waitlist/${id}`
   );
   return data;
@@ -89,15 +92,9 @@ export const confirmReceipt = async (id: string): Promise<DeliveryResponse> => {
 };
 
 // ── تأكيد التسليم (المتبرع) ───────────────────────────────────────────────────
-export const confirmDelivery = async (
-  id: string, 
-  body: { confirmationType: 'recipient_confirm' | 'donor_confirm' } // ✅ استقبال الـ Body بشكل ديناميكي
-): Promise<DeliveryResponse> => {
-  
-  // ✅ تمرير الـ body القادم من الـ Hook مباشرة بدل تثبيته
+export const confirmDelivery = async (id: string): Promise<DeliveryResponse> => {
   const { data } = await axiosInstance.post<DeliveryResponse>(
-    `/api/items/${id}/confirm-delivery`,
-    body 
+    `/api/items/${id}/confirm-delivery`
   );
   return data;
 };
@@ -114,8 +111,7 @@ export const updateItem = async (
   });
   const { data } = await axiosInstance.put<{ msg: string; item: Item }>(
     `/api/items/${id}`,
-    formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    formData
   );
   return data;
 };

@@ -11,6 +11,7 @@ export interface Notification {
   actionUrl?:      string | null;   // ← deep-link مثل /items/:id
   itemId?:         string | null;
   conversationId?: string | null;
+  metadata?:       Record<string, unknown> | null;
   isRead:          boolean;
   createdAt:       string;
 }

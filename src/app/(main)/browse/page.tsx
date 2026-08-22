@@ -5,6 +5,7 @@ import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import { useBrowse } from "./hooks/useBrowse";
 import { useSettings } from "@/hooks/useSettings";
+import type { Item } from "@/types/item.types";
 
 const CITIES = ["عمان", "إربد", "الزرقاء", "العقبة"] as const;
 
@@ -28,18 +29,7 @@ function ItemCard({
   item,
   index,
 }: {
-  item: {
-    _id: string;
-    title?: string;
-    name?: string;
-    imageUrl?: string;
-    image?: string;
-    location?: string;
-    condition?: string;
-    category?: string;
-    status?: string;
-    waitlistCount?: number;
-  };
+  item: Item;
   index: number;
 }) {
   const isBooked = item.status === "محجوز";
@@ -56,8 +46,8 @@ function ItemCard({
     >
       <div className="relative h-56 w-full overflow-hidden bg-[#f3efe9]">
         <Image
-          src={item.imageUrl || item.image || "/placeholder.png"}
-          alt={item.title || item.name || "صورة الغرض"}
+          src={item.imageUrl || "/placeholder.png"}
+          alt={item.title || "صورة الغرض"}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           unoptimized
@@ -115,7 +105,7 @@ function ItemCard({
         </div>
 
         <h3 className="grow text-[15px] font-black leading-7 text-[#231f1a] line-clamp-2">
-          {item.title || item.name}
+          {item.title}
         </h3>
 
         <div
@@ -150,8 +140,14 @@ function ItemCard({
 /* ── Page ─────────────────────────────────────────────────────── */
 export default function BrowsePage() {
   const {
-    filteredItems,
+    items,
     loading,
+    error,
+    total,
+    totalPages,
+    currentPage,
+    setCurrentPage,
+    retry,
     searchQuery,
     setSearchQuery,
     selectedCity,
@@ -193,7 +189,7 @@ export default function BrowsePage() {
                 <span className="material-symbols-outlined text-[14px]">
                   filter_alt
                 </span>
-                {filteredItems.length} نتيجة
+                {total} نتيجة
               </div>
             </div>
           </div>
@@ -260,7 +256,7 @@ export default function BrowsePage() {
               {/* Count Pill */}
               <div className="flex items-center justify-start md:col-span-1 md:justify-center">
                 <span className="whitespace-nowrap rounded-2xl bg-primary/[0.08] px-3 py-2 text-[12px] font-black text-primary">
-                  {filteredItems.length}
+                  {total}
                 </span>
               </div>
             </div>
@@ -330,12 +326,52 @@ export default function BrowsePage() {
               <SkeletonCard key={i} />
             ))}
           </div>
-        ) : filteredItems.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {filteredItems.map((item, index) => (
-              <ItemCard key={item._id} item={item} index={index} />
-            ))}
+        ) : error ? (
+          <div className="rounded-[32px] border border-red-100 bg-white py-16 text-center shadow-sm">
+            <p className="text-sm font-bold text-red-600">{error}</p>
+            <button
+              type="button"
+              onClick={retry}
+              className="mt-5 rounded-full bg-primary px-5 py-2.5 text-xs font-black text-white"
+            >
+              إعادة المحاولة
+            </button>
           </div>
+        ) : items.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              {items.map((item, index) => (
+                <ItemCard key={item._id} item={item} index={index} />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <nav
+                aria-label="صفحات الأغراض"
+                className="mt-8 flex items-center justify-center gap-3"
+              >
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-xl border border-[#e1dbd2] bg-white px-4 py-2 text-xs font-black text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  السابق
+                </button>
+                <span className="text-xs font-bold text-[#6f6860]">
+                  صفحة {currentPage} من {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-xl border border-[#e1dbd2] bg-white px-4 py-2 text-xs font-black text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  التالي
+                </button>
+              </nav>
+            )}
+          </>
         ) : (
           <div className="rounded-[32px] border border-dashed border-[#d9d2c9] bg-white py-20 text-center shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f6f2eb]">

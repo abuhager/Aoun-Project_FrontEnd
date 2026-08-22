@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSocket } from '@/context/SocketContext';
 import { useAuth }   from '@/context/AuthContext';
-import { getNotifications, markAllRead } from '@/lib/api/notificationApi';
+import { getNotifications, markAllRead, markOneRead } from '@/lib/api/notificationApi';
 import type { Notification } from '@/types/notification.types';
 
 export function useNotifications() {
@@ -94,10 +94,24 @@ export function useNotifications() {
     catch { fetchNotifications(); }
   }, [fetchNotifications]);
 
+  const handleMarkOneRead = useCallback(async (notification: Notification) => {
+    if (notification.isRead) return;
+    setNotifications((current) => current.map((item) =>
+      item._id === notification._id ? { ...item, isRead: true } : item
+    ));
+    setUnreadCount((current) => Math.max(0, current - 1));
+    if (notification.type === 'new_message') {
+      setUnreadMessages((current) => Math.max(0, current - 1));
+    }
+    try { await markOneRead(notification._id); }
+    catch { void fetchNotifications(); }
+  }, [fetchNotifications]);
+
   return {
     notifications, unreadCount, isOpen, isLoading, unreadMessages,
     setUnreadMessages,
     toggleOpen: () => setIsOpen((p) => !p),
     handleMarkAllRead,
+    handleMarkOneRead,
   };
 }

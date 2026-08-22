@@ -5,8 +5,10 @@ export function extractErrorMsg(
   fallback = 'حدث خطأ غير متوقع'
 ): string {
   if (err && typeof err === 'object' && 'isAxiosError' in err) {
-    const e = err as { response?: { data?: { msg?: string }; status?: number } };
-    return e.response?.data?.msg ?? fallback;
+    const e = err as {
+      response?: { data?: { msg?: string; message?: string }; status?: number };
+    };
+    return e.response?.data?.msg ?? e.response?.data?.message ?? fallback;
   }
   return fallback;
 }

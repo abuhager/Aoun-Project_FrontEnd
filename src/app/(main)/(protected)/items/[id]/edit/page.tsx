@@ -83,14 +83,14 @@ export default function EditItemPage() {
                       اسحب الصورة هنا أو اضغط للرفع
                     </p>
                     <p className="text-on-surface-variant text-[10px] md:text-xs italic">
-                      يدعم JPG, PNG (حد أقصى 5MB)
+                      يدعم JPEG وPNG وWebP (حد أقصى 5MB)
                     </p>
                   </>
                 )}
 
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleImageChange}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                 />
@@ -207,7 +207,7 @@ export default function EditItemPage() {
               </div>
             </div>
 
-            <HubSelector value={formData.hubId} onChange={handleHubChange} />
+            <HubSelector value={formData.hubId} onChange={handleHubChange} required />
 
             {message.text && (
               <div

@@ -1,74 +1,96 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+"use client";
 
-export interface ItemType {
-  _id:        string;
-  title?:     string;
-  name?:      string;
-  location?:  string;
-  category?:  string;
-  condition?: string;
-  imageUrl?:  string;
-  image?:     string;
-  status?:    'متاح' | 'محجوز' | 'تم التسليم'; // ✅ FIX [BROWSE-03]
-  waitlistCount?: number;                        // ✅ FIX [BROWSE-04]
-}
+import { useCallback, useEffect, useState } from "react";
+import { getItems } from "@/lib/api/itemApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import type { Item } from "@/types/item.types";
+
+const PAGE_SIZE = 12;
 
 export function useBrowse() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL!;
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const [items,         setItems]         = useState<ItemType[]>([]);
-  const [filteredItems, setFilteredItems] = useState<ItemType[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [totalPages,    setTotalPages]    = useState(1);
-  const [currentPage,   setCurrentPage]   = useState(1);
-
-  const [searchQuery,      setSearchQuery]      = useState("");
-  const [selectedCity,     setSelectedCity]     = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, selectedCity, selectedCategory]);
+
+  useEffect(() => {
+    const controller = new AbortController();
 
     const fetchItems = async () => {
-      try {
-        const res = await axios.get(`${apiUrl}/api/items`);
-        if (!isMounted) return;
+      setLoading(true);
+      setError("");
 
-        const fetchedItems = res.data.items ?? [];
-        setItems(fetchedItems);
-        setFilteredItems(fetchedItems);
-        setTotalPages(res.data.pages ?? 1);
-      } catch (err) {
-        console.error("خطأ في جلب البيانات:", err);
+      try {
+        const response = await getItems(
+          {
+            page: currentPage,
+            limit: PAGE_SIZE,
+            search: debouncedSearch || undefined,
+            location: selectedCity || undefined,
+            category: selectedCategory || undefined,
+          },
+          controller.signal
+        );
+
+        if (controller.signal.aborted) return;
+        const pages = Math.max(1, response.pages ?? 1);
+        if (currentPage > pages) {
+          setCurrentPage(pages);
+          return;
+        }
+        setItems(response.items ?? []);
+        setTotal(response.total ?? 0);
+        setTotalPages(pages);
+      } catch (requestError) {
+        if (controller.signal.aborted) return;
+        setItems([]);
+        setTotal(0);
+        setTotalPages(1);
+        setError(extractErrorMsg(requestError, "تعذّر تحميل الأغراض. حاول مجدداً."));
       } finally {
-        if (isMounted) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
-    fetchItems();
-    return () => { isMounted = false; };
-  }, [apiUrl]);
+    void fetchItems();
+    return () => controller.abort();
+  }, [currentPage, debouncedSearch, selectedCity, selectedCategory, refreshKey]);
 
-  useEffect(() => {
-    let result = items;
-
-    if (selectedCity)     result = result.filter((i) => i.location === selectedCity);
-    if (selectedCategory) result = result.filter((i) => i.category === selectedCategory);
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (i) => i.title?.toLowerCase().includes(q) || i.name?.toLowerCase().includes(q)
-      );
-    }
-
-    setFilteredItems(result);
-  }, [searchQuery, selectedCity, selectedCategory, items]);
+  const retry = useCallback(() => setRefreshKey((value) => value + 1), []);
 
   return {
-    filteredItems, loading, totalPages, currentPage, setCurrentPage,
-    searchQuery,      setSearchQuery,
-    selectedCity,     setSelectedCity,
-    selectedCategory, setSelectedCategory,
+    items,
+    loading,
+    error,
+    total,
+    totalPages,
+    currentPage,
+    setCurrentPage,
+    retry,
+    searchQuery,
+    setSearchQuery,
+    selectedCity,
+    setSelectedCity,
+    selectedCategory,
+    setSelectedCategory,
   };
 }

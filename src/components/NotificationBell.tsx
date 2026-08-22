@@ -2,31 +2,48 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useNotifications } from "@/hooks/useNotifications";
 import type { Notification } from "@/types/notification.types";
+import { getSafeRedirectPath } from "@/config/routes";
 
-const ICONS: Record<Notification["type"], string> = {
+const ICONS: Partial<Record<Notification["type"], string>> = {
   item_booked: "volunteer_activism",
   booking_cancelled: "cancel",
   waitlist_promoted: "notifications_active",
   delivery_done: "check_circle",
+  delivery_completed: "check_circle",
+  recipient_confirmed: "inventory",
+  booking_transferred: "swap_horiz",
+  booking_expiry_reminder: "schedule",
+  matching_item: "redeem",
+  item_deleted: "delete",
+  item_deleted_by_admin: "delete_forever",
   new_rating: "star",
   report_resolved: "gavel",
   new_message: "chat",
 };
 
 // ألوان خلفية أيقونة كل نوع إشعار
-const ICON_COLORS: Record<Notification["type"], string> = {
+const ICON_COLORS: Partial<Record<Notification["type"], string>> = {
   item_booked:        "bg-primary/10 text-primary",
   booking_cancelled:  "bg-red-50 text-red-500",
   waitlist_promoted:  "bg-amber-50 text-amber-500",
   delivery_done:      "bg-emerald-50 text-emerald-500",
+  delivery_completed: "bg-emerald-50 text-emerald-500",
+  recipient_confirmed:"bg-blue-50 text-blue-500",
+  booking_transferred:"bg-sky-50 text-sky-500",
+  booking_expiry_reminder: "bg-orange-50 text-orange-500",
+  matching_item:      "bg-emerald-50 text-emerald-600",
+  item_deleted:       "bg-red-50 text-red-500",
+  item_deleted_by_admin: "bg-red-50 text-red-600",
   new_rating:         "bg-yellow-50 text-yellow-500",
   report_resolved:    "bg-purple-50 text-purple-500",
   new_message:        "bg-sky-50 text-sky-500",
 };
 
 export default function NotificationBell() {
+  const router = useRouter();
   const {
     notifications,
     unreadCount,
@@ -34,6 +51,7 @@ export default function NotificationBell() {
     isLoading,
     toggleOpen,
     handleMarkAllRead,
+    handleMarkOneRead,
   } = useNotifications();
 
   const ref = useRef<HTMLDivElement>(null);
@@ -47,6 +65,17 @@ export default function NotificationBell() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen, toggleOpen]);
+
+  const handleNotificationClick = (notification: Notification) => {
+    void handleMarkOneRead(notification);
+    const destination = notification.actionUrl
+      ?? (notification.itemId ? `/items/${notification.itemId}` : null);
+    const safeDestination = getSafeRedirectPath(destination, "");
+    if (safeDestination) {
+      toggleOpen();
+      router.push(safeDestination);
+    }
+  };
 
   return (
     <div ref={ref} className="relative">
@@ -166,9 +195,11 @@ export default function NotificationBell() {
             /* ── قائمة الإشعارات الحقيقية ── */
             <div className="divide-y divide-black/[0.04]">
               {notifications.map((n) => (
-                <div
+                <button
+                  type="button"
                   key={n._id}
-                  className={`flex gap-3 px-4 py-3 transition-colors duration-150
+                  onClick={() => handleNotificationClick(n)}
+                  className={`flex w-full gap-3 px-4 py-3 text-right transition-colors duration-150
                               ${!n.isRead
                                 ? "bg-primary/[0.04] hover:bg-primary/[0.07]"
                                 : "bg-white hover:bg-gray-50/80"
@@ -177,13 +208,13 @@ export default function NotificationBell() {
                   {/* أيقونة نوع الإشعار */}
                   <div
                     className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center
-                                rounded-full ${ICON_COLORS[n.type]}`}
+                                rounded-full ${ICON_COLORS[n.type] ?? "bg-gray-100 text-gray-500"}`}
                   >
                     <span
                       className="material-symbols-outlined text-[15px]"
                       style={{ fontVariationSettings: "'FILL' 1" }}
                     >
-                      {ICONS[n.type]}
+                      {ICONS[n.type] ?? "notifications"}
                     </span>
                   </div>
 
@@ -212,7 +243,7 @@ export default function NotificationBell() {
                   {!n.isRead && (
                     <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
                   )}
-                </div>
+                </button>
               ))}
             </div>
           )}

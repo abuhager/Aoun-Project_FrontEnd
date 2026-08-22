@@ -1,15 +1,19 @@
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import axiosInstance from "@/lib/api/axiosInstance";
-import axios from "axios";
+import { createItem } from "@/lib/api/itemApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import type { ItemCondition } from "@/types/item.types";
 
-interface FormData {
-  title:       string;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+interface AddItemForm {
+  title: string;
   description: string;
-  category:    string;
-  location:    string;
-  condition:   string;
-    hubId:       string;
+  category: string;
+  location: string;
+  condition: ItemCondition;
+  hubId: string;
 }
 
 interface Message {
@@ -19,81 +23,106 @@ interface Message {
 
 export function useAddItem() {
   const router = useRouter();
-
-  const [formData, setFormData] = useState<FormData>({
-    title: "", description: "", category: "",
-    location: "", condition: "مستعمل ممتاز",
+  const [formData, setFormData] = useState<AddItemForm>({
+    title: "",
+    description: "",
+    category: "",
+    location: "",
+    condition: "مستعمل ممتاز",
     hubId: "",
   });
-  const [image,   setImage]   = useState<File | null>(null);
+  const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<Message>({ type: "", text: "" });
+  const objectUrlRef = useRef<string | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+  }, []);
 
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = event.target;
+    setFormData((previous) => ({ ...previous, [name]: value } as AddItemForm));
   };
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage({ type: "error", text: "حجم الصورة كبير جداً، الحد الأقصى 5 ميجا" });
+
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      event.target.value = "";
+      setMessage({ type: "error", text: "الصورة يجب أن تكون JPEG أو PNG أو WebP" });
       return;
     }
+    if (file.size > MAX_IMAGE_BYTES) {
+      event.target.value = "";
+      setMessage({ type: "error", text: "حجم الصورة كبير جداً، الحد الأقصى 5MB" });
+      return;
+    }
+
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    const objectUrl = URL.createObjectURL(file);
+    objectUrlRef.current = objectUrl;
     setImage(file);
-    setPreview(URL.createObjectURL(file));
+    setPreview(objectUrl);
+    setMessage({ type: "", text: "" });
   };
 
-  
-const handleSubmit = async (e: FormEvent) => {
-  e.preventDefault();
-  if (!image) return setMessage({ type: "error", text: "الرجاء اختيار صورة" });
-  if (!formData.hubId) return setMessage({ type: "error", text: "الرجاء اختيار مركز التسليم" }); // ✅
-
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!image) {
+      setMessage({ type: "error", text: "الرجاء اختيار صورة" });
+      return;
+    }
+    if (!formData.hubId) {
+      setMessage({ type: "error", text: "الرجاء اختيار مركز التسليم" });
+      return;
+    }
 
     setLoading(true);
     setMessage({ type: "", text: "" });
-
-    const data = new FormData();
-    data.append("title",       formData.title);
-    data.append("description", formData.description);
-    data.append("category",    formData.category);
-    data.append("location",    formData.location);
-    data.append("condition",   formData.condition);
-    data.append("safeHub", formData.hubId);
-    data.append("image",       image);  // ✅ field name = 'image' يتطابق upload.single('image')
-    
-
+    let succeeded = false;
     try {
-      // ✅ لا تضع Content-Type هنا — المتصفح يضيفه تلقائياً مع الـ boundary الصحيح
-      // إذا حددت هو Content-Type: multipart/form-data يدوياً → multer يفشل لأنه بدون boundary
-      await axiosInstance.post("/api/items", data);
-
+      await createItem({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        location: formData.location,
+        condition: formData.condition,
+        safeHub: formData.hubId,
+        image,
+      });
       setMessage({ type: "success", text: "تم نشر التبرع بنجاح! جاري تحويلك..." });
-      setTimeout(() => router.push("/browse"), 2000);
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const msg = err.response?.data?.message
-                 || err.response?.data?.msg
-                 || "فشل في إضافة التبرع";
-        setMessage({ type: "error", text: msg });
-      } else {
-        setMessage({ type: "error", text: "حدث خطأ غير متوقع" });
-      }
+      succeeded = true;
+      redirectTimerRef.current = setTimeout(() => router.push("/browse"), 1200);
+    } catch (requestError) {
+      setMessage({
+        type: "error",
+        text: extractErrorMsg(requestError, "فشل في إضافة التبرع"),
+      });
     } finally {
-      setLoading(false);
+      if (!succeeded) setLoading(false);
     }
   };
+
   const handleHubChange = (hubId: string) => {
-  setFormData((prev) => ({ ...prev, hubId }));
-};
+    setFormData((previous) => ({ ...previous, hubId }));
+  };
 
   return {
-    formData, image, preview, loading, message,
-    handleChange, handleImageChange, handleSubmit,
-    handleHubChange, // ✅
+    formData,
+    image,
+    preview,
+    loading,
+    message,
+    handleChange,
+    handleImageChange,
+    handleSubmit,
+    handleHubChange,
   };
 }

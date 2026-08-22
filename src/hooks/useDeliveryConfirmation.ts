@@ -1,26 +1,31 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import axiosInstance from "@/lib/api/axiosInstance";
+import { useEffect, useRef, useState } from "react";
+import {
+  confirmDelivery as confirmDeliveryRequest,
+  confirmReceipt as confirmReceiptRequest,
+} from "@/lib/api/itemApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 
 interface UseDeliveryConfirmationProps {
   itemId: string;
-  userRole: "donor" | "recipient";
   initialRecipientConfirmed: boolean;
-  onSuccess?: (itemId: string) => void;
+  onSuccess?: (itemId: string) => void | Promise<void>;
+  onError?: (message: string) => void;
 }
 
 export function useDeliveryConfirmation({
   itemId,
-  userRole,
   initialRecipientConfirmed,
   onSuccess,
+  onError,
 }: UseDeliveryConfirmationProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isRecipientConfirmed, setIsRecipientConfirmed] = useState(initialRecipientConfirmed);
+  const [isRecipientConfirmed, setIsRecipientConfirmed] = useState(
+    initialRecipientConfirmed
+  );
   const isMountedRef = useRef(true);
 
-  // مزامنة الـ State الداخلي لو تغير الـ item من الخارج
   useEffect(() => {
     setIsRecipientConfirmed(initialRecipientConfirmed);
   }, [initialRecipientConfirmed]);
@@ -32,52 +37,36 @@ export function useDeliveryConfirmation({
     };
   }, []);
 
-  // 📦 تأكيد المستلم (تأكيد استلام الغرض عيناً)
   const confirmReceipt = async () => {
     if (!itemId || isLoading) return;
     setIsLoading(true);
-
     try {
-      // ضرب الـ Route الموحد والجديد في الـ Backend عندك
-      const response = await axiosInstance.post(`/api/items/${itemId}/confirm-receipt`);
-      
+      await confirmReceiptRequest(itemId);
+      if (!isMountedRef.current) return;
+      setIsRecipientConfirmed(true);
+      await onSuccess?.(itemId);
+    } catch (requestError) {
       if (isMountedRef.current) {
-        setIsRecipientConfirmed(true);
-        setIsLoading(false); // 🌟 إغلاق الـ Loading فوراً فور النجاح
-        
-        if (onSuccess) {
-          onSuccess(itemId);
-        }
+        onError?.(extractErrorMsg(requestError, "تعذّر تأكيد الاستلام"));
       }
-    } catch (error) {
-      console.error("❌ خطأ أثناء تأكيد الاستلام:", error);
     } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false); // 🌟 ضمان إغلاق الـ Loading حتى لو فشل الطلب
-      }
+      if (isMountedRef.current) setIsLoading(false);
     }
   };
 
-  // 🚚 تأكيد المتبرع (تأكيد تسليم الغرض للمستلم)
   const confirmDelivery = async () => {
-    if (!itemId || isLoading) return;
+    if (!itemId || isLoading || !isRecipientConfirmed) return;
     setIsLoading(true);
-
     try {
-      await axiosInstance.post(`/api/items/${itemId}/confirm-delivery`);
-      
+      await confirmDeliveryRequest(itemId);
+      if (!isMountedRef.current) return;
+      await onSuccess?.(itemId);
+    } catch (requestError) {
       if (isMountedRef.current) {
-        setIsLoading(false);
-        if (onSuccess) {
-          onSuccess(itemId);
-        }
+        onError?.(extractErrorMsg(requestError, "تعذّر تأكيد التسليم"));
       }
-    } catch (error) {
-      console.error("❌ خطأ أثناء تأكيد التسليم:", error);
     } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
+      if (isMountedRef.current) setIsLoading(false);
     }
   };
 

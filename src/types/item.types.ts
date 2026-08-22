@@ -11,6 +11,7 @@ export interface ItemDonor {
   trustScore?:        number;
   trustLevel?:        number;
   isVerifiedStudent?: boolean;
+  phone?:             string;
 }
 
 export interface WaitlistEntry {
@@ -27,10 +28,15 @@ export interface Item {
   imageUrl?:            string;
   condition:            ItemCondition;
   status:               ItemStatus;
-  donor:                ItemDonor;
-  safeHub:              SafeHub;
-  cancelledBy?: string[];
-  bookedBy?:            { _id: string; name: string; avatar?: string } | null;
+  donor:                ItemDonor | null;
+  safeHub:              SafeHub | null;
+  bookedBy?:            {
+    _id: string;
+    name: string;
+    avatar?: string;
+    phone?: string;
+    email?: string;
+  } | null;
   bookedAt?:            string | null;
   recipientConfirmed:   boolean;
   donorConfirmed:       boolean;
@@ -40,8 +46,8 @@ export interface Item {
   reportCount?:         number;
   isRated?:             boolean;
   linkedRequestId?:     string | null;
-  // فقط للمتبرع عند getItemById
-  isInWaitlist:  boolean;
+  isInWaitlist:                boolean;
+  bookingPreviouslyCancelled:  boolean;
   waitlist?:            WaitlistEntry[];
   waitlistCount:        number;
   // من الـ settings
@@ -95,6 +101,7 @@ export interface BookingResponse {
 }
 
 export interface DeliveryResponse {
+  success?: boolean;
   status:  "pending_donor" | "delivered";
   msg:     string;
   itemId:  string;
@@ -108,6 +115,22 @@ export interface ItemFilters {
   search?:   string;
   category?: string;
   location?: string;
+  availableOnly?: boolean;
+}
+
+export interface CancelBookingResponse {
+  msg:        string;
+  itemId:     string;
+  status:     ItemStatus;
+  promoted:   boolean;
+  bookedBy:   Item["bookedBy"];
+}
+
+export interface LeaveWaitlistResponse {
+  msg:           string;
+  itemId:        string;
+  waitlisted:    false;
+  waitlistCount: number;
 }
 
 export interface CreateItemPayload {
@@ -126,5 +149,6 @@ export interface UpdateItemPayload {
   category?:    string;
   location?:    string;
   condition?:   ItemCondition;
+  safeHub?:      string;
   image?:       File;
 }

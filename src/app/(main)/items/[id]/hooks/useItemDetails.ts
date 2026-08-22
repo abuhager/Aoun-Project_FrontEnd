@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getItemById, bookItem, cancelBooking } from "@/lib/api/itemApi";
-import { Item } from "@/types/item.types";
+import {
+  bookItem,
+  cancelBooking,
+  getItemById,
+  leaveWaitlist,
+} from "@/lib/api/itemApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import type { Item } from "@/types/item.types";
 import { useAuth } from "@/context/AuthContext";
-import axios from "axios";
+import { useSocket } from "@/context/SocketContext";
 
 const getId = (field: unknown): string | null => {
   if (!field) return null;
@@ -24,69 +30,35 @@ interface ConfirmModalState {
 }
 
 export function useItemDetails() {
-  const { id } = useParams();
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+  const { socket } = useSocket();
+  const itemId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState({ type: "", text: "" });
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
-    show: false, msg: "", isDanger: false, onConfirm: () => {},
+    show: false,
+    msg: "",
+    isDanger: false,
+    onConfirm: () => {},
   });
-
-  // ✅ FIX [WAITLIST-PERSIST]: Optimistic waitlist state مع localStorage
-  const [optimisticWaitlist, setOptimisticWaitlist] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set();
-    try {
-      const saved = localStorage.getItem("aoun_waitlist_items");
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  const updateWaitlistStorage = useCallback((itemId: string, inWaitlist: boolean) => {
-    setOptimisticWaitlist((prev) => {
-      const next = new Set(prev);
-      if (inWaitlist) {
-        next.add(itemId);
-      } else {
-        next.delete(itemId);
-      }
-      try {
-        // ✅ FIX [LOCALSTORAGE-TTL]: حذف IDs القديمة — احتفظ بآخر 50 فقط
-        const arr = [...next].slice(-50);
-        localStorage.setItem("aoun_waitlist_items", JSON.stringify(arr));
-        return new Set(arr);
-      } catch {
-        return next;
-      }
-    });
-  }, []);
-
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentUserId = user?._id ?? null;
-  const isDonor = !!currentUserId && getId(item?.donor) === currentUserId;
-  const isBooker = !!currentUserId && getId(item?.bookedBy) === currentUserId;
-
-  const itemIdStr = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-
-  // ✅ FIX [WAITLIST-SOURCE]: الاعتماد فقط على isInWaitlist + optimisticWaitlist
-  // item?.waitlist?.some() حُذف لأنه يكون undefined دائماً في toPublicItem
-  const isWaitlisted = !!currentUserId && (
-    !!item?.isInWaitlist ||
-    optimisticWaitlist.has(itemIdStr)
+  const isDonor = Boolean(currentUserId && getId(item?.donor) === currentUserId);
+  const isBooker = Boolean(currentUserId && getId(item?.bookedBy) === currentUserId);
+  const isWaitlisted = Boolean(currentUserId && item?.isInWaitlist);
+  const isCancelledBefore = Boolean(
+    currentUserId && item?.bookingPreviouslyCancelled
   );
 
-  const isCancelledBefore = !!currentUserId && !!item?.cancelledBy?.some(
-    (uid: string) => getId(uid) === currentUserId
-  );
-
-  const setTimedMessage = useCallback((msg: { type: string; text: string }) => {
-    setMessage(msg);
+  const setTimedMessage = useCallback((next: { type: string; text: string }) => {
+    setMessage(next);
     if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
     messageTimerRef.current = setTimeout(
       () => setMessage({ type: "", text: "" }),
@@ -94,45 +66,68 @@ export function useItemDetails() {
     );
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
-    };
+  useEffect(() => () => {
+    if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
   }, []);
 
-  const fetchItem = useCallback(async (isMounted = true, silent = false) => {
+  const fetchItem = useCallback(async (silent = false, signal?: AbortSignal) => {
+    if (!itemId) return null;
+    if (!silent) setLoading(true);
+    setLoadError("");
+
     try {
-      if (!silent) setLoading(true);
-      const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-      const data = await getItemById(itemId);
-      if (isMounted) setItem(data);
+      const data = await getItemById(itemId, signal);
+      if (!signal?.aborted) setItem(data);
       return data;
-    } catch {
-      if (isMounted)
-        setTimedMessage({ type: "error", text: "حدث خطأ أثناء تحميل بيانات الطلب" });
+    } catch (requestError) {
+      if (signal?.aborted) return null;
+      setItem(null);
+      setLoadError(extractErrorMsg(requestError, "تعذّر تحميل بيانات الغرض"));
       return null;
     } finally {
-      if (isMounted && !silent) setLoading(false);
+      if (!signal?.aborted && !silent) setLoading(false);
     }
-  }, [id, setTimedMessage]);
+  }, [itemId]);
 
   useEffect(() => {
-    let isMounted = true;
-    fetchItem(isMounted, false);
-    return () => { isMounted = false; };
-  }, [fetchItem]);
+    if (authLoading) return;
+    const controller = new AbortController();
+    void fetchItem(false, controller.signal);
+    return () => controller.abort();
+  }, [authLoading, currentUserId, fetchItem]);
 
-  // ✅ FIX [LOCALSTORAGE-CLEANUP]: تنظيف الـ localStorage عند اكتمال التسليم
   useEffect(() => {
-    if (item?.status === "تم التسليم" && itemIdStr) {
-      updateWaitlistStorage(itemIdStr, false);
-    }
-  }, [item?.status, itemIdStr, updateWaitlistStorage]);
+    if (!socket || !itemId) return;
 
-  const handleRequestItem = useCallback(async () => {
+    const refreshItem = (payload: { itemId: string }) => {
+      if (payload.itemId === itemId) void fetchItem(true);
+    };
+    const handleDeleted = (payload: { itemId: string }) => {
+      if (payload.itemId !== itemId) return;
+      setItem(null);
+      setLoadError("لم يعد هذا الغرض متاحاً");
+    };
+    const refreshEvents = [
+      "item:booked",
+      "item:booking_cancelled",
+      "item:booking_transferred",
+      "item:waitlist_promoted",
+      "item:recipient_confirmed",
+      "item:delivered",
+    ];
+
+    refreshEvents.forEach((event) => socket.on(event, refreshItem));
+    socket.on("item:deleted", handleDeleted);
+    return () => {
+      refreshEvents.forEach((event) => socket.off(event, refreshItem));
+      socket.off("item:deleted", handleDeleted);
+    };
+  }, [fetchItem, itemId, socket]);
+
+  const handleRequestItem = useCallback(() => {
     if (authLoading) return;
     if (!isLoggedIn) {
-      router.push(`/login?redirect=/items/${id}`);
+      router.push(`/login?redirect=/items/${itemId}`);
       return;
     }
 
@@ -145,124 +140,74 @@ export function useItemDetails() {
       msg: modalMsg,
       isDanger: false,
       onConfirm: async () => {
-        setConfirmModal((prev) => ({ ...prev, show: false }));
+        setConfirmModal((previous) => ({ ...previous, show: false }));
         setActionLoading(true);
         try {
-          const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-          const res = await bookItem(itemId);
-
+          const response = await bookItem(itemId);
+          setTimedMessage({ type: "success", text: response.msg });
+          await fetchItem(true);
+        } catch (requestError) {
           setTimedMessage({
-            type: "success",
-            text: res.msg ?? "تم حجز الغرض بنجاح ✅",
+            type: "error",
+            text: extractErrorMsg(requestError, "حدث خطأ أثناء الحجز"),
           });
-
-          // ✅ إذا كان waitlisted → احفظ في localStorage
-          if (res.waitlisted) {
-            updateWaitlistStorage(itemId, true);
-          }
-
-          const updatedItem = await fetchItem(true, true);
-          if (updatedItem) {
-            setItem(updatedItem);
-          } else if (currentUserId && user && !res.waitlisted) {
-            setItem((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    status: "محجوز",
-                    bookedBy: {
-                      _id: currentUserId,
-                      name: user.name || "المستلم",
-                      avatar: user.avatar,
-                    },
-                  }
-                : null
-            );
-          }
-        } catch (error: unknown) {
-          if (axios.isAxiosError(error)) {
-            const errorCode = error.response?.data?.code;
-            const errorMsg  = error.response?.data?.message;
-
-            // ✅ إذا كان الخطأ ALREADY_WAITLISTED → احفظ في localStorage
-            if (errorCode === "ALREADY_WAITLISTED" || errorMsg?.includes("قائمة الانتظار")) {
-              const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-              updateWaitlistStorage(itemId, true);
-              setTimedMessage({
-                type: "success",
-                text: "أنت مسجل في قائمة الانتظار بالفعل ✅",
-              });
-              return;
-            }
-
-            const msg = error.response?.data?.msg
-              ?? error.response?.data?.message
-              ?? "حدث خطأ أثناء الطلب";
-            setTimedMessage({ type: "error", text: msg });
-          } else {
-            setTimedMessage({ type: "error", text: "حدث خطأ أثناء الطلب" });
-          }
+          await fetchItem(true);
         } finally {
           setActionLoading(false);
         }
       },
     });
-  }, [
-    authLoading, isLoggedIn, id, router, fetchItem,
-    item?.status, item?.waitlistCount,
-    currentUserId, user, setTimedMessage, updateWaitlistStorage,
-  ]);
+  }, [authLoading, fetchItem, isLoggedIn, item?.status, item?.waitlistCount, itemId, router, setTimedMessage]);
 
   const handleCancelAction = useCallback(() => {
     const isDanger = isBooker || isDonor;
     const confirmMsg = isBooker
-      ? "⚠️ تنبيه: إلغاء الحجز سيمنعك من حجز هذه القطعة مجدداً للأبد!\nهل أنت متأكد؟"
+      ? "⚠️ إلغاء الحجز سيمنعك من حجز هذا الغرض مجدداً. هل أنت متأكد؟"
       : isDonor
-      ? "هل تريد إلغاء حجز المستلم وتمرير الدور؟"
-      : "هل تريد الانسحاب من قائمة الانتظار؟";
+        ? "هل تريد إلغاء حجز المستلم وتمرير الدور لأول منتظر مؤهل؟"
+        : "هل تريد الانسحاب من قائمة الانتظار؟";
 
     setConfirmModal({
       show: true,
       msg: confirmMsg,
       isDanger,
       onConfirm: async () => {
-        setConfirmModal((prev) => ({ ...prev, show: false }));
+        setConfirmModal((previous) => ({ ...previous, show: false }));
         setActionLoading(true);
         try {
-          const itemId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
-          const res = await cancelBooking(itemId);
-
-          // ✅ احذف من localStorage عند الإلغاء
-          updateWaitlistStorage(itemId, false);
-
-          setTimedMessage({ type: "success", text: res.msg ?? "تم الإلغاء بنجاح ✅" });
-
-          const updatedItem = await fetchItem(true, true);
-          if (updatedItem) {
-            setItem(updatedItem);
-          } else {
-            setItem((prev) =>
-              prev ? { ...prev, status: "متاح", bookedBy: undefined, isInWaitlist: false } : null
-            );
-          }
-        } catch (error: unknown) {
-          const msg = axios.isAxiosError(error)
-            ? error.response?.data?.msg ?? error.response?.data?.message ?? "حدث خطأ أثناء الإلغاء"
-            : "حدث خطأ أثناء الإلغاء";
-          setTimedMessage({ type: "error", text: msg });
+          const response = isWaitlisted && !isBooker && !isDonor
+            ? await leaveWaitlist(itemId)
+            : await cancelBooking(itemId);
+          setTimedMessage({ type: "success", text: response.msg });
+          await fetchItem(true);
+        } catch (requestError) {
+          setTimedMessage({
+            type: "error",
+            text: extractErrorMsg(requestError, "حدث خطأ أثناء الإلغاء"),
+          });
         } finally {
           setActionLoading(false);
         }
       },
     });
-  }, [id, isBooker, isDonor, fetchItem, setTimedMessage, updateWaitlistStorage]);
+  }, [fetchItem, isBooker, isDonor, isWaitlisted, itemId, setTimedMessage]);
 
   return {
-    item, loading, message,
+    item,
+    loading,
+    loadError,
+    message,
     setMessage: setTimedMessage,
-    actionLoading, currentUserId,
-    isDonor, isBooker, isWaitlisted, isCancelledBefore,
-    confirmModal, setConfirmModal,
-    handleRequestItem, handleCancelAction, fetchItem,
+    actionLoading,
+    currentUserId,
+    isDonor,
+    isBooker,
+    isWaitlisted,
+    isCancelledBefore,
+    confirmModal,
+    setConfirmModal,
+    handleRequestItem,
+    handleCancelAction,
+    fetchItem,
   };
 }

@@ -2,39 +2,18 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Image from "next/image";
+import useSWR from "swr";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
-import axiosInstance from "@/lib/api/axiosInstance";
 import ChatDrawer from "@/components/ChatDrawer";
-
-interface ConversationItem {
-  _id: string;
-  title: string;
-  imageUrl?: string;
-}
-
-interface Participant {
-  _id: string;
-  name: string;
-  avatar?: string;
-}
-
-interface Conversation {
-  _id: string;
-  item?: ConversationItem | null;
-  owner?: Participant | null;
-  requester?: Participant | null;
-  participants: Participant[];
-  unreadCount: number;
-  lastMessage?: string;
-  lastMessageAt?: string | null;
-  updatedAt?: string; // إضافة الحقل هنا لتجنب الحاجة للـ any لاحقاً
-}
+import { listConversations, markConversationRead } from "@/lib/api/conversationApi";
+import type { ConversationListItem } from "@/types/chat.types";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onUnreadCountChange?: (count: number) => void;
+  initialConversationId?: string | null;
 }
 
 // 🌟 دالة هجينة لتوليد خلفيات ملونة باهتة متناسقة بناءً على الحرف الأول للاسم (Enterprise Touch)
@@ -77,13 +56,30 @@ function formatTimestamp(dateStr?: string | null): string {
   }
 }
 
-export default function ConversationList({ isOpen, onClose, onUnreadCountChange }: Props) {
+export default function ConversationList({
+  isOpen,
+  onClose,
+  onUnreadCountChange,
+  initialConversationId = null,
+}: Props) {
   const { user } = useAuth();
   const { socket } = useSocket();
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selected, setSelected] = useState<Conversation | null>(null);
-  const [hasFetched, setHasFetched] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(initialConversationId);
+  const {
+    data: conversations = [],
+    error: conversationsError,
+    isLoading,
+    mutate,
+  } = useSWR<ConversationListItem[]>(
+    isOpen ? "/api/conversations" : null,
+    () => listConversations(),
+    { revalidateOnFocus: true }
+  );
+  const selected = useMemo(
+    () => conversations.find((conversation) => conversation._id === selectedId) || null,
+    [conversations, selectedId]
+  );
 
   const unreadTotal = useMemo(() => {
     return conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
@@ -93,46 +89,9 @@ export default function ConversationList({ isOpen, onClose, onUnreadCountChange 
     onUnreadCountChange?.(unreadTotal);
   }, [unreadTotal, onUnreadCountChange]);
 
-  const fetchConversations = useCallback(() => {
-    axiosInstance
-      .get("/api/conversations")
-      .then((r) => {
-        const responseData = r.data;
-        let raw: unknown[] = [];
-
-        if (responseData && typeof responseData === "object") {
-          raw = responseData.data || responseData.conversations || responseData;
-        }
-
-        const data = Array.isArray(raw) ? raw : [];
-        
-        // تعديل الـ map ليتوافق مع الـ unknown[] بدون صياغة any صريحة
-        const normalized = data.map((item) => {
-          const conv = item as Record<string, unknown>;
-          return {
-            ...(conv as unknown as Conversation),
-            _id: String(conv._id || conv.id || "")
-          };
-        });
-
-        setConversations(normalized);
-        setHasFetched(true);
-      })
-      .catch((err) => {
-        console.error("[ConversationList] fetch error:", err);
-        setConversations([]);
-        setHasFetched(true);
-      });
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    fetchConversations();
-  }, [isOpen, fetchConversations]);
-
   useEffect(() => {
     if (!socket) return;
-    const refresh = () => fetchConversations();
+    const refresh = () => void mutate();
 
     socket.on("conversation_updated", refresh);
     socket.on("new_conversation", refresh);
@@ -143,34 +102,41 @@ export default function ConversationList({ isOpen, onClose, onUnreadCountChange 
       socket.off("new_conversation", refresh);
       socket.off("messages_read", refresh);
     };
-  }, [socket, fetchConversations]);
+  }, [socket, mutate]);
 
-  const openConversation = useCallback(async (conv: Conversation) => {
+  const openConversation = useCallback(async (conv: ConversationListItem) => {
     const secureId = conv._id;
     if (!secureId) return;
 
-    setSelected({ ...conv, _id: secureId });
+    setSelectedId(secureId);
 
     if ((conv.unreadCount || 0) > 0) {
-      setConversations((prev) => prev.map((c) => (c._id === secureId ? { ...c, unreadCount: 0 } : c)));
+      void mutate(
+        (current) => current?.map((conversation) => (
+          conversation._id === secureId
+            ? { ...conversation, unreadCount: 0 }
+            : conversation
+        )),
+        { revalidate: false }
+      );
       try {
-        await axiosInstance.put(`/api/conversations/${secureId}/read`);
+        await markConversationRead(secureId);
       } catch (error) {
         console.error("mark read error:", error);
       }
     }
-  }, []);
+  }, [mutate]);
 
   if (selected) {
     return (
       <ChatDrawer
         key={selected._id}
-        convId={selected._id}
-        itemTitle={selected.item?.title || "طاولة دراسة خشبية"}
+        conversationId={selected._id}
+        itemTitle={selected.item?.title || "الغرض"}
         isOpen={true}
         onClose={() => {
-          setSelected(null);
-          fetchConversations();
+          setSelectedId(null);
+          void mutate();
         }}
       />
     );
@@ -193,8 +159,12 @@ export default function ConversationList({ isOpen, onClose, onUnreadCountChange 
 
         {/* قائمة بطاقات المحادثات المتوازنة */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8f6f2]">
-          {!hasFetched ? (
+          {isLoading ? (
             <div className="text-center text-sm text-[#9b948c] font-semibold py-12 animate-pulse">جاري تحميل المحادثات...</div>
+          ) : conversationsError ? (
+            <div className="py-16 text-center text-xs font-bold text-red-500">تعذر تحميل المحادثات</div>
+          ) : selectedId && !selected ? (
+            <div className="py-16 text-center text-xs font-bold text-red-500">المحادثة المطلوبة لم تعد متاحة لهذا الحساب</div>
           ) : conversations.length === 0 ? (
             <div className="text-center text-xs text-[#9b948c] font-bold py-16">لا توجد محادثات بعد في صندوق الوارد.</div>
           ) : (

@@ -4,6 +4,9 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeAccessToken } from "@/lib/api/axiosInstance";
+import type { ClientToServerEvents, ServerToClientEvents } from "@/types/socket.types";
+
+type AounSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 const resolveSocketUrl = () => {
   const configured = process.env.NEXT_PUBLIC_API_URL;
@@ -20,7 +23,7 @@ const resolveSocketUrl = () => {
 const SOCKET_URL = resolveSocketUrl();
 
 interface SocketContextValue {
-  socket: Socket | null;
+  socket: AounSocket | null;
   isConnected: boolean;
 }
 
@@ -28,8 +31,8 @@ const SocketContext = createContext<SocketContextValue>({ socket: null, isConnec
 
 export function SocketProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth();
-  const socketRef = useRef<Socket | null>(null);
-  const [socketInstance, setSocketInstance] = useState<Socket | null>(null);
+  const socketRef = useRef<AounSocket | null>(null);
+  const [socketInstance, setSocketInstance] = useState<AounSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
@@ -71,7 +74,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         reconnectionDelay: 1_000,
         reconnectionDelayMax: 10_000,
         timeout: 10_000,
-      });
+      }) as AounSocket;
 
       instance.on("connect", () => setIsConnected(true));
       instance.on("disconnect", () => setIsConnected(false));

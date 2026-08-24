@@ -80,6 +80,13 @@ export default function NotificationBell() {
 
   const handleNotificationClick = (notification: Notification) => {
     void handleMarkOneRead(notification);
+    if (notification.type === "new_message" && notification.conversationId) {
+      toggleOpen();
+      window.dispatchEvent(new CustomEvent("aoun:open-conversation", {
+        detail: { conversationId: notification.conversationId },
+      }));
+      return;
+    }
     const destination = notification.actionUrl
       ?? (notification.itemId ? `/items/${notification.itemId}` : null);
     const safeDestination = getSafeRedirectPath(destination, "");

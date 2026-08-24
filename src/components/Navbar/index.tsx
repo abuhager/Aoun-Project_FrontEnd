@@ -8,7 +8,7 @@ import { useSiteConfig } from "@/context/SiteConfigContext";
 import { useSocket } from "@/context/SocketContext";
 import NotificationBell from "@/components/NotificationBell";
 import ConversationsDrawer from "@/components/ConversationsDrawer";
-import axiosInstance from "@/lib/api/axiosInstance";
+import { listConversations } from "@/lib/api/conversationApi";
 
 const NAV_LINKS = [
   { href: "/#how-it-works", icon: "help", label: "كيف نعمل؟", authRequired: false },
@@ -17,11 +17,6 @@ const NAV_LINKS = [
   { href: "/browse", icon: "explore", label: "تصفح الأغراض", authRequired: true },
   { href: "/donation-requests", icon: "volunteer_activism", label: "طلبات التبرع", authRequired: true },
 ] as const;
-
-interface ConversationUnreadItem {
-  _id: string;
-  unreadCount: number;
-}
 
 export default function Navbar() {
   const { platformName } = useSiteConfig();
@@ -44,6 +39,7 @@ export default function Navbar() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [requestedConversationId, setRequestedConversationId] = useState<string | null>(null);
   const [serverChatUnreadCount, setServerChatUnreadCount] = useState(0);
 
   const isReadyForUserData = isMounted && isLoggedIn;
@@ -61,13 +57,7 @@ export default function Navbar() {
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await axiosInstance.get<ConversationUnreadItem[]>("/api/conversations");
-      const rawData =
-        response.data && typeof response.data === "object" && "data" in response.data
-          ? (response.data as Record<string, unknown>).data
-          : response.data;
-      const data = Array.isArray(rawData) ? rawData : [];
-      
+      const data = await listConversations();
       return data.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
     } catch {
       return 0;
@@ -114,23 +104,26 @@ export default function Navbar() {
   }, [socket, isReadyForUserData, fetchUnreadCount]);
 
   useEffect(() => {
-    if (!socket || !isReadyForUserData) return;
+    if (!isReadyForUserData) return;
 
-    const onNotificationNew = (payload: {
-      type: string;
-      conversationId: string;
-      from: { _id: string; name: string };
-      preview: string;
-    }) => {
-      if (payload.from?._id === user?._id) return;
-      console.log(`🔔 إشعار منبثق جديد لـ ${firstName} من ${payload.from?.name}`);
+    const openRequestedConversation = (event: Event) => {
+      const conversationId = (event as CustomEvent<{ conversationId?: unknown }>).detail
+        ?.conversationId;
+      if (typeof conversationId !== "string" || !/^[a-f\d]{24}$/i.test(conversationId)) return;
+      setRequestedConversationId(conversationId);
+      setChatOpen(true);
     };
 
-    socket.on("notification_new", onNotificationNew);
+    window.addEventListener("aoun:open-conversation", openRequestedConversation);
     return () => {
-      socket.off("notification_new", onNotificationNew);
+      window.removeEventListener("aoun:open-conversation", openRequestedConversation);
     };
-  }, [socket, isReadyForUserData, user?._id, firstName]);
+  }, [isReadyForUserData]);
+
+  const openChatInbox = () => {
+    setRequestedConversationId(null);
+    setChatOpen(true);
+  };
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -271,7 +264,7 @@ export default function Navbar() {
                     </Link>
                   )}
                   <button
-                    onClick={() => setChatOpen(true)}
+                    onClick={openChatInbox}
                     className="relative flex h-9 w-9 items-center justify-center rounded-xl text-[#77716a] transition-all duration-300 hover:bg-white hover:text-[#181818]"
                     aria-label="الرسائل"
                     type="button"
@@ -381,7 +374,7 @@ export default function Navbar() {
             {isMounted && isLoggedIn && (
               <>
                 <button
-                  onClick={() => setChatOpen(true)}
+                  onClick={openChatInbox}
                   className="relative flex h-10 w-10 items-center justify-center rounded-xl text-[#77716a] transition-all duration-300 hover:bg-[#f5f2ec] hover:text-[#181818]"
                   aria-label="الرسائل"
                   type="button"
@@ -559,7 +552,11 @@ export default function Navbar() {
         {isReadyForUserData && chatOpen && (
           <ConversationsDrawer
             isOpen={chatOpen}
-            onClose={() => setChatOpen(false)}
+            initialConversationId={requestedConversationId}
+            onClose={() => {
+              setChatOpen(false);
+              setRequestedConversationId(null);
+            }}
             onUnreadCountChange={setServerChatUnreadCount}
           />
         )}

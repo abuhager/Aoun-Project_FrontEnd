@@ -1,5 +1,5 @@
 // src/components/Navbar/useNavbar.ts
-import { useState, useCallback, useLayoutEffect, useSyncExternalStore } from "react";
+import { useState, useCallback, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth }     from "@/context/AuthContext";
 
@@ -21,19 +21,22 @@ export function useNavbar() {
     () => false
   );
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen]         = useState(false);
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-
-  useLayoutEffect(() => {
-    setIsMobileMenuOpen(false);
-    setIsProfileDropdownOpen(false);
+  const [mobileMenu, setMobileMenu] = useState({ pathname, open: false });
+  const [profileDropdown, setProfileDropdown] = useState({ pathname, open: false });
+  const isMobileMenuOpen = mobileMenu.pathname === pathname && mobileMenu.open;
+  const isProfileDropdownOpen = profileDropdown.pathname === pathname && profileDropdown.open;
+  const setIsMobileMenuOpen = useCallback((open: boolean) => {
+    setMobileMenu({ pathname, open });
+  }, [pathname]);
+  const setIsProfileDropdownOpen = useCallback((open: boolean) => {
+    setProfileDropdown({ pathname, open });
   }, [pathname]);
 
   const handleLogout = useCallback(async () => {
     setIsMobileMenuOpen(false);
     setIsProfileDropdownOpen(false);
     await logout();
-  }, [logout]);
+  }, [logout, setIsMobileMenuOpen, setIsProfileDropdownOpen]);
 
   const firstName      = user?.name?.split(" ")[0] ?? "حسابي";
   const userRole       = user?.role ?? null;

@@ -17,7 +17,6 @@ export function useNotifications() {
   const [isLoading,      setIsLoading]       = useState(false);
   const [unreadMessages, setUnreadMessages]  = useState(0);
 
-  const attachedRef  = useRef(false);
   const isMountedRef = useRef(true); 
 
   useEffect(() => {
@@ -47,44 +46,30 @@ export function useNotifications() {
   }, [user?._id, isLoggedIn, fetchNotifications]);
 
   useEffect(() => {
-    if (!user?._id || !isLoggedIn || !socket) return; // 👈 Ensure socket is defined
-    let cancelled = false;
+    if (!user?._id || !isLoggedIn || !socket) return;
 
-    const tryAttach = () => {
-      if (attachedRef.current || cancelled) return undefined;
-      
-      const onNew = (n: Notification) => {
-        if (!isMountedRef.current) return;
-        setNotifications((p) => p.some((x) => x._id === n._id) ? p : [n, ...p]);
-        setUnreadCount((p) => p + 1);
-        if (n.type === 'new_message') setUnreadMessages((p) => p + 1);
-      };
-
-      socket.on('notification:new', onNew);
-      socket.on('connect', fetchNotifications);
-      attachedRef.current = true;
-
-      return () => {
-        socket.off('notification:new', onNew);
-        socket.off('connect', fetchNotifications);
-        attachedRef.current = false;
-      };
-    };
-
-    const detach = tryAttach();
-    if (detach) return () => { cancelled = true; detach(); };
-
-    const t = setTimeout(() => { if (!cancelled) tryAttach(); }, 500);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-      if (attachedRef.current) {
-        socket.off('notification:new');
-        socket.off('connect', fetchNotifications);
-        attachedRef.current = false;
+    const onNew = (notification: Notification) => {
+      if (!isMountedRef.current) return;
+      setNotifications((current) => (
+        current.some((item) => item._id === notification._id)
+          ? current
+          : [notification, ...current]
+      ));
+      setUnreadCount((current) => current + 1);
+      if (notification.type === 'new_message') {
+        setUnreadMessages((current) => current + 1);
       }
     };
-  }, [user?._id, isLoggedIn, fetchNotifications, socket]); // 👈 Added stable socket to dependencies
+
+    socket.on('notification:new', onNew);
+    socket.on('notification:refresh', fetchNotifications);
+    socket.on('connect', fetchNotifications);
+    return () => {
+      socket.off('notification:new', onNew);
+      socket.off('notification:refresh', fetchNotifications);
+      socket.off('connect', fetchNotifications);
+    };
+  }, [user?._id, isLoggedIn, fetchNotifications, socket]);
 
   const handleMarkAllRead = useCallback(async () => {
     setNotifications((p) => p.map((n) => ({ ...n, isRead: true })));

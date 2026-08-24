@@ -107,19 +107,20 @@ export function useItemDetails() {
       setItem(null);
       setLoadError("لم يعد هذا الغرض متاحاً");
     };
-    const refreshEvents = [
-      "item:booked",
-      "item:booking_cancelled",
-      "item:booking_transferred",
-      "item:waitlist_promoted",
-      "item:recipient_confirmed",
-      "item:delivered",
-    ];
-
-    refreshEvents.forEach((event) => socket.on(event, refreshItem));
+    socket.on("item:booked", refreshItem);
+    socket.on("item:booking_cancelled", refreshItem);
+    socket.on("item:booking_transferred", refreshItem);
+    socket.on("item:waitlist_promoted", refreshItem);
+    socket.on("item:recipient_confirmed", refreshItem);
+    socket.on("item:delivered", refreshItem);
     socket.on("item:deleted", handleDeleted);
     return () => {
-      refreshEvents.forEach((event) => socket.off(event, refreshItem));
+      socket.off("item:booked", refreshItem);
+      socket.off("item:booking_cancelled", refreshItem);
+      socket.off("item:booking_transferred", refreshItem);
+      socket.off("item:waitlist_promoted", refreshItem);
+      socket.off("item:recipient_confirmed", refreshItem);
+      socket.off("item:delivered", refreshItem);
       socket.off("item:deleted", handleDeleted);
     };
   }, [fetchItem, itemId, socket]);

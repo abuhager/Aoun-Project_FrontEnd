@@ -135,9 +135,9 @@ export function useDashboard() {
       itemTitle,
     }: {
       itemId: string;
-      itemTitle: string;
+      itemTitle?: string;
     }) => {
-      showToast(`✅ ${itemTitle} — المستلم أكّد الاستلام، يرجى تأكيد التسليم الآن`, "success");
+      showToast(`✅ ${itemTitle || "الغرض"} — المستلم أكّد الاستلام، يرجى تأكيد التسليم الآن`, "success");
       setDeliveryState({ itemId, waitingForDonor: true });
 
       setData((prev) =>

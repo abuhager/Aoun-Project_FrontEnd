@@ -11,7 +11,8 @@ import ChatDrawer from "@/components/ChatDrawer";
 import { useRouter } from "next/navigation";
 import { useDeliveryConfirmation } from "@/hooks/useDeliveryConfirmation";
 import { useAuth } from "@/context/AuthContext";
-import axiosInstance from "@/lib/api/axiosInstance";
+import { openConversation } from "@/lib/api/conversationApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 
 export default function ItemDetailsPage() {
   const router = useRouter();
@@ -53,40 +54,14 @@ export default function ItemDetailsPage() {
     if (!item) return;
     setFetchingChat(true);
     try {
-      let targetUserId: string | null = null;
-
-      if (isDonor) {
-        const bookedBy = item.bookedBy;
-        if (typeof bookedBy === "string") {
-          targetUserId = bookedBy;
-        } else if (bookedBy && typeof bookedBy === "object" && "_id" in bookedBy) {
-          targetUserId = String((bookedBy as { _id: unknown })._id);
-        }
-      } else {
-        targetUserId = item.donor?._id ?? null;
-      }
-
-      if (!targetUserId) {
-        setMessage({ type: "error", text: "تعذّر تحديد المستخدم لبدء المحادثة" });
-        return;
-      }
-
-      const response = await axiosInstance.post("/api/conversations", {
-        itemId: item._id,
-        donorId: targetUserId,
+      const { conversation } = await openConversation(item._id);
+      setActiveConvId(conversation._id);
+      setChatOpen(true);
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: extractErrorMsg(error, "تعذّر فتح المحادثة"),
       });
-
-      const realId =
-        response.data?.data?.conversation?._id ||
-        response.data?.data?._id ||
-        response.data?.conversation?._id;
-
-      if (realId) {
-        setActiveConvId(realId);
-        setChatOpen(true);
-      }
-    } catch {
-      setMessage({ type: "error", text: "تعذّر فتح المحادثة" });
     } finally {
       setFetchingChat(false);
     }
@@ -140,7 +115,7 @@ export default function ItemDetailsPage() {
       {showChat && chatOpen && activeConvId && (
         <ChatDrawer
           key={activeConvId}
-          convId={activeConvId}
+          conversationId={activeConvId}
           itemTitle={item.title}
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}

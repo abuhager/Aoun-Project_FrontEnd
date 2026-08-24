@@ -12,7 +12,8 @@ import AppealModal from "@/components/AppealModal";
 import type { Item } from "@/types/item.types";
 import ChatDrawer from "@/components/ChatDrawer";
 import GlobalRatingModal from "@/components/GlobalRatingModal";
-import axiosInstance from "@/lib/api/axiosInstance";
+import { openConversation } from "@/lib/api/conversationApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 
 /* ─── Skeleton ──────────────────────────────────────────────── */
 function DashboardSkeleton() {
@@ -96,7 +97,6 @@ export default function DashboardPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [activeItemTitle, setActiveItemTitle] = useState("");
-  const [, setFetchingChat] = useState(false);
 
   if (loading) return <DashboardSkeleton />;
 
@@ -118,33 +118,16 @@ export default function DashboardPage() {
 
   // دالة فتح المحادثة
   const handleOpenChatFlow = async (item: Item & { owner?: { _id: string } }) => {
-    setFetchingChat(true);
     try {
-      const targetUserId = activeTab === "donations"
-        ? (item.bookedBy?._id || item.bookedBy)
-        : (item.donor?._id || item.owner?._id);
-
-      const response = await axiosInstance.post("/api/conversations", {
-        itemId: item._id,
-        donorId: targetUserId 
+      const { conversation } = await openConversation(item._id);
+      setActiveConvId(conversation._id);
+      setActiveItemTitle(item.title);
+      setChatOpen(true);
+    } catch (error) {
+      setToast({
+        type: "error",
+        msg: extractErrorMsg(error, "تعذّر فتح المحادثة"),
       });
-
-      const realId =
-        response.data?.data?.conversation?._id ||
-        response.data?.data?._id ||
-        response.data?.conversation?._id;
-
-      if (realId) {
-        setActiveConvId(realId);
-        setActiveItemTitle(item.title);
-        setChatOpen(true);
-      } else {
-        console.warn("⚠️ لم يتم العثور على المعرف _id في استجابة السيرفر", response.data);
-      }
-    } catch (err) {
-      console.error("❌ فشل جلب معرف المحادثة الرسمي في الداشبورد:", err);
-    } finally {
-      setFetchingChat(false);
     }
   };
 
@@ -183,7 +166,7 @@ export default function DashboardPage() {
       {chatOpen && activeConvId && (
         <ChatDrawer
           key={activeConvId}
-          convId={activeConvId}
+          conversationId={activeConvId}
           itemTitle={activeItemTitle}
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}

@@ -35,8 +35,8 @@ export interface AuthUser {
   isVerifiedStudent: boolean;
   phoneVerified:     boolean;
   // ✅ [FLOW2-FIX-07] إضافة isFrozen — buildSafeUser في Backend يُرسله دائماً
-  isFrozen?:         boolean;
-  isBanned?:         boolean;
+  isFrozen:          boolean;
+  isBanned:          boolean;
   createdAt:         string;
   gamification?: Gamification;
 }

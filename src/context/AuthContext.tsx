@@ -15,6 +15,7 @@ import axiosInstance, {
   setInitialized,
 } from "@/lib/api/axiosInstance";
 import { clearSessionCookie, setSessionCookie } from "@/lib/utils/cookieUtils";
+import type { RefreshResponse } from "@/types/auth.types";
 import type { AuthUser } from "@/types/user.types";
 
 interface AuthContextType {
@@ -30,11 +31,6 @@ interface AuthContextType {
 }
 
 export type SessionEndReason = "session_expired" | "account_unavailable";
-
-interface RefreshResponse {
-  accessToken: string;
-  user: AuthUser;
-}
 
 const SAFETY_TIMEOUT_MS =
   Number.parseInt(process.env.NEXT_PUBLIC_AUTH_SAFETY_TIMEOUT ?? "8000", 10) ||

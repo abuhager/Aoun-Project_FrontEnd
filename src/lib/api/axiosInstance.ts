@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { isProtectedPath, isAuthOnlyPath, isAuthSafeUrl } from "@/config/routes";
 import { setSessionCookie, clearSessionCookie } from "@/lib/utils/cookieUtils";
+import type { RefreshResponse } from "@/types/auth.types";
 
 let accessToken: string | null = null;
 let isRefreshing = false;
@@ -212,7 +213,7 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axiosInstance.post<{ accessToken: string }>(
+        const { data } = await axiosInstance.post<RefreshResponse>(
           "/api/auth/refresh",
           {},
           { withCredentials: true }

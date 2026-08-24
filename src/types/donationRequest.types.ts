@@ -11,9 +11,9 @@ export type DonationOfferStatus =
 export interface DonationRequestUser {
   _id:         string;
   name:        string;
-  avatar?:     string;
-  trustScore?: number;
-  trustLevel?: number;
+  avatar:      string | null;
+  trustScore:  number | null;
+  trustLevel:  number | null;
 }
 
 export interface DonationOffer {
@@ -22,19 +22,19 @@ export interface DonationOffer {
   donor: {
     _id:        string;
     name:       string;
-    avatar?:    string;
-    trustLevel: number;
-    trustScore: number;
-  };
+    avatar:     string | null;
+    trustLevel: number | null;
+    trustScore: number | null;
+  } | null;
   safeHub: {
     _id:     string;
     name:    string;
     city:    string;
     address: string;
-  };
+  } | null;
   condition:    string;
-  description?: string;
-  imageUrl?:    string;
+  description:  string | null;
+  imageUrl:     string | null;
   status:       DonationOfferStatus;
   createdAt:    string;
 }
@@ -44,7 +44,7 @@ export interface DonationRequest {
   title:        string;
   category:     string;
   urgency:      'low' | 'medium' | 'high';
-  description?: string;
+  description:  string | null;
   location:     string;
   status:       DonationRequestStatus;
   requester:    DonationRequestUser | null;
@@ -59,11 +59,11 @@ export interface DonationRequest {
     condition:          string;
     recipientConfirmed: boolean;
     donorConfirmed:     boolean;
-    safeHub: { name: string; city: string; address: string };
-    donor:   { _id: string; name: string };
+    safeHub: { name: string; city: string; address: string } | null;
+    donor:   { _id: string; name: string } | null;
   } | null;
-  month?:     string;
-  expiresAt?: string;
+  month:      string | null;
+  expiresAt:  string | null;
   createdAt:  string;
   updatedAt:  string;
 }

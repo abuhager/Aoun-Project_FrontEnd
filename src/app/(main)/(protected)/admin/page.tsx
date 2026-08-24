@@ -1,15 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axiosInstance from "@/lib/api/axiosInstance";
-
-interface Stats {
-  totalUsers: number;
-  bannedUsers: number;
-  totalItems: number;
-  deliveredItems: number;
-  pendingReports: number;
-}
+import { getAdminStats } from "@/lib/api/adminApi";
+import type { AdminStats } from "@/types/admin.types";
 
 const CARDS = [
   {
@@ -45,13 +38,13 @@ const CARDS = [
 ] as const;
 
 export default function AdminOverviewPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axiosInstance
-      .get("/api/admin/stats")
-      .then((r) => setStats(r.data))
+    getAdminStats()
+      .then(setStats)
+      .catch(() => setStats(null))
       .finally(() => setLoading(false));
   }, []);
 
@@ -130,7 +123,7 @@ export default function AdminOverviewPage() {
 
               <div className="mt-10">
                 <p className="tabular-nums text-5xl font-black leading-none tracking-tight text-[#1f312f]">
-                  {stats?.[CARDS[0].key as keyof Stats] ?? 0}
+                  {stats?.[CARDS[0].key as keyof AdminStats] ?? 0}
                 </p>
                 <p className="mt-3 text-sm font-bold text-[#7b756e]">
                   {CARDS[0].label}
@@ -151,7 +144,7 @@ export default function AdminOverviewPage() {
 
             <div className="mt-8">
               <p className="tabular-nums text-3xl font-black leading-none tracking-tight text-[#1f312f]">
-                {stats?.[CARDS[1].key as keyof Stats] ?? 0}
+                {stats?.[CARDS[1].key as keyof AdminStats] ?? 0}
               </p>
               <p className="mt-3 text-xs font-bold text-[#8b847c]">
                 {CARDS[1].label}
@@ -171,7 +164,7 @@ export default function AdminOverviewPage() {
 
             <div className="mt-8">
               <p className="tabular-nums text-4xl font-black leading-none tracking-tight text-[#1f312f]">
-                {stats?.[CARDS[2].key as keyof Stats] ?? 0}
+                {stats?.[CARDS[2].key as keyof AdminStats] ?? 0}
               </p>
               <p className="mt-3 text-xs font-bold text-[#8b847c]">
                 {CARDS[2].label}
@@ -202,7 +195,7 @@ export default function AdminOverviewPage() {
               </div>
 
               <p className="tabular-nums text-4xl font-black tracking-tight text-[#1f312f]">
-                {stats?.[CARDS[3].key as keyof Stats] ?? 0}
+                {stats?.[CARDS[3].key as keyof AdminStats] ?? 0}
               </p>
             </div>
           </article>
@@ -230,7 +223,7 @@ export default function AdminOverviewPage() {
               </div>
 
               <p className="tabular-nums text-4xl font-black tracking-tight text-[#1f312f]">
-                {stats?.[CARDS[4].key as keyof Stats] ?? 0}
+                {stats?.[CARDS[4].key as keyof AdminStats] ?? 0}
               </p>
             </div>
           </article>

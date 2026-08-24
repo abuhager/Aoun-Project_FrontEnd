@@ -12,7 +12,7 @@ export interface RegisterRequest {
   name:     string;
   email:    string;
   password: string;
-  phone?:   string;
+  phone:    string;
 }
 
 export interface VerifyOtpRequest {
@@ -25,12 +25,15 @@ export interface ResendOtpRequest {
 }
 
 export interface LoginResponse {
+  msg:         string;
   accessToken: string;
   user:        AuthUser;
 }
 
 export interface RegisterResponse {
-  msg: string;
+  msg:               string;
+  email:             string;
+  isVerifiedStudent: boolean;
 }
 
 // ✅ [FLOW2-FIX-07] user لم يعد يقبل null — Backend يُرسله دائماً مع accessToken
@@ -45,6 +48,12 @@ export interface VerifyOtpResponse {
 
 export interface ResendOtpResponse {
   msg: string;
+}
+
+export interface RefreshResponse {
+  accessToken:          string;
+  user:                 AuthUser;
+  refreshRaceRecovered?: boolean;
 }
 
 export interface ApiErrorResponse {

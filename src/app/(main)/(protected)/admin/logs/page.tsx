@@ -1,38 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import axiosInstance from "@/lib/api/axiosInstance";
-
-interface PopulatedTarget {
-  _id: string;
-  name?: string;
-  email?: string;
-  title?: string;
-}
-
-interface Log {
-  _id: string;
-  adminId: { _id: string; name: string };
-  action: string;
-  targetId?: string | PopulatedTarget | null;
-  targetModel?: string;
-  details?: string;
-  reason?: string;
-  adminNote?: string;
-  meta?: {
-    targetName?: string;
-    targetEmail?: string;
-    itemTitle?: string;
-    reason?: string;
-    reportedBy?: string;
-    action?: string;
-    changedFields?: string[];
-  };
-  createdAt: string;
-}
+import { getAdminLogs } from "@/lib/api/adminApi";
+import type {
+  AdminAuditLog,
+  AdminPersonReference,
+} from "@/types/admin.types";
 
 interface PageState {
-  logs: Log[];
+  logs: AdminAuditLog[];
   pages: number;
   loading: boolean;
 }
@@ -93,7 +69,7 @@ const REPORT_ACTION_MAP: Record<string, { label: string; color: string; icon: st
   },
 };
 
-function resolveAction(log: Log) {
+function resolveAction(log: AdminAuditLog) {
   if (log.action === "REPORT_ACTION") {
     const subAction = log.meta?.action ?? "";
     return REPORT_ACTION_MAP[subAction] ?? {
@@ -110,24 +86,23 @@ function resolveAction(log: Log) {
   };
 }
 
-function getPopulatedTarget(log: Log): PopulatedTarget | null {
+function getPopulatedTarget(log: AdminAuditLog): AdminPersonReference | null {
   if (log.targetId && typeof log.targetId === "object") {
     return log.targetId;
   }
   return null;
 }
 
-function resolveTargetName(log: Log): string | null {
+function resolveTargetName(log: AdminAuditLog): string | null {
   if (log.meta?.targetName) return log.meta.targetName;
 
   const populated = getPopulatedTarget(log);
   if (populated?.name) return populated.name;
   if (populated?.title) return populated.title;
-
   return null;
 }
 
-function resolveTargetEmail(log: Log): string | null {
+function resolveTargetEmail(log: AdminAuditLog): string | null {
   if (log.meta?.targetEmail) return log.meta.targetEmail;
 
   const populated = getPopulatedTarget(log);
@@ -136,8 +111,14 @@ function resolveTargetEmail(log: Log): string | null {
   return null;
 }
 
-function resolveReason(log: Log): string | null {
+function resolveReason(log: AdminAuditLog): string | null {
   return log.reason ?? log.meta?.reason ?? null;
+}
+
+function resolveAdminName(log: AdminAuditLog): string {
+  return typeof log.adminId === "object" && log.adminId?.name
+    ? log.adminId.name
+    : "النظام";
 }
 
 const COL_COUNT = 6;
@@ -153,12 +134,11 @@ export default function AdminLogsPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    axiosInstance
-      .get("/api/admin/logs", { params: { page }, signal: controller.signal })
-      .then((r) =>
+    getAdminLogs(page, controller.signal)
+      .then((data) =>
         setState({
-          logs: r.data.logs,
-          pages: r.data.pages,
+          logs: data.logs,
+          pages: data.pages,
           loading: false,
         })
       )
@@ -399,7 +379,7 @@ export default function AdminLogsPage() {
                               </div>
                               <div>
                                 <p className="text-[13px] font-black text-[#223433] whitespace-nowrap">
-                                  {log.adminId?.name ?? "النظام"}
+                                  {resolveAdminName(log)}
                                 </p>
                                 <p className="mt-0.5 text-[10px] font-bold tracking-[0.18em] text-[#b0a79d] uppercase">
                                   Actor
@@ -528,10 +508,14 @@ export default function AdminLogsPage() {
                           <td className="p-4 whitespace-nowrap">
                             <div className="space-y-1">
                               <p className="text-[12px] font-black text-[#5e5852]">
-                                {new Date(log.createdAt).toLocaleDateString("ar-EG")}
+                                {log.createdAt
+                                  ? new Date(log.createdAt).toLocaleDateString("ar-EG")
+                                  : "—"}
                               </p>
                               <p className="text-[11px] text-[#a39b92]">
-                                {new Date(log.createdAt).toLocaleTimeString("ar-EG")}
+                                {log.createdAt
+                                  ? new Date(log.createdAt).toLocaleTimeString("ar-EG")
+                                  : ""}
                               </p>
                             </div>
                           </td>

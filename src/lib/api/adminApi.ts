@@ -1,59 +1,105 @@
+import axiosInstance from "@/lib/api/axiosInstance";
+import type {
+  AdminBanUserPayload,
+  AdminItemsResponse,
+  AdminLogsResponse,
+  AdminStats,
+  AdminUserActionPayload,
+  AdminUserMutationResponse,
+  AdminUsersResponse,
+} from "@/types/admin.types";
 
-import axiosInstance from '@/lib/api/axiosInstance';
-
-export interface AdminStats {
-  totalUsers:     number;
-  bannedUsers:    number;
-  totalItems:     number;
-  deliveredItems: number;
-  pendingReports: number;
+export async function getAdminStats(): Promise<AdminStats> {
+  const { data } = await axiosInstance.get<AdminStats>("/api/admin/stats");
+  return data;
 }
 
-export const getAdminStats = async (): Promise<AdminStats> => {
-  const { data } = await axiosInstance.get<AdminStats>('/api/admin/stats');
+export async function getAdminUsers({
+  page = 1,
+  search = "",
+  banned,
+}: {
+  page?: number;
+  search?: string;
+  banned?: boolean;
+} = {}): Promise<AdminUsersResponse> {
+  const { data } = await axiosInstance.get<AdminUsersResponse>(
+    "/api/admin/users",
+    { params: { page, search, ...(banned === undefined ? {} : { banned }) } }
+  );
   return data;
-};
-
-export interface AdminUser {
-  _id:        string;
-  name:       string;
-  email:      string;
-  role:       string;
-  trustLevel: number;
-  trustScore: number;
-  isBanned:   boolean;
-  isVerified: boolean;
-  createdAt:  string;
 }
 
-export const getAdminUsers = async (page = 1, search?: string) => {
-  const { data } = await axiosInstance.get<{
-    users: AdminUser[];
-    total: number;
-    pages: number;
-  }>('/api/admin/users', { params: { page, search } });
-  return data;
-};
-
-export const banUser = async (userId: string, reason?: string) => {
-  const { data } = await axiosInstance.patch<{ msg: string }>(
+export async function banUser(
+  userId: string,
+  payload: AdminBanUserPayload
+): Promise<AdminUserMutationResponse> {
+  const { data } = await axiosInstance.post<AdminUserMutationResponse>(
     `/api/admin/users/${userId}/ban`,
-    { reason }
+    payload
   );
   return data;
-};
+}
 
-export const unbanUser = async (userId: string) => {
-  const { data } = await axiosInstance.patch<{ msg: string }>(
-    `/api/admin/users/${userId}/unban`
+export async function unbanUser(
+  userId: string,
+  payload: Pick<AdminUserActionPayload, "adminNote"> = {}
+): Promise<AdminUserMutationResponse> {
+  const { data } = await axiosInstance.post<AdminUserMutationResponse>(
+    `/api/admin/users/${userId}/unban`,
+    payload
   );
   return data;
-};
+}
 
-export const promoteUser = async (userId: string, trustLevel: number) => {
-  const { data } = await axiosInstance.patch<{ msg: string }>(
-    `/api/admin/users/${userId}/trust`,
-    { trustLevel }
+export async function promoteUser(
+  userId: string,
+  payload: AdminUserActionPayload = {}
+): Promise<AdminUserMutationResponse> {
+  const { data } = await axiosInstance.post<AdminUserMutationResponse>(
+    `/api/admin/users/${userId}/promote`,
+    payload
   );
   return data;
-};
+}
+
+export async function demoteUser(
+  userId: string,
+  payload: AdminUserActionPayload = {}
+): Promise<AdminUserMutationResponse> {
+  const { data } = await axiosInstance.post<AdminUserMutationResponse>(
+    `/api/admin/users/${userId}/demote`,
+    payload
+  );
+  return data;
+}
+
+export async function getAdminItems(page = 1): Promise<AdminItemsResponse> {
+  const { data } = await axiosInstance.get<AdminItemsResponse>(
+    "/api/admin/items",
+    { params: { page } }
+  );
+  return data;
+}
+
+export async function deleteAdminItem(
+  itemId: string,
+  adminNote: string
+): Promise<{ msg: string }> {
+  const { data } = await axiosInstance.delete<{ msg: string }>(
+    `/api/admin/items/${itemId}`,
+    { data: { adminNote } }
+  );
+  return data;
+}
+
+export async function getAdminLogs(
+  page = 1,
+  signal?: AbortSignal
+): Promise<AdminLogsResponse> {
+  const { data } = await axiosInstance.get<AdminLogsResponse>(
+    "/api/admin/logs",
+    { params: { page }, signal }
+  );
+  return data;
+}

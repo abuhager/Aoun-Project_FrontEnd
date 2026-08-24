@@ -1,50 +1,114 @@
-// src/types/admin.types.ts
-import type { TrustLevel } from './user.types';
+import type { TrustLevel, UserRole } from "./user.types";
 
-export type AdminTab = 'users' | 'items' | 'reports' | 'audit';
+export interface AdminStats {
+  totalUsers:     number;
+  bannedUsers:    number;
+  totalItems:     number;
+  deliveredItems: number;
+  pendingReports: number;
+}
 
 export interface AdminUser {
   _id:               string;
   name:              string;
   email:             string;
-  role:              'user' | 'admin';
+  phone:             string | null;
+  avatar:            string;
+  role:              UserRole;
   trustLevel:        TrustLevel;
   trustScore:        number;
+  quota:             number;
+  totalDonations:    number;
   isVerified:        boolean;
   isVerifiedStudent: boolean;
-  isBanned:          boolean;   // ✅ موجود في page.tsx لكن ناقص من الـ interface
-  avatar?:           string;    // ✅ إضافة avatar — مستخدم في page.tsx السطر 236
-  totalDonations:    number;
-  quota:             number;
-  createdAt:         string;
+  phoneVerified:     boolean;
+  isBanned:          boolean;
+  isFrozen:          boolean;
+  banReason:         string | null;
+  createdAt:         string | null;
+  updatedAt:         string | null;
 }
 
-export interface AuditLog {
-  _id:         string;
-  action:      string;
-  adminId:     string;
-  adminName:   string;
-  targetId?:   string;
-  targetType?: 'user' | 'item' | 'report';
-  details?:    string;
-  createdAt:   string;
+export interface AdminUsersResponse {
+  users: AdminUser[];
+  total: number;
+  page:  number;
+  pages: number;
 }
 
-export interface AdminStats {
-  totalUsers:     number;
-  totalItems:     number;
-  totalDonations: number;
-  pendingReports: number;
-  activeHubs:     number;
+export interface AdminUserMutationResponse {
+  msg:  string;
+  user: AdminUser;
 }
 
-export interface AdminReport {
+export interface AdminUserActionPayload {
+  reason?:    string;
+  adminNote?: string;
+}
+
+export interface AdminBanUserPayload {
+  reason:     string;
+  adminNote?: string;
+}
+
+export interface AdminItem {
   _id:       string;
-  reporter:  { _id: string; name: string };
-  reported:  { _id: string; name: string };
-  item:      { _id: string; title: string };
-  reason:    string;
-  status:    'pending' | 'resolved' | 'dismissed';
-  appeal?:   string;
-  createdAt: string;
+  title:     string;
+  category:  string;
+  status:    string;
+  imageUrl:  string | null;
+  donor: {
+    _id:   string;
+    name:  string | null;
+    email: string | null;
+  } | null;
+  createdAt: string | null;
+}
+
+export interface AdminItemsResponse {
+  items: AdminItem[];
+  total: number;
+  page:  number;
+  pages: number;
+}
+
+export interface AdminPersonReference {
+  _id:   string;
+  name:  string | null;
+  email: string | null;
+  title: string | null;
+}
+
+export type AdminTargetReference = AdminPersonReference | string | null;
+
+export interface AdminAuditMeta {
+  targetName?:       string;
+  targetEmail?:      string;
+  itemTitle?:        string;
+  reason?:           string;
+  reportedBy?:       string;
+  action?:           string;
+  changedFields?:    string[];
+  [key: string]: unknown;
+}
+
+export interface AdminAuditLog {
+  _id:         string;
+  adminId:     AdminTargetReference;
+  action:      string;
+  targetId:    AdminTargetReference;
+  targetModel: string | null;
+  targetName:  string | null;
+  details:     string | null;
+  reason:      string | null;
+  adminNote:   string | null;
+  meta:        AdminAuditMeta;
+  createdAt:   string | null;
+}
+
+export interface AdminLogsResponse {
+  logs:  AdminAuditLog[];
+  total: number;
+  page:  number;
+  pages: number;
 }

@@ -2,8 +2,15 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Image from "next/image";
-import axiosInstance from "@/lib/api/axiosInstance";
 import { useToast } from "@/hooks/useToast";
+import {
+  banUser,
+  demoteUser,
+  getAdminUsers,
+  promoteUser,
+  unbanUser,
+} from "@/lib/api/adminApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import type { AdminUser } from "@/types/admin.types";
 
 type PendingAction = {
@@ -31,19 +38,14 @@ export default function AdminUsersPage() {
   const getAvatar = (url?: string) =>
     url ? (url.startsWith("http") ? url : apiUrl + url) : null;
 
-  const getUserId = (user: AdminUser) =>
-    ((user as AdminUser & { _id?: string; id?: string })._id ??
-      (user as AdminUser & { _id?: string; id?: string }).id ??
-      "");
+  const getUserId = (user: AdminUser) => user._id;
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await axiosInstance.get("/api/admin/users", {
-        params: { page, search },
-      });
-      setUsers(r.data.users);
-      setPages(r.data.pages);
+      const data = await getAdminUsers({ page, search });
+      setUsers(data.users);
+      setPages(data.pages);
     } catch {
       showToast("تعذر تحميل المستخدمين", false);
     } finally {
@@ -70,14 +72,20 @@ export default function AdminUsersPage() {
     const { userId, type } = pending;
     if (busy[userId]) return;
 
+    const cleanedNote = note.trim();
+    if (type === "ban" && cleanedNote.length < 5) {
+      showToast("سبب الحظر مطلوب ويجب أن يكون 5 أحرف على الأقل", false);
+      return;
+    }
+
     setBusy((prev) => ({ ...prev, [userId]: true }));
     setPending(null);
 
     try {
       if (type === "ban") {
-        await axiosInstance.post(`/api/admin/users/${userId}/ban`, {
-          reason: note || undefined,
-          adminNote: note || undefined,
+        await banUser(userId, {
+          reason: cleanedNote,
+          adminNote: cleanedNote,
         });
 
         showToast("تم حظر المستخدم بنجاح", true);
@@ -88,9 +96,10 @@ export default function AdminUsersPage() {
           )
         );
       } else if (type === "unban") {
-        await axiosInstance.post(`/api/admin/users/${userId}/unban`, {
-          adminNote: note || undefined,
-        });
+        await unbanUser(
+          userId,
+          cleanedNote ? { adminNote: cleanedNote } : {}
+        );
 
         showToast("تم فك الحظر بنجاح", true);
 
@@ -100,15 +109,12 @@ export default function AdminUsersPage() {
           )
         );
       } else if (type === "promote") {
-        const res = await axiosInstance.post(
-          `/api/admin/users/${userId}/promote`,
-          {
-            reason: note || undefined,
-            adminNote: note || undefined,
-          }
+        const res = await promoteUser(
+          userId,
+          cleanedNote ? { adminNote: cleanedNote } : {}
         );
 
-        const newLevel = (res.data.user?.trustLevel ?? 2) as 1 | 2;
+        const newLevel = res.user.trustLevel;
 
         showToast(`تمت ترقية المستخدم إلى المستوى ${newLevel}`, true);
 
@@ -118,15 +124,12 @@ export default function AdminUsersPage() {
           )
         );
       } else if (type === "demote") {
-        const res = await axiosInstance.post(
-          `/api/admin/users/${userId}/demote`,
-          {
-            reason: note || undefined,
-            adminNote: note || undefined,
-          }
+        const res = await demoteUser(
+          userId,
+          cleanedNote ? { adminNote: cleanedNote } : {}
         );
 
-        const newLevel = (res.data.user?.trustLevel ?? 1) as 1 | 2;
+        const newLevel = res.user.trustLevel;
 
         showToast(`تم تخفيض المستخدم إلى المستوى ${newLevel}`, true);
 
@@ -137,14 +140,7 @@ export default function AdminUsersPage() {
         );
       }
     } catch (err: unknown) {
-      let msg = "حدث خطأ أثناء تنفيذ الإجراء";
-
-      if (err && typeof err === "object" && "isAxiosError" in err) {
-        const axiosError = err as { response?: { data?: { msg?: string } } };
-        msg = axiosError.response?.data?.msg ?? msg;
-      }
-
-      showToast(msg, false);
+      showToast(extractErrorMsg(err, "حدث خطأ أثناء تنفيذ الإجراء"), false);
     } finally {
       setBusy((prev) => ({ ...prev, [userId]: false }));
     }
@@ -234,13 +230,23 @@ export default function AdminUsersPage() {
 
             <div className="space-y-2">
               <label className="block text-xs font-extrabold text-[#8a837b]">
-                ملاحظة إدارية <span className="font-normal">(اختياري)</span>
+                {pending.type === "ban" ? "سبب الحظر" : "ملاحظة إدارية"}{" "}
+                {pending.type === "ban" ? (
+                  <span className="text-red-500">*</span>
+                ) : (
+                  <span className="font-normal">(اختياري)</span>
+                )}
               </label>
               <textarea
                 rows={4}
+                maxLength={500}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="أدخل سبب الإجراء أو أي ملاحظة داخلية..."
+                placeholder={
+                  pending.type === "ban"
+                    ? "اكتب سبب الحظر (5 أحرف على الأقل)..."
+                    : "أدخل سبب الإجراء أو أي ملاحظة داخلية..."
+                }
                 className="w-full rounded-2xl border border-[#e7e1d8] bg-[#fcfaf7] px-4 py-3 text-sm text-[#24302f] outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary focus:shadow-[0_0_0_4px_rgba(1,105,111,0.08)]"
               />
             </div>

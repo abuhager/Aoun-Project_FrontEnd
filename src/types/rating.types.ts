@@ -23,8 +23,8 @@ export interface UserRating {
   score:     RatingScore;
   comment:   string;
   createdAt: string;
-  item:      { _id: string; title: string };
-  rater:     { _id: string; name: string; avatar?: string };
+  item:      { _id: string; title: string | null } | null;
+  rater:     { _id: string; name: string | null; avatar: string | null } | null;
 }
 
 export interface RatingPrompt {
@@ -41,7 +41,7 @@ export interface PendingRatingResponse {
     title: string;
     status: string;
     isRated: boolean;
-    donor?: { _id: string; name: string; avatar?: string };
-    bookedBy?: { _id: string; name: string };
+    donor: { _id: string; name: string | null; avatar: string | null } | null;
+    bookedBy: { _id: string; name: string | null; avatar: string | null } | null;
   } | null;
 }

@@ -2,18 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
-import axios from "axios";
-import axiosInstance from "@/lib/api/axiosInstance";
-
-interface AdminItem {
-  _id: string;
-  title: string;
-  category: string;
-  status: string;
-  images?: string[];
-  donor?: { name: string; email: string };
-  createdAt: string;
-}
+import { deleteAdminItem, getAdminItems } from "@/lib/api/adminApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import type { AdminItem } from "@/types/admin.types";
 
 type PendingDelete = {
   id: string;
@@ -40,9 +31,9 @@ export default function AdminItemsPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await axiosInstance.get("/api/admin/items", { params: { page } });
-      setItems(r.data.items);
-      setPages(r.data.pages);
+      const data = await getAdminItems(page);
+      setItems(data.items);
+      setPages(data.pages);
     } catch {
       showToast("تعذر تحميل الأغراض", false);
     } finally {
@@ -58,7 +49,7 @@ export default function AdminItemsPage() {
     setPendingDelete({
       id: item._id,
       title: item.title,
-      donorName: item.donor?.name,
+      donorName: item.donor?.name ?? undefined,
     });
     setDeleteNote("");
   };
@@ -77,26 +68,21 @@ export default function AdminItemsPage() {
     setBusy((prev) => ({ ...prev, [id]: true }));
 
     try {
-      await axiosInstance.delete(`/api/admin/items/${id}`, {
-        data: { adminNote: deleteNote.trim() },
-      });
+      await deleteAdminItem(id, deleteNote.trim());
 
       setItems((prev) => prev.filter((item) => item._id !== id));
       showToast("تم حذف الغرض ✅", true);
       setPendingDelete(null);
       setDeleteNote("");
     } catch (err: unknown) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.msg ?? "حدث خطأ أثناء حذف الغرض"
-        : "حدث خطأ أثناء حذف الغرض";
-      showToast(msg, false);
+      showToast(extractErrorMsg(err, "حدث خطأ أثناء حذف الغرض"), false);
     } finally {
       setBusy((prev) => ({ ...prev, [id]: false }));
     }
   };
 
   const getImage = (item: AdminItem) => {
-    const img = item.images?.[0];
+    const img = item.imageUrl;
     if (!img) return null;
     return img.startsWith("http") ? img : `${apiUrl}/${img}`;
   };
@@ -361,7 +347,9 @@ export default function AdminItemsPage() {
                       {/* Date */}
                       <td className="p-4">
                         <span className="text-xs font-medium text-[#8f877f]">
-                          {new Date(item.createdAt).toLocaleDateString("ar-EG")}
+                          {item.createdAt
+                            ? new Date(item.createdAt).toLocaleDateString("ar-EG")
+                            : "—"}
                         </span>
                       </td>
 

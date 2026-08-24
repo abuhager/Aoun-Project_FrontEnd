@@ -5,8 +5,14 @@
 
 // ── شكل الـ Error الموحّد من الـ Backend ───────────────────
 export interface ApiError {
-  msg: string;
-  code?: string; // ✅ أضف هذا — الـ Backend يُرسله (TOKEN_EXPIRED, LEVEL2_REQUIRED, إلخ)
+  status?:    'fail' | 'error';
+  msg?:       string;
+  message?:   string;
+  code?:      string;
+  requestId?: string;
+  field?:     string;
+  errors?:    string[];
+  details?:   unknown;
 }
 
 
@@ -45,7 +51,9 @@ export function extractApiError(error: unknown): string {
     'response' in error
   ) {
     const axiosError = error as { response?: { data?: ApiError } };
-    return axiosError.response?.data?.msg ?? 'حدث خطأ غير متوقع';
+    return axiosError.response?.data?.msg
+      ?? axiosError.response?.data?.message
+      ?? 'حدث خطأ غير متوقع';
   }
   if (error instanceof Error) return error.message;
   return 'حدث خطأ غير متوقع';

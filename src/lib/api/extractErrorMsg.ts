@@ -10,5 +10,6 @@ export function extractErrorMsg(
     };
     return e.response?.data?.msg ?? e.response?.data?.message ?? fallback;
   }
+  if (err instanceof Error && err.message) return err.message;
   return fallback;
 }

@@ -12,6 +12,7 @@ import type {
   VerifyOtpResponse,
   ResendOtpRequest,
   ResendOtpResponse,
+  RefreshResponse,
 } from '@/types/auth.types';
 
 // ── تسجيل الدخول ──────────────────────────────────────────────
@@ -60,7 +61,7 @@ export async function resendOtp(payload: ResendOtpRequest): Promise<ResendOtpRes
 
 // ── تجديد الجلسة ─────────────────────────────────────────────
 export async function refreshAccessToken(): Promise<string> {
-  const { data } = await axiosInstance.post<{ accessToken: string }>('/api/auth/refresh');
+  const { data } = await axiosInstance.post<RefreshResponse>('/api/auth/refresh');
   if (data.accessToken) {
     setAccessToken(data.accessToken);
     setSessionCookie();

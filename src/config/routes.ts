@@ -80,9 +80,5 @@ export const isAuthSafeUrl = (url: string): boolean => {
     pathname = url.split('?')[0];
   }
   const normalizedPath = pathname.replace(/^\/api(?=\/)/, '');
-  return AUTH_PUBLIC_PATHS.some((path) =>
-    path === '/auth/reset-password'
-      ? matchesRoutePrefix(normalizedPath, path)
-      : normalizedPath === path
-  );
+  return AUTH_PUBLIC_PATHS.some((path) => normalizedPath === path);
 };

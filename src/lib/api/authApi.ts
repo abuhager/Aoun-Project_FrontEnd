@@ -12,6 +12,8 @@ import type {
   VerifyOtpResponse,
   ResendOtpRequest,
   ResendOtpResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
   RefreshResponse,
 } from '@/types/auth.types';
 
@@ -59,9 +61,20 @@ export async function resendOtp(payload: ResendOtpRequest): Promise<ResendOtpRes
   return data;
 }
 
+// ── إعادة تعيين كلمة المرور ─────────────────────────────────
+export async function resetPassword(
+  payload: ResetPasswordRequest
+): Promise<ResetPasswordResponse> {
+  const { data } = await axiosInstance.post<ResetPasswordResponse>(
+    '/api/auth/reset-password',
+    payload
+  );
+  return data;
+}
+
 // ── تجديد الجلسة ─────────────────────────────────────────────
 export async function refreshAccessToken(): Promise<string> {
-  const { data } = await axiosInstance.post<RefreshResponse>('/api/auth/refresh');
+  const { data } = await axiosInstance.post<RefreshResponse>('/api/auth/refresh', {});
   if (data.accessToken) {
     setAccessToken(data.accessToken);
     setSessionCookie();
@@ -72,7 +85,7 @@ export async function refreshAccessToken(): Promise<string> {
 // ── تسجيل الخروج ─────────────────────────────────────────────
 export async function logout(): Promise<void> {
   try {
-    await axiosInstance.post('/api/auth/logout');
+    await axiosInstance.post('/api/auth/logout', {});
   } finally {
     setAccessToken(null);
     clearSessionCookie();

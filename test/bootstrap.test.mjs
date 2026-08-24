@@ -43,7 +43,8 @@ test('يفصل المسارات المحمية ومسارات المصادقة �
   assert.equal(routeModule.isAuthOnlyPath('/login-archive'), false);
   assert.equal(routeModule.isAuthSafeUrl('/api/auth/login'), true);
   assert.equal(routeModule.isAuthSafeUrl('/api/auth/login/anything'), false);
-  assert.equal(routeModule.isAuthSafeUrl('/api/auth/reset-password/token-value'), true);
+  assert.equal(routeModule.isAuthSafeUrl('/api/auth/reset-password'), true);
+  assert.equal(routeModule.isAuthSafeUrl('/api/auth/reset-password/token-value'), false);
 });
 
 test('يقبل redirect داخلياً فقط بعد الدخول', () => {

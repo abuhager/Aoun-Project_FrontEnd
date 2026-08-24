@@ -13,7 +13,8 @@ const SESSION_DAYS   = parseInt(
 const _cookieFlags = (): string => {
   if (typeof document === 'undefined') return ''; // SSR guard
   const secure   = IS_PRODUCTION ? '; Secure'        : '';
-  const sameSite = IS_PRODUCTION ? '; SameSite=None' : '; SameSite=Lax';
+  // طلبات API في المتصفح تمر من نفس origin عبر Next.js rewrite.
+  const sameSite = '; SameSite=Lax';
   return `${sameSite}${secure}`;
 };
 

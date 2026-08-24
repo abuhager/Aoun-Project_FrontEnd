@@ -3,46 +3,18 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
-import useSWR, { mutate as globalMutate } from "swr";
-import axiosInstance from "@/lib/api/axiosInstance";
+import useSWR from "swr";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import { getAdminReports, resolveAdminReport } from "@/lib/api/reportApi";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/useToast";
-import type { ReportStatus } from "@/types/report.types";
-
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
-
-interface AdminReportFull {
-  _id: string;
-  reporter: { _id: string; name: string; avatar?: string };
-  reportedUser: { _id: string; name: string; avatar?: string; isBanned?: boolean };
-  relatedItem: { _id: string; title: string } | null;
-  reason: string;
-  details: string;
-  status: ReportStatus;
-  adminNote: string;
-  appealText: string;
-  appealedAt: string | null;
-  resolvedAt: string | null;
-  createdAt: string;
-  totalReportsAgainstUser: number;
-  pendingReportsAgainstUser: number;
-  actionedReportsAgainstUser: number;
-  isRepeatOffender: boolean;
-}
-
-interface AdminReportsResponse {
-  reports: AdminReportFull[];
-  totalPages: number;
-  total: number;
-}
-
-interface ResolvePayload {
-  status: ReportStatus;
-  adminNote: string;
-}
+import type {
+  AdminReportsResponse,
+  ModerationReport,
+  ReportDecision,
+  ReportStatus,
+  ResolveReportPayload,
+} from "@/types/report.types";
 
 // ─────────────────────────────────────────────
 // Constants
@@ -69,12 +41,13 @@ const getUserName = (name?: string | null): string =>
   name?.trim() || "مستخدم محذوف";
 
 const SWR_KEY = (page: number, statusFilter: string) =>
-  `/api/admin/reports?page=${page}&limit=10${
-    statusFilter !== "all" ? `&status=${statusFilter}` : ""
-  }`;
+  ["admin-reports", page, statusFilter] as const;
 
-const fetcher = (url: string) =>
-  axiosInstance.get<AdminReportsResponse>(url).then((r) => r.data);
+const fetcher = ([, page, statusFilter]: ReturnType<typeof SWR_KEY>) =>
+  getAdminReports({
+    page,
+    status: statusFilter as ReportStatus | "all",
+  });
 
 // ─────────────────────────────────────────────
 // Component
@@ -86,15 +59,16 @@ export default function AdminReportsPage() {
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<ReportStatus | "all">("all");
-  const [selected, setSelected] = useState<AdminReportFull | null>(null);
+  const [selected, setSelected] = useState<ModerationReport | null>(null);
   const [adminNote, setAdminNote] = useState("");
-  const [actionStatus, setActionStatus] = useState<ReportStatus>("actioned");
+  const [actionStatus, setActionStatus] = useState<ReportDecision>("actioned");
   const [submitting, setSubmitting] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const swrKey = SWR_KEY(page, statusFilter);
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const swrKey = !authLoading && isAdmin ? SWR_KEY(page, statusFilter) : null;
 
-  const { data, error, isLoading } = useSWR<AdminReportsResponse>(
+  const { data, error, isLoading, mutate } = useSWR<AdminReportsResponse>(
     swrKey,
     fetcher,
     { revalidateOnFocus: false, keepPreviousData: true }
@@ -113,17 +87,14 @@ export default function AdminReportsPage() {
     setLoadingId(selected._id);
 
     try {
-      const payload: ResolvePayload = {
+      const payload: ResolveReportPayload = {
         status: actionStatus,
         adminNote: trimmedNote,
       };
 
-      await axiosInstance.post(
-  `/api/admin/reports/${selected._id}/resolve`,
-  payload
-);
+      await resolveAdminReport(selected._id, payload);
 
-      await globalMutate(swrKey);
+      await mutate();
       showToast("تم تنفيذ الإجراء بنجاح ✅", true);
       setSelected(null);
       setAdminNote("");
@@ -133,18 +104,18 @@ export default function AdminReportsPage() {
       setSubmitting(false);
       setLoadingId(null);
     }
-  }, [selected, submitting, adminNote, actionStatus, swrKey, showToast]);
+  }, [selected, submitting, adminNote, actionStatus, mutate, showToast]);
 
   const handleQuickDismiss = useCallback(
     async (reportId: string) => {
       if (loadingId) return;
       setLoadingId(reportId);
       try {
-        await axiosInstance.post(`/api/admin/reports/${reportId}/resolve`, {
-  status: "dismissed" satisfies ReportStatus,
-  adminNote: "تم الرفض تلقائياً",
-});
-        await globalMutate(swrKey);
+        await resolveAdminReport(reportId, {
+          status: "dismissed",
+          adminNote: "تم رفض البلاغ بعد المراجعة",
+        });
+        await mutate();
         showToast("تم رفض البلاغ ✅", true);
       } catch (err) {
         showToast(extractErrorMsg(err, "فشل رفض البلاغ"), false);
@@ -152,7 +123,7 @@ export default function AdminReportsPage() {
         setLoadingId(null);
       }
     },
-    [loadingId, swrKey, showToast]
+    [loadingId, mutate, showToast]
   );
 
   if (authLoading) {
@@ -165,7 +136,7 @@ export default function AdminReportsPage() {
     );
   }
 
-  if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
+  if (!user || !isAdmin) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4" dir="rtl">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-600">
@@ -282,7 +253,7 @@ export default function AdminReportsPage() {
           </div>
 
           <button
-            onClick={() => globalMutate(swrKey)}
+            onClick={() => void mutate()}
             className="rounded-2xl bg-primary px-5 py-2.5 text-sm font-black text-white transition-all duration-300 hover:opacity-90"
           >
             إعادة المحاولة
@@ -656,7 +627,7 @@ export default function AdminReportsPage() {
                     </label>
                     <select
                       value={actionStatus}
-                      onChange={(e) => setActionStatus(e.target.value as ReportStatus)}
+                      onChange={(e) => setActionStatus(e.target.value as ReportDecision)}
                       className="w-full rounded-2xl border border-[#e4ddd4] bg-[#fcfaf7] px-4 py-3 text-sm font-bold text-[#233433] outline-none transition-all duration-300 focus:border-primary"
                     >
                       <option value="actioned">{STATUS_LABELS.actioned}</option>

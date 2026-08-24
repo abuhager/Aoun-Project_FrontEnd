@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { createReport } from "@/lib/api/reportApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import { useSettings } from "@/hooks/useSettings";
 import {
   REPORT_REASONS_FALLBACK as REPORT_REASONS,
   type ReportReason,
@@ -20,11 +22,13 @@ export default function ReportModal({
   itemId,
   onClose,
 }: Props) {
+  const { reportReasons } = useSettings();
   const [reason, setReason] = useState<ReportReason | "">("");
   const [details, setDetails] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [success, setSuccess] = useState(false);
+  const reasons = reportReasons.length > 0 ? reportReasons : REPORT_REASONS;
 
   const handleSubmit = async () => {
     if (!reason) {
@@ -46,10 +50,7 @@ export default function ReportModal({
       setSuccess(true);
       setTimeout(onClose, 2000);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { msg?: string } } })
-        ?.response?.data?.msg;
-
-      setErrorMsg(msg || "حدث خطأ، حاول مرة أخرى");
+      setErrorMsg(extractErrorMsg(err, "حدث خطأ، حاول مرة أخرى"));
     } finally {
       setLoading(false);
     }
@@ -67,7 +68,9 @@ export default function ReportModal({
           </h3>
 
           <button
-            onClick={onClose}
+            onClick={() => !loading && onClose()}
+            disabled={loading}
+            aria-label="إغلاق"
             className="text-gray-400 transition-colors hover:text-gray-600"
           >
             <span className="material-symbols-outlined">close</span>
@@ -87,11 +90,14 @@ export default function ReportModal({
             <p className="mb-2 text-xs font-medium text-gray-500">سبب البلاغ *</p>
 
             <div className="mb-4 flex flex-col gap-2">
-              {REPORT_REASONS.map((r) => (
+              {reasons.map((r) => (
                 <button
                   key={r}
                   type="button"
-                  onClick={() => setReason(r)}
+                  onClick={() => {
+                    setReason(r);
+                    if (errorMsg) setErrorMsg("");
+                  }}
                   className={`rounded-2xl border px-4 py-3 text-right text-sm transition-all ${
                     reason === r
                       ? "border-red-400 bg-red-50 font-bold text-red-600"
@@ -105,12 +111,19 @@ export default function ReportModal({
 
             <textarea
               value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              maxLength={500}
+              onChange={(e) => {
+                setDetails(e.target.value);
+                if (errorMsg) setErrorMsg("");
+              }}
+              maxLength={1000}
               rows={3}
               placeholder="تفاصيل إضافية (اختياري)"
               className="mb-4 w-full resize-none rounded-2xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none"
             />
+
+            <p className="mb-3 text-left text-[10px] text-gray-400">
+              {details.length}/1000
+            </p>
 
             {errorMsg && (
               <p className="mb-3 text-xs font-bold text-red-500">{errorMsg}</p>

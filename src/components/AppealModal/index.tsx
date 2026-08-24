@@ -2,8 +2,9 @@
 "use client";
 
 import { useState } from "react";
-import axiosInstance from "@/lib/api/axiosInstance";
 import axios from "axios";
+import { submitAppeal } from "@/lib/api/reportApi";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 
 interface Props {
   reportId: string;
@@ -25,24 +26,21 @@ export default function AppealModal({ reportId, onClose, onSuccess }: Props) {
     setErrorMsg("");
     setLoading(true);
     try {
-      await axiosInstance.post(`/api/reports/${reportId}/appeal`, {
+      await submitAppeal(reportId, {
         appealText: trimmed,
       });
       setSuccess(true);
       onSuccess?.(); // ✅ أبلغ الـ parent بالنجاح فوراً
       setTimeout(onClose, 2000);
     } catch (err) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.msg ?? "حدث خطأ، حاول مرة أخرى"
-        : "حدث خطأ، حاول مرة أخرى";
-
-      // ✅ رسائل مخصصة حسب الكود
       const code = axios.isAxiosError(err) ? err.response?.data?.code : null;
       setErrorMsg(
-        code === 'APPEAL_WINDOW_CLOSED' ? 'انتهت مهلة الاعتراض (72 ساعة)' :
+        code === 'APPEAL_WINDOW_CLOSED' ? 'انتهت مهلة الاعتراض المحددة' :
         code === 'ALREADY_APPEALED'     ? 'قدّمت اعتراضاً مسبقاً على هذا البلاغ' :
+        code === 'REPORT_ALREADY_RESOLVED' ? 'تم البت في البلاغ ولا يمكن الاعتراض عليه' :
+        code === 'APPEAL_CONFLICT'      ? 'تغيرت حالة البلاغ؛ حدّث الصفحة وحاول مجدداً' :
         code === 'FORBIDDEN'            ? 'غير مصرح لك بالاعتراض' :
-        msg
+        extractErrorMsg(err, "حدث خطأ، حاول مرة أخرى")
       );
     } finally {
       setLoading(false);
@@ -61,7 +59,8 @@ export default function AppealModal({ reportId, onClose, onSuccess }: Props) {
             الاعتراض على البلاغ ⚖️
           </h3>
           <button
-            onClick={onClose}
+            onClick={() => !loading && onClose()}
+            disabled={loading}
             className="text-gray-400 hover:text-gray-600 transition-colors"
             aria-label="إغلاق"
           >
@@ -80,7 +79,7 @@ export default function AppealModal({ reportId, onClose, onSuccess }: Props) {
         ) : (
           <>
             <p className="text-xs text-gray-400 mb-1 font-medium">
-              لديك حتى 72 ساعة من تاريخ البلاغ لتقديم اعتراضك
+              يمكنك تقديم اعتراضك خلال المهلة المحددة وقبل بت الإدارة في البلاغ
             </p>
             <p className="text-xs text-gray-500 mb-3 font-medium">
               اشرح سبب اعتراضك بوضوح *

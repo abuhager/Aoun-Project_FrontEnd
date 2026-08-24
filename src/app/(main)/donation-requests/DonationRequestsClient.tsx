@@ -8,13 +8,14 @@ import axiosInstance from "@/lib/api/axiosInstance";
 import type { DonationRequest } from "@/types/donationRequest.types";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import { useAuth } from "@/context/AuthContext";
+import { useSiteConfig } from "@/context/SiteConfigContext";
 
 import {
   getDonationRequests,
   cancelDonationRequest,
   respondToDonationRequest,
 } from "@/lib/api/donationRequestApi";
-import { getPublicSettings } from "@/lib/api/settingsApi";
+import { useSettings } from "@/hooks/useSettings";
 
 const DEFAULT_CATEGORIES = ["كتب", "إلكترونيات", "أثاث", "ملابس", "أخرى"];
 const DEFAULT_LOCATIONS = ["عمان", "الزرقاء", "إربد", "العقبة", "السلط", "مادبا"];
@@ -77,6 +78,14 @@ export default function DonationRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
+  const { requireHubForBooking } = useSiteConfig();
+  const { settings: publicSettings } = useSettings();
+  const settingsCategories = publicSettings?.categories?.length
+    ? publicSettings.categories
+    : DEFAULT_CATEGORIES;
+  const settingsLocations = publicSettings?.locations?.length
+    ? publicSettings.locations
+    : DEFAULT_LOCATIONS;
 
   const [myOnly, setMyOnly] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -100,10 +109,6 @@ export default function DonationRequestsClient() {
   const [pages, setPages] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
-  const [settingsCategories, setSettingsCategories] =
-    useState<string[]>(DEFAULT_CATEGORIES);
-  const [settingsLocations, setSettingsLocations] =
-    useState<string[]>(DEFAULT_LOCATIONS);
   const [respondingTo, setRespondingTo] = useState<DonationRequest | null>(null);
   const [hubs, setHubs] = useState<{ _id: string; name: string; city: string }[]>(
     []
@@ -158,7 +163,7 @@ export default function DonationRequestsClient() {
   );
 
   const handleRespond = async () => {
-    if (!respondingTo || !respondForm.safeHub) return;
+    if (!respondingTo || (requireHubForBooking && !respondForm.safeHub)) return;
     if (!user) {
       router.push(
         `/login?redirect=${encodeURIComponent(`/donation-requests/${respondingTo._id}/offer`)}`
@@ -171,7 +176,7 @@ export default function DonationRequestsClient() {
     try {
       const res = await respondToDonationRequest(respondingTo._id, {
         condition: respondForm.condition,
-        safeHub: respondForm.safeHub,
+        safeHub: respondForm.safeHub || undefined,
         description: respondForm.description || undefined,
         imageFile: respondForm.imageFile || undefined,
       });
@@ -216,14 +221,6 @@ export default function DonationRequestsClient() {
   ]);
 
   useEffect(() => {
-    getPublicSettings()
-  .then((s) => {
-    if (!s) return; // حماية كاملة للسطور التالية
-    if (s.categories?.length) setSettingsCategories(s.categories);
-    if (s.locations?.length) setSettingsLocations(s.locations);
-  })
-  .catch(() => {});
-
     axiosInstance
       .get("/api/hubs")
       .then((r) => {
@@ -701,12 +698,14 @@ export default function DonationRequestsClient() {
 
               <div>
                 <label className="mb-1.5 block text-xs font-black text-[#4b4640]">
-                  نقطة التسليم الآمنة
+                  نقطة التسليم الآمنة {requireHubForBooking ? "*" : "(اختيارية)"}
                 </label>
 
                 {hubs.length === 0 ? (
                   <div className="w-full rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs font-bold text-orange-600">
-                    ⚠️ لا توجد نقاط تسليم متاحة — تواصل مع الإدارة
+                    {requireHubForBooking
+                      ? "⚠️ لا توجد نقاط تسليم متاحة — تواصل مع الإدارة"
+                      : "لا توجد نقاط تسليم متاحة حالياً؛ يمكنك متابعة العرض والاتفاق مباشرةً."}
                   </div>
                 ) : (
                   <select
@@ -736,7 +735,7 @@ export default function DonationRequestsClient() {
                 <button
                   type="button"
                   onClick={handleRespond}
-                  disabled={submitting || !respondForm.safeHub}
+                  disabled={submitting || (requireHubForBooking && !respondForm.safeHub)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-black text-white transition-all hover:bg-primary/90 disabled:opacity-50"
                 >
                   {submitting ? (

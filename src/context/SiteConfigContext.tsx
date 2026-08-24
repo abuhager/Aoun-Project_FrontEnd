@@ -1,16 +1,45 @@
-// src/context/SiteConfigContext.tsx
 "use client";
-import { createContext, useContext, useMemo } from "react";
-import { siteConfig } from "@/config/site.config";
 
-type SiteConfigType = {
-  platformName: string;
-  contactEmail: string;
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { siteConfig } from "@/config/site.config";
+import type { PublicSettings } from "@/types/settings.types";
+
+type LiveSiteConfig = Pick<
+  PublicSettings,
+  | "platformName"
+  | "contactEmail"
+  | "maxAvatarSizeMb"
+  | "requireHubForBooking"
+  | "maintenanceMode"
+  | "updatedAt"
+>;
+
+type SiteConfigType = LiveSiteConfig & {
+  applyPublicSettings: (settings: PublicSettings) => void;
 };
 
-const SiteConfigContext = createContext<SiteConfigType>({
+const FALLBACK_CONFIG: LiveSiteConfig = {
   platformName: siteConfig.name,
   contactEmail: siteConfig.contactEmail,
+  maxAvatarSizeMb: 5,
+  requireHubForBooking: false,
+  maintenanceMode: false,
+  updatedAt: null,
+};
+
+const resolveConfig = (settings: PublicSettings | null): LiveSiteConfig => ({
+  platformName: settings?.platformName || FALLBACK_CONFIG.platformName,
+  contactEmail: settings?.contactEmail || FALLBACK_CONFIG.contactEmail,
+  maxAvatarSizeMb: settings?.maxAvatarSizeMb ?? FALLBACK_CONFIG.maxAvatarSizeMb,
+  requireHubForBooking:
+    settings?.requireHubForBooking ?? FALLBACK_CONFIG.requireHubForBooking,
+  maintenanceMode: settings?.maintenanceMode ?? FALLBACK_CONFIG.maintenanceMode,
+  updatedAt: settings?.updatedAt ?? null,
+});
+
+const SiteConfigContext = createContext<SiteConfigType>({
+  ...FALLBACK_CONFIG,
+  applyPublicSettings: () => {},
 });
 
 export function SiteConfigProvider({
@@ -18,18 +47,21 @@ export function SiteConfigProvider({
   settings,
 }: {
   children: React.ReactNode;
-  settings: SiteConfigType | null;
+  settings: PublicSettings | null;
 }) {
-  const config = useMemo<SiteConfigType>(
-    () => ({
-      platformName: settings?.platformName ?? siteConfig.name,
-      contactEmail: settings?.contactEmail ?? siteConfig.contactEmail,
-    }),
-    [settings?.platformName, settings?.contactEmail]
+  const [config, setConfig] = useState<LiveSiteConfig>(() => resolveConfig(settings));
+
+  const applyPublicSettings = useCallback((nextSettings: PublicSettings) => {
+    setConfig(resolveConfig(nextSettings));
+  }, []);
+
+  const value = useMemo<SiteConfigType>(
+    () => ({ ...config, applyPublicSettings }),
+    [applyPublicSettings, config]
   );
 
   return (
-    <SiteConfigContext.Provider value={config}>
+    <SiteConfigContext.Provider value={value}>
       {children}
     </SiteConfigContext.Provider>
   );

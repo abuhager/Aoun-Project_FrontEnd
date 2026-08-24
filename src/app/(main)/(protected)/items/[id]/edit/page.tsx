@@ -10,6 +10,8 @@ export default function EditItemPage() {
   const router = useRouter();
   const params = useParams();
   const itemId = params.id as string;
+  const { settings, categories, isLoading: settingsLoading } = useSettings();
+  const hubRequired = settings?.requireHubForBooking ?? false;
 
   const {
     formData,
@@ -23,9 +25,7 @@ export default function EditItemPage() {
     handleHubChange,
     CONDITIONS,
     CITIES,
-  } = useEditItem(itemId);
-
-  const { categories, isLoading: settingsLoading } = useSettings();
+  } = useEditItem(itemId, hubRequired);
 
   if (fetching) {
     return (
@@ -207,7 +207,11 @@ export default function EditItemPage() {
               </div>
             </div>
 
-            <HubSelector value={formData.hubId} onChange={handleHubChange} required />
+            <HubSelector
+              value={formData.hubId}
+              onChange={handleHubChange}
+              required={hubRequired}
+            />
 
             {message.text && (
               <div

@@ -21,7 +21,7 @@ interface Message {
   text: string;
 }
 
-export function useAddItem() {
+export function useAddItem(hubRequired: boolean) {
   const router = useRouter();
   const [formData, setFormData] = useState<AddItemForm>({
     title: "",
@@ -79,7 +79,7 @@ export function useAddItem() {
       setMessage({ type: "error", text: "الرجاء اختيار صورة" });
       return;
     }
-    if (!formData.hubId) {
+    if (hubRequired && !formData.hubId) {
       setMessage({ type: "error", text: "الرجاء اختيار مركز التسليم" });
       return;
     }
@@ -94,7 +94,7 @@ export function useAddItem() {
         category: formData.category,
         location: formData.location,
         condition: formData.condition,
-        safeHub: formData.hubId,
+        safeHub: formData.hubId || undefined,
         image,
       });
       setMessage({ type: "success", text: "تم نشر التبرع بنجاح! جاري تحويلك..." });

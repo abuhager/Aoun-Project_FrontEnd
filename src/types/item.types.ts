@@ -139,7 +139,7 @@ export interface CreateItemPayload {
   category:     string;
   location?:    string;
   condition:    ItemCondition;
-  safeHub:      string;
+  safeHub?:     string;
   image:        File;
 }
 

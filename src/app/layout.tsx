@@ -10,6 +10,8 @@ import { SiteConfigProvider } from "@/context/SiteConfigContext";
 import { getServerPublicSettings } from "@/lib/api/publicSettingsServer";
 import { siteConfig }         from "@/config/site.config";
 import { SocketProvider }     from "@/context/SocketContext";
+import MaintenanceGate       from "@/components/MaintenanceGate";
+import SettingsSync          from "@/components/SettingsSync";
 
 // ── الخطوط ─────────────────────────────────────────────────────
 const tajawal = Tajawal({
@@ -66,14 +68,8 @@ export default async function RootLayout({
       {/* body: flex column لضمان توزيع العناصر بشكل مرن */}
       <body className="flex min-h-screen flex-col bg-surface text-on-surface antialiased">
         <SiteConfigProvider
-          settings={
-            settings
-              ? {
-                  platformName: settings.platformName || siteConfig.name,
-                  contactEmail: settings.contactEmail ?? siteConfig.contactEmail,
-                }
-              : null
-          }
+          key={settings?.updatedAt ?? "site-config-fallback"}
+          settings={settings}
         >
           <AuthProvider>
             {/*
@@ -85,8 +81,11 @@ export default async function RootLayout({
               - GlobalRatingModal داخل SocketProvider: لأنها قد تستمع لـ Socket events
             */}
             <SocketProvider>
-              <GlobalRatingModal />
-              {children}
+              <SettingsSync />
+              <MaintenanceGate>
+                <GlobalRatingModal />
+                {children}
+              </MaintenanceGate>
             </SocketProvider>
           </AuthProvider>
         </SiteConfigProvider>

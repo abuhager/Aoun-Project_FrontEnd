@@ -3,18 +3,19 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createDonationRequest, getMyDonationRequests } from '@/lib/api/donationRequestApi';
-import { getPublicSettings } from '@/lib/api/settingsApi';
 import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
+import { useSettings } from '@/hooks/useSettings';
 
 const DEFAULT_CATEGORIES = ['كتب', 'إلكترونيات', 'أثاث', 'ملابس', 'أخرى'];
 const DEFAULT_LOCATIONS  = ['عمان', 'الزرقاء', 'إربد', 'العقبة', 'السلط', 'مادبا'];
 
 export default function NewDonationRequestPage() {
   const router = useRouter();
+  const { settings } = useSettings();
+  const categories = settings?.categories?.length ? settings.categories : DEFAULT_CATEGORIES;
+  const locations = settings?.locations?.length ? settings.locations : DEFAULT_LOCATIONS;
   const [submitting,   setSubmitting]   = useState(false);
   const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
-  const [categories,   setCategories]   = useState(DEFAULT_CATEGORIES);
-  const [locations,    setLocations]    = useState(DEFAULT_LOCATIONS);
   const [quota,        setQuota]        = useState<{ used: number; max: number; remaining: number } | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
   const [form, setForm] = useState({
@@ -24,15 +25,6 @@ export default function NewDonationRequestPage() {
     location: '',
     urgency: 'medium' as 'low' | 'medium' | 'high',
   });
-
-  useEffect(() => {
-    getPublicSettings()
-      .then((data) => {
-        if (data?.categories?.length) setCategories(data.categories);
-        if (data?.locations?.length) setLocations(data.locations);
-      })
-      .catch(() => console.warn('[Settings] fallback إلى القيم الافتراضية'));
-  }, []);
 
   // [FIX-4] جلب quota
   useEffect(() => {

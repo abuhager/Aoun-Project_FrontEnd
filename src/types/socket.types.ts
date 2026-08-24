@@ -1,5 +1,6 @@
 import type { ChatMessage, ConversationListItem } from './chat.types';
 import type { Notification } from './notification.types';
+import type { PublicSettings } from './settings.types';
 import { SOCKET_EVENTS } from '@/config/socket';
 
 export interface SocketReadyPayload {
@@ -47,6 +48,7 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.AUTH_TOKEN_EXPIRING]: (data: { expiresAt: number }) => void;
   [SOCKET_EVENTS.AUTH_TOKEN_EXPIRED]: (data: SocketAuthPayload) => void;
   [SOCKET_EVENTS.SOCKET_READY]: (data: SocketReadyPayload) => void;
+  [SOCKET_EVENTS.SETTINGS_UPDATED]: (data: PublicSettings) => void;
 
   [SOCKET_EVENTS.ITEM_RECIPIENT_CONFIRMED]: (data: { itemId: string; message: string; itemTitle?: string }) => void;
   [SOCKET_EVENTS.ITEM_DELIVERED]: (data: { itemId: string; message: string; itemTitle?: string }) => void;

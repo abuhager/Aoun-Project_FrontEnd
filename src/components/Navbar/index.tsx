@@ -44,7 +44,8 @@ export default function Navbar() {
   const [serverChatUnreadCount, setServerChatUnreadCount] = useState(0);
 
   const isReadyForUserData = isMounted && isLoggedIn;
-  const isAdmin = isReadyForUserData && userRole === "admin";
+  const isAdmin = isReadyForUserData
+    && (userRole === "admin" || userRole === "super_admin");
   const userLevel = user?.gamification?.level ?? 1;
   const userBadge = (user?.gamification as { badge?: string })?.badge ?? "🌱";
   const chatUnreadCount = isReadyForUserData ? serverChatUnreadCount : 0;

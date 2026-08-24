@@ -29,6 +29,7 @@ interface AdminReportFull {
   createdAt: string;
   totalReportsAgainstUser: number;
   pendingReportsAgainstUser: number;
+  actionedReportsAgainstUser: number;
   isRepeatOffender: boolean;
 }
 
@@ -402,7 +403,7 @@ export default function AdminReportsPage() {
 
                               {report.isRepeatOffender && (
                                 <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-black text-orange-600">
-                                  مخالف متكرر ({report.totalReportsAgainstUser})
+                                  مخالف متكرر ({report.actionedReportsAgainstUser})
                                 </span>
                               )}
                             </div>
@@ -565,6 +566,12 @@ export default function AdminReportsPage() {
                   {selected.pendingReportsAgainstUser > 0 && (
                     <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
                       {selected.pendingReportsAgainstUser} بلاغ قيد المراجعة
+                    </span>
+                  )}
+
+                  {selected.actionedReportsAgainstUser > 0 && (
+                    <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">
+                      {selected.actionedReportsAgainstUser} بلاغ معتمد
                     </span>
                   )}
 

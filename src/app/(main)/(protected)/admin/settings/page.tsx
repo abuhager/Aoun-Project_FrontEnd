@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getAdminSettings, updateAdminSettings } from "@/lib/api/settingsApi";
 import type { SystemSettings, UpdateSettingsPayload } from "@/types/settings.types";
 import { useToast } from "@/hooks/useToast";
+import { useAuth } from "@/context/AuthContext";
+import { useSiteConfig } from "@/context/SiteConfigContext";
+import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 
 // ─── Interface ───────────────────────────────────────────────────────────────
 
@@ -17,6 +20,7 @@ const EDITABLE_FIELDS: (keyof SystemSettings)[] = [
   "requestExpiryDays",
   "maxActiveDonationsPerUser",
   "maxActiveDonationsLevel2Plus",
+  "maxWaitlistPerItem",
   "donorQuotaReward",
   "bookingExpiryHours",
   "trustScorePerDonation",
@@ -31,15 +35,44 @@ const EDITABLE_FIELDS: (keyof SystemSettings)[] = [
   "minTrustLevelForDonating",
   "maxPendingOffersPerDonor",
   "categories",
+  "locations",
   "reportReasons",
   "autoReportBanThreshold",
+  "appealWindowHours",
   "universityEmailDomains",
   "requireHubForBooking",
   "maintenanceMode",
   "platformName",
   "contactEmail",
   "quotaResetDayOfMonth",
+  "otpExpiryMinutes",
+  "maxOtpAttempts",
+  "resetPasswordExpiryMinutes",
+  "maxAvatarSizeMb",
+  "avatarWidth",
+  "avatarHeight",
+  "maxPageSize",
+  "profilePageSize",
 ];
+
+const valuesEqual = (left: unknown, right: unknown) => (
+  JSON.stringify(left) === JSON.stringify(right)
+);
+
+const validateSettingsDraft = (settings: SystemSettings): string | null => {
+  if (!(settings.ratingThresholdExcellent > settings.ratingThresholdGood
+    && settings.ratingThresholdGood > settings.ratingThresholdNeutral
+    && settings.ratingThresholdNeutral > settings.ratingThresholdBad)) {
+    return "يجب ترتيب حدود التقييم: ممتاز > جيد > محايد > سيئ";
+  }
+  if (settings.maxActiveDonationsLevel2Plus < settings.maxActiveDonationsPerUser) {
+    return "حد تبرعات Level 2 لا يمكن أن يقل عن حد Level 1";
+  }
+  if (settings.categories.length === 0) return "يجب إضافة تصنيف واحد على الأقل";
+  if (settings.locations.length === 0) return "يجب إضافة منطقة واحدة على الأقل";
+  if (settings.reportReasons.length === 0) return "يجب إضافة سبب بلاغ واحد على الأقل";
+  return null;
+};
 
 // ─── UI Helpers ──────────────────────────────────────────────────────────────
 function SectionCard({
@@ -277,18 +310,31 @@ function Toggle({
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [savedSettings, setSavedSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
 
   const { show: showToast, ToastComponent } = useToast();
+  const { user } = useAuth();
+  const { applyPublicSettings } = useSiteConfig();
+  const canEdit = user?.role === "super_admin";
+
+  const changedFields = useMemo(
+    () => (!settings || !savedSettings
+      ? []
+      : EDITABLE_FIELDS.filter(
+        (key) => !valuesEqual(settings[key], savedSettings[key])
+      )),
+    [savedSettings, settings]
+  );
+  const dirty = changedFields.length > 0;
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getAdminSettings();
       setSettings(data);
-      setDirty(false);
+      setSavedSettings(data);
     } catch {
       showToast("تعذر تحميل الإعدادات الحالية", false);
     } finally {
@@ -301,37 +347,42 @@ export default function AdminSettingsPage() {
   }, [fetchSettings]);
 
   const update = <K extends keyof SystemSettings>(key: K, val: SystemSettings[K]) => {
+    if (!canEdit) return;
     setSettings((p) => (p ? { ...p, [key]: val } : p));
-    setDirty(true);
   };
 
   const save = async () => {
-    if (!settings || !dirty) return;
+    if (!settings || !savedSettings || !dirty || !canEdit) return;
+
+    const validationError = validateSettingsDraft(settings);
+    if (validationError) {
+      showToast(validationError, false);
+      return;
+    }
+
+    if (
+      changedFields.includes("maintenanceMode")
+      && settings.maintenanceMode
+      && !savedSettings.maintenanceMode
+      && !window.confirm("تفعيل وضع الصيانة سيوقف استخدام المنصة للمستخدمين. هل تريد المتابعة؟")
+    ) return;
+
     setSaving(true);
     try {
       const payload: UpdateSettingsPayload = Object.fromEntries(
-        EDITABLE_FIELDS.filter((k) => settings[k] !== undefined).map((k) => [
+        changedFields.map((k) => [
           k,
           settings[k],
         ])
       ) as UpdateSettingsPayload;
 
-      await updateAdminSettings(payload);
+      const result = await updateAdminSettings(payload);
+      setSettings(result.settings);
+      setSavedSettings(result.settings);
+      applyPublicSettings(result.publicSettings);
       showToast("✅ تم حفظ الإعدادات بنجاح", true);
-      setDirty(false);
     } catch (err: unknown) {
-      const msg = (() => {
-        if (
-          err &&
-          typeof err === "object" &&
-          "response" in err &&
-          (err as { response?: { data?: { msg?: string } } }).response?.data?.msg
-        ) {
-          return (err as { response: { data: { msg: string } } }).response.data.msg;
-        }
-        return "حدث خطأ أثناء حفظ الإعدادات";
-      })();
-      showToast(msg, false);
+      showToast(extractErrorMsg(err, "حدث خطأ أثناء حفظ الإعدادات"), false);
     } finally {
       setSaving(false);
     }
@@ -395,6 +446,12 @@ export default function AdminSettingsPage() {
           )}
         </div>
       </section>
+
+      {!canEdit && (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold leading-7 text-amber-800">
+          يمكنك مراجعة الإعدادات، لكن تعديلها متاح للمشرف الأعلى فقط.
+        </section>
+      )}
 
       {/* Overview */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
@@ -467,7 +524,10 @@ export default function AdminSettingsPage() {
       </section>
 
       {/* Body grid */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <fieldset
+        disabled={!canEdit || saving}
+        className="grid min-w-0 grid-cols-1 gap-6 border-0 p-0 disabled:opacity-90 xl:grid-cols-[1.15fr_0.85fr]"
+      >
         <div className="space-y-6">
           <SectionCard
             icon="build"
@@ -572,6 +632,14 @@ export default function AdminSettingsPage() {
                 hint="جامعي أو هاتف"
               />
               <NumberField
+                label="كوتا الطالب الجامعي"
+                value={settings.studentQuota}
+                onChange={(v) => update("studentQuota", v)}
+                min={1}
+                max={20}
+                hint="تُمنح عند التحقق من النطاق الجامعي"
+              />
+              <NumberField
                 label="مستوى الثقة الافتراضي للطلاب"
                 value={settings.studentDefaultTrustLevel}
                 onChange={(v) => update("studentDefaultTrustLevel", v)}
@@ -583,8 +651,8 @@ export default function AdminSettingsPage() {
                 label="مكافأة المتبرع"
                 value={settings.donorQuotaReward}
                 onChange={(v) => update("donorQuotaReward", v)}
-                min={1}
-                max={2}
+                min={0}
+                max={5}
                 hint="كوتا إضافية بعد التسليم"
               />
               <NumberField
@@ -627,6 +695,14 @@ export default function AdminSettingsPage() {
                 max={336}
                 hint="بعدها يُلغى الحجز تلقائيًا"
               />
+              <NumberField
+                label="أقصى حجم لقائمة الانتظار"
+                value={settings.maxWaitlistPerItem}
+                onChange={(v) => update("maxWaitlistPerItem", v)}
+                min={1}
+                max={50}
+                hint="عدد المنتظرين لكل غرض"
+              />
             </div>
           </SectionCard>
 
@@ -650,11 +726,20 @@ export default function AdminSettingsPage() {
                   label="مدة انتهاء الطلب (يوم)"
                   value={settings.requestExpiryDays}
                   onChange={(v) => update("requestExpiryDays", v)}
-                  min={7}
-                  max={90}
+                  min={1}
+                  max={180}
                   hint="تلقائياً من تاريخ النشر"
                 />
               </div>
+
+              <FieldShell>
+                <TagListEditor
+                  label="المناطق المعتمدة"
+                  items={settings.locations}
+                  onChange={(v) => update("locations", v)}
+                  placeholder="مثال: عمان"
+                />
+              </FieldShell>
 
               <FieldShell>
                 <TagListEditor
@@ -679,9 +764,17 @@ export default function AdminSettingsPage() {
                   label="عتبة الحظر التلقائي"
                   value={settings.autoReportBanThreshold}
                   onChange={(v) => update("autoReportBanThreshold", v)}
-                  min={3}
+                  min={1}
                   max={20}
                   hint="عدد البلاغات المعتمدة قبل الحظر"
+                />
+                <NumberField
+                  label="مهلة الاعتراض (ساعة)"
+                  value={settings.appealWindowHours}
+                  onChange={(v) => update("appealWindowHours", v)}
+                  min={1}
+                  max={336}
+                  hint="المدة المتاحة للمستخدم لتقديم اعتراض"
                 />
               </div>
 
@@ -788,8 +881,8 @@ export default function AdminSettingsPage() {
                 label="الحد الأدنى للثقة للتبرع"
                 value={settings.minTrustLevelForDonating}
                 onChange={(v) => update("minTrustLevelForDonating", v)}
-                min={0}
-                max={5}
+                min={1}
+                max={2}
                 hint="مستوى الثقة المطلوب لإضافة عرض تبرع"
               />
               <NumberField
@@ -797,8 +890,88 @@ export default function AdminSettingsPage() {
                 value={settings.maxPendingOffersPerDonor}
                 onChange={(v) => update("maxPendingOffersPerDonor", v)}
                 min={1}
-                max={50}
+                max={20}
                 hint="الحد الأقصى للعروض التي لم تُحسم بعد"
+              />
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            icon="shield_lock"
+            title="الأمان والصور وأحجام الصفحات"
+            subtitle="حدود OTP واستعادة كلمة المرور والصور وأحجام نتائج API ولوحة الإدارة."
+            iconTone="bg-indigo-50 text-indigo-700"
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <NumberField
+                label="صلاحية OTP (دقيقة)"
+                value={settings.otpExpiryMinutes}
+                onChange={(v) => update("otpExpiryMinutes", v)}
+                min={1}
+                max={60}
+              />
+              <NumberField
+                label="أقصى محاولات OTP"
+                value={settings.maxOtpAttempts}
+                onChange={(v) => update("maxOtpAttempts", v)}
+                min={3}
+                max={10}
+              />
+              <NumberField
+                label="صلاحية استعادة كلمة المرور (دقيقة)"
+                value={settings.resetPasswordExpiryMinutes}
+                onChange={(v) => update("resetPasswordExpiryMinutes", v)}
+                min={5}
+                max={60}
+              />
+              <NumberField
+                label="أقصى حجم للصورة (MB)"
+                value={settings.maxAvatarSizeMb}
+                onChange={(v) => update("maxAvatarSizeMb", v)}
+                min={1}
+                max={20}
+              />
+              <NumberField
+                label="عرض الصورة الشخصية"
+                value={settings.avatarWidth}
+                onChange={(v) => update("avatarWidth", v)}
+                min={100}
+                max={1000}
+              />
+              <NumberField
+                label="ارتفاع الصورة الشخصية"
+                value={settings.avatarHeight}
+                onChange={(v) => update("avatarHeight", v)}
+                min={100}
+                max={1000}
+              />
+              <NumberField
+                label="أقصى حجم صفحة API"
+                value={settings.maxPageSize}
+                onChange={(v) => update("maxPageSize", v)}
+                min={5}
+                max={100}
+              />
+              <NumberField
+                label="حجم صفحة الملف الشخصي"
+                value={settings.profilePageSize}
+                onChange={(v) => update("profilePageSize", v)}
+                min={5}
+                max={50}
+              />
+              <NumberField
+                label="حجم صفحات الإدارة"
+                value={settings.adminPageSize}
+                onChange={(v) => update("adminPageSize", v)}
+                min={5}
+                max={100}
+              />
+              <NumberField
+                label="حجم صفحة البلاغات"
+                value={settings.adminReportsPageSize}
+                onChange={(v) => update("adminReportsPageSize", v)}
+                min={5}
+                max={50}
               />
             </div>
           </SectionCard>
@@ -851,14 +1024,16 @@ export default function AdminSettingsPage() {
             </div>
           </SectionCard>
         </div>
-      </div>
+      </fieldset>
 
       {/* Sticky save bar */}
       <div className="fixed bottom-5 left-1/2 z-40 w-[calc(100%-24px)] max-w-3xl -translate-x-1/2">
         <div className="flex items-center justify-between gap-3 rounded-[24px] border border-[#e7e1d8] bg-white/95 px-4 py-3 shadow-[0_20px_50px_rgba(15,23,42,0.12)] backdrop-blur-xl">
           <div className="min-w-0">
             <p className="text-sm font-black text-[#1f312f]">
-              {dirty ? "هناك تغييرات بانتظار الحفظ" : "لا توجد تغييرات جديدة"}
+              {dirty
+                ? `${changedFields.length} تغيير/تغييرات بانتظار الحفظ`
+                : "لا توجد تغييرات جديدة"}
             </p>
             <p className="mt-0.5 text-xs text-[#8c857d]">
               احفظ التغييرات لتطبيق القواعد الحالية على المنصة.
@@ -867,7 +1042,7 @@ export default function AdminSettingsPage() {
 
           <button
             onClick={save}
-            disabled={saving || !dirty}
+            disabled={saving || !dirty || !canEdit}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white transition-all duration-300 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? (

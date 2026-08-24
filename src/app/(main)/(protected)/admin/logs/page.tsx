@@ -17,6 +17,7 @@ interface Log {
   targetId?: string | PopulatedTarget | null;
   targetModel?: string;
   details?: string;
+  reason?: string;
   adminNote?: string;
   meta?: {
     targetName?: string;
@@ -25,6 +26,7 @@ interface Log {
     reason?: string;
     reportedBy?: string;
     action?: string;
+    changedFields?: string[];
   };
   createdAt: string;
 }
@@ -65,6 +67,11 @@ const ACTION_MAP: Record<string, { label: string; color: string; icon: string }>
     label: "إدارة مركز",
     color: "text-cyan-600 bg-cyan-50 border-cyan-100",
     icon: "warehouse",
+  },
+  SETTINGS_UPDATE: {
+    label: "تعديل إعدادات المنصة",
+    color: "text-indigo-700 bg-indigo-50 border-indigo-100",
+    icon: "tune",
   },
 };
 
@@ -130,7 +137,7 @@ function resolveTargetEmail(log: Log): string | null {
 }
 
 function resolveReason(log: Log): string | null {
-  return log.meta?.reason ?? null;
+  return log.reason ?? log.meta?.reason ?? null;
 }
 
 const COL_COUNT = 6;
@@ -145,7 +152,6 @@ export default function AdminLogsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setState((prev) => ({ ...prev, loading: true }));
 
     axiosInstance
       .get("/api/admin/logs", { params: { page }, signal: controller.signal })
@@ -164,6 +170,11 @@ export default function AdminLogsPage() {
 
     return () => controller.abort();
   }, [page]);
+
+  const changePage = (nextPage: number) => {
+    setState((prev) => ({ ...prev, loading: true }));
+    setPage(nextPage);
+  };
 
   const { logs, pages, loading } = state;
 
@@ -480,7 +491,17 @@ export default function AdminLogsPage() {
 
                               {log.details && !reason && <p>{log.details}</p>}
 
-                              {!reason && !log.meta?.reportedBy && !log.details && (
+                              {log.meta?.changedFields?.length ? (
+                                <p>
+                                  <span className="text-[#a1988e]">الحقول: </span>
+                                  {log.meta.changedFields.join("، ")}
+                                </p>
+                              ) : null}
+
+                              {!reason
+                                && !log.meta?.reportedBy
+                                && !log.details
+                                && !log.meta?.changedFields?.length && (
                                 <span className="text-[#c2b8ae]">—</span>
                               )}
                             </div>
@@ -529,7 +550,7 @@ export default function AdminLogsPage() {
           {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
             <button
               key={p}
-              onClick={() => setPage(p)}
+              onClick={() => changePage(p)}
               className={`h-10 min-w-10 rounded-2xl px-3 text-sm font-black transition-all duration-300 ${
                 page === p
                   ? "bg-primary text-white shadow-[0_10px_20px_rgba(1,105,111,0.18)]"

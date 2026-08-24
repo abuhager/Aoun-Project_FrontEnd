@@ -8,8 +8,11 @@ import axiosInstance from "@/lib/api/axiosInstance";
 import type {
   PublicSettings,
   SystemSettings,
-  UpdateSettingsPayload,        // ← النوع الصحيح المُعرَّف في settings.types.ts
+  UpdateSettingsPayload,
+  UpdateSettingsResponse,
 } from "@/types/settings.types";
+
+export const PUBLIC_SETTINGS_CACHE_KEY = "public-settings";
 
 // ── قراءة الإعدادات العامة (بدون Auth) ──────────────────────────────────────
 
@@ -46,8 +49,8 @@ export const getAdminSettings = async (): Promise<SystemSettings> => {
 // يمنع إرسال الحقول المحمية للـ Backend
 export const updateAdminSettings = async (
   payload: UpdateSettingsPayload
-): Promise<{ msg: string; settings: SystemSettings }> => {
-  const { data } = await axiosInstance.patch<{ msg: string; settings: SystemSettings }>(
+): Promise<UpdateSettingsResponse> => {
+  const { data } = await axiosInstance.patch<UpdateSettingsResponse>(
     "/api/settings",
     payload
   );

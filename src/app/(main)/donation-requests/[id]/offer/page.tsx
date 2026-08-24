@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useSiteConfig } from "@/context/SiteConfigContext";
 import {
   getDonationRequestById,
   respondToDonationRequest,
@@ -22,6 +23,7 @@ export default function DonationOfferPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { requireHubForBooking } = useSiteConfig();
   const [request, setRequest] = useState<DonationRequest | null>(null);
   const [hubs, setHubs] = useState<SafeHub[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,14 +112,14 @@ export default function DonationOfferPage() {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!id || !form.safeHub || blockedReason) return;
+    if (!id || (requireHubForBooking && !form.safeHub) || blockedReason) return;
 
     setSubmitting(true);
     setError(null);
     try {
       await respondToDonationRequest(id, {
         condition: form.condition,
-        safeHub: form.safeHub,
+        safeHub: form.safeHub || undefined,
         description: form.description.trim() || undefined,
         imageFile: form.imageFile ?? undefined,
       });
@@ -208,11 +210,13 @@ export default function DonationOfferPage() {
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-black text-gray-700">نقطة التسليم الآمنة *</span>
+              <span className="text-xs font-black text-gray-700">
+                نقطة التسليم الآمنة {requireHubForBooking ? "*" : "(اختيارية)"}
+              </span>
               <select
                 value={form.safeHub}
                 onChange={(event) => setForm((current) => ({ ...current, safeHub: event.target.value }))}
-                required
+                required={requireHubForBooking}
                 className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary"
               >
                 <option value="">اختر نقطة التسليم</option>
@@ -260,7 +264,10 @@ export default function DonationOfferPage() {
 
             <button
               type="submit"
-              disabled={submitting || !form.safeHub || hubs.length === 0}
+              disabled={
+                submitting
+                || (requireHubForBooking && (!form.safeHub || hubs.length === 0))
+              }
               className="w-full rounded-2xl bg-primary py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "جارٍ إرسال العرض..." : "إرسال العرض للمراجعة 🎁"}

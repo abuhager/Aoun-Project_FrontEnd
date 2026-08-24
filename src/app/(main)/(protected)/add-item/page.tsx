@@ -11,6 +11,8 @@ const CITIES = ["عمان", "إربد", "الزرقاء", "العقبة"] as con
 
 export default function AddItemPage() {
   const router = useRouter();
+  const { settings, categories, isLoading: settingsLoading } = useSettings();
+  const hubRequired = settings?.requireHubForBooking ?? false;
 
   const {
     formData,
@@ -21,9 +23,7 @@ export default function AddItemPage() {
     handleImageChange,
     handleSubmit,
     handleHubChange,
-  } = useAddItem();
-
-  const { categories, isLoading: settingsLoading } = useSettings();
+  } = useAddItem(hubRequired);
 
   return (
     <div className="bg-surface min-h-screen pb-20 md:pb-32 text-[#191c1d]" dir="rtl">
@@ -200,7 +200,7 @@ export default function AddItemPage() {
             <HubSelector
               value={formData.hubId}
               onChange={handleHubChange}
-              required
+              required={hubRequired}
             />
 
             {message.text && (

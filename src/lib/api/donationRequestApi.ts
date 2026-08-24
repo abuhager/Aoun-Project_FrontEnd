@@ -76,7 +76,7 @@ export async function withdrawOffer(requestId: string, offerId: string) {
 
 export type RespondPayload = {
   condition:    'جديد' | 'مستعمل ممتاز' | 'مستعمل جيد';
-  safeHub:      string;
+  safeHub?:     string;
   description?: string;
   imageFile?:   File;
 };
@@ -93,7 +93,7 @@ export async function respondToDonationRequest(
 ): Promise<SubmitOfferResponse> {
   const formData = new FormData();
   formData.append('condition', payload.condition);
-  formData.append('safeHub',   payload.safeHub);
+  if (payload.safeHub) formData.append('safeHub', payload.safeHub);
   if (payload.description?.trim())
     formData.append('description', payload.description.trim());
   if (payload.imageFile)

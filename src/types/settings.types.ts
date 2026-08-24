@@ -2,11 +2,15 @@
 // ✅ مطابقة كاملة لـ SystemSettings Schema في الـ Backend (بعد الإصلاح)
 
 export interface PublicSettings {
-  platformName?: string;
-    contactEmail: string;
-  categories:    string[];
+  platformName:  string;
+  contactEmail:  string;
+  categories: string[];
+  locations: string[];
   reportReasons: string[];
-  locations?:    string[];
+  maxAvatarSizeMb: number;
+  requireHubForBooking: boolean;
+  maintenanceMode: boolean;
+  updatedAt: string | null;
 }
 
 export interface SystemSettings {
@@ -24,6 +28,7 @@ export interface SystemSettings {
   maxActiveRequestsPerMonth:    number;
   maxActiveDonationsPerUser:    number;
   maxActiveDonationsLevel2Plus: number;
+  maxWaitlistPerItem:            number;
   bookingExpiryHours:           number;
   requestExpiryDays:            number;
 
@@ -40,10 +45,12 @@ export interface SystemSettings {
 
   // ─── التصنيفات وأسباب البلاغات ───────────────────────────────────────
   categories:    string[];
+  locations:     string[];
   reportReasons: string[];
 
   // ─── حدود البلاغات والحظر ────────────────────────────────────────────
   autoReportBanThreshold: number;
+  appealWindowHours:       number;
 
   // ─── إعدادات OTP ─────────────────────────────────────────────────────
   otpExpiryMinutes:           number;
@@ -84,3 +91,10 @@ export interface SystemSettings {
 export type UpdateSettingsPayload = Partial<
   Omit<SystemSettings, '_id' | 'createdAt' | 'updatedAt'>
 >;
+
+export interface UpdateSettingsResponse {
+  msg: string;
+  settings: SystemSettings;
+  publicSettings: PublicSettings;
+  changedFields: Array<keyof UpdateSettingsPayload>;
+}

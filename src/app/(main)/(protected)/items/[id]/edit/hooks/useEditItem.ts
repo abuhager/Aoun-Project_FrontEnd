@@ -32,7 +32,7 @@ interface Message {
   type: "success" | "error" | "";
 }
 
-export function useEditItem(itemId: string) {
+export function useEditItem(itemId: string, hubRequired: boolean) {
   const router = useRouter();
   const [formData, setFormData] = useState<EditItemForm>({
     title: "",
@@ -126,7 +126,7 @@ export function useEditItem(itemId: string) {
 
   const handleSubmit = useCallback(async (event: FormEvent) => {
     event.preventDefault();
-    if (!formData.hubId) {
+    if (hubRequired && !formData.hubId) {
       setMessage({ text: "الرجاء اختيار مركز التسليم", type: "error" });
       return;
     }
@@ -155,7 +155,7 @@ export function useEditItem(itemId: string) {
     } finally {
       if (!succeeded) setLoading(false);
     }
-  }, [formData, imageFile, itemId, router]);
+  }, [formData, hubRequired, imageFile, itemId, router]);
 
   return {
     formData,

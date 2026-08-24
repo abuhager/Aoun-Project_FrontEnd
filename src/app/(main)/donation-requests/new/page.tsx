@@ -67,13 +67,18 @@ export default function NewDonationRequestPage() {
   };
 
   return (
-    <div className="bg-surface min-h-screen pb-24 text-[#191c1d]" dir="rtl">
+    <div className="bg-surface min-h-dvh pb-24 text-[#191c1d]" dir="rtl">
       {toast && (
-        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-2xl shadow-lg text-sm font-bold text-white ${toast.ok ? 'bg-green-500' : 'bg-red-500'}`}>
+        <div
+          role={toast.ok ? "status" : "alert"}
+          aria-live={toast.ok ? "polite" : "assertive"}
+          aria-atomic="true"
+          className={`fixed left-1/2 top-20 z-[60] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl px-6 py-3 text-center text-sm font-bold text-white shadow-lg ${toast.ok ? 'bg-green-500' : 'bg-red-500'}`}
+        >
           {toast.msg}
         </div>
       )}
-      <main className="pt-20 md:pt-24 px-4 md:px-8 max-w-3xl mx-auto space-y-6">
+      <div className="pt-20 md:pt-24 px-4 md:px-8 max-w-3xl mx-auto space-y-6">
         <div className="space-y-3 text-center">
           <h1 className="text-2xl md:text-3xl font-black">إنشاء طلب جديد</h1>
           <div className="flex justify-center">
@@ -165,7 +170,7 @@ export default function NewDonationRequestPage() {
             {submitting ? 'جارٍ النشر...' : isQuotaExceeded ? '🚫 وصلت الحد الأقصى' : 'نشر الطلب'}
           </button>
         </form>
-      </main>
+      </div>
     </div>
   );
 }

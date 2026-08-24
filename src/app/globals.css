@@ -62,10 +62,15 @@
 
 @layer base {
   html {
+    min-width: 320px;
     scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
   }
 
   body {
+    min-width: 320px;
+    min-height: 100dvh;
+    overflow-x: clip;
     font-family: var(--font-body);
     background-color: var(--color-surface);
     color: var(--color-on-surface);
@@ -82,12 +87,12 @@
   }
 
   h1 {
-    font-size: var(--text-3xl);
+    font-size: clamp(1.75rem, 5vw, var(--text-3xl));
     line-height: 1.1;
   }
 
   h2 {
-    font-size: var(--text-2xl);
+    font-size: clamp(1.5rem, 4vw, var(--text-2xl));
     line-height: 1.15;
   }
 
@@ -110,7 +115,57 @@
   input,
   textarea,
   select {
-    transition: all 300ms var(--ease-smooth);
+    transition-duration: 200ms;
+    transition-property: color, background-color, border-color, opacity, box-shadow,
+      transform, filter;
+    transition-timing-function: var(--ease-smooth);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-primary) 75%, white);
+    outline-offset: 3px;
+  }
+
+  :where(input, textarea, select):focus-visible {
+    outline-offset: 1px;
+  }
+
+  :where(img, video, canvas, svg) {
+    max-width: 100%;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-primary) 22%, white);
+    color: var(--color-on-surface);
+  }
+
+  @media (max-width: 639px) {
+    input,
+    textarea,
+    select {
+      /* يمنع iOS من تكبير الصفحة تلقائياً عند التركيز على الحقل. */
+      font-size: 1rem !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -131,7 +186,8 @@
   }
 
   .surface-card-hover {
-    transition: all 300ms var(--ease-smooth);
+    transition: box-shadow 300ms var(--ease-smooth),
+      transform 300ms var(--ease-smooth);
   }
 
   .surface-card-hover:hover {
@@ -152,7 +208,7 @@
   }
 
   .page-shell {
-    min-height: 100vh;
+    min-height: 100dvh;
     background-color: var(--color-surface);
     color: var(--color-on-surface);
   }
@@ -161,5 +217,60 @@
     background-color: var(--color-surface-soft);
     color: var(--color-on-surface-variant);
     border-radius: 9999px;
+  }
+
+  .skip-link {
+    position: fixed;
+    inset-block-start: max(0.75rem, env(safe-area-inset-top));
+    inset-inline-start: 0.75rem;
+    z-index: 10000;
+    translate: 0 -160%;
+    border-radius: 0.75rem;
+    background: var(--color-primary);
+    color: white;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 800;
+    box-shadow: var(--shadow-md);
+  }
+
+  .skip-link:focus-visible {
+    translate: 0 0;
+  }
+
+  .touch-target {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .responsive-table-hint {
+    border-bottom: 1px solid rgb(0 0 0 / 0.06);
+    background: color-mix(in srgb, var(--color-primary) 5%, white);
+    color: var(--color-on-surface-soft);
+    padding: 0.625rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .responsive-table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .responsive-table-scroll:focus-visible {
+    outline-offset: -3px;
+  }
+
+  @media (min-width: 640px) {
+    .responsive-table-hint {
+      display: none;
+    }
   }
 }

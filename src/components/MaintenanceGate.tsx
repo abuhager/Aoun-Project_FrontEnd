@@ -25,7 +25,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f7f4ee]">
+      <div className="flex min-h-dvh items-center justify-center bg-[#f7f4ee]">
         <span className="material-symbols-outlined animate-spin text-4xl text-primary">
           progress_activity
         </span>
@@ -38,7 +38,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
   return (
     <main
       dir="rtl"
-      className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#e8f4f2_0%,#f7f4ee_48%,#f2eee7_100%)] px-5 py-16"
+      className="flex min-h-dvh items-center justify-center bg-[radial-gradient(circle_at_top,#e8f4f2_0%,#f7f4ee_48%,#f2eee7_100%)] px-5 py-16"
     >
       <section className="w-full max-w-xl rounded-[32px] border border-white/80 bg-white/95 p-8 text-center shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur md:p-12">
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-primary/10 text-primary">

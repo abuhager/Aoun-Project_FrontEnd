@@ -21,7 +21,7 @@ export default function ResetPasswordForm() {
 
   if (!tokenReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface">
+      <div className="flex min-h-dvh items-center justify-center bg-surface">
         <span className="material-symbols-outlined animate-spin text-4xl text-primary">
           progress_activity
         </span>
@@ -31,7 +31,7 @@ export default function ResetPasswordForm() {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center bg-surface p-4 font-body"
+      className="flex min-h-dvh items-center justify-center bg-surface p-4 font-body"
       dir="rtl"
     >
       <div className="w-full max-w-md rounded-3xl border border-[#edeeef] bg-white p-8 text-center shadow-sm">

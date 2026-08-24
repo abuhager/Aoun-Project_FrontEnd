@@ -9,8 +9,11 @@ export default function MainLayout({
 }) {
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        تجاوز إلى المحتوى الرئيسي
+      </a>
       <Navbar />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 scroll-mt-20">
         {children}
       </main>
       <Footer />

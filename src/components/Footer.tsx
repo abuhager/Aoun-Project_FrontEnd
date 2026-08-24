@@ -4,6 +4,7 @@
 import { useSiteConfig } from "@/context/SiteConfigContext";
 import { useAuth } from "@/context/AuthContext";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 export default function Footer() {
   const { platformName, contactEmail } = useSiteConfig(); // ← contactEmail من DB
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -27,7 +28,7 @@ export default function Footer() {
 
       <div className="border-t border-white/[0.08]" />
 
-      <div className="relative mx-auto max-w-5xl px-5 py-10 md:py-12">
+      <div className="safe-area-bottom relative mx-auto max-w-5xl px-5 py-10 md:py-12">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6">
 
           {/* العمود الأول: الشعار والرسالة */}
@@ -76,10 +77,11 @@ export default function Footer() {
               ]
                 .filter((link) => !link.authRequired || (!authLoading && isAuthenticated))
                 .map((link) => (
-                <a
+                <Link
                   key={link.href}
                   href={link.href}
-                  className="group flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold text-white/60 transition-all duration-150 hover:bg-white/[0.06] hover:text-white"
+                  aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
+                  className="group flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold text-white/70 transition-all duration-150 hover:bg-white/[0.06] hover:text-white"
                 >
                   <span
                     className="material-symbols-outlined text-[15px] text-white/30 transition-colors group-hover:text-emerald-400"
@@ -88,7 +90,7 @@ export default function Footer() {
                     {link.icon}
                   </span>
                   {link.label}
-                </a>
+                </Link>
               ))}
             </nav>
           </div>
@@ -99,12 +101,13 @@ export default function Footer() {
               تواصل معنا
             </p>
 
-            <div className="flex flex-col gap-2 w-full max-w-xs">
+            <div className="flex w-full max-w-xs min-w-0 flex-col gap-2">
               {/* البريد الإلكتروني من DB */}
               <a
                 href={`https://mail.google.com/mail/?view=cm&fs=1&to=${contactEmail}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label={`مراسلة الدعم عبر البريد: ${contactEmail}`}
                 className="group flex items-center gap-2.5 rounded-xl border border-white/[0.10] bg-white/[0.05] px-3 py-2.5 transition-all duration-200 hover:border-white/20 hover:bg-white/[0.09]"
               >
                 <span
@@ -115,7 +118,7 @@ export default function Footer() {
                 </span>
                 <span
                   dir="ltr"
-                  className="text-[12px] font-bold text-white/60 transition-colors group-hover:text-white truncate"
+                  className="min-w-0 truncate text-[12px] font-bold text-white/70 transition-colors group-hover:text-white"
                 >
                   {contactEmail}
                 </span>
@@ -126,6 +129,7 @@ export default function Footer() {
                 href="https://wa.me/962797283384"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="فتح الدعم الفني عبر واتساب في نافذة جديدة"
                 className="group flex items-center justify-center gap-2 rounded-xl bg-[#25d366]/20 px-4 py-2.5 text-[13px] font-bold text-[#25d366] transition-all duration-200 hover:bg-[#25d366]/30 hover:shadow-lg hover:shadow-[#25d366]/10"
               >
                 <span

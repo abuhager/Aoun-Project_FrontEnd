@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Image from "next/image";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 import { useToast } from "@/hooks/useToast";
 import {
   banUser,
@@ -202,14 +204,13 @@ export default function AdminUsersPage() {
       {ToastComponent}
 
       {pending && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a1815]/45 p-4 backdrop-blur-sm"
-          onClick={() => setPending(null)}
+        <AccessibleDialog
+          ariaLabel={ACTION_LABELS[pending.type].title}
+          onClose={() => setPending(null)}
+          role="alertdialog"
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-[#1a1815]/45 p-4 backdrop-blur-sm"
+          panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[30px] border border-white/50 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:p-6"
         >
-          <div
-            className="w-full max-w-md rounded-[30px] border border-white/50 bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.18)]"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="mb-5 flex items-start gap-3">
               <div
                 className={`flex h-12 w-12 items-center justify-center rounded-2xl ${ACTION_LABELS[pending.type].tone}`}
@@ -242,6 +243,7 @@ export default function AdminUsersPage() {
                 )}
               </label>
               <textarea
+                aria-label={pending.type === "ban" ? "سبب الحظر" : "ملاحظة إدارية"}
                 rows={4}
                 maxLength={500}
                 value={note}
@@ -258,19 +260,20 @@ export default function AdminUsersPage() {
             <div className="mt-5 flex gap-3">
               <button
                 onClick={confirmAction}
+                type="button"
                 className={`flex-1 rounded-2xl py-3 text-sm font-black transition-all duration-300 ${ACTION_LABELS[pending.type].btnColor}`}
               >
                 {ACTION_LABELS[pending.type].btn}
               </button>
               <button
                 onClick={() => setPending(null)}
+                type="button"
                 className="flex-1 rounded-2xl bg-[#f3f0ea] py-3 text-sm font-black text-[#5f5a54] transition-all duration-300 hover:bg-[#eae5dd]"
               >
                 إلغاء
               </button>
             </div>
-          </div>
-        </div>
+        </AccessibleDialog>
       )}
 
       {/* Hero */}
@@ -450,7 +453,7 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <ResponsiveTable label="جدول مستخدمي المنصة">
           <table className="min-w-[1120px] w-full text-sm">
             <thead className="bg-white">
               <tr className="border-b border-[#f0ebe4] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#a39b92]">
@@ -625,7 +628,7 @@ export default function AdminUsersPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </section>
 
       {pages > 1 && (

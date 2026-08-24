@@ -29,7 +29,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <span className="material-symbols-outlined animate-spin text-4xl text-primary">
           progress_activity
         </span>

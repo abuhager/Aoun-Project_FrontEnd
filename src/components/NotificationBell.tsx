@@ -1,7 +1,7 @@
 // src/components/NotificationBell.tsx — ✅ REDESIGNED
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useId, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useNotifications } from "@/hooks/useNotifications";
 import type { Notification } from "@/types/notification.types";
@@ -78,6 +78,8 @@ export default function NotificationBell() {
   } = useNotifications();
 
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -88,6 +90,20 @@ export default function NotificationBell() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen, close]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      close();
+      buttonRef.current?.focus();
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [close, isOpen]);
 
   const handleNotificationClick = (notification: Notification) => {
     void handleMarkOneRead(notification);
@@ -112,10 +128,14 @@ export default function NotificationBell() {
 
       {/* ── زر الجرس ─────────────────────────────────────────── */}
       <button
+        ref={buttonRef}
+        type="button"
         onClick={toggleOpen}
-        aria-label="الإشعارات"
+        aria-label={`الإشعارات${unreadCount > 0 ? `، ${unreadCount} غير مقروء` : ""}`}
         aria-expanded={isOpen}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-xl
+        aria-controls={panelId}
+        aria-haspopup="true"
+        className={`touch-target relative flex h-9 w-9 items-center justify-center rounded-xl
                     transition-all duration-200 active:scale-95
                     ${isOpen
                       ? "bg-primary/[0.08] text-primary"
@@ -147,15 +167,15 @@ export default function NotificationBell() {
       </button>
 
       {/* ── Panel الإشعارات ────────────────────────────────────── */}
+      {isOpen && (
       <div
+        id={panelId}
         dir="rtl"
-        className={`absolute left-0 top-12 z-50 w-80 overflow-hidden rounded-2xl
+        role="region"
+        aria-label="قائمة الإشعارات"
+        className="fixed left-2 right-2 top-20 z-50 max-h-[calc(100dvh-6rem)] overflow-hidden rounded-2xl
                     border border-black/[0.07] bg-white shadow-xl shadow-black/[0.08]
-                    transition-all duration-200 ease-out
-                    ${isOpen
-                      ? "pointer-events-auto translate-y-0 opacity-100"
-                      : "pointer-events-none -translate-y-2 opacity-0"
-                    }`}
+                    md:absolute md:left-0 md:right-auto md:top-12 md:w-80"
       >
 
         {/* رأس الـ Panel */}
@@ -325,6 +345,7 @@ export default function NotificationBell() {
           </div>
         )}
       </div>
+      )}
 
       {/* تعريف Animation الـ Badge — يُحقن مرة واحدة */}
       <style>{`

@@ -18,7 +18,7 @@ import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 /* ─── Skeleton ──────────────────────────────────────────────── */
 function DashboardSkeleton() {
   return (
-    <div className="min-h-screen bg-[#f7f6f2] pb-16 pt-20 md:pt-24" dir="rtl">
+    <div className="min-h-dvh bg-[#f7f6f2] pb-16 pt-20 md:pt-24" dir="rtl">
       <div className="mx-auto max-w-7xl space-y-4 px-4 md:px-6">
         <div className="animate-pulse space-y-2">
           <div className="h-6 w-48 rounded-xl bg-gray-200" />
@@ -102,7 +102,7 @@ export default function DashboardPage() {
 
   if (!data) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f7f6f2] p-8" dir="rtl">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#f7f6f2] p-8" dir="rtl">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50">
           <span className="material-symbols-outlined text-4xl text-red-400">error_outline</span>
         </div>
@@ -134,7 +134,7 @@ export default function DashboardPage() {
   const activeItems = activeTab === "donations" ? data.myDonations : data.myRequests;
 
   return (
-    <div className="min-h-screen bg-[#f7f6f2] pb-16 font-body text-[#191c1d]" dir="rtl">
+    <div className="min-h-dvh bg-[#f7f6f2] pb-16 font-body text-[#191c1d]" dir="rtl">
       {/* ── Modals & Overlays ────────────────────────────────── */}
       <GlobalRatingModal />
 
@@ -174,7 +174,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Main Content ─────────────────────────────────────── */}
-      <main className="mx-auto max-w-7xl space-y-5 px-4 pt-20 md:px-6 md:pt-24">
+      <div className="mx-auto max-w-7xl space-y-5 px-4 pt-20 md:px-6 md:pt-24">
         {/* Header */}
         <section className="flex flex-col gap-2">
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/10 bg-primary/5 px-3 py-1 text-[11px] font-black text-primary">
@@ -290,7 +290,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </section>
-      </main>
+      </div>
     </div>
   );
 }

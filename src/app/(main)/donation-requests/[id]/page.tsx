@@ -161,8 +161,8 @@ export default function DonationRequestDetailPage() {
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-[#f7f6f2]">
-        <main className="mx-auto max-w-5xl px-4 pt-20 md:px-6 md:pt-24">
+      <div className="min-h-dvh bg-[#f7f6f2]">
+        <div className="mx-auto max-w-5xl px-4 pt-20 md:px-6 md:pt-24">
           <div className="space-y-4">
             <div className="h-5 w-20 animate-pulse rounded-full bg-[#e9e4dc]" />
             <div className="rounded-[30px] border border-black/[0.06] bg-white p-6 shadow-sm">
@@ -177,14 +177,14 @@ export default function DonationRequestDetailPage() {
               </div>
             </div>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
   if (!request) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f7f6f2]">
+      <div className="flex min-h-dvh items-center justify-center bg-[#f7f6f2]">
         <div className="rounded-3xl border border-dashed border-[#ddd7cf] bg-white px-10 py-12 text-center shadow-sm">
           <span className="material-symbols-outlined mb-2 block text-4xl text-gray-300">
             error
@@ -208,10 +208,13 @@ export default function DonationRequestDetailPage() {
   const showCaseB = request.status === "active" && !isOwner && !isAccepted && !viewerOffer;
 
   return (
-    <div className="min-h-screen bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
+    <div className="min-h-dvh bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
       {toast && (
         <div
-          className={`fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-2xl px-6 py-3 text-sm font-bold text-white shadow-[0_14px_35px_rgba(0,0,0,0.16)] transition-all ${
+          role={toast.ok ? "status" : "alert"}
+          aria-live={toast.ok ? "polite" : "assertive"}
+          aria-atomic="true"
+          className={`fixed left-1/2 top-20 z-50 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl px-6 py-3 text-center text-sm font-bold text-white shadow-[0_14px_35px_rgba(0,0,0,0.16)] transition-all ${
             toast.ok ? "bg-green-500" : "bg-red-500"
           }`}
         >
@@ -219,7 +222,7 @@ export default function DonationRequestDetailPage() {
         </div>
       )}
 
-      <main className="mx-auto max-w-5xl space-y-5 px-4 pt-20 md:px-6 md:pt-24">
+      <div className="mx-auto max-w-5xl space-y-5 px-4 pt-20 md:px-6 md:pt-24">
         {/* Back */}
         <button
           onClick={() => router.back()}
@@ -490,7 +493,7 @@ export default function DonationRequestDetailPage() {
             </section>
           </div>
         </section>
-      </main>
+      </div>
     </div>
   );
 }

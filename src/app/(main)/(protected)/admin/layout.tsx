@@ -21,9 +21,9 @@ export default function AdminLayout({
   const pathname = usePathname();
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f6f4ef] text-[#1f2328]">
+    <div dir="rtl" className="min-h-dvh min-w-0 bg-[#f6f4ef] text-[#1f2328]">
       {/* ── Desktop Sidebar ───────────────────────────── */}
-      <aside className="fixed top-[64px] bottom-0 right-0 z-40 hidden w-[290px] border-l border-[#e6e0d7] bg-white/95 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-md lg:flex lg:flex-col">
+      <aside className="fixed bottom-0 right-0 top-[66px] z-40 hidden w-[290px] border-l border-[#e6e0d7] bg-white/95 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-md lg:flex lg:flex-col">
         {/* Brand / top */}
         <div className="border-b border-[#f0ebe4] px-5 pb-5 pt-6">
           <div className="rounded-[24px] border border-[#ebe5dc] bg-[linear-gradient(180deg,#fffdfa_0%,#f8f5ef_100%)] p-4 shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
@@ -57,7 +57,7 @@ export default function AdminLayout({
             </p>
           </div>
 
-          <nav className="space-y-1.5">
+          <nav className="space-y-1.5" aria-label="التنقل الإداري">
             {NAV_ITEMS.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -67,6 +67,7 @@ export default function AdminLayout({
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? "page" : undefined}
                   className={[
                     "group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3.5 py-3 text-sm font-bold transition-all duration-300 ease-out",
                     isActive
@@ -115,7 +116,7 @@ export default function AdminLayout({
       </aside>
 
       {/* ── Mobile Top Header ───────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-[#e8e2d9] bg-white/90 backdrop-blur-md lg:hidden">
+      <header className="sticky top-16 z-30 border-b border-[#e8e2d9] bg-white/90 backdrop-blur-md lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <div>
             <p className="text-[10px] font-extrabold tracking-[0.18em] text-[#a19990]">
@@ -133,21 +134,21 @@ export default function AdminLayout({
       </header>
 
       {/* ── Main area ───────────────────────────────── */}
-      <div className="pt-[64px] lg:mr-[290px]">
+      <div className="min-w-0 pt-16 lg:mr-[290px] lg:pt-[66px]">
 
 
         {/* page content wrapper */}
-        <main className="px-4 pb-24 pt-5 sm:px-5 md:px-6 lg:px-8 lg:pb-10 lg:pt-6 xl:px-10">
+        <div className="min-w-0 px-4 pb-28 pt-5 sm:px-5 md:px-6 lg:px-8 lg:pb-10 lg:pt-6 xl:px-10">
           <div className="mx-auto w-full max-w-[1400px]">
             {children}
           </div>
-        </main>
+        </div>
       </div>
 
       {/* ── Mobile Bottom Nav ───────────────────────── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#e7e1d8] bg-white/95 px-2 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-md lg:hidden">
-        <div className="grid grid-cols-5 gap-1">
-          {NAV_ITEMS.slice(0, 5).map((item) => {
+      <nav className="safe-area-bottom fixed bottom-0 left-0 right-0 z-40 overflow-x-auto border-t border-[#e7e1d8] bg-white/95 px-2 pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-md lg:hidden" aria-label="التنقل الإداري على الهاتف">
+        <div className="mx-auto flex w-max min-w-full gap-1">
+          {NAV_ITEMS.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/admin" && pathname.startsWith(item.href));
@@ -156,8 +157,9 @@ export default function AdminLayout({
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={[
-                  "flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 transition-all duration-300",
+                  "flex min-h-[52px] min-w-[76px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 transition-all duration-300",
                   isActive
                     ? "bg-primary text-white shadow-[0_8px_20px_rgba(1,105,111,0.16)]"
                     : "text-[#8a837a]",

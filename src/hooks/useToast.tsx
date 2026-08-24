@@ -33,8 +33,11 @@ export function useToast(duration = 3000) {
 
   const ToastComponent: ReactNode = toast ? (
     <div
+      role={toast.ok ? "status" : "alert"}
+      aria-live={toast.ok ? "polite" : "assertive"}
+      aria-atomic="true"
       className={`fixed top-20 left-1/2 -translate-x-1/2 z-60 px-6 py-3
-        rounded-2xl shadow-lg text-sm font-bold text-white transition-all
+        max-w-[calc(100vw-2rem)] rounded-2xl text-center shadow-lg text-sm font-bold text-white transition-all
         ${toast.ok ? "bg-green-500" : "bg-red-500"}`}
     >
       {toast.msg}

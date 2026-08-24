@@ -1,6 +1,7 @@
 "use client";
 
 import { useGlobalRating } from "./useGlobalRating";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 
 export default function GlobalRatingModal() {
   const {
@@ -18,11 +19,13 @@ export default function GlobalRatingModal() {
   const targetName = selectedItem.donor?.name || selectedItem.bookedBy?.name || "الطرف الآخر";
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto select-none"
-      dir="rtl"
+    <AccessibleDialog
+      ariaLabel={`تقييم تجربتك مع ${targetName}`}
+      dismissOnBackdrop={false}
+      ariaBusy={ratingLoading}
+      overlayClassName="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 px-4 backdrop-blur-md"
+      panelClassName="w-full max-w-sm select-none rounded-3xl border border-gray-100 bg-white p-6 text-center shadow-2xl sm:p-8"
     >
-      <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl border border-gray-100">
         <p className="mb-1 text-sm font-bold text-primary">
           العطاء بيكمل بكلمة شكر 💚
         </p>
@@ -34,14 +37,16 @@ export default function GlobalRatingModal() {
           </span>
         </h3>
 
-        <div className="mb-5 flex justify-center gap-2">
+        <div className="mb-5 flex justify-center gap-1 sm:gap-2" role="radiogroup" aria-label="عدد النجوم">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
               key={star}
               type="button"
               onClick={() => setRating(star)}
               aria-label={`${star} نجوم`}
-              className={`transition-all hover:scale-125 ${
+              role="radio"
+              aria-checked={rating === star}
+              className={`touch-target rounded-xl transition-all hover:scale-110 ${
                 rating >= star ? "text-yellow-400" : "text-gray-300"
               }`}
             >
@@ -58,7 +63,7 @@ export default function GlobalRatingModal() {
         </div>
 
         {errorMsg && (
-          <p className="mb-3 text-xs font-bold text-red-500">{errorMsg}</p>
+          <p role="alert" className="mb-3 text-xs font-bold text-red-500">{errorMsg}</p>
         )}
 
         {rating === 0 && (
@@ -73,7 +78,6 @@ export default function GlobalRatingModal() {
         >
           {ratingLoading ? "جاري الحفظ..." : "إرسال التقييم"}
         </button>
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

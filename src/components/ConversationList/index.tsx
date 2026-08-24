@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
 import { SOCKET_EVENTS } from "@/config/socket";
 import ChatDrawer from "@/components/ChatDrawer";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 import { listConversations, markConversationRead } from "@/lib/api/conversationApi";
 import type { ConversationListItem } from "@/types/chat.types";
 
@@ -152,16 +153,20 @@ export default function ConversationList({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110]" dir="rtl">
-      <div className="absolute inset-0 bg-[#0f1720]/45 backdrop-blur-[3px]" onClick={onClose} />
-      <aside className="fixed inset-y-0 right-0 z-[121] flex h-dvh w-full max-w-md flex-col overflow-hidden border-l border-black/[0.06] bg-[#fcfbf8] shadow-2xl">
+    <AccessibleDialog
+      ariaLabel="قائمة الرسائل"
+      onClose={onClose}
+      panelAs="aside"
+      overlayClassName="fixed inset-0 z-[110] bg-[#0f1720]/45 backdrop-blur-[3px]"
+      panelClassName="fixed inset-y-0 right-0 z-[121] flex h-dvh w-full max-w-md flex-col overflow-hidden border-l border-black/[0.06] bg-[#fcfbf8] shadow-2xl"
+    >
         {/* الهيدر الاحترافي للمنصة */}
         <div className="shrink-0 border-b border-[#ece7de] bg-white px-5 py-4 flex justify-between items-center">
           <div>
             <h2 className="text-base font-black text-[#1c2324] tracking-tight">الرسائل</h2>
             <p className="text-[11px] font-semibold text-[#8b847c] mt-0.5">جميع المحادثات الخاصة بك في منصة عون</p>
           </div>
-          <button onClick={onClose} className="h-9 w-9 flex items-center justify-center rounded-xl text-[#6f6a63] hover:bg-[#f2eee8] transition-all text-sm font-bold">✕</button>
+          <button type="button" aria-label="إغلاق الرسائل" onClick={onClose} className="touch-target flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-[#6f6a63] transition-all hover:bg-[#f2eee8]">✕</button>
         </div>
 
         {/* قائمة بطاقات المحادثات المتوازنة */}
@@ -249,7 +254,6 @@ export default function ConversationList({
             })
           )}
         </div>
-      </aside>
-    </div>
+    </AccessibleDialog>
   );
 }

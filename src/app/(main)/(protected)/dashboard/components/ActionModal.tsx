@@ -1,4 +1,6 @@
-// src/app/(main)/(protected)/dashboard/components/ActionModal.tsx  ✅ REDESIGNED
+"use client";
+
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 
 interface ActionModalProps {
   message: string;
@@ -16,15 +18,13 @@ export function ActionModal({
   isDanger = false,
 }: ActionModalProps) {
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center
-                 bg-black/40 p-4 backdrop-blur-sm"
-      dir="rtl"
+    <AccessibleDialog
+      ariaLabel={isDanger ? "تأكيد إجراء خطر" : "تأكيد الإجراء"}
+      onClose={onCancel}
+      role="alertdialog"
+      overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      panelClassName="w-full max-w-sm overflow-hidden rounded-2xl border border-black/[0.07] bg-white shadow-2xl shadow-black/[0.15]"
     >
-      <div
-        className="w-full max-w-sm overflow-hidden rounded-2xl border
-                   border-black/[0.07] bg-white shadow-2xl shadow-black/[0.15]"
-      >
         {/* أيقونة التحذير */}
         <div className="flex justify-center px-6 pt-6 pb-4">
           <div
@@ -53,6 +53,7 @@ export function ActionModal({
         <div className="flex gap-2 border-t border-black/[0.06] p-4">
           <button
             onClick={onCancel}
+            type="button"
             className="flex-1 rounded-xl bg-gray-100 py-2.5 text-sm
                        font-black text-gray-600 transition-all duration-150
                        hover:bg-gray-200 active:scale-95"
@@ -61,6 +62,8 @@ export function ActionModal({
           </button>
           <button
             onClick={onConfirm}
+            type="button"
+            data-dialog-initial-focus={!isDanger ? "true" : undefined}
             className={`flex-1 rounded-xl py-2.5 text-sm font-black text-white
                         shadow-md transition-all duration-150 active:scale-95
                         ${isDanger
@@ -71,7 +74,6 @@ export function ActionModal({
             {confirmText}
           </button>
         </div>
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

@@ -7,7 +7,7 @@ export default function ForgotPasswordPage() {
   const { email, setEmail, message, error, loading, handleSubmit } = useForgotPassword();
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center p-4 font-body" dir="rtl">
+    <div className="min-h-dvh bg-surface flex items-center justify-center p-4 font-body" dir="rtl">
       <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-sm border border-[#edeeef] text-center">
 
         {/* ─── أيقونة العنوان ─── */}

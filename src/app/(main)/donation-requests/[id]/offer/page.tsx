@@ -131,28 +131,28 @@ export default function DonationOfferPage() {
 
   if (loading || authLoading || hubsLoading) {
     return (
-      <main className="mx-auto min-h-screen max-w-2xl px-4 pt-24" dir="rtl">
+      <div className="mx-auto min-h-dvh max-w-2xl px-4 pt-24" dir="rtl">
         <div className="h-80 animate-pulse rounded-[30px] bg-white shadow-sm" />
-      </main>
+      </div>
     );
   }
 
   if (!request) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-4" dir="rtl">
+      <div className="flex min-h-dvh items-center justify-center px-4" dir="rtl">
         <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
           <p className="font-black text-red-600">{error ?? "الطلب غير موجود"}</p>
           <Link href="/donation-requests" className="mt-4 inline-block text-sm font-bold text-primary">
             العودة إلى الطلبات
           </Link>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
-      <main className="mx-auto max-w-2xl space-y-5 px-4 pt-20 md:pt-24">
+    <div className="min-h-dvh bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
+      <div className="mx-auto max-w-2xl space-y-5 px-4 pt-20 md:pt-24">
         <Link
           href={`/donation-requests/${id}`}
           className="inline-flex items-center gap-1 text-xs font-black text-gray-500 hover:text-primary"
@@ -272,7 +272,7 @@ export default function DonationOfferPage() {
             </button>
           </form>
         )}
-      </main>
+      </div>
     </div>
   );
 }

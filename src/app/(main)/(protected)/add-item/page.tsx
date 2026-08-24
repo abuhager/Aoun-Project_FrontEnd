@@ -26,8 +26,8 @@ export default function AddItemPage() {
   } = useAddItem(hubRequired);
 
   return (
-    <div className="bg-surface min-h-screen pb-20 md:pb-32 text-[#191c1d]" dir="rtl">
-      <main className="pt-20 md:pt-24 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto font-body">
+    <div className="bg-surface min-h-dvh pb-20 md:pb-32 text-[#191c1d]" dir="rtl">
+      <div className="pt-20 md:pt-24 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto font-body">
         <div className="mb-6 md:mb-10 text-center">
           <h1 className="text-2xl md:text-3xl font-extrabold font-headline mb-2">
             إضافة تبرع جديد
@@ -237,7 +237,7 @@ export default function AddItemPage() {
             </div>
           </form>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

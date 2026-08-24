@@ -8,6 +8,7 @@ import {
   REPORT_REASONS_FALLBACK as REPORT_REASONS,
   type ReportReason,
 } from "@/types/report.types";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 
 interface Props {
   reportedUserId: string;
@@ -57,11 +58,14 @@ export default function ReportModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md px-4"
-      dir="rtl"
+    <AccessibleDialog
+      ariaLabel={`الإبلاغ عن ${reportedUserName}`}
+      onClose={onClose}
+      closeDisabled={loading}
+      ariaBusy={loading}
+      overlayClassName="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4 backdrop-blur-md"
+      panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-7"
     >
-      <div className="w-full max-w-sm rounded-3xl bg-white p-7 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-base font-bold text-[#191c1d]">
             الإبلاغ عن <span className="text-red-500">{reportedUserName}</span>
@@ -70,15 +74,16 @@ export default function ReportModal({
           <button
             onClick={() => !loading && onClose()}
             disabled={loading}
+            type="button"
             aria-label="إغلاق"
-            className="text-gray-400 transition-colors hover:text-gray-600"
+            className="touch-target flex items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
         {success ? (
-          <div className="py-6 text-center">
+          <div className="py-6 text-center" role="status" aria-live="polite">
             <span className="material-symbols-outlined text-5xl text-green-500">
               check_circle
             </span>
@@ -89,11 +94,13 @@ export default function ReportModal({
           <>
             <p className="mb-2 text-xs font-medium text-gray-500">سبب البلاغ *</p>
 
-            <div className="mb-4 flex flex-col gap-2">
+            <div className="mb-4 flex flex-col gap-2" role="radiogroup" aria-label="سبب البلاغ">
               {reasons.map((r) => (
                 <button
                   key={r}
                   type="button"
+                  role="radio"
+                  aria-checked={reason === r}
                   onClick={() => {
                     setReason(r);
                     if (errorMsg) setErrorMsg("");
@@ -118,6 +125,7 @@ export default function ReportModal({
               maxLength={1000}
               rows={3}
               placeholder="تفاصيل إضافية (اختياري)"
+              aria-label="تفاصيل إضافية للبلاغ"
               className="mb-4 w-full resize-none rounded-2xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none"
             />
 
@@ -126,7 +134,7 @@ export default function ReportModal({
             </p>
 
             {errorMsg && (
-              <p className="mb-3 text-xs font-bold text-red-500">{errorMsg}</p>
+              <p role="alert" className="mb-3 text-xs font-bold text-red-500">{errorMsg}</p>
             )}
 
             <button
@@ -139,7 +147,6 @@ export default function ReportModal({
             </button>
           </>
         )}
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

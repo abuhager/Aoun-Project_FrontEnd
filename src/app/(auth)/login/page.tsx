@@ -21,19 +21,19 @@ export default function LoginPage() {
   const { platformName } = useSiteConfig();
 
   return (
-    <main
-      className="grow flex flex-row-reverse overflow-hidden min-h-screen bg-background"
+    <div
+      className="grow flex flex-row-reverse overflow-hidden min-h-dvh bg-background"
       dir="rtl"
     >
       {/* ─── القسم الأيمن: الفورم ─── */}
-      <section className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 lg:p-24 bg-surface z-10 relative">
-        <div className="w-full max-w-md space-y-8">
+      <section className="relative z-10 flex w-full items-center justify-center bg-surface p-4 sm:p-8 md:p-12 lg:w-1/2 lg:p-16 xl:p-24">
+        <div className="w-full max-w-md space-y-6 sm:space-y-8">
 
           <div className="flex flex-col items-start gap-2">
             <span className="text-3xl font-black text-primary tracking-tight">
               {platformName}
             </span>
-            <h1 className="text-4xl font-extrabold text-on-background leading-tight">
+            <h1 className="text-3xl font-extrabold leading-tight text-on-background sm:text-4xl">
               مرحباً بك مجدداً
             </h1>
             <p className="text-on-surface-variant">
@@ -59,7 +59,7 @@ export default function LoginPage() {
                     onClick={() =>
                       fillDemoCredentials(account.email, account.password)
                     }
-                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${account.buttonClassName}`}
+                    className={`min-h-11 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${account.buttonClassName}`}
                   >
                     <span aria-hidden="true">{account.icon}</span>{" "}
                     {account.label}
@@ -224,6 +224,6 @@ export default function LoginPage() {
         </div>
         <div className="absolute top-12 left-12 w-32 h-32 bg-secondary/40 rounded-full blur-3xl" />
       </section>
-    </main>
+    </div>
   );
 }

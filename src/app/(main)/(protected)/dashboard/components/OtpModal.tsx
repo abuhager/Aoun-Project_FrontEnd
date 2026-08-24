@@ -1,5 +1,6 @@
 "use client";
 import { FormEvent } from "react";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 
 interface Item {
   _id: string;
@@ -26,10 +27,17 @@ export function OtpModal({
   onClose,
 }: OtpModalProps) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    <AccessibleDialog
+      ariaLabel={`تأكيد تسليم ${item.title}`}
+      onClose={onClose}
+      closeDisabled={otpLoading}
+      ariaBusy={otpLoading}
+      overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      panelClassName="w-full max-w-sm rounded-3xl bg-white p-5 text-center shadow-2xl sm:p-8"
+    >
       <form
         onSubmit={onSubmit}
-        className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-4"
+        className="space-y-4"
         dir="rtl"
       >
         {/* العنوان */}
@@ -58,11 +66,14 @@ export function OtpModal({
           className="w-full bg-gray-50 text-center text-3xl font-black py-4 rounded-2xl outline-none focus:ring-2 ring-primary/20 tracking-[0.5em] font-mono"
           placeholder="000000"
           autoFocus
+          aria-label="رمز تأكيد التسليم المكون من 6 أرقام"
+          autoComplete="one-time-code"
+          data-dialog-initial-focus
         />
 
         {/* خطأ */}
         {otpError && (
-          <p className="text-xs text-red-500 font-bold">{otpError}</p>
+          <p role="alert" className="text-xs text-red-500 font-bold">{otpError}</p>
         )}
 
         {/* الأزرار */}
@@ -83,6 +94,6 @@ export function OtpModal({
           </button>
         </div>
       </form>
-    </div>
+    </AccessibleDialog>
   );
 }

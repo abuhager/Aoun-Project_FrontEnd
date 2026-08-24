@@ -74,7 +74,7 @@ export default function ItemDetailsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f7f6f2]" dir="rtl">
+      <div className="flex min-h-dvh items-center justify-center bg-[#f7f6f2]" dir="rtl">
         <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
@@ -82,7 +82,7 @@ export default function ItemDetailsPage() {
 
   if (!item) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f7f6f2] px-4" dir="rtl">
+      <div className="flex min-h-dvh items-center justify-center bg-[#f7f6f2] px-4" dir="rtl">
         <div className="rounded-2xl border border-gray-200 bg-white px-8 py-10 text-center shadow-sm">
           <p className="text-sm font-bold text-gray-700">
             🛑 {loadError || "القطعة غير موجودة"}
@@ -102,7 +102,7 @@ export default function ItemDetailsPage() {
   const isRecipientConfirmedActual = item.recipientConfirmed || delivery.isRecipientConfirmed;
 
   return (
-    <div className="min-h-screen bg-[#f7f6f2] pb-20 text-[#191c1d]" dir="rtl">
+    <div className="min-h-dvh bg-[#f7f6f2] pb-20 text-[#191c1d]" dir="rtl">
       {confirmModal.show && (
         <ConfirmModal
           message={confirmModal.msg}
@@ -122,7 +122,7 @@ export default function ItemDetailsPage() {
         />
       )}
 
-      <main className="mx-auto max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
+      <div className="mx-auto max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-xs font-medium text-gray-400">
           <Link
@@ -442,7 +442,7 @@ export default function ItemDetailsPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

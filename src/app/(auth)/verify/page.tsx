@@ -55,7 +55,7 @@ function VerifyContent() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 font-body"
+      className="min-h-dvh flex items-center justify-center p-4 font-body"
       style={{ backgroundColor: "#f5f5f5" }}
       dir="rtl"
     >
@@ -186,7 +186,7 @@ export default function VerifyEmailPage() {
     <Suspense
       fallback={
         <div
-          className="min-h-screen flex items-center justify-center"
+          className="min-h-dvh flex items-center justify-center"
           style={{ backgroundColor: "#f5f5f5" }}
           role="status"
           aria-label="جاري التحميل"

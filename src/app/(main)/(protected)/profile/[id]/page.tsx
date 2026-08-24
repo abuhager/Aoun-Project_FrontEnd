@@ -87,7 +87,7 @@ export default function PublicProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f7f6f2]">
+      <div className="flex min-h-dvh items-center justify-center bg-[#f7f6f2]">
         <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
@@ -95,7 +95,7 @@ export default function PublicProfilePage() {
 
   if (error || !profileData) {
     return (
-      <div className="min-h-screen bg-[#f7f6f2] py-20 text-center">
+      <div className="min-h-dvh bg-[#f7f6f2] py-20 text-center">
         <div className="mt-32">
           <span className="material-symbols-outlined mb-3 block text-5xl text-gray-300">
             person_off
@@ -116,10 +116,10 @@ export default function PublicProfilePage() {
 
   return (
     <div
-      className="min-h-screen bg-[#f7f6f2] pb-20 font-body text-[#191c1d]"
+      className="min-h-dvh bg-[#f7f6f2] pb-20 font-body text-[#191c1d]"
       dir="rtl"
     >
-      <main className="mx-auto max-w-6xl px-4 pt-20 md:px-6 md:pt-24">
+      <div className="mx-auto max-w-6xl px-4 pt-20 md:px-6 md:pt-24">
         {/* ─── Header shell ─── */}
         <section className="mb-8 rounded-[32px] border border-black/[0.06] bg-white p-5 shadow-sm md:p-6">
           <div className="grid gap-6 lg:grid-cols-[auto_1fr_auto] lg:items-center">
@@ -396,7 +396,7 @@ export default function PublicProfilePage() {
             </div>
           )}
         </section>
-      </main>
+      </div>
     </div>
   );
 }

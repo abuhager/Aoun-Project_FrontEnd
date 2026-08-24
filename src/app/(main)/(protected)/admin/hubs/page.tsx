@@ -17,6 +17,7 @@ import {
   reactivateHub,
 } from "@/lib/api/hubApi";
 import { extractErrorMsg } from "@/lib/api/apiError";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 
 const EMPTY_FORM = {
   name: "",
@@ -453,14 +454,14 @@ export default function AdminHubsPage() {
 
       {/* Modal */}
       {modal !== "closed" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="hub-form-title"
-            className="w-full max-w-xl rounded-[32px] border border-white/20 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.18)]"
-            dir="rtl"
-          >
+        <AccessibleDialog
+          ariaLabel={modal === "add" ? "إضافة مركز جديد" : "تعديل المركز"}
+          onClose={() => setModal("closed")}
+          closeDisabled={formBusy}
+          ariaBusy={formBusy}
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-[32px] border border-white/20 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.18)]"
+        >
             <div className="flex items-center justify-between border-b border-[#f0ebe4] px-6 py-5">
               <div>
                 <h2 id="hub-form-title" className="text-lg font-black text-[#1f312f]">
@@ -502,10 +503,11 @@ export default function AdminHubsPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
-                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                  <label htmlFor="hub-name" className="mb-1.5 block text-xs font-black text-[#6c665f]">
                     اسم المركز <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="hub-name"
                     value={form.name}
                     onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                     placeholder="مثال: مركز الزرقاء الرئيسي"
@@ -514,10 +516,11 @@ export default function AdminHubsPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                  <label htmlFor="hub-address" className="mb-1.5 block text-xs font-black text-[#6c665f]">
                     العنوان <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="hub-address"
                     value={form.address}
                     onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
                     placeholder="مثال: شارع الملكة نور، بناية رقم 5"
@@ -526,10 +529,11 @@ export default function AdminHubsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                  <label htmlFor="hub-city" className="mb-1.5 block text-xs font-black text-[#6c665f]">
                     المدينة <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="hub-city"
                     value={form.city}
                     onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
                     placeholder="مثال: عمان"
@@ -544,10 +548,11 @@ export default function AdminHubsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                  <label htmlFor="hub-hours" className="mb-1.5 block text-xs font-black text-[#6c665f]">
                     ساعات العمل
                   </label>
                   <input
+                    id="hub-hours"
                     value={form.workingHours}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, workingHours: e.target.value }))
@@ -558,10 +563,11 @@ export default function AdminHubsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                  <label htmlFor="hub-lat" className="mb-1.5 block text-xs font-black text-[#6c665f]">
                     خط العرض (Lat)
                   </label>
                   <input
+                    id="hub-lat"
                     type="number"
                     min="-90"
                     max="90"
@@ -574,10 +580,11 @@ export default function AdminHubsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-black text-[#6c665f]">
+                  <label htmlFor="hub-lng" className="mb-1.5 block text-xs font-black text-[#6c665f]">
                     خط الطول (Lng)
                   </label>
                   <input
+                    id="hub-lng"
                     type="number"
                     min="-180"
                     max="180"
@@ -593,6 +600,7 @@ export default function AdminHubsPage() {
               <div className="flex gap-3 pt-1">
                 <button
                   onClick={() => setModal("closed")}
+                  type="button"
                   className="flex-1 rounded-2xl border border-[#e2ddd5] py-3 text-sm font-black text-[#66615b] transition-all duration-300 hover:bg-[#faf8f4]"
                 >
                   إلغاء
@@ -600,6 +608,7 @@ export default function AdminHubsPage() {
 
                 <button
                   onClick={saveForm}
+                  type="button"
                   disabled={formBusy}
                   className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-black text-white transition-all duration-300 hover:bg-primary/90 disabled:opacity-60"
                 >
@@ -616,8 +625,7 @@ export default function AdminHubsPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </AccessibleDialog>
       )}
     </div>
   );

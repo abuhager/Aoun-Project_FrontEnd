@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-page-custom-font -- Material Symbols stylesheet provides icons. */
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Tajawal, Cairo } from "next/font/google";
 import "./globals.css";
 
@@ -13,6 +13,13 @@ import { SocketProvider }     from "@/context/SocketContext";
 import MaintenanceGate       from "@/components/MaintenanceGate";
 import SettingsSync          from "@/components/SettingsSync";
 import ApiStateProvider      from "@/components/ApiStateProvider";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#006155",
+};
 
 // ── الخطوط ─────────────────────────────────────────────────────
 const tajawal = Tajawal({
@@ -67,7 +74,7 @@ export default async function RootLayout({
       </head>
 
       {/* body: flex column لضمان توزيع العناصر بشكل مرن */}
-      <body className="flex min-h-screen flex-col bg-surface text-on-surface antialiased">
+      <body className="flex min-h-dvh flex-col overflow-x-clip bg-surface text-on-surface antialiased">
         <ApiStateProvider initialPublicSettings={settings}>
           <SiteConfigProvider
             key={settings?.updatedAt ?? "site-config-fallback"}

@@ -39,8 +39,8 @@ export default function RegisterPage() {
     : "border-transparent focus:ring-2 focus:ring-primary/20 focus:bg-white";
 
   return (
-    <div className="bg-surface text-on-background min-h-screen flex flex-col overflow-x-hidden">
-      <main className="grow flex flex-col md:flex-row-reverse">
+    <div className="bg-surface text-on-background min-h-dvh flex flex-col overflow-x-hidden">
+      <div className="grow flex flex-col md:flex-row-reverse">
 
         {/* ─── القسم الأيسر: الصورة (decorative) ─── */}
         <section
@@ -74,7 +74,7 @@ export default function RegisterPage() {
         </section>
 
         {/* ─── القسم الأيمن: فورم التسجيل ─── */}
-        <section className="w-full md:w-1/2 flex items-center justify-center p-6 md:p-10 lg:p-16 bg-surface">
+        <section className="flex w-full items-center justify-center bg-surface p-4 sm:p-6 md:w-1/2 md:p-8 lg:p-12 xl:p-16">
           <div className="w-full max-w-md">
 
             <div className="mb-6 md:mb-8 text-right">
@@ -176,7 +176,7 @@ export default function RegisterPage() {
                   {/* [UX-01] ✅ */}
                   <button type="button" onClick={() => setShowPassword((p) => !p)}
                     aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"} aria-pressed={showPassword}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors">
+                    className="touch-target absolute left-1 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-lg text-outline transition-colors hover:text-primary sm:left-2">
                     <span aria-hidden="true" className="material-symbols-outlined text-xl">{showPassword ? "visibility_off" : "visibility"}</span>
                   </button>
                 </div>
@@ -191,7 +191,7 @@ export default function RegisterPage() {
                     className="w-full pr-12 pl-12 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm md:text-base" />
                   <button type="button" onClick={() => setShowConfirmPassword((p) => !p)}
                     aria-label={showConfirmPassword ? "إخفاء تأكيد كلمة المرور" : "إظهار تأكيد كلمة المرور"} aria-pressed={showConfirmPassword}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors">
+                    className="touch-target absolute left-1 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-lg text-outline transition-colors hover:text-primary sm:left-2">
                     <span aria-hidden="true" className="material-symbols-outlined text-xl">{showConfirmPassword ? "visibility_off" : "visibility"}</span>
                   </button>
                 </div>
@@ -211,7 +211,7 @@ export default function RegisterPage() {
             </form>
           </div>
         </section>
-      </main>
+      </div>
     </div>
   );
 }

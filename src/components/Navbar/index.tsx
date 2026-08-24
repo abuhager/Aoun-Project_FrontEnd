@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useCallback } from "react";
 import { useNavbar } from "./useNavbar";
 import { useSiteConfig } from "@/context/SiteConfigContext";
 import { useSocket } from "@/context/SocketContext";
@@ -39,6 +39,11 @@ export default function Navbar() {
   } = useNavbar();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuPanelRef = useRef<HTMLDivElement>(null);
+  const profileMenuId = useId();
+  const mobileMenuId = useId();
   const [chatOpen, setChatOpen] = useState(false);
   const [requestedConversationId, setRequestedConversationId] = useState<string | null>(null);
   const [serverChatUnreadCount, setServerChatUnreadCount] = useState(0);
@@ -146,6 +151,49 @@ export default function Navbar() {
     };
   }, [isProfileDropdownOpen, setIsProfileDropdownOpen]);
 
+  useEffect(() => {
+    if (!isProfileDropdownOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setIsProfileDropdownOpen(false);
+      profileButtonRef.current?.focus();
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isProfileDropdownOpen, setIsProfileDropdownOpen]);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const menuButton = mobileMenuButtonRef.current;
+    document.body.style.overflow = "hidden";
+
+    const frame = window.requestAnimationFrame(() => {
+      mobileMenuPanelRef.current
+        ?.querySelector<HTMLElement>("a[href], button:not([disabled])")
+        ?.focus({ preventScroll: true });
+    });
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setIsMobileMenuOpen(false);
+    };
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = previousOverflow;
+      menuButton?.focus({ preventScroll: true });
+    };
+  }, [isMobileMenuOpen, setIsMobileMenuOpen]);
+
   const isNavLinkActive = (href: string) => {
     if (href.startsWith("/#")) return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
@@ -156,9 +204,10 @@ export default function Navbar() {
       <nav
         className="fixed inset-x-0 top-0 z-50 h-16 border-b border-black/[0.05] bg-white/88 backdrop-blur-xl md:h-20"
         dir="rtl"
+        aria-label="التنقل الرئيسي"
       >
         <div className="mx-auto flex h-full max-w-[1480px] items-center px-4 md:px-8">
-          <Link href="/" className="group flex items-center gap-2.5">
+          <Link href="/" aria-label={`العودة إلى الرئيسية — ${platformName}`} className="group flex items-center gap-2.5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-[0_10px_22px_rgba(1,105,111,0.18)] transition-all duration-300 group-hover:scale-[1.03] group-hover:shadow-[0_14px_28px_rgba(1,105,111,0.24)]">
               <span
                 className="material-symbols-outlined text-[21px] text-white"
@@ -184,10 +233,11 @@ export default function Navbar() {
       <nav
         className="fixed inset-x-0 top-0 z-50 border-b border-black/[0.05] bg-white/88 backdrop-blur-xl"
         dir="rtl"
+        aria-label="التنقل الرئيسي"
       >
         <div className="mx-auto flex h-16 max-w-[1480px] items-center justify-between px-3 md:h-[66px] md:px-6">
           <div className="flex shrink-0 items-center">
-            <Link href="/" className="group flex items-center gap-2.5">
+            <Link href="/" aria-label={`العودة إلى الرئيسية — ${platformName}`} className="group flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-[0_8px_20px_rgba(1,105,111,0.18)] transition-all duration-300 group-hover:scale-[1.03] group-hover:shadow-[0_12px_24px_rgba(1,105,111,0.24)] md:h-10 md:w-10">
                 <span
                   className="material-symbols-outlined text-[20px] text-white md:text-[21px]"
@@ -215,6 +265,7 @@ export default function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
+                    aria-current={isActive ? "page" : undefined}
                     className={`group relative inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-bold transition-all duration-300 ${
                       isActive
                         ? "bg-[#f2f7f6] text-primary"
@@ -246,6 +297,7 @@ export default function Navbar() {
                   {isAdmin && (
                     <Link
                       href="/admin"
+                      aria-current={pathname.startsWith("/admin") ? "page" : undefined}
                       className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[13px] font-black transition-all duration-300 ${
                         pathname.startsWith("/admin")
                           ? "bg-red-500 text-white shadow-sm"
@@ -272,7 +324,7 @@ export default function Navbar() {
                   )}
                   <button
                     onClick={openChatInbox}
-                    className="relative flex h-9 w-9 items-center justify-center rounded-xl text-[#77716a] transition-all duration-300 hover:bg-white hover:text-[#181818]"
+                    className="touch-target relative flex h-9 w-9 items-center justify-center rounded-xl text-[#77716a] transition-all duration-300 hover:bg-white hover:text-[#181818]"
                     aria-label="الرسائل"
                     type="button"
                   >
@@ -288,6 +340,7 @@ export default function Navbar() {
                   </div>
                   <div className="relative" ref={dropdownRef}>
                     <button
+                      ref={profileButtonRef}
                       onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                       className={`flex items-center gap-2 rounded-full px-2 py-1.5 transition-all duration-300 ${
                         isProfileDropdownOpen || pathname === "/dashboard"
@@ -295,6 +348,10 @@ export default function Navbar() {
                           : "hover:bg-white"
                       }`}
                       type="button"
+                      aria-label="قائمة الحساب"
+                      aria-haspopup="true"
+                      aria-expanded={isProfileDropdownOpen}
+                      aria-controls={profileMenuId}
                     >
                       <div className="relative shrink-0">
                         <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-primary/15 bg-primary/10">
@@ -326,7 +383,7 @@ export default function Navbar() {
                       </span>
                     </button>
                     {isProfileDropdownOpen && (
-                      <div className="absolute left-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_18px_40px_rgba(15,23,42,0.10)]">
+                      <div id={profileMenuId} aria-label="خيارات الحساب" className="absolute left-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_18px_40px_rgba(15,23,42,0.10)]">
                         <div className="border-b border-black/[0.05] bg-[linear-gradient(180deg,rgba(1,105,111,0.06),rgba(1,105,111,0.02))] px-4 py-3">
                           <p className="truncate text-[13px] font-black text-[#191919]">{user?.name}</p>
                           <p className="mt-1 truncate text-[11px] text-[#8a837b]">{user?.email}</p>
@@ -334,6 +391,7 @@ export default function Navbar() {
                         <div className="p-1.5">
                           <Link
                             href="/dashboard"
+                            aria-current={pathname === "/dashboard" ? "page" : undefined}
                             className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-bold transition-all duration-200 ${
                               pathname === "/dashboard" ? "bg-primary/[0.07] text-primary" : "text-[#635d56] hover:bg-[#f7f4ee] hover:text-[#171717]"
                             }`}
@@ -343,6 +401,7 @@ export default function Navbar() {
                           </Link>
                           <Link
                             href="/profile/edit"
+                            aria-current={pathname === "/profile/edit" ? "page" : undefined}
                             className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-bold transition-all duration-200 ${
                               pathname === "/profile/edit" ? "bg-primary/[0.07] text-primary" : "text-[#635d56] hover:bg-[#f7f4ee] hover:text-[#171717]"
                             }`}
@@ -382,7 +441,7 @@ export default function Navbar() {
               <>
                 <button
                   onClick={openChatInbox}
-                  className="relative flex h-10 w-10 items-center justify-center rounded-xl text-[#77716a] transition-all duration-300 hover:bg-[#f5f2ec] hover:text-[#181818]"
+                  className="touch-target relative flex h-10 w-10 items-center justify-center rounded-xl text-[#77716a] transition-all duration-300 hover:bg-[#f5f2ec] hover:text-[#181818]"
                   aria-label="الرسائل"
                   type="button"
                 >
@@ -399,10 +458,12 @@ export default function Navbar() {
               </>
             )}
             <button
+              ref={mobileMenuButtonRef}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-expanded={isMobileMenuOpen}
-              aria-label="القائمة"
-              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 ${
+              aria-controls={mobileMenuId}
+              aria-label={isMobileMenuOpen ? "إغلاق القائمة" : "فتح القائمة"}
+              className={`touch-target flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 ${
                 isMobileMenuOpen ? "bg-primary/[0.08] text-primary" : "text-[#6b665f] hover:bg-[#f5f2ec] hover:text-[#191919]"
               }`}
               type="button"
@@ -416,21 +477,20 @@ export default function Navbar() {
           </div>
         </div>
 
-        <div className={`md:hidden ${isMobileMenuOpen ? "pointer-events-auto" : "pointer-events-none"}`}>
-          <div
-            onClick={() => setIsMobileMenuOpen(false)}
-            className={`fixed inset-0 top-16 bg-black/20 backdrop-blur-[2px] transition-opacity duration-300 ${
-              isMobileMenuOpen ? "opacity-100" : "opacity-0"
-            }`}
-          />
-          <div
-            className={`absolute left-0 right-0 top-full border-b border-black/[0.05] bg-white/95 backdrop-blur-xl transition-all duration-300 ${
-              isMobileMenuOpen
-                ? "translate-y-0 opacity-100 shadow-[0_18px_36px_rgba(15,23,42,0.08)]"
-                : "pointer-events-none -translate-y-2 opacity-0"
-            }`}
-          >
-            <div className="px-3 py-3">
+        {isMobileMenuOpen && (
+          <div id={mobileMenuId} className="md:hidden">
+            <button
+              type="button"
+              aria-label="إغلاق القائمة"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 top-16 bg-black/20 backdrop-blur-[2px]"
+            />
+            <div
+              ref={mobileMenuPanelRef}
+              aria-label="قائمة التنقل على الهاتف"
+              className="absolute left-0 right-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-b border-black/[0.05] bg-white/95 shadow-[0_18px_36px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+            >
+              <div className="safe-area-bottom px-3 py-3">
               {isMounted && isLoggedIn && (
                 <div className="mb-3 flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,rgba(1,105,111,0.08),rgba(1,105,111,0.03))] p-3">
                   <div className="relative shrink-0">
@@ -463,6 +523,7 @@ export default function Navbar() {
                     <Link
                       key={link.href}
                       href={link.href}
+                      aria-current={isActive ? "page" : undefined}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors duration-200 ${
                         isActive ? "bg-primary/[0.08] text-primary" : "text-[#635d56] hover:bg-[#f7f4ee] hover:text-[#171717]"
@@ -494,6 +555,7 @@ export default function Navbar() {
                   </Link>
                   <Link
                     href="/dashboard"
+                    aria-current={pathname === "/dashboard" ? "page" : undefined}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={`mt-1 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors duration-200 ${
                       pathname === "/dashboard" ? "bg-primary/[0.08] text-primary" : "text-[#635d56] hover:bg-[#f7f4ee] hover:text-[#171717]"
@@ -504,6 +566,7 @@ export default function Navbar() {
                   </Link>
                   <Link
                     href="/profile/edit"
+                    aria-current={pathname === "/profile/edit" ? "page" : undefined}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={`mt-1 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors duration-200 ${
                       pathname === "/profile/edit" ? "bg-primary/[0.08] text-primary" : "text-[#635d56] hover:bg-[#f7f4ee] hover:text-[#171717]"
@@ -515,6 +578,7 @@ export default function Navbar() {
                   {isAdmin && (
                     <Link
                       href="/admin"
+                      aria-current={pathname.startsWith("/admin") ? "page" : undefined}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`mt-1 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors duration-200 ${
                         pathname.startsWith("/admin") ? "bg-red-100 text-red-600" : "text-red-500 hover:bg-red-50"
@@ -552,9 +616,10 @@ export default function Navbar() {
                   </Link>
                 </div>
               )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {isReadyForUserData && chatOpen && (
           <ConversationsDrawer

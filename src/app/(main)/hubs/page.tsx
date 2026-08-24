@@ -17,7 +17,7 @@ export default function HubsPage() {
   } = useHubs();
 
   return (
-    <div className="min-h-screen bg-[#f7f6f2]" dir="rtl">
+    <div className="min-h-dvh bg-[#f7f6f2]" dir="rtl">
       <section className="mx-auto max-w-5xl px-4 pb-20 pt-24 md:px-8 md:pt-28">
         <div className="mb-8">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.07] px-3.5 py-1.5 text-[11px] font-black tracking-wide text-primary">

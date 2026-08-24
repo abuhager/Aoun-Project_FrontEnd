@@ -3,6 +3,8 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 import useSWR from "swr";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import { getAdminReports, resolveAdminReport } from "@/lib/api/reportApi";
@@ -296,7 +298,7 @@ export default function AdminReportsPage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <ResponsiveTable label="جدول بلاغات المنصة">
               <table className="min-w-[1080px] w-full bg-white text-sm">
                 <thead className="bg-white">
                   <tr className="border-b border-[#f0ebe4] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#a39b92]">
@@ -460,7 +462,7 @@ export default function AdminReportsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ResponsiveTable>
           </section>
 
           {/* Pagination */}
@@ -492,16 +494,14 @@ export default function AdminReportsPage() {
 
       {/* Modal */}
       {selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !submitting) setSelected(null);
-          }}
+        <AccessibleDialog
+          ariaLabel="تفاصيل البلاغ واتخاذ الإجراء"
+          onClose={() => setSelected(null)}
+          closeDisabled={submitting}
+          ariaBusy={submitting}
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-[30px] border border-white/20 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]"
         >
-          <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[30px] border border-white/20 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.22)]"
-            dir="rtl"
-          >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[#f0ebe4] px-6 py-5">
               <div>
@@ -513,6 +513,7 @@ export default function AdminReportsPage() {
 
               <button
                 onClick={() => !submitting && setSelected(null)}
+                type="button"
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5f1eb] text-[#6e6860] transition-colors hover:bg-[#ece6de]"
                 aria-label="إغلاق"
               >
@@ -656,6 +657,7 @@ export default function AdminReportsPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={handleResolve}
+                      type="button"
                       disabled={submitting || !adminNote.trim()}
                       className="flex-1 rounded-2xl bg-primary py-3 text-sm font-black text-white transition-all duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -671,6 +673,7 @@ export default function AdminReportsPage() {
 
                     <button
                       onClick={() => setSelected(null)}
+                      type="button"
                       disabled={submitting}
                       className="rounded-2xl border border-[#e2ddd5] px-5 py-3 text-sm font-bold text-[#66615b] transition-all duration-300 hover:bg-[#faf8f4] disabled:opacity-50"
                     >
@@ -692,8 +695,7 @@ export default function AdminReportsPage() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
+        </AccessibleDialog>
       )}
     </div>
   );

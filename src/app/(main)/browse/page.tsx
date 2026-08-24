@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import Navbar from "@/components/Navbar";
 import { useBrowse } from "./hooks/useBrowse";
 import { useSettings } from "@/hooks/useSettings";
 import type { Item } from "@/types/item.types";
@@ -165,13 +164,11 @@ export default function BrowsePage() {
 
   return (
     <div
-      className="min-h-screen bg-[#f8f6f1] text-[#211d18]"
+      className="min-h-dvh bg-[#f8f6f1] text-[#211d18]"
       dir="rtl"
       style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
     >
-      <Navbar />
-
-      <main className="mx-auto max-w-7xl px-4 pb-24 pt-20 md:px-8 md:pt-24">
+      <div className="mx-auto max-w-7xl px-4 pb-24 pt-20 md:px-8 md:pt-24">
         {/* ── Filter Bar ───────────────────────────────────── */}
         <section className="mb-5 overflow-hidden rounded-[30px] border border-[#e8e2d9] bg-white shadow-[0_10px_26px_rgba(15,23,42,0.05)]">
           <div className="border-b border-[#f2ede6] bg-[#fcfaf7] px-5 py-4">
@@ -425,7 +422,7 @@ export default function BrowsePage() {
             )}
           </div>
         )}
-      </main>
+      </div>
 
       {/* ── Floating Add Button ───────────────────────────── */}
       <Link

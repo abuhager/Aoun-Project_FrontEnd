@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 import { deleteAdminItem, getAdminItems } from "@/lib/api/adminApi";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import type { AdminItem } from "@/types/admin.types";
@@ -96,7 +98,10 @@ export default function AdminItemsPage() {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed left-1/2 top-20 z-[60] -translate-x-1/2 rounded-2xl px-6 py-3 text-sm font-black text-white shadow-[0_20px_40px_rgba(15,23,42,0.16)] transition-all ${
+          role={toast.ok ? "status" : "alert"}
+          aria-live={toast.ok ? "polite" : "assertive"}
+          aria-atomic="true"
+          className={`fixed left-1/2 top-20 z-[60] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl px-6 py-3 text-center text-sm font-black text-white shadow-[0_20px_40px_rgba(15,23,42,0.16)] transition-all ${
             toast.ok ? "bg-green-500" : "bg-red-500"
           }`}
         >
@@ -106,14 +111,14 @@ export default function AdminItemsPage() {
 
       {/* Delete Modal */}
       {pendingDelete && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 backdrop-blur-sm"
-          onClick={() => setPendingDelete(null)}
+        <AccessibleDialog
+          ariaLabel="تأكيد حذف الغرض"
+          onClose={() => setPendingDelete(null)}
+          closeDisabled={Boolean(busy[pendingDelete.id])}
+          role="alertdialog"
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 backdrop-blur-sm"
+          panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[30px] border border-white/30 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:p-6"
         >
-          <div
-            className="w-full max-w-md rounded-[30px] border border-white/30 bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.18)]"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="mb-5 flex items-start gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
                 <span className="material-symbols-outlined text-[22px]">
@@ -150,6 +155,7 @@ export default function AdminItemsPage() {
               </label>
 
               <textarea
+                aria-label="سبب حذف الغرض"
                 rows={4}
                 value={deleteNote}
                 onChange={(e) => setDeleteNote(e.target.value)}
@@ -161,6 +167,7 @@ export default function AdminItemsPage() {
             <div className="mt-5 flex gap-3">
               <button
                 onClick={confirmDelete}
+                type="button"
                 className="flex-1 rounded-2xl bg-red-600 py-3 text-sm font-black text-white transition-all duration-300 hover:bg-red-700"
               >
                 تأكيد الحذف
@@ -168,13 +175,13 @@ export default function AdminItemsPage() {
 
               <button
                 onClick={() => setPendingDelete(null)}
+                type="button"
                 className="flex-1 rounded-2xl bg-[#f3f0ea] py-3 text-sm font-black text-[#5f5a54] transition-all duration-300 hover:bg-[#eae5dd]"
               >
                 إلغاء
               </button>
             </div>
-          </div>
-        </div>
+        </AccessibleDialog>
       )}
 
       {/* Header */}
@@ -233,7 +240,7 @@ export default function AdminItemsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <ResponsiveTable label="جدول أغراض المنصة">
           <table className="w-full min-w-[920px] text-sm">
             <thead className="bg-white">
               <tr className="border-b border-[#f0ebe4] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#a39b92]">
@@ -373,7 +380,7 @@ export default function AdminItemsPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </section>
 
       {/* Pagination */}

@@ -4,10 +4,10 @@ import DonationRequestsClient from "./DonationRequestsClient";
 function RequestsPageSkeleton() {
   return (
     <div
-      className="min-h-screen bg-[#f7f6f2] pb-24 text-[#191c1d]"
+      className="min-h-dvh bg-[#f7f6f2] pb-24 text-[#191c1d]"
       dir="rtl"
     >
-      <main className="mx-auto max-w-6xl px-4 pt-20 md:px-8 md:pt-24">
+      <div className="mx-auto max-w-6xl px-4 pt-20 md:px-8 md:pt-24">
         {/* Header skeleton */}
         <section className="mb-8">
           <div className="h-3 w-28 animate-pulse rounded-full bg-[#e9e4dc]" />
@@ -67,7 +67,7 @@ function RequestsPageSkeleton() {
             </div>
           ))}
         </section>
-      </main>
+      </div>
     </div>
   );
 }

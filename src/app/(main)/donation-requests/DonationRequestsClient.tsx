@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/donationRequestApi";
 import { useSettings } from "@/hooks/useSettings";
 import { usePublicHubs } from "@/hooks/usePublicHubs";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 
 const DEFAULT_CATEGORIES = ["كتب", "إلكترونيات", "أثاث", "ملابس", "أخرى"];
 const DEFAULT_LOCATIONS = ["عمان", "الزرقاء", "إربد", "العقبة", "السلط", "مادبا"];
@@ -280,10 +281,13 @@ export default function DonationRequestsClient() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
+    <div className="min-h-dvh bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
       {toast && (
         <div
-          className={`fixed left-1/2 top-24 z-[60] -translate-x-1/2 rounded-2xl px-5 py-3 text-sm font-black text-white shadow-[0_14px_35px_rgba(0,0,0,0.16)] transition-all ${
+          role={toast.ok ? "status" : "alert"}
+          aria-live={toast.ok ? "polite" : "assertive"}
+          aria-atomic="true"
+          className={`fixed left-1/2 top-24 z-[60] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl px-5 py-3 text-center text-sm font-black text-white shadow-[0_14px_35px_rgba(0,0,0,0.16)] transition-all ${
             toast.ok ? "bg-emerald-500" : "bg-red-500"
           }`}
         >
@@ -291,7 +295,7 @@ export default function DonationRequestsClient() {
         </div>
       )}
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 pt-20 md:px-8 md:pt-24">
+      <div className="mx-auto max-w-6xl space-y-6 px-4 pt-20 md:px-8 md:pt-24">
         {/* Hero */}
         <section className="relative overflow-hidden rounded-[32px] border border-black/[0.06] bg-white p-6 shadow-sm md:p-8">
           <div className="absolute left-0 top-0 h-40 w-40 -translate-x-1/3 -translate-y-1/3 rounded-full bg-[#01696f]/[0.06] blur-3xl" />
@@ -554,17 +558,20 @@ export default function DonationRequestsClient() {
             </div>
           )}
         </section>
-      </main>
+      </div>
 
       {respondingTo && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 backdrop-blur-[2px]"
-          onClick={() => !submitting && (resetRespondForm(), setRespondingTo(null))}
+        <AccessibleDialog
+          ariaLabel={`الاستجابة لطلب ${respondingTo.title}`}
+          onClose={() => {
+            resetRespondForm();
+            setRespondingTo(null);
+          }}
+          closeDisabled={submitting}
+          ariaBusy={submitting}
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 backdrop-blur-[2px]"
+          panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-[30px] border border-black/5 bg-white p-5 shadow-[0_30px_80px_rgba(0,0,0,0.22)] sm:p-6 md:p-7"
         >
-          <div
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[30px] border border-black/5 bg-white p-6 shadow-[0_30px_80px_rgba(0,0,0,0.22)] md:p-7"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-[#ecf8f6] px-3 py-1 text-[10px] font-black text-primary">
@@ -585,6 +592,8 @@ export default function DonationRequestsClient() {
               </div>
 
               <button
+                type="button"
+                aria-label="إغلاق نافذة الاستجابة"
                 onClick={() => {
                   resetRespondForm();
                   setRespondingTo(null);
@@ -762,8 +771,7 @@ export default function DonationRequestsClient() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </AccessibleDialog>
       )}
     </div>
   );

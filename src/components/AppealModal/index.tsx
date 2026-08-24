@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { submitAppeal } from "@/lib/api/reportApi";
 import { extractErrorMsg, normalizeApiError } from "@/lib/api/apiError";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 
 interface Props {
   reportId: string;
@@ -47,12 +48,14 @@ export default function AppealModal({ reportId, onClose, onSuccess }: Props) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md px-4"
-      dir="rtl"
+    <AccessibleDialog
+      ariaLabel="الاعتراض على البلاغ"
+      onClose={onClose}
+      closeDisabled={loading}
+      ariaBusy={loading}
+      overlayClassName="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4 backdrop-blur-md"
+      panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-7"
     >
-      <div className="bg-white rounded-3xl p-7 max-w-sm w-full shadow-2xl">
-
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-bold text-[#191c1d]">
             الاعتراض على البلاغ ⚖️
@@ -60,7 +63,8 @@ export default function AppealModal({ reportId, onClose, onSuccess }: Props) {
           <button
             onClick={() => !loading && onClose()}
             disabled={loading}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            type="button"
+            className="touch-target flex items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
             aria-label="إغلاق"
           >
             <span className="material-symbols-outlined">close</span>
@@ -68,7 +72,7 @@ export default function AppealModal({ reportId, onClose, onSuccess }: Props) {
         </div>
 
         {success ? (
-          <div className="text-center py-6">
+          <div className="text-center py-6" role="status" aria-live="polite">
             <span className="material-symbols-outlined text-5xl text-green-500">
               check_circle
             </span>
@@ -93,12 +97,13 @@ export default function AppealModal({ reportId, onClose, onSuccess }: Props) {
               maxLength={1000}
               rows={5}
               placeholder="اكتب توضيحك هنا..."
+              aria-label="نص الاعتراض"
               className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm resize-none mb-1 focus:outline-none focus:border-primary transition-colors"
             />
 
             <div className="flex justify-between items-center mb-4">
               {errorMsg ? (
-                <p className="text-xs text-red-500 font-bold">{errorMsg}</p>
+                <p role="alert" className="text-xs text-red-500 font-bold">{errorMsg}</p>
               ) : (
                 <span />
               )}
@@ -124,7 +129,6 @@ export default function AppealModal({ reportId, onClose, onSuccess }: Props) {
             </button>
           </>
         )}
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

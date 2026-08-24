@@ -7,6 +7,7 @@ import { useState, useId } from "react";
 import { sendPhoneOtp, verifyPhoneOtp } from "@/lib/api/phoneApi";
 import { useAuth } from "@/context/AuthContext";
 import type { VerifyStep } from "@/types/phone.types";
+import AccessibleDialog from "@/components/ui/AccessibleDialog";
 
 interface PhoneVerifyModalProps {
   isOpen:    boolean;
@@ -109,17 +110,19 @@ export default function PhoneVerifyModal({
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={handleClose}
+    <AccessibleDialog
+      ariaLabel="التحقق من رقم الهاتف"
+      onClose={handleClose}
+      closeDisabled={isLoading}
+      ariaBusy={isLoading}
+      overlayClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      panelClassName="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-6"
     >
-      <div
-        className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
-        onClick={(e) => e.stopPropagation()}
-      >
         <button
           onClick={handleClose}
-          className="absolute left-4 top-4 text-zinc-400 hover:text-zinc-600"
+          disabled={isLoading}
+          type="button"
+          className="touch-target absolute left-3 top-3 flex items-center justify-center rounded-xl text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
           aria-label="إغلاق"
         >
           ✕
@@ -152,11 +155,12 @@ export default function PhoneVerifyModal({
                 className="rounded-lg border border-zinc-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                 disabled={isLoading}
                 required
+                autoComplete="tel"
               />
             </div>
 
             {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20">
+              <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
                 {error}
               </p>
             )}
@@ -203,11 +207,12 @@ export default function PhoneVerifyModal({
                 className="rounded-lg border border-zinc-300 px-4 py-2 text-center text-lg font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                 disabled={isLoading}
                 required
+                autoComplete="one-time-code"
               />
             </div>
 
             {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20">
+              <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
                 {error}
               </p>
             )}
@@ -232,7 +237,7 @@ export default function PhoneVerifyModal({
 
         {/* ─── خطوة 3: نجاح ─── */}
         {step === "success" && (
-          <div className="flex flex-col items-center gap-3 py-4 text-center">
+          <div className="flex flex-col items-center gap-3 py-4 text-center" role="status" aria-live="polite">
             <span className="text-5xl">🎉</span>
             <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">
               تم التحقق بنجاح!
@@ -242,7 +247,6 @@ export default function PhoneVerifyModal({
             </p>
           </div>
         )}
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

@@ -151,10 +151,10 @@ export default function LeaderboardPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#f7f6f2] pb-20 font-body text-[#191c1d]"
+      className="min-h-dvh bg-[#f7f6f2] pb-20 font-body text-[#191c1d]"
       dir="rtl"
     >
-      <main className="mx-auto max-w-5xl px-4 pt-20 md:px-6 md:pt-24">
+      <div className="mx-auto max-w-5xl px-4 pt-20 md:px-6 md:pt-24">
         {/* ── Header ── */}
         <section className="mb-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-[11px] font-black text-yellow-700">
@@ -372,7 +372,7 @@ export default function LeaderboardPage() {
             <p className="text-sm font-bold text-gray-500">لا يوجد بيانات بعد</p>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

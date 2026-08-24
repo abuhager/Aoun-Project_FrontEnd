@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getAdminLogs } from "@/lib/api/adminApi";
+import ResponsiveTable from "@/components/ui/ResponsiveTable";
 import type {
   AdminAuditLog,
   AdminPersonReference,
@@ -317,7 +318,7 @@ export default function AdminLogsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <ResponsiveTable label="جدول سجل العمليات الإدارية">
           <table className="min-w-[1180px] w-full text-sm">
             <thead className="bg-white">
               <tr className="border-b border-[#f0ebe4] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#a39b92]">
@@ -525,7 +526,7 @@ export default function AdminLogsPage() {
                   )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </section>
 
       {/* Pagination */}

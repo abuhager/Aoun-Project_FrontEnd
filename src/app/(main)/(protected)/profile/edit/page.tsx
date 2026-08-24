@@ -169,7 +169,7 @@ export default function EditProfilePage() {
   // ✅ FIX [ARCH-PROF-01]: انتظر اكتمال تحميل بيانات المستخدم
   if (isLoading || !mounted) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex justify-center items-center min-h-dvh">
         <span className="material-symbols-outlined text-primary text-4xl animate-spin">
           progress_activity
         </span>
@@ -179,7 +179,7 @@ export default function EditProfilePage() {
 
   if (!isFullyLoaded && !user) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex justify-center items-center min-h-dvh">
         <span className="material-symbols-outlined text-primary text-4xl animate-spin">
           progress_activity
         </span>
@@ -188,7 +188,7 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface pt-20 md:pt-24 pb-12 px-4" dir="rtl">
+    <div className="min-h-dvh bg-surface pt-20 md:pt-24 pb-12 px-4" dir="rtl">
       <div className="max-w-2xl mx-auto">
 
         {/* Back */}

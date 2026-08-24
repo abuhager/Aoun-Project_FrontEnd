@@ -1,17 +1,37 @@
-// src/types/notification.types.ts
-// ✅ DC-16 FIX (Cascading من NJ-05): إضافة actionUrl للـ Notification interface
-//    notifyUser.js (Backend) يرسل actionUrl في metadata لكن الـ Frontend لا يعرّفه
+export type NotificationType =
+  | "item_booked"
+  | "booking_cancelled"
+  | "booking_transferred"
+  | "booking_expiry_reminder"
+  | "waitlist_promoted"
+  | "delivery_done"
+  | "delivery_completed"
+  | "recipient_confirmed"
+  | "matching_item"
+  | "item_deleted"
+  | "item_deleted_by_admin"
+  | "new_rating"
+  | "report_resolved"
+  | "admin_warning"
+  | "admin_ban"
+  | "account_suspended"
+  | "new_message"
+  | "request_new_offer"
+  | "request_cancelled_by_requester"
+  | "request_expired"
+  | "offer_accepted"
+  | "offer_rejected"
+  | "offer_withdrawn";
 
 export interface Notification {
   _id:             string;
-  type:            string;
+  type:            NotificationType;
   title:           string;
   body:            string;
-  // ✅ DC-16: حقول مضافة لتطابق notifyUser.js في Backend
-  actionUrl?:      string | null;   // ← deep-link مثل /items/:id
+  actionUrl?:      string | null;
   itemId?:         string | null;
   conversationId?: string | null;
-  metadata?:       Record<string, unknown> | null;
+  metadata?:       Readonly<Record<string, unknown>> | null;
   isRead:          boolean;
   createdAt:       string;
 }
@@ -19,4 +39,7 @@ export interface Notification {
 export interface NotificationsResponse {
   notifications: Notification[];
   unreadCount:   number;
+  totalCount:    number;
+  hasMore:       boolean;
+  limit:         number;
 }

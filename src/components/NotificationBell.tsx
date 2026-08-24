@@ -27,6 +27,9 @@ const ICONS: Partial<Record<Notification["type"], string>> = {
   offer_withdrawn: "undo",
   new_rating: "star",
   report_resolved: "gavel",
+  admin_warning: "warning",
+  admin_ban: "block",
+  account_suspended: "lock",
   new_message: "chat",
 };
 
@@ -51,6 +54,9 @@ const ICON_COLORS: Partial<Record<Notification["type"], string>> = {
   offer_withdrawn:    "bg-amber-50 text-amber-600",
   new_rating:         "bg-yellow-50 text-yellow-500",
   report_resolved:    "bg-purple-50 text-purple-500",
+  admin_warning:      "bg-amber-50 text-amber-600",
+  admin_ban:          "bg-red-50 text-red-600",
+  account_suspended:  "bg-red-50 text-red-600",
   new_message:        "bg-sky-50 text-sky-500",
 };
 
@@ -59,9 +65,14 @@ export default function NotificationBell() {
   const {
     notifications,
     unreadCount,
+    totalCount,
+    hasMore,
     isOpen,
     isLoading,
+    error,
     toggleOpen,
+    close,
+    refresh,
     handleMarkAllRead,
     handleMarkOneRead,
   } = useNotifications();
@@ -71,17 +82,17 @@ export default function NotificationBell() {
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        if (isOpen) toggleOpen();
+        if (isOpen) close();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen, toggleOpen]);
+  }, [isOpen, close]);
 
   const handleNotificationClick = (notification: Notification) => {
     void handleMarkOneRead(notification);
     if (notification.type === "new_message" && notification.conversationId) {
-      toggleOpen();
+      close();
       window.dispatchEvent(new CustomEvent("aoun:open-conversation", {
         detail: { conversationId: notification.conversationId },
       }));
@@ -91,7 +102,7 @@ export default function NotificationBell() {
       ?? (notification.itemId ? `/items/${notification.itemId}` : null);
     const safeDestination = getSafeRedirectPath(destination, "");
     if (safeDestination) {
-      toggleOpen();
+      close();
       router.push(safeDestination);
     }
   };
@@ -124,6 +135,7 @@ export default function NotificationBell() {
         {/* Badge عدد الإشعارات */}
         {unreadCount > 0 && (
           <span
+            aria-live="polite"
             className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px]
                        animate-[badgePop_0.3s_ease-out] items-center justify-center
                        rounded-full bg-red-500 px-1 text-[9px] font-black
@@ -178,6 +190,23 @@ export default function NotificationBell() {
 
         {/* قائمة الإشعارات */}
         <div className="max-h-[340px] overflow-y-auto">
+          {error && notifications.length > 0 && (
+            <div
+              role="status"
+              className="flex items-center justify-between gap-2 border-b
+                         border-red-100 bg-red-50 px-4 py-2 text-[11px]
+                         font-bold text-red-600"
+            >
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                className="shrink-0 underline underline-offset-2"
+              >
+                إعادة المحاولة
+              </button>
+            </div>
+          )}
           {isLoading ? (
             /* ── Skeleton Loader ── */
             <div className="divide-y divide-black/[0.04]">
@@ -191,6 +220,23 @@ export default function NotificationBell() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-3 px-6 py-10">
+              <span className="material-symbols-outlined text-[30px] text-red-300">
+                cloud_off
+              </span>
+              <p role="alert" className="text-sm font-bold text-red-600">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold
+                           text-white transition-opacity hover:opacity-90"
+              >
+                إعادة المحاولة
+              </button>
             </div>
           ) : notifications.length === 0 ? (
             /* ── Empty State ── */
@@ -272,7 +318,9 @@ export default function NotificationBell() {
         {!isLoading && notifications.length > 0 && (
           <div className="border-t border-black/[0.06] px-4 py-2.5 text-center">
             <span className="text-[11px] text-gray-400">
-              {notifications.length} إشعار
+              {hasMore
+                ? `عرض آخر ${notifications.length} من ${totalCount} إشعار`
+                : `${totalCount} إشعار`}
             </span>
           </div>
         )}

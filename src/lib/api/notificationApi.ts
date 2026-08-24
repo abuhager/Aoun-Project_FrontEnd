@@ -1,11 +1,15 @@
 // src/lib/api/notificationApi.ts
 import axiosInstance from './axiosInstance';
-// استيراد النوع الجديد كـ Object
 import type { NotificationsResponse } from '@/types/notification.types';
 
-export const getNotifications = async (): Promise<NotificationsResponse> => {
-  const { data } = await axiosInstance.get<NotificationsResponse>('/api/notifications');
-  return data; // البيانات هنا تحتوي على notifications و unreadCount
+export const getNotifications = async (
+  limit = 20,
+): Promise<NotificationsResponse> => {
+  const { data } = await axiosInstance.get<NotificationsResponse>(
+    '/api/notifications',
+    { params: { limit } },
+  );
+  return data;
 };
 
 export const markAllRead = async (): Promise<void> => {

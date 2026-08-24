@@ -4,17 +4,13 @@ import useSWR from "swr";
 import {
   getPublicSettings,
   PUBLIC_SETTINGS_CACHE_KEY,
-} from "@/lib/api/settingsApi";
+} from "@/lib/api/publicSettingsApi";
 import type { PublicSettings } from "@/types/settings.types";
 
 export function useSettings() {
   const { data, error, isLoading, mutate } = useSWR<PublicSettings | null>(
     PUBLIC_SETTINGS_CACHE_KEY,
-    getPublicSettings,
-    {
-      revalidateOnFocus: true,
-      dedupingInterval: 60_000,
-    }
+    () => getPublicSettings()
   );
 
   return {

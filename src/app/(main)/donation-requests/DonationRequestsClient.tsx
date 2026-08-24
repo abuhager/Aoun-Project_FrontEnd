@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import axiosInstance from "@/lib/api/axiosInstance";
 import type { DonationRequest } from "@/types/donationRequest.types";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import { useAuth } from "@/context/AuthContext";
@@ -16,6 +15,7 @@ import {
   respondToDonationRequest,
 } from "@/lib/api/donationRequestApi";
 import { useSettings } from "@/hooks/useSettings";
+import { usePublicHubs } from "@/hooks/usePublicHubs";
 
 const DEFAULT_CATEGORIES = ["كتب", "إلكترونيات", "أثاث", "ملابس", "أخرى"];
 const DEFAULT_LOCATIONS = ["عمان", "الزرقاء", "إربد", "العقبة", "السلط", "مادبا"];
@@ -78,8 +78,10 @@ export default function DonationRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
+  const currentUserId = user?._id;
   const { requireHubForBooking } = useSiteConfig();
   const { settings: publicSettings } = useSettings();
+  const { hubs } = usePublicHubs();
   const settingsCategories = publicSettings?.categories?.length
     ? publicSettings.categories
     : DEFAULT_CATEGORIES;
@@ -110,9 +112,6 @@ export default function DonationRequestsClient() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [respondingTo, setRespondingTo] = useState<DonationRequest | null>(null);
-  const [hubs, setHubs] = useState<{ _id: string; name: string; city: string }[]>(
-    []
-  );
   const [submitting, setSubmitting] = useState(false);
 
   const [respondForm, setRespondForm] = useState<{
@@ -130,6 +129,7 @@ export default function DonationRequestsClient() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const stateRef = useRef({ myOnly, selectedCategory, selectedLocation, page });
+  const loadControllerRef = useRef<AbortController | null>(null);
   useEffect(() => {
     stateRef.current = { myOnly, selectedCategory, selectedLocation, page };
   });
@@ -141,22 +141,31 @@ export default function DonationRequestsClient() {
       mine = stateRef.current.myOnly,
       location = stateRef.current.selectedLocation
     ) => {
+      loadControllerRef.current?.abort();
+      const controller = new AbortController();
+      loadControllerRef.current = controller;
       setLoading(true);
       try {
-        const data = await getDonationRequests({
-          page: targetPage,
-          limit: 10,
-          category: category || undefined,
-          location: location || undefined,
-          mine: mine === true ? true : undefined,
-        });
+        const data = await getDonationRequests(
+          {
+            page: targetPage,
+            limit: 10,
+            category: category || undefined,
+            location: location || undefined,
+            mine: mine === true ? true : undefined,
+          },
+          controller.signal
+        );
+        if (controller.signal.aborted) return;
         setRequests(data.requests ?? []);
         setPage(data.page ?? 1);
         setPages(data.pages ?? 1);
       } catch (err) {
-        setToast({ msg: extractErrorMsg(err, "تعذر تحميل طلبات التبرع"), ok: false });
+        if (!controller.signal.aborted) {
+          setToast({ msg: extractErrorMsg(err, "تعذر تحميل طلبات التبرع"), ok: false });
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     },
     []
@@ -199,7 +208,7 @@ export default function DonationRequestsClient() {
     try {
       const res = await cancelDonationRequest(id);
       setToast({ msg: res.msg ?? "تم إلغاء الطلب بنجاح", ok: true });
-      load(stateRef.current.page);
+      void load(stateRef.current.page);
     } catch (err) {
       setToast({ msg: extractErrorMsg(err, "تعذر إلغاء الطلب"), ok: false });
     } finally {
@@ -208,8 +217,9 @@ export default function DonationRequestsClient() {
   };
 
   useEffect(() => {
-    if (!mounted || authLoading || (myOnly && !user)) return;
-    load(1, selectedCategory, myOnly, selectedLocation);
+    if (!mounted || authLoading || (myOnly && !currentUserId)) return;
+    void load(1, selectedCategory, myOnly, selectedLocation);
+    return () => loadControllerRef.current?.abort();
   }, [
     authLoading,
     load,
@@ -217,17 +227,8 @@ export default function DonationRequestsClient() {
     myOnly,
     selectedCategory,
     selectedLocation,
-    user,
+    currentUserId,
   ]);
-
-  useEffect(() => {
-    axiosInstance
-      .get("/api/hubs")
-      .then((r) => {
-        if (Array.isArray(r.data)) setHubs(r.data);
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!toast) return;

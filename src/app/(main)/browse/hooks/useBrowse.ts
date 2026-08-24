@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { getItems } from "@/lib/api/itemApi";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import { useAuth } from "@/context/AuthContext";
 import type { Item } from "@/types/item.types";
 
 const PAGE_SIZE = 12;
 
 export function useBrowse() {
+  const { user, isLoading: authLoading } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -33,6 +35,7 @@ export function useBrowse() {
   }, [debouncedSearch, selectedCity, selectedCategory]);
 
   useEffect(() => {
+    if (authLoading) return;
     const controller = new AbortController();
 
     const fetchItems = async () => {
@@ -73,7 +76,15 @@ export function useBrowse() {
 
     void fetchItems();
     return () => controller.abort();
-  }, [currentPage, debouncedSearch, selectedCity, selectedCategory, refreshKey]);
+  }, [
+    authLoading,
+    currentPage,
+    debouncedSearch,
+    selectedCity,
+    selectedCategory,
+    refreshKey,
+    user?._id,
+  ]);
 
   const retry = useCallback(() => setRefreshKey((value) => value + 1), []);
 

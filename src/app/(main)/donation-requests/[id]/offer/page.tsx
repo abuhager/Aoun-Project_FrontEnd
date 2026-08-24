@@ -10,10 +10,9 @@ import {
   getDonationRequestById,
   respondToDonationRequest,
 } from "@/lib/api/donationRequestApi";
-import { getHubs } from "@/lib/api/hubApi";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import { usePublicHubs } from "@/hooks/usePublicHubs";
 import type { DonationRequest } from "@/types/donationRequest.types";
-import type { SafeHub } from "@/types/hub.types";
 
 const CONDITIONS = ["جديد", "مستعمل ممتاز", "مستعمل جيد"] as const;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -24,8 +23,8 @@ export default function DonationOfferPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { requireHubForBooking } = useSiteConfig();
+  const { hubs, isLoading: hubsLoading } = usePublicHubs();
   const [request, setRequest] = useState<DonationRequest | null>(null);
-  const [hubs, setHubs] = useState<SafeHub[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,10 +45,9 @@ export default function DonationOfferPage() {
     if (authLoading || !id) return;
     const controller = new AbortController();
 
-    Promise.all([getDonationRequestById(id), getHubs(controller.signal)])
-      .then(([requestResponse, hubsResponse]) => {
+    getDonationRequestById(id, controller.signal)
+      .then((requestResponse) => {
         setRequest(requestResponse.request);
-        setHubs(hubsResponse);
       })
       .catch((loadError) => {
         if (!controller.signal.aborted) {
@@ -131,7 +129,7 @@ export default function DonationOfferPage() {
     }
   };
 
-  if (loading || authLoading) {
+  if (loading || authLoading || hubsLoading) {
     return (
       <main className="mx-auto min-h-screen max-w-2xl px-4 pt-24" dir="rtl">
         <div className="h-80 animate-pulse rounded-[30px] bg-white shadow-sm" />

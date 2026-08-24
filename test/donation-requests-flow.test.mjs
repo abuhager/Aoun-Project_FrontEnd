@@ -36,7 +36,8 @@ test('تفاصيل الطلب تستخدم AuthContext ولا تطلب auth\/me 
 
   assert.match(source, /useAuth\(\)/);
   assert.match(source, /request\.requester\?\._id !== currentUserId/);
-  assert.match(source, /getOffersByRequest\(id\)/);
+  assert.match(source, /getOffersByRequest\(id, controller\.signal\)/);
+  assert.match(source, /offersControllerRef\.current\?\.abort\(\)/);
   assert.doesNotMatch(source, /\/api\/auth\/me|axiosInstance/);
 });
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { mutate } from "swr";
 import { getAdminSettings, updateAdminSettings } from "@/lib/api/settingsApi";
+import { PUBLIC_SETTINGS_CACHE_KEY } from "@/lib/api/publicSettingsApi";
 import type { SystemSettings, UpdateSettingsPayload } from "@/types/settings.types";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/context/AuthContext";
@@ -329,21 +331,25 @@ export default function AdminSettingsPage() {
   );
   const dirty = changedFields.length > 0;
 
-  const fetchSettings = useCallback(async () => {
+  const fetchSettings = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const data = await getAdminSettings();
-      setSettings(data);
-      setSavedSettings(data);
+      const data = await getAdminSettings(signal);
+      if (!signal?.aborted) {
+        setSettings(data);
+        setSavedSettings(data);
+      }
     } catch {
-      showToast("تعذر تحميل الإعدادات الحالية", false);
+      if (!signal?.aborted) showToast("تعذر تحميل الإعدادات الحالية", false);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [showToast]);
 
   useEffect(() => {
-    fetchSettings();
+    const controller = new AbortController();
+    void fetchSettings(controller.signal);
+    return () => controller.abort();
   }, [fetchSettings]);
 
   const update = <K extends keyof SystemSettings>(key: K, val: SystemSettings[K]) => {
@@ -380,6 +386,9 @@ export default function AdminSettingsPage() {
       setSettings(result.settings);
       setSavedSettings(result.settings);
       applyPublicSettings(result.publicSettings);
+      await mutate(PUBLIC_SETTINGS_CACHE_KEY, result.publicSettings, {
+        revalidate: false,
+      });
       showToast("✅ تم حفظ الإعدادات بنجاح", true);
     } catch (err: unknown) {
       showToast(extractErrorMsg(err, "حدث خطأ أثناء حفظ الإعدادات"), false);

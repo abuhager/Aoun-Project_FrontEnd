@@ -40,21 +40,25 @@ export default function AdminUsersPage() {
 
   const getUserId = (user: AdminUser) => user._id;
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const data = await getAdminUsers({ page, search });
-      setUsers(data.users);
-      setPages(data.pages);
+      const data = await getAdminUsers({ page, search }, signal);
+      if (!signal?.aborted) {
+        setUsers(data.users);
+        setPages(data.pages);
+      }
     } catch {
-      showToast("تعذر تحميل المستخدمين", false);
+      if (!signal?.aborted) showToast("تعذر تحميل المستخدمين", false);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [page, search, showToast]);
 
   useEffect(() => {
-    loadUsers();
+    const controller = new AbortController();
+    void loadUsers(controller.signal);
+    return () => controller.abort();
   }, [loadUsers]);
 
   const openConfirm = (u: AdminUser, type: PendingAction["type"]) => {

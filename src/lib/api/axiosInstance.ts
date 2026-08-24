@@ -15,8 +15,11 @@ type RefreshQueueItem = {
 
 let refreshQueue: RefreshQueueItem[] = [];
 let isInitialized = false;
-let initQueue: Array<() => void> = [];
-let initQueueRejects: Array<(err: Error) => void> = [];
+type InitQueueItem = {
+  onInitialized: () => void;
+  reject: (error: Error) => void;
+};
+const initQueue = new Set<InitQueueItem>();
 
 const INIT_TIMEOUT_MS =
   parseInt(process.env.NEXT_PUBLIC_AUTH_INIT_TIMEOUT ?? "5000", 10) || 5000;
@@ -43,9 +46,8 @@ export const resetAuthState = () => {
   refreshQueue.forEach(({ reject }) => reject(authError));
   refreshQueue = [];
 
-  initQueueRejects.forEach((rej) => rej(authError));
-  initQueue = [];
-  initQueueRejects = [];
+  [...initQueue].forEach((item) => item.reject(authError));
+  initQueue.clear();
 
   isInitialized = false;
   delete axiosInstance.defaults.headers.common["Authorization"];
@@ -53,10 +55,12 @@ export const resetAuthState = () => {
 
 export const setInitialized = (success = true) => {
   isInitialized = true;
-  if (success) initQueue.forEach((cb) => cb());
-  else initQueueRejects.forEach((rej) => rej(new Error("NOT_AUTHENTICATED")));
-  initQueue = [];
-  initQueueRejects = [];
+  const authError = new Error("NOT_AUTHENTICATED");
+  [...initQueue].forEach((item) => {
+    if (success) item.onInitialized();
+    else item.reject(authError);
+  });
+  initQueue.clear();
 };
 
 function processRefreshQueue(error: Error | null, token: string | null = null) {
@@ -110,25 +114,50 @@ axiosInstance.interceptors.request.use(
 
     if (!isInitialized && !skipInitCheck) {
       return new Promise<InternalAxiosRequestConfig>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error("AUTH_INIT_TIMEOUT")), INIT_TIMEOUT_MS);
+        let settled = false;
+        let timer: ReturnType<typeof setTimeout> | null = null;
 
-        initQueue.push(() => {
-          clearTimeout(timer);
-          if (!accessToken && !isPublicUrl(url, method)) {
-            reject(new Error("NOT_AUTHENTICATED"));
-            return;
-          }
-          if (accessToken) {
-            config.headers = config.headers ?? {};
-            config.headers.Authorization = `Bearer ${accessToken}`;
-          }
-          resolve(config);
-        });
+        const cleanup = () => {
+          if (timer) clearTimeout(timer);
+          config.signal?.removeEventListener?.("abort", onAbort);
+          initQueue.delete(item);
+        };
 
-        initQueueRejects.push((err: Error) => {
-          clearTimeout(timer);
-          reject(err);
-        });
+        const rejectOnce = (error: Error) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(error);
+        };
+
+        const onAbort = () => rejectOnce(new axios.CanceledError("REQUEST_CANCELED"));
+
+        const item: InitQueueItem = {
+          onInitialized: () => {
+            if (settled) return;
+            if (!accessToken && !isPublicUrl(url, method)) {
+              rejectOnce(new Error("NOT_AUTHENTICATED"));
+              return;
+            }
+            if (accessToken) {
+              config.headers = config.headers ?? {};
+              config.headers.Authorization = `Bearer ${accessToken}`;
+            }
+            settled = true;
+            cleanup();
+            resolve(config);
+          },
+          reject: rejectOnce,
+        };
+
+        timer = setTimeout(
+          () => rejectOnce(new Error("AUTH_INIT_TIMEOUT")),
+          INIT_TIMEOUT_MS
+        );
+        initQueue.add(item);
+
+        if (config.signal?.aborted) onAbort();
+        else config.signal?.addEventListener?.("abort", onAbort, { once: true });
       });
     }
 

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 import { resetPassword } from "@/lib/api/authApi";
+import { extractErrorMsg } from "@/lib/api/apiError";
 import { resetAuthState } from "@/lib/api/axiosInstance";
 import { clearSessionCookie } from "@/lib/utils/cookieUtils";
 import {
@@ -15,6 +16,7 @@ const RESET_TOKEN_PATTERN = /^[a-f\d]{64}$/i;
 
 export function useResetPassword() {
   const router = useRouter();
+  const { setUser } = useAuth();
   const hasReadFragment = useRef(false);
 
   const [resetToken, setResetToken] = useState<string | null>(null);
@@ -69,20 +71,14 @@ export function useResetPassword() {
 
       resetAuthState();
       clearSessionCookie();
+      setUser(null);
       setResetToken(null);
       setMessage(response.msg);
       setIsSuccess(true);
 
       window.setTimeout(() => router.push("/login"), 3000);
     } catch (requestError: unknown) {
-      if (axios.isAxiosError(requestError)) {
-        const data = requestError.response?.data as
-          | { msg?: string; message?: string }
-          | undefined;
-        setError(data?.message || data?.msg || "الرابط غير صالح أو انتهت صلاحيته.");
-      } else {
-        setError("حدث خطأ غير متوقع، يرجى المحاولة لاحقاً.");
-      }
+      setError(extractErrorMsg(requestError, "الرابط غير صالح أو انتهت صلاحيته."));
     } finally {
       setLoading(false);
     }

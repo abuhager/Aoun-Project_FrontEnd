@@ -29,6 +29,10 @@ export interface ResetPasswordRequest {
   password: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
 export interface LoginResponse {
   msg:         string;
   accessToken: string;
@@ -56,6 +60,10 @@ export interface ResendOtpResponse {
 }
 
 export interface ResetPasswordResponse {
+  msg: string;
+}
+
+export interface ForgotPasswordResponse {
   msg: string;
 }
 

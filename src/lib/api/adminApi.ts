@@ -9,8 +9,8 @@ import type {
   AdminUsersResponse,
 } from "@/types/admin.types";
 
-export async function getAdminStats(): Promise<AdminStats> {
-  const { data } = await axiosInstance.get<AdminStats>("/api/admin/stats");
+export async function getAdminStats(signal?: AbortSignal): Promise<AdminStats> {
+  const { data } = await axiosInstance.get<AdminStats>("/api/admin/stats", { signal });
   return data;
 }
 
@@ -22,10 +22,13 @@ export async function getAdminUsers({
   page?: number;
   search?: string;
   banned?: boolean;
-} = {}): Promise<AdminUsersResponse> {
+} = {}, signal?: AbortSignal): Promise<AdminUsersResponse> {
   const { data } = await axiosInstance.get<AdminUsersResponse>(
     "/api/admin/users",
-    { params: { page, search, ...(banned === undefined ? {} : { banned }) } }
+    {
+      params: { page, search, ...(banned === undefined ? {} : { banned }) },
+      signal,
+    }
   );
   return data;
 }
@@ -74,12 +77,41 @@ export async function demoteUser(
   return data;
 }
 
-export async function getAdminItems(page = 1): Promise<AdminItemsResponse> {
+export async function getAdminItems(
+  page = 1,
+  signal?: AbortSignal
+): Promise<AdminItemsResponse> {
   const { data } = await axiosInstance.get<AdminItemsResponse>(
     "/api/admin/items",
-    { params: { page } }
+    { params: { page }, signal }
   );
   return data;
+}
+
+interface AdminTableResponse {
+  pages?: number;
+  users?: unknown[];
+  items?: unknown[];
+  hubs?: unknown[];
+  reports?: unknown[];
+}
+
+export async function getAdminTableRows<T>(
+  endpoint: string,
+  params: Record<string, unknown>,
+  signal?: AbortSignal
+): Promise<{ rows: T[]; pages: number }> {
+  const { data } = await axiosInstance.get<AdminTableResponse | unknown[]>(endpoint, {
+    params,
+    signal,
+  });
+
+  if (Array.isArray(data)) return { rows: data as T[], pages: 1 };
+
+  return {
+    rows: (data.users ?? data.items ?? data.hubs ?? data.reports ?? []) as T[],
+    pages: data.pages ?? 1,
+  };
 }
 
 export async function deleteAdminItem(

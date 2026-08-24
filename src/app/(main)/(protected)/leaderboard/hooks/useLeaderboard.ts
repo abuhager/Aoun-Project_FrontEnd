@@ -1,44 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import axios from "axios";
-import axiosInstance from "@/lib/api/axiosInstance";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
 import { SOCKET_EVENTS } from "@/config/socket";
-
-export interface LeaderboardEntry {
-  rank:           number;
-  _id:            string;
-  name:           string;
-  avatar?:        string;
-  trustScore:     number;
-  totalDonations: number;
-  level:          number;
-  title:          string;
-  badge:          string;
-  progress:       number;
-  pointsToNext:   number | null;
-}
-
-export interface MyRank {
-  eligible:       true;
-  rank:           number;
-  trustScore:     number;
-  totalDonations: number;
-  level:          number;
-  title:          string;
-  badge:          string;
-  progress:       number;
-  pointsToNext:   number | null;
-}
-
-interface IneligibleRank {
-  eligible: false;
-  reason:   string;
-}
-
-type MyRankResponse = MyRank | IneligibleRank;
+import {
+  getLeaderboard,
+  getMyLeaderboardRank,
+} from "@/lib/api/leaderboardApi";
+import { isRequestCanceled, normalizeApiError } from "@/lib/api/apiError";
+import type {
+  LeaderboardEntry,
+  MyRank,
+  MyRankResponse,
+} from "@/types/leaderboard.types";
 
 export function useLeaderboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -59,18 +34,15 @@ export function useLeaderboard() {
     abortRef.current = controller;
 
     try {
-      const requests = [
-        axiosInstance.get<{ leaderboard: LeaderboardEntry[] }>(
-          "/api/leaderboard",
-          { signal: controller.signal }
-        ),
+      const requests: [
+        Promise<LeaderboardEntry[]>,
+        Promise<MyRankResponse | null>,
+      ] = [
+        getLeaderboard(controller.signal),
         user?._id
-          ? axiosInstance.get<MyRankResponse>(
-              "/api/leaderboard/me",
-              { signal: controller.signal }
-            )
+          ? getMyLeaderboardRank(controller.signal)
           : Promise.resolve(null),
-      ] as const;
+      ];
 
       const [boardResult, rankResult] = await Promise.allSettled(requests);
 
@@ -78,10 +50,10 @@ export function useLeaderboard() {
 
       if (boardResult.status === "rejected") throw boardResult.reason;
 
-      setLeaderboard(boardResult.value.data.leaderboard);
+      setLeaderboard(boardResult.value);
 
       if (rankResult.status === "fulfilled" && rankResult.value) {
-        const rankData = rankResult.value.data;
+        const rankData = rankResult.value;
         if (rankData.eligible) {
           setMyRank(rankData);
           setRankEligibility(true);
@@ -90,10 +62,10 @@ export function useLeaderboard() {
           setRankEligibility(false);
         }
       } else if (rankResult.status === "rejected") {
+        const rankError = normalizeApiError(rankResult.reason);
         const isLegacyIneligibleResponse =
-          axios.isAxiosError(rankResult.reason) &&
-          rankResult.reason.response?.status === 404 &&
-          rankResult.reason.response?.data?.code === "LEADERBOARD_USER_NOT_ELIGIBLE";
+          rankError.status === 404
+          && rankError.code === "LEADERBOARD_USER_NOT_ELIGIBLE";
 
         setMyRank(null);
         setRankEligibility(isLegacyIneligibleResponse ? false : null);
@@ -108,7 +80,7 @@ export function useLeaderboard() {
       setLastUpdated(new Date());
 
     } catch (err: unknown) {
-      if (axios.isCancel(err)) {
+      if (isRequestCanceled(err)) {
         return;
       }
 

@@ -1,15 +1,8 @@
 import { useState, useEffect } from "react";
-import axiosInstance from "@/lib/api/axiosInstance";
+import { getItems } from "@/lib/api/itemApi";
+import type { Item } from "@/types/item.types";
 
-export interface Item {
-  _id:        string;
-  title:      string;
-  imageUrl?:  string;
-  image?:     string;
-  category?:  string;
-  location?:  string;
-  createdAt:  string;
-}
+type HomeItem = Item & { image?: string };
 
 export const FEATURES = [
   { icon: "person_add",  t: "سجّل حسابك",           d: "انضم لمجتمعنا بخطوات بسيطة وآمنة لحماية خصوصيتك." },
@@ -25,30 +18,34 @@ export const HIGHLIGHTS = [
 ] as const;
 
 export function useHomePage() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL!;
+  const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
-  const [items,   setItems]   = useState<Item[]>([]);
+  const [items,   setItems]   = useState<HomeItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchItems = async () => {
       try {
-        // ✅ Public endpoint — لا token مطلوب
-        const res = await axiosInstance.get("/api/items");
-        setItems(res.data.items ?? []);
+        const response = await getItems({ limit: 4 }, controller.signal);
+        if (!controller.signal.aborted) setItems(response.items ?? []);
       } catch {
-        // صامت — الصفحة الرئيسية لا يجب أن تكسر بسبب API 
+        // الصفحة الرئيسية تبقى قابلة للاستخدام عند تعذر تحميل أحدث الأغراض.
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
-    fetchItems();
-  }, [apiUrl]);
+    void fetchItems();
+    return () => controller.abort();
+  }, []);
 
-  const getImageUrl = (item: Item) => {
+  const getImageUrl = (item: HomeItem) => {
     const raw = item.imageUrl || item.image;
     if (!raw) return "/placeholder.png";
-    return raw.startsWith("http") ? raw : `${apiUrl}/${raw}`;
+    if (raw.startsWith("http")) return raw;
+    const path = raw.startsWith("/") ? raw : `/${raw}`;
+    return `${apiUrl}${path}`;
   };
 
   return { items: items.slice(0, 4), loading, getImageUrl };

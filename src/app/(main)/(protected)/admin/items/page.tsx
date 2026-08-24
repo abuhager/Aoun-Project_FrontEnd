@@ -28,21 +28,25 @@ export default function AdminItemsPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const fetchItems = useCallback(async () => {
+  const fetchItems = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const data = await getAdminItems(page);
-      setItems(data.items);
-      setPages(data.pages);
+      const data = await getAdminItems(page, signal);
+      if (!signal?.aborted) {
+        setItems(data.items);
+        setPages(data.pages);
+      }
     } catch {
-      showToast("تعذر تحميل الأغراض", false);
+      if (!signal?.aborted) showToast("تعذر تحميل الأغراض", false);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [page]);
 
   useEffect(() => {
-    fetchItems();
+    const controller = new AbortController();
+    void fetchItems(controller.signal);
+    return () => controller.abort();
   }, [fetchItems]);
 
   const openDeleteModal = (item: AdminItem) => {

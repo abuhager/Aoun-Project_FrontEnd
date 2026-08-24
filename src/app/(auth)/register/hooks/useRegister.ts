@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import axiosInstance from "@/lib/api/axiosInstance";
-import axios from "axios";
+import { register } from "@/lib/api/authApi";
+import { normalizeApiError } from "@/lib/api/apiError";
 import {
   isStrongPassword,
   PASSWORD_REQUIREMENTS_MESSAGE,
@@ -49,7 +49,7 @@ export function useRegister() {
 
     try {
       setLoading(true);
-      await axiosInstance.post("/api/auth/register", {
+      await register({
         name:     formData.name,
         email:    formData.email,
         phone:    "+962" + formData.phone, // ✅ FIX: أضف + في البداية
@@ -59,12 +59,9 @@ export function useRegister() {
       setSuccess("تم إنشاء الحساب بنجاح! جاري تحويلك للتفعيل... ⏳");
       router.push(`/verify?email=${encodeURIComponent(formData.email)}`);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        setEmailAlreadyExists(err.response?.data?.code === "EMAIL_ALREADY_EXISTS");
-        setError(err.response?.data?.msg || "حدث خطأ أثناء إنشاء الحساب ❌");
-      } else {
-        setError("حدث خطأ غير متوقع ❌");
-      }
+      const apiError = normalizeApiError(err, "حدث خطأ أثناء إنشاء الحساب ❌");
+      setEmailAlreadyExists(apiError.code === "EMAIL_ALREADY_EXISTS");
+      setError(apiError.message);
     } finally {
       setLoading(false);
     }

@@ -19,18 +19,25 @@ export const submitRating = async (
 };
 
 
-export const getUserRatings = async (userId: string): Promise<UserRating[]> => {
+export const getUserRatings = async (
+  userId: string,
+  signal?: AbortSignal
+): Promise<UserRating[]> => {
   const { data } = await axiosInstance.get<{ ratings: UserRating[] }>(
-    `/api/ratings/user/${userId}`
+    `/api/ratings/user/${userId}`,
+    { signal }
   );
   return data.ratings;
 };
 
 
 // ✅ جديد
-export const getPendingRating = async (): Promise<PendingRatingResponse> => {
+export const getPendingRating = async (
+  signal?: AbortSignal
+): Promise<PendingRatingResponse> => {
   const { data } = await axiosInstance.get<PendingRatingResponse>(
-    '/api/ratings/pending'
+    '/api/ratings/pending',
+    { signal }
   );
   return data;
 };

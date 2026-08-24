@@ -8,7 +8,7 @@ import { useSocket } from "@/context/SocketContext";
 import {
   getPublicSettings,
   PUBLIC_SETTINGS_CACHE_KEY,
-} from "@/lib/api/settingsApi";
+} from "@/lib/api/publicSettingsApi";
 import type { PublicSettings } from "@/types/settings.types";
 
 export default function SettingsSync() {
@@ -24,8 +24,11 @@ export default function SettingsSync() {
   );
 
   const refreshSettings = useCallback(async () => {
-    const settings = await getPublicSettings();
-    if (settings) applySettings(settings);
+    try {
+      applySettings(await getPublicSettings());
+    } catch {
+      // تبقى آخر إعدادات سليمة، ويعيد SWR أو اتصال Socket المزامنة لاحقاً.
+    }
   }, [applySettings]);
 
   useEffect(() => {

@@ -6,42 +6,19 @@
 import axiosInstance from "@/lib/api/axiosInstance";
 
 import type {
-  PublicSettings,
   SystemSettings,
   UpdateSettingsPayload,
   UpdateSettingsResponse,
 } from "@/types/settings.types";
 
-export const PUBLIC_SETTINGS_CACHE_KEY = "public-settings";
-
-// ── قراءة الإعدادات العامة (بدون Auth) ──────────────────────────────────────
-
-export async function getPublicSettings(): Promise<PublicSettings | null> {
-  try {
-    const serverBaseUrl = (process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "")
-      .replace(/\/$/, "");
-    if (typeof window === "undefined" && !serverBaseUrl) return null;
-    const endpoint = typeof window === "undefined"
-      ? `${serverBaseUrl}/api/settings/public`
-      : "/api/settings/public";
-
-    const res = await fetch(
-      endpoint,
-      {
-        cache: "no-store",
-        signal: AbortSignal.timeout(5_000),
-      }
-    );
-    if (!res.ok) return null;
-    return res.json() as Promise<PublicSettings>;
-  } catch {
-    return null;
-  }
-}
+export {
+  getPublicSettings,
+  PUBLIC_SETTINGS_CACHE_KEY,
+} from "@/lib/api/publicSettingsApi";
 
 // ── قراءة الإعدادات الكاملة (Admin فقط) ────────────────────────────────────
-export const getAdminSettings = async (): Promise<SystemSettings> => {
-  const { data } = await axiosInstance.get<SystemSettings>("/api/settings");
+export const getAdminSettings = async (signal?: AbortSignal): Promise<SystemSettings> => {
+  const { data } = await axiosInstance.get<SystemSettings>("/api/settings", { signal });
   return data;
 };
 

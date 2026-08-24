@@ -1,17 +1,10 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import axiosInstance from '@/lib/api/axiosInstance';
+import { getAdminTableRows } from '@/lib/api/adminApi';
+import { extractErrorMsg } from '@/lib/api/apiError';
 import { useToast }  from '@/hooks/useToast';
 
 type Deps = Record<string, unknown>;
-
-interface AdminApiResponse {
-  pages?:   number;
-  users?:   unknown[];
-  items?:   unknown[];
-  hubs?:    unknown[];
-  reports?: unknown[];
-}
 
 export function useAdminTable<T>(endpoint: string, deps: Deps = {}) {
   const [rows,    setRows]    = useState<T[]>([]);
@@ -19,43 +12,39 @@ export function useAdminTable<T>(endpoint: string, deps: Deps = {}) {
   const [page,    setPage]    = useState(1);
   const [pages,   setPages]   = useState(1);
 
-  // ✅ FL13-04: تخزين deps في ref — يتجنب إعادة إنشاء load() عند كل render
-  const depsRef = useRef(deps);
-  useEffect(() => { depsRef.current = deps; });
+  const depsKey = JSON.stringify(deps);
+  const requestRef = useRef<AbortController | null>(null);
 
   const { show: showToast, ToastComponent } = useToast();
 
   const load = useCallback(async () => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
     setLoading(true);
     try {
-      const { data } = await axiosInstance.get<AdminApiResponse | unknown[]>(
+      const result = await getAdminTableRows<T>(
         endpoint,
-        { params: { page, ...depsRef.current } }
+        { page, ...(JSON.parse(depsKey) as Deps) },
+        controller.signal
       );
-      let items: unknown[] = [];
-      let totalPages = 1;
-      if (Array.isArray(data)) {
-        items = data;
-      } else if (data && typeof data === 'object') {
-        items = data.users ?? data.items ?? data.hubs ?? data.reports ?? [];
-        totalPages = data.pages ?? 1;
+      if (!controller.signal.aborted) {
+        setRows(result.rows);
+        setPages(result.pages);
       }
-      setRows(items as T[]);
-      setPages(totalPages);
     } catch (err) {
-      let msg = 'تعذر تحميل البيانات';
-      if (err && typeof err === 'object' && 'response' in err) {
-        const e = err as { response?: { data?: { msg?: string } } };
-        if (e.response?.data?.msg) msg = e.response.data.msg;
+      if (!controller.signal.aborted) {
+        showToast(extractErrorMsg(err, 'تعذر تحميل البيانات'), false);
       }
-      showToast(msg, false);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  // ✅ FL13-04: deps لا تدخل هنا — تُقرأ من depsRef
-  }, [endpoint, page, showToast]);
+  }, [depsKey, endpoint, page, showToast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+    return () => requestRef.current?.abort();
+  }, [load]);
 
   return { rows, setRows, loading, page, setPage, pages, reload: load, showToast, ToastComponent };
 }

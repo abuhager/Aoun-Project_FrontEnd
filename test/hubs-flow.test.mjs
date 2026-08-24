@@ -71,14 +71,16 @@ test('صفحة المراكز تعتمد Navbar المشترك وتعرض الب
   assert.match(page, /setSearch/);
   assert.match(page, /setCity/);
   assert.match(page, /إعادة المحاولة/);
-  assert.match(hook, /AbortController/);
+  assert.match(hook, /usePublicHubs/);
+  assert.doesNotMatch(hook, /getHubs\(/);
   assert.match(hook, /toLocaleLowerCase/);
 });
 
 test('اختيار المركز إلزامي عند طلبه ويتيح إعادة جلب القائمة', async () => {
   const source = await readSource('../src/components/HubSelector.tsx');
   assert.match(source, /required=\{required\}/);
-  assert.match(source, /void loadHubs\(\)/);
+  assert.match(source, /void refresh\(\)/);
+  assert.match(source, /usePublicHubs/);
   assert.match(source, /لا توجد مراكز متاحة/);
 });
 

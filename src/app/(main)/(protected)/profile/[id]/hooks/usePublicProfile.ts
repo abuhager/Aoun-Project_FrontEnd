@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import axios from "axios";
-import axiosInstance from "@/lib/api/axiosInstance";
+import { getPublicProfile } from "@/lib/api/profileApi";
+import { extractErrorMsg } from "@/lib/api/apiError";
 import type { ProfileResponse } from "@/types/user.types";
 
 export function usePublicProfile() {
@@ -21,25 +21,24 @@ export function usePublicProfile() {
 
   useEffect(() => {
     if (!id) return;
+    const controller = new AbortController();
+
     const fetchProfile = async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await axiosInstance.get<ProfileResponse>(
-          `/api/auth/profile/${id}`,
-          { params: { page } }
-        );
-        setProfileData(res.data);
+        const response = await getPublicProfile(id, page, controller.signal);
+        if (!controller.signal.aborted) setProfileData(response);
       } catch (requestError: unknown) {
-        const message = axios.isAxiosError(requestError)
-          ? requestError.response?.data?.msg
-          : null;
-        setError(message || "تعذر تحميل الملف الشخصي");
+        if (!controller.signal.aborted) {
+          setError(extractErrorMsg(requestError, "تعذر تحميل الملف الشخصي"));
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
     void fetchProfile();
+    return () => controller.abort();
   }, [id, page]);
 
   const getImageUrl = (url: string) => {

@@ -4,10 +4,11 @@ import type { NotificationsResponse } from '@/types/notification.types';
 
 export const getNotifications = async (
   limit = 20,
+  signal?: AbortSignal,
 ): Promise<NotificationsResponse> => {
   const { data } = await axiosInstance.get<NotificationsResponse>(
     '/api/notifications',
-    { params: { limit } },
+    { params: { limit }, signal },
   );
   return data;
 };

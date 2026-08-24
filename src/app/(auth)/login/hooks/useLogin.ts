@@ -2,20 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { getSafeRedirectPath } from "@/config/routes";
 import { login } from "@/lib/api/authApi";
+import { normalizeApiError } from "@/lib/api/apiError";
 
 interface FormData {
   email:    string;
   password: string;
-}
-
-interface ErrorResponse {
-  msg?:   string;
-  code?:  string;
-  email?: string;
 }
 
 export function useLogin() {
@@ -54,20 +48,14 @@ export function useLogin() {
 
       window.location.replace(getSafeRedirectPath(redirect));
     } catch (err: unknown) {
-      if (axios.isAxiosError<ErrorResponse>(err)) {
-        const errorData = err.response?.data;
+      const apiError = normalizeApiError(err, "حدث خطأ غير متوقع");
 
-        // ✅ إصلاح #1: الـ code الصحيح هو 'EMAIL_NOT_VERIFIED' وليس 'NOT_VERIFIED'
-        if (errorData?.code === "EMAIL_NOT_VERIFIED") {
-          const targetEmail = errorData.email || formData.email;
-          router.push(`/verify?email=${encodeURIComponent(targetEmail)}`);
-          return;
-        }
-
-        setError(errorData?.msg || "حدث خطأ غير متوقع");
-      } else {
-        setError("حدث خطأ غير متوقع");
+      if (apiError.code === "EMAIL_NOT_VERIFIED") {
+        router.push(`/verify?email=${encodeURIComponent(formData.email)}`);
+        return;
       }
+
+      setError(apiError.message);
     } finally {
       setLoading(false);
     }

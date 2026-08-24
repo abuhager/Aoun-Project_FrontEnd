@@ -39,22 +39,3 @@ export interface ToastState {
   msg:  string;
   type: 'success' | 'error' | 'info';
 }
-
-
-// ── ✅ جديد — دالة موحّدة لاستخراج رسالة الخطأ ─────────────
-// بدل ما تكتب في كل catch: (error as any).response?.data?.msg
-// استخدم: extractApiError(error)
-export function extractApiError(error: unknown): string {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error
-  ) {
-    const axiosError = error as { response?: { data?: ApiError } };
-    return axiosError.response?.data?.msg
-      ?? axiosError.response?.data?.message
-      ?? 'حدث خطأ غير متوقع';
-  }
-  if (error instanceof Error) return error.message;
-  return 'حدث خطأ غير متوقع';
-}

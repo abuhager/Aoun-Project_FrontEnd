@@ -1,9 +1,7 @@
 // src/components/HubSelector.tsx — ✅ PATCHED [LOGIC-03]
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getHubs }             from "@/lib/api/hubApi";
-import type { SafeHub }        from "@/types/hub.types";
+import { usePublicHubs } from "@/hooks/usePublicHubs";
 
 interface Props {
   value:     string;
@@ -14,31 +12,13 @@ interface Props {
 }
 
 export function HubSelector({ value, onChange, error, required }: Props) {
-  const [hubs,    setHubs]    = useState<SafeHub[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState("");
-  const requestRef = useRef<AbortController | null>(null);
-
-  const loadHubs = useCallback(async () => {
-    requestRef.current?.abort();
-    const controller = new AbortController();
-    requestRef.current = controller;
-    setLoading(true);
-    setFetchError("");
-    try {
-      const list = await getHubs(controller.signal);
-      if (!controller.signal.aborted) setHubs(list);
-    } catch {
-      if (!controller.signal.aborted) setFetchError("تعذر تحميل مراكز التسليم");
-    } finally {
-      if (!controller.signal.aborted) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadHubs();
-    return () => requestRef.current?.abort();
-  }, [loadHubs]);
+  const {
+    hubs,
+    error: hubsError,
+    isLoading: loading,
+    refresh,
+  } = usePublicHubs();
+  const fetchError = hubsError ? "تعذر تحميل مراكز التسليم" : "";
 
   const selectedHub = hubs.find((h) => h._id === value);
 
@@ -68,7 +48,7 @@ export function HubSelector({ value, onChange, error, required }: Props) {
           <p className="text-red-600 text-xs font-bold">{fetchError}</p>
           <button
             type="button"
-            onClick={() => void loadHubs()}
+            onClick={() => void refresh()}
             className="shrink-0 text-xs font-black text-primary hover:underline"
           >
             إعادة المحاولة

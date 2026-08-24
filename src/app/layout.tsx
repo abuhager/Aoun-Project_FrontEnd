@@ -12,6 +12,7 @@ import { siteConfig }         from "@/config/site.config";
 import { SocketProvider }     from "@/context/SocketContext";
 import MaintenanceGate       from "@/components/MaintenanceGate";
 import SettingsSync          from "@/components/SettingsSync";
+import ApiStateProvider      from "@/components/ApiStateProvider";
 
 // ── الخطوط ─────────────────────────────────────────────────────
 const tajawal = Tajawal({
@@ -67,28 +68,30 @@ export default async function RootLayout({
 
       {/* body: flex column لضمان توزيع العناصر بشكل مرن */}
       <body className="flex min-h-screen flex-col bg-surface text-on-surface antialiased">
-        <SiteConfigProvider
-          key={settings?.updatedAt ?? "site-config-fallback"}
-          settings={settings}
-        >
-          <AuthProvider>
-            {/*
-              ✅ ARCH-01: الترتيب الصحيح للـ Providers (من الخارج للداخل):
-              SiteConfigProvider → AuthProvider → SocketProvider → [Modal + Children]
+        <ApiStateProvider initialPublicSettings={settings}>
+          <SiteConfigProvider
+            key={settings?.updatedAt ?? "site-config-fallback"}
+            settings={settings}
+          >
+            <AuthProvider>
+              {/*
+                ✅ ARCH-01: الترتيب الصحيح للـ Providers (من الخارج للداخل):
+                SiteConfigProvider → AuthProvider → SocketProvider → [Modal + Children]
 
-              القاعدة: كل Provider يعتمد على من يسبقه من الخارج
-              - SocketProvider داخل AuthProvider: لأنه يحتاج بيانات المستخدم للاتصال
-              - GlobalRatingModal داخل SocketProvider: لأنها قد تستمع لـ Socket events
-            */}
-            <SocketProvider>
-              <SettingsSync />
-              <MaintenanceGate>
-                <GlobalRatingModal />
-                {children}
-              </MaintenanceGate>
-            </SocketProvider>
-          </AuthProvider>
-        </SiteConfigProvider>
+                القاعدة: كل Provider يعتمد على من يسبقه من الخارج
+                - SocketProvider داخل AuthProvider: لأنه يحتاج بيانات المستخدم للاتصال
+                - GlobalRatingModal داخل SocketProvider: لأنها قد تستمع لـ Socket events
+              */}
+              <SocketProvider>
+                <SettingsSync />
+                <MaintenanceGate>
+                  <GlobalRatingModal />
+                  {children}
+                </MaintenanceGate>
+              </SocketProvider>
+            </AuthProvider>
+          </SiteConfigProvider>
+        </ApiStateProvider>
       </body>
     </html>
   );

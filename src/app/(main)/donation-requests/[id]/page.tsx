@@ -34,6 +34,8 @@ export default function DonationRequestDetailPage() {
   const currentUserId = user?._id ?? null;
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
+  const offersControllerRef = useRef<AbortController | null>(null);
   const showToast = useCallback((msg: string, ok: boolean) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast({ msg, ok });
@@ -49,31 +51,42 @@ export default function DonationRequestDetailPage() {
 
   const fetchRequest = useCallback(async () => {
     if (!id) return;
+    requestControllerRef.current?.abort();
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     setLoading(true);
     try {
-      const response = await getDonationRequestById(id);
-      setRequest(response.request);
+      const response = await getDonationRequestById(id, controller.signal);
+      if (!controller.signal.aborted) setRequest(response.request);
     } catch (error) {
-      setRequest(null);
-      showToast(extractErrorMsg(error, "تعذر تحميل الطلب"), false);
+      if (!controller.signal.aborted) {
+        setRequest(null);
+        showToast(extractErrorMsg(error, "تعذر تحميل الطلب"), false);
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [id, showToast]);
 
   const fetchOffers = useCallback(async () => {
     if (!id) return;
+    offersControllerRef.current?.abort();
+    const controller = new AbortController();
+    offersControllerRef.current = controller;
     try {
-      const response = await getOffersByRequest(id);
-      setOffers(response.offers ?? []);
+      const response = await getOffersByRequest(id, controller.signal);
+      if (!controller.signal.aborted) setOffers(response.offers ?? []);
     } catch (error) {
-      showToast(extractErrorMsg(error, "تعذر تحميل العروض"), false);
+      if (!controller.signal.aborted) {
+        showToast(extractErrorMsg(error, "تعذر تحميل العروض"), false);
+      }
     }
   }, [id, showToast]);
 
   useEffect(() => {
     if (authLoading) return;
     void fetchRequest();
+    return () => requestControllerRef.current?.abort();
   }, [authLoading, fetchRequest]);
 
   useEffect(() => {
@@ -82,6 +95,7 @@ export default function DonationRequestDetailPage() {
       return;
     }
     void fetchOffers();
+    return () => offersControllerRef.current?.abort();
   }, [currentUserId, fetchOffers, request]);
 
   const handleAcceptOffer = async (offerId: string) => {

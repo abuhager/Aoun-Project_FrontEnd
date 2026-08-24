@@ -1,7 +1,7 @@
 // ✅ src/app/(auth)/forgot-password/hooks/useForgotPassword.ts
 import { useState } from "react";
-import axiosInstance from "@/lib/api/axiosInstance"; // ✅ استخدم المثيل المُهيَّأ
-import axios from "axios";
+import { forgotPassword } from "@/lib/api/authApi";
+import { extractErrorMsg } from "@/lib/api/apiError";
 
 export function useForgotPassword() {
   const [email,   setEmail]   = useState("");
@@ -16,15 +16,10 @@ export function useForgotPassword() {
     setError("");
 
     try {
-      // ✅ لا hardcoded URL — axiosInstance يحمل baseURL من .env
-      const res = await axiosInstance.post("/api/auth/forgot-password", { email });
-      setMessage(res.data.msg);
+      const response = await forgotPassword({ email });
+      setMessage(response.msg);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.msg || "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.");
-      } else {
-        setError("حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.");
-      }
+      setError(extractErrorMsg(err, "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً."));
     } finally {
       setLoading(false);
     }

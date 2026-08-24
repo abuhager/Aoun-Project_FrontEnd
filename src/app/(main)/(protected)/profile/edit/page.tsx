@@ -9,21 +9,14 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import axiosInstance from "@/lib/api/axiosInstance";
+import { changeMyPassword, updateMyProfile } from "@/lib/api/profileApi";
+import { extractErrorMsg } from "@/lib/api/apiError";
+import { useSettings } from "@/hooks/useSettings";
 import {
   isStrongPassword,
   PASSWORD_REQUIREMENTS_MESSAGE,
 } from "@/lib/validation/auth";
 import type { AuthUser } from "@/types/user.types";
-
-// ✅ FIX [SEC-PROF-02]: استخراج msg أو message أياً كان — مطابق للـ Backend
-const extractMsg = (err: unknown, fallback: string): string => {
-  if (err && typeof err === "object" && "response" in err) {
-    const res = (err as { response?: { data?: { msg?: string; message?: string } } }).response;
-    return res?.data?.msg ?? res?.data?.message ?? fallback;
-  }
-  return fallback;
-};
 
 type EditForm = {
   name:            string;
@@ -36,6 +29,7 @@ type EditForm = {
 export default function EditProfilePage() {
   // ✅ FIX [ARCH-PROF-01]: استخدام isFullyLoaded
   const { user, setUser, logout, isFullyLoaded, isLoading } = useAuth();
+  const { settings } = useSettings();
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -54,7 +48,7 @@ export default function EditProfilePage() {
   const [activeTab, setActiveTab] = useState<"info" | "password">("info");
 
   // ✅ FIX [HC-PROF-01]: حجم الصورة الأقصى ديناميكي
-  const [maxAvatarMB, setMaxAvatarMB] = useState<number>(5);
+  const maxAvatarMB = settings?.maxAvatarSizeMb ?? 5;
 
   const fileInputRef                      = useRef<HTMLInputElement>(null);
   const avatarObjectUrlRef                = useRef<string | null>(null);
@@ -72,18 +66,6 @@ export default function EditProfilePage() {
       URL.revokeObjectURL(avatarObjectUrlRef.current);
       avatarObjectUrlRef.current = null;
     }
-  }, []);
-
-  // ✅ FIX [HC-PROF-01]: جلب الحد الأقصى لحجم الصورة من الـ Backend عند أول تحميل
-  useEffect(() => {
-    axiosInstance
-      .get("/api/settings/public")
-      .then(({ data }) => {
-        if (data?.maxAvatarSizeMb) setMaxAvatarMB(data.maxAvatarSizeMb);
-      })
-      .catch(() => {
-        // استخدام القيمة الافتراضية 5MB عند فشل الجلب
-      });
   }, []);
 
   // ✅ FIX [DUP-PROF-02]: عرض phone الحالي من user context
@@ -138,11 +120,7 @@ export default function EditProfilePage() {
       if (form.phone.trim()) fd.append("phone", form.phone.trim());
       if (avatarFile)        fd.append("avatar", avatarFile);
 
-      const { data } = await axiosInstance.put("/api/auth/me", fd, {
-        withCredentials: true,
-      });
-
-      const updatedUser = (data.user ?? data) as AuthUser;
+      const updatedUser = await updateMyProfile(fd);
       setUser(updatedUser);
       setSuccess("تم تحديث المعلومات بنجاح ✓");
       setAvatarFile(null);
@@ -150,7 +128,7 @@ export default function EditProfilePage() {
       setAvatarPreview(updatedUser.avatar ?? "");
     } catch (err: unknown) {
       // ✅ FIX [SEC-PROF-02]: extractMsg يبحث عن msg أولاً
-      setError(extractMsg(err, "حدث خطأ، حاول مجدداً"));
+      setError(extractErrorMsg(err, "حدث خطأ، حاول مجدداً"));
     } finally {
       setLoading(false);
     }
@@ -173,17 +151,16 @@ export default function EditProfilePage() {
 
     setLoading(true); setError(""); setSuccess("");
     try {
-      await axiosInstance.put(
-        "/api/auth/me/password",
-        { currentPassword: form.currentPassword, newPassword: form.newPassword },
-        { withCredentials: true }
-      );
+      await changeMyPassword({
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword,
+      });
       setSuccess("تم تغيير كلمة المرور بنجاح ✓ — سيتم تحويلك لتسجيل الدخول");
       setForm(prev => ({ ...prev, currentPassword: "", newPassword: "", confirmPassword: "" }));
       window.setTimeout(() => void logout(), 900);
     } catch (err: unknown) {
       // ✅ FIX [SEC-PROF-02]
-      setError(extractMsg(err, "كلمة المرور الحالية غير صحيحة"));
+      setError(extractErrorMsg(err, "كلمة المرور الحالية غير صحيحة"));
     } finally {
       setLoading(false);
     }

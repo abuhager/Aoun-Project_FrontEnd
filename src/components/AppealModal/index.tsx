@@ -2,9 +2,8 @@
 "use client";
 
 import { useState } from "react";
-import axios from "axios";
 import { submitAppeal } from "@/lib/api/reportApi";
-import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import { extractErrorMsg, normalizeApiError } from "@/lib/api/apiError";
 
 interface Props {
   reportId: string;
@@ -33,7 +32,7 @@ export default function AppealModal({ reportId, onClose, onSuccess }: Props) {
       onSuccess?.(); // ✅ أبلغ الـ parent بالنجاح فوراً
       setTimeout(onClose, 2000);
     } catch (err) {
-      const code = axios.isAxiosError(err) ? err.response?.data?.code : null;
+      const code = normalizeApiError(err).code;
       setErrorMsg(
         code === 'APPEAL_WINDOW_CLOSED' ? 'انتهت مهلة الاعتراض المحددة' :
         code === 'ALREADY_APPEALED'     ? 'قدّمت اعتراضاً مسبقاً على هذا البلاغ' :

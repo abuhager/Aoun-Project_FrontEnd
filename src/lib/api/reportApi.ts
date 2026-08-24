@@ -36,10 +36,10 @@ export const getAdminReports = async ({
 }: {
   page?: number;
   status?: ReportDecision | 'pending' | 'all';
-} = {}): Promise<AdminReportsResponse> => {
+} = {}, signal?: AbortSignal): Promise<AdminReportsResponse> => {
   const { data } = await axiosInstance.get<AdminReportsResponse>(
     '/api/admin/reports',
-    { params: { page, status: status === 'all' ? undefined : status } }
+    { params: { page, status: status === 'all' ? undefined : status }, signal }
   );
   return data;
 };

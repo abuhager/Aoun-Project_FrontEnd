@@ -5,22 +5,9 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { verifyOtp, resendOtp } from "@/lib/api/authApi";
+import { normalizeApiError } from "@/lib/api/apiError";
 import { resetAuthState } from "@/lib/api/axiosInstance";
 import { clearSessionCookie } from "@/lib/utils/cookieUtils";
-
-type OtpErrorCode =
-  | "OTP_ATTEMPTS_EXCEEDED"
-  | "OTP_EXPIRED"
-  | "RESEND_TOO_FAST"
-  | string;
-
-interface ApiErrorShape {
-  response?: {
-    data?: { msg?: string; code?: OtpErrorCode };
-    status?: number;
-  };
-  isAxiosError?: boolean;
-}
 
 const COOLDOWN_SECONDS = 60;
 const OTP_LENGTH       = 6;
@@ -155,20 +142,15 @@ export function useVerifyEmail() {
         router.push("/login?verified=true");
       }
     } catch (err: unknown) {
-      const axiosErr = err as ApiErrorShape;
-
-      if (axiosErr?.isAxiosError) {
-        const code    = axiosErr.response?.data?.code;
-        const message = axiosErr.response?.data?.msg ?? "حدث خطأ أثناء التحقق من الرمز ❌";
-        setError(message);
-        if (code === "OTP_ATTEMPTS_EXCEEDED" || code === "OTP_EXPIRED") {
-          setShouldResend(true);
-        }
-        resetOtpInputs();
-      } else {
-        setError("حدث خطأ غير متوقع ❌");
-        resetOtpInputs();
+      const apiError = normalizeApiError(err, "حدث خطأ أثناء التحقق من الرمز ❌");
+      setError(apiError.message);
+      if (
+        apiError.code === "OTP_ATTEMPTS_EXCEEDED"
+        || apiError.code === "OTP_EXPIRED"
+      ) {
+        setShouldResend(true);
       }
+      resetOtpInputs();
     } finally {
       setLoading(false);
     }
@@ -189,11 +171,9 @@ export function useVerifyEmail() {
       resetOtpInputs();
       startCooldown();
     } catch (err: unknown) {
-      const axiosErr = err as ApiErrorShape;
-      const code     = axiosErr?.response?.data?.code;
-      const msg      = axiosErr?.response?.data?.msg ?? "فشل الإرسال، حاول بعد قليل ⚠️";
-      setResendMsg(msg);
-      if (code === "RESEND_TOO_FAST") startCooldown();
+      const apiError = normalizeApiError(err, "فشل الإرسال، حاول بعد قليل ⚠️");
+      setResendMsg(apiError.message);
+      if (apiError.code === "RESEND_TOO_FAST") startCooldown();
     } finally {
       setResending(false);
     }

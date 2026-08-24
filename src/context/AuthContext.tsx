@@ -8,14 +8,14 @@ import {
   useRef,
   useState,
 } from "react";
-import axios from "axios";
-import axiosInstance, {
+import {
   resetAuthState,
   setAccessToken,
   setInitialized,
 } from "@/lib/api/axiosInstance";
+import { requestLogout, requestRefreshSession } from "@/lib/api/authApi";
+import { normalizeApiError } from "@/lib/api/apiError";
 import { clearSessionCookie, setSessionCookie } from "@/lib/utils/cookieUtils";
-import type { RefreshResponse } from "@/types/auth.types";
 import type { AuthUser } from "@/types/user.types";
 
 interface AuthContextType {
@@ -69,11 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const refreshRevision = authRevision.current;
     refreshing.current = (async () => {
       try {
-        const { data } = await axiosInstance.post<RefreshResponse>(
-          "/api/auth/refresh",
-          {},
-          { withCredentials: true }
-        );
+        const data = await requestRefreshSession();
 
         if (!data.accessToken || !data.user?._id) {
           throw new Error("INVALID_REFRESH_RESPONSE");
@@ -95,8 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return Boolean(userRef.current);
         }
 
-        const isNetworkError = axios.isAxiosError(error) && !error.response;
-        const status = axios.isAxiosError(error) ? error.response?.status : null;
+        const apiError = normalizeApiError(error);
+        const isNetworkError = apiError.isNetworkError;
+        const status = apiError.status;
 
         if (!isNetworkError || status === 401 || status === 403) {
           clearLocalSession();
@@ -127,10 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     isLoggingOut.current = true;
     try {
-      await axiosInstance.post("/api/auth/logout", {}, { withCredentials: true });
+      await requestLogout();
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status !== 401) {
-        console.error("[AuthContext] logout failed:", error.message);
+      const apiError = normalizeApiError(error);
+      if (apiError.status !== 401) {
+        console.error("[AuthContext] logout failed:", apiError.code ?? apiError.message);
       }
     } finally {
       clearLocalSession();

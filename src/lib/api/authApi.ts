@@ -14,6 +14,8 @@ import type {
   ResendOtpResponse,
   ResetPasswordRequest,
   ResetPasswordResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
   RefreshResponse,
 } from '@/types/auth.types';
 
@@ -72,9 +74,34 @@ export async function resetPassword(
   return data;
 }
 
+// ── طلب رابط إعادة تعيين كلمة المرور ────────────────────────
+export async function forgotPassword(
+  payload: ForgotPasswordRequest
+): Promise<ForgotPasswordResponse> {
+  const { data } = await axiosInstance.post<ForgotPasswordResponse>(
+    '/api/auth/forgot-password',
+    payload
+  );
+  return data;
+}
+
+// طلبات الجلسة الخام تستخدمها AuthContext حتى تتحكم هي بترتيب تحديث الحالة.
+export async function requestRefreshSession(): Promise<RefreshResponse> {
+  const { data } = await axiosInstance.post<RefreshResponse>(
+    '/api/auth/refresh',
+    {},
+    { withCredentials: true }
+  );
+  return data;
+}
+
+export async function requestLogout(): Promise<void> {
+  await axiosInstance.post('/api/auth/logout', {}, { withCredentials: true });
+}
+
 // ── تجديد الجلسة ─────────────────────────────────────────────
 export async function refreshAccessToken(): Promise<string> {
-  const { data } = await axiosInstance.post<RefreshResponse>('/api/auth/refresh', {});
+  const data = await requestRefreshSession();
   if (data.accessToken) {
     setAccessToken(data.accessToken);
     setSessionCookie();
@@ -85,7 +112,7 @@ export async function refreshAccessToken(): Promise<string> {
 // ── تسجيل الخروج ─────────────────────────────────────────────
 export async function logout(): Promise<void> {
   try {
-    await axiosInstance.post('/api/auth/logout', {});
+    await requestLogout();
   } finally {
     setAccessToken(null);
     clearSessionCookie();

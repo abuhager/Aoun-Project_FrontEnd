@@ -117,7 +117,8 @@ export default function ConversationList({
     setSelectedId(secureId);
 
     if ((conv.unreadCount || 0) > 0) {
-      void mutate(
+      const snapshot = conversations;
+      await mutate(
         (current) => current?.map((conversation) => (
           conversation._id === secureId
             ? { ...conversation, unreadCount: 0 }
@@ -127,11 +128,11 @@ export default function ConversationList({
       );
       try {
         await markConversationRead(secureId);
-      } catch (error) {
-        console.error("mark read error:", error);
+      } catch {
+        await mutate(snapshot, { revalidate: true });
       }
     }
-  }, [mutate]);
+  }, [conversations, mutate]);
 
   if (selected) {
     return (

@@ -1,40 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getHubs } from "@/lib/api/hubApi";
-import type { SafeHub } from "@/types/hub.types";
+import { useMemo, useState } from "react";
+import { usePublicHubs } from "@/hooks/usePublicHubs";
 
 export function useHubs() {
-  const [allHubs, setAllHubs] = useState<SafeHub[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const {
+    hubs: allHubs,
+    error: requestError,
+    isLoading,
+    isValidating,
+    refresh,
+  } = usePublicHubs();
   const [search, setSearch] = useState("");
   const [city, setCity] = useState("الكل");
-  const requestRef = useRef<AbortController | null>(null);
-
-  const refetch = useCallback(async () => {
-    requestRef.current?.abort();
-    const controller = new AbortController();
-    requestRef.current = controller;
-    setLoading(true);
-    setError("");
-
-    try {
-      const data = await getHubs(controller.signal);
-      if (!controller.signal.aborted) setAllHubs(data);
-    } catch {
-      if (!controller.signal.aborted) {
-        setError("تعذر تحميل مراكز التسليم. تحقق من الاتصال وحاول مجدداً.");
-      }
-    } finally {
-      if (!controller.signal.aborted) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refetch();
-    return () => requestRef.current?.abort();
-  }, [refetch]);
 
   const cities = useMemo(
     () => [
@@ -58,9 +36,11 @@ export function useHubs() {
   return {
     hubs,
     total: allHubs.length,
-    loading,
-    error,
-    refetch,
+    loading: isLoading || (isValidating && allHubs.length === 0),
+    error: requestError
+      ? "تعذر تحميل مراكز التسليم. تحقق من الاتصال وحاول مجدداً."
+      : "",
+    refetch: refresh,
     search,
     setSearch,
     city,

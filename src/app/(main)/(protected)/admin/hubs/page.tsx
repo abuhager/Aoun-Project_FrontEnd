@@ -2,7 +2,7 @@
 // ✅ PATCHED [BUG-02 | SEC-03 | LOGIC-03]
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/useToast";
 import type { CreateHubPayload, SafeHub, UpdateHubPayload } from "@/types/hub.types";
 import {
@@ -16,14 +16,7 @@ import {
   deactivateHub,
   reactivateHub,
 } from "@/lib/api/hubApi";
-
-function extractErrorMsg(err: unknown, fallback: string): string {
-  if (err && typeof err === "object" && "response" in err) {
-    const e = err as { response?: { data?: { msg?: string; message?: string } } };
-    return e.response?.data?.msg || e.response?.data?.message || fallback;
-  }
-  return fallback;
-}
+import { extractErrorMsg } from "@/lib/api/apiError";
 
 const EMPTY_FORM = {
   name: "",
@@ -47,29 +40,32 @@ export default function AdminHubsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formBusy, setFormBusy] = useState(false);
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const loadControllerRef = useRef<AbortController | null>(null);
 
   const { show: showToast, ToastComponent } = useToast();
 
-  const loadHubs = useCallback(async (signal?: AbortSignal) => {
+  const loadHubs = useCallback(async () => {
+    loadControllerRef.current?.abort();
+    const controller = new AbortController();
+    loadControllerRef.current = controller;
     setLoading(true);
     setLoadError("");
     try {
-      const data = await getAllHubsAdmin(signal);
-      if (!signal?.aborted) setHubs(data);
+      const data = await getAllHubsAdmin(controller.signal);
+      if (!controller.signal.aborted) setHubs(data);
     } catch {
-      if (!signal?.aborted) {
+      if (!controller.signal.aborted) {
         setLoadError("تعذر تحميل مراكز التسليم");
         showToast("تعذر تحميل مراكز التسليم", false);
       }
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [showToast]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    void loadHubs(controller.signal);
-    return () => controller.abort();
+    void loadHubs();
+    return () => loadControllerRef.current?.abort();
   }, [loadHubs]);
 
   const availableCities = useMemo(

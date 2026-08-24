@@ -28,12 +28,14 @@ export function useNotifications() {
   const isMountedRef = useRef(true);
   const hasLoadedRef = useRef(false);
   const requestSequenceRef = useRef(0);
+  const requestControllerRef = useRef<AbortController | null>(null);
   const seenIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      requestControllerRef.current?.abort();
       requestSequenceRef.current += 1;
     };
   }, []);
@@ -42,13 +44,17 @@ export function useNotifications() {
     if (!user?._id || !isLoggedIn || !isMountedRef.current) return;
 
     const requestId = ++requestSequenceRef.current;
+    requestControllerRef.current?.abort();
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     if (!hasLoadedRef.current) setIsLoading(true);
     setError(null);
 
     try {
-      const data = await getNotifications(NOTIFICATION_LIMIT);
+      const data = await getNotifications(NOTIFICATION_LIMIT, controller.signal);
       if (
         !isMountedRef.current
+        || controller.signal.aborted
         || requestId !== requestSequenceRef.current
       ) {
         return;
@@ -65,6 +71,7 @@ export function useNotifications() {
     } catch {
       if (
         isMountedRef.current
+        && !controller.signal.aborted
         && requestId === requestSequenceRef.current
       ) {
         setError('تعذر تحميل الإشعارات');
@@ -72,6 +79,7 @@ export function useNotifications() {
     } finally {
       if (
         isMountedRef.current
+        && !controller.signal.aborted
         && requestId === requestSequenceRef.current
       ) {
         setIsLoading(false);
@@ -86,6 +94,7 @@ export function useNotifications() {
     }
 
     requestSequenceRef.current += 1;
+    requestControllerRef.current?.abort();
     seenIdsRef.current.clear();
     hasLoadedRef.current = false;
     setNotifications([]);

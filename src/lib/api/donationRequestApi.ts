@@ -9,17 +9,21 @@ import type {
   MyDonationRequestsResponse,
 } from '@/types/donationRequest.types';
 
-export async function getDonationRequests(params?: GetDonationRequestsParams) {
+export async function getDonationRequests(
+  params?: GetDonationRequestsParams,
+  signal?: AbortSignal
+) {
   const { data } = await axiosInstance.get<DonationRequestsListResponse>(
     '/api/donation-requests',
-    { params }
+    { params, signal }
   );
   return data;
 }
 
-export async function getMyDonationRequests() {
+export async function getMyDonationRequests(signal?: AbortSignal) {
   const { data } = await axiosInstance.get<MyDonationRequestsResponse>(
-    '/api/donation-requests/me'
+    '/api/donation-requests/me',
+    { signal }
   );
   return data;
 }
@@ -39,16 +43,21 @@ export async function cancelDonationRequest(requestId: string) {
   return data;
 }
 
-export async function getDonationRequestById(requestId: string) {
+export async function getDonationRequestById(
+  requestId: string,
+  signal?: AbortSignal
+) {
   const { data } = await axiosInstance.get<{ request: DonationRequest }>(
-    `/api/donation-requests/${requestId}`
+    `/api/donation-requests/${requestId}`,
+    { signal }
   );
   return data;
 }
 
-export async function getOffersByRequest(requestId: string) {
+export async function getOffersByRequest(requestId: string, signal?: AbortSignal) {
   const { data } = await axiosInstance.get<{ offers: DonationOffer[] }>(
-    `/api/donation-requests/${requestId}/offers`
+    `/api/donation-requests/${requestId}/offers`,
+    { signal }
   );
   return data;
 }

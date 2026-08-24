@@ -42,10 +42,18 @@ export default function AdminOverviewPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAdminStats()
-      .then(setStats)
-      .catch(() => setStats(null))
-      .finally(() => setLoading(false));
+    const controller = new AbortController();
+    getAdminStats(controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setStats(data);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setStats(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
   }, []);
 
   return (

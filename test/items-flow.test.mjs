@@ -44,8 +44,8 @@ test('صفحة الغرض تعتمد حالة الانتظار من Backend وت
   assert.match(hook, /bookingPreviouslyCancelled/);
   assert.match(hook, /leaveWaitlist\(itemId\)/);
   assert.match(hook, /if \(authLoading\) return/);
-  assert.match(hook, /item:recipient_confirmed/);
-  assert.match(hook, /item:deleted/);
+  assert.match(hook, /SOCKET_EVENTS\.ITEM_RECIPIENT_CONFIRMED/);
+  assert.match(hook, /SOCKET_EVENTS\.ITEM_DELETED/);
   assert.doesNotMatch(hook, /localStorage/);
   assert.match(page, /disabled=\{delivery\.isLoading \|\| !isRecipientConfirmedActual\}/);
   assert.match(page, /!isRecipientConfirmedActual &&/);
@@ -88,9 +88,9 @@ test('Dashboard يطابق أحداث ومسارات دورة الحجز ويح�
   assert.match(source, /cancelBooking\(id\)/);
   assert.match(source, /response\.status/);
   assert.match(source, /response\.bookedBy/);
-  assert.match(source, /item:recipient_confirmed/);
-  assert.match(source, /item:delivered/);
-  assert.match(source, /item:booking_transferred/);
+  assert.match(source, /SOCKET_EVENTS\.ITEM_RECIPIENT_CONFIRMED/);
+  assert.match(source, /SOCKET_EVENTS\.ITEM_DELIVERED/);
+  assert.match(source, /SOCKET_EVENTS\.ITEM_BOOKING_TRANSFERRED/);
   assert.match(source, /await loadDashboard\(\)/);
   assert.doesNotMatch(source, /delivery:recipient_confirmed|delivery:completed/);
   assert.doesNotMatch(source, /\/api\/items\/delete\//);

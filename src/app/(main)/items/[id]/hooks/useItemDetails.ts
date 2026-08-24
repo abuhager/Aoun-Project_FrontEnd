@@ -12,6 +12,7 @@ import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import type { Item } from "@/types/item.types";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
+import { SOCKET_EVENTS } from "@/config/socket";
 
 const getId = (field: unknown): string | null => {
   if (!field) return null;
@@ -107,21 +108,26 @@ export function useItemDetails() {
       setItem(null);
       setLoadError("لم يعد هذا الغرض متاحاً");
     };
-    socket.on("item:booked", refreshItem);
-    socket.on("item:booking_cancelled", refreshItem);
-    socket.on("item:booking_transferred", refreshItem);
-    socket.on("item:waitlist_promoted", refreshItem);
-    socket.on("item:recipient_confirmed", refreshItem);
-    socket.on("item:delivered", refreshItem);
-    socket.on("item:deleted", handleDeleted);
+    const resyncAfterReconnect = () => {
+      if (!socket.recovered) void fetchItem(true);
+    };
+    socket.on(SOCKET_EVENTS.ITEM_BOOKED, refreshItem);
+    socket.on(SOCKET_EVENTS.ITEM_BOOKING_CANCELLED, refreshItem);
+    socket.on(SOCKET_EVENTS.ITEM_BOOKING_TRANSFERRED, refreshItem);
+    socket.on(SOCKET_EVENTS.ITEM_WAITLIST_PROMOTED, refreshItem);
+    socket.on(SOCKET_EVENTS.ITEM_RECIPIENT_CONFIRMED, refreshItem);
+    socket.on(SOCKET_EVENTS.ITEM_DELIVERED, refreshItem);
+    socket.on(SOCKET_EVENTS.ITEM_DELETED, handleDeleted);
+    socket.on("connect", resyncAfterReconnect);
     return () => {
-      socket.off("item:booked", refreshItem);
-      socket.off("item:booking_cancelled", refreshItem);
-      socket.off("item:booking_transferred", refreshItem);
-      socket.off("item:waitlist_promoted", refreshItem);
-      socket.off("item:recipient_confirmed", refreshItem);
-      socket.off("item:delivered", refreshItem);
-      socket.off("item:deleted", handleDeleted);
+      socket.off(SOCKET_EVENTS.ITEM_BOOKED, refreshItem);
+      socket.off(SOCKET_EVENTS.ITEM_BOOKING_CANCELLED, refreshItem);
+      socket.off(SOCKET_EVENTS.ITEM_BOOKING_TRANSFERRED, refreshItem);
+      socket.off(SOCKET_EVENTS.ITEM_WAITLIST_PROMOTED, refreshItem);
+      socket.off(SOCKET_EVENTS.ITEM_RECIPIENT_CONFIRMED, refreshItem);
+      socket.off(SOCKET_EVENTS.ITEM_DELIVERED, refreshItem);
+      socket.off(SOCKET_EVENTS.ITEM_DELETED, handleDeleted);
+      socket.off("connect", resyncAfterReconnect);
     };
   }, [fetchItem, itemId, socket]);
 

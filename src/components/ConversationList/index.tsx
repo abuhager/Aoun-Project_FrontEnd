@@ -5,6 +5,7 @@ import Image from "next/image";
 import useSWR from "swr";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
+import { SOCKET_EVENTS } from "@/config/socket";
 import ChatDrawer from "@/components/ChatDrawer";
 import { listConversations, markConversationRead } from "@/lib/api/conversationApi";
 import type { ConversationListItem } from "@/types/chat.types";
@@ -92,15 +93,20 @@ export default function ConversationList({
   useEffect(() => {
     if (!socket) return;
     const refresh = () => void mutate();
+    const resyncAfterReconnect = () => {
+      if (!socket.recovered) refresh();
+    };
 
-    socket.on("conversation_updated", refresh);
-    socket.on("new_conversation", refresh);
-    socket.on("messages_read", refresh);
+    socket.on(SOCKET_EVENTS.CONVERSATION_UPDATED, refresh);
+    socket.on(SOCKET_EVENTS.NEW_CONVERSATION, refresh);
+    socket.on(SOCKET_EVENTS.MESSAGES_READ, refresh);
+    socket.on("connect", resyncAfterReconnect);
 
     return () => {
-      socket.off("conversation_updated", refresh);
-      socket.off("new_conversation", refresh);
-      socket.off("messages_read", refresh);
+      socket.off(SOCKET_EVENTS.CONVERSATION_UPDATED, refresh);
+      socket.off(SOCKET_EVENTS.NEW_CONVERSATION, refresh);
+      socket.off(SOCKET_EVENTS.MESSAGES_READ, refresh);
+      socket.off("connect", resyncAfterReconnect);
     };
   }, [socket, mutate]);
 

@@ -1,5 +1,17 @@
 import type { ChatMessage, ConversationListItem } from './chat.types';
 import type { Notification } from './notification.types';
+import { SOCKET_EVENTS } from '@/config/socket';
+
+export interface SocketReadyPayload {
+  recovered: boolean;
+  serverTime: string;
+  tokenExpiresAt: number;
+}
+
+export interface SocketAuthPayload {
+  code: string;
+  msg: string;
+}
 
 export interface JoinRoomAck {
   ok: boolean;
@@ -31,35 +43,37 @@ export interface MarkReadAck {
 }
 
 export interface ServerToClientEvents {
-  'booking:waitlist': (data: { itemId: string; position: number }) => void;
-  'booking:available': (data: { itemId: string; itemTitle: string }) => void;
-  'booking:confirmed': (data: { itemId: string }) => void;
-  'item:recipient_confirmed': (data: { itemId: string; message: string; itemTitle?: string }) => void;
-  'item:delivered': (data: { itemId: string; message: string; itemTitle?: string }) => void;
-  'item:booked': (data: { itemId: string; bookedBy: string }) => void;
-  'item:booking_cancelled': (data: { itemId: string; status?: string }) => void;
-  'item:booking_transferred': (data: { itemId: string; bookedBy: string }) => void;
-  'item:waitlist_promoted': (data: { itemId: string; status: string }) => void;
-  'item:deleted': (data: { itemId: string }) => void;
-  'leaderboard:update': () => void;
+  [SOCKET_EVENTS.AUTH_FORCED_LOGOUT]: (data: SocketAuthPayload) => void;
+  [SOCKET_EVENTS.AUTH_TOKEN_EXPIRING]: (data: { expiresAt: number }) => void;
+  [SOCKET_EVENTS.AUTH_TOKEN_EXPIRED]: (data: SocketAuthPayload) => void;
+  [SOCKET_EVENTS.SOCKET_READY]: (data: SocketReadyPayload) => void;
 
-  'new_conversation': (conversation: ConversationListItem) => void;
-  'conversation_updated': (data?: { conversationId?: string }) => void;
-  'receive_message': (data: { convId: string; message: ChatMessage }) => void;
-  'typing_status': (data: { convId: string; userId: string; isTyping: boolean }) => void;
-  'messages_read': (data: { conversationId: string; readBy: string }) => void;
-  'chat_error': (data: { scope: string; code?: string; msg: string }) => void;
-  'notification:new': (notification: Notification) => void;
-  'notification:refresh': () => void;
+  [SOCKET_EVENTS.ITEM_RECIPIENT_CONFIRMED]: (data: { itemId: string; message: string; itemTitle?: string }) => void;
+  [SOCKET_EVENTS.ITEM_DELIVERED]: (data: { itemId: string; message: string; itemTitle?: string }) => void;
+  [SOCKET_EVENTS.ITEM_BOOKED]: (data: { itemId: string; bookedBy: string }) => void;
+  [SOCKET_EVENTS.ITEM_BOOKING_CANCELLED]: (data: { itemId: string; status?: string }) => void;
+  [SOCKET_EVENTS.ITEM_BOOKING_TRANSFERRED]: (data: { itemId: string; bookedBy: string }) => void;
+  [SOCKET_EVENTS.ITEM_WAITLIST_PROMOTED]: (data: { itemId: string; status: string }) => void;
+  [SOCKET_EVENTS.ITEM_DELETED]: (data: { itemId: string }) => void;
+  [SOCKET_EVENTS.LEADERBOARD_UPDATE]: (data: { userId: string }) => void;
+
+  [SOCKET_EVENTS.NEW_CONVERSATION]: (conversation: ConversationListItem) => void;
+  [SOCKET_EVENTS.CONVERSATION_UPDATED]: (data?: { conversationId?: string }) => void;
+  [SOCKET_EVENTS.RECEIVE_MESSAGE]: (data: { convId: string; message: ChatMessage }) => void;
+  [SOCKET_EVENTS.TYPING_STATUS]: (data: { convId: string; userId: string; isTyping: boolean }) => void;
+  [SOCKET_EVENTS.MESSAGES_READ]: (data: { conversationId: string; readBy: string }) => void;
+  [SOCKET_EVENTS.CHAT_ERROR]: (data: { scope: string; code?: string; msg: string }) => void;
+  [SOCKET_EVENTS.NOTIFICATION_NEW]: (notification: Notification) => void;
+  [SOCKET_EVENTS.NOTIFICATION_REFRESH]: () => void;
 }
 
 export interface ClientToServerEvents {
-  'join_room': (data: { convId: string }, ack: (response: JoinRoomAck) => void) => void;
-  'leave_room': (data: { convId: string }) => void;
-  'send_message': (
+  [SOCKET_EVENTS.JOIN_ROOM]: (data: { convId: string }, ack: (response: JoinRoomAck) => void) => void;
+  [SOCKET_EVENTS.LEAVE_ROOM]: (data: { convId: string }) => void;
+  [SOCKET_EVENTS.SEND_MESSAGE]: (
     data: { convId: string; text: string; correlationId: string },
     ack: (response: SendMessageAck) => void
   ) => void;
-  'mark_read': (data: { convId: string }, ack?: (response: MarkReadAck) => void) => void;
-  'typing_status': (data: { convId: string; isTyping: boolean }) => void;
+  [SOCKET_EVENTS.MARK_READ]: (data: { convId: string }, ack?: (response: MarkReadAck) => void) => void;
+  [SOCKET_EVENTS.TYPING_STATUS]: (data: { convId: string; isTyping: boolean }) => void;
 }

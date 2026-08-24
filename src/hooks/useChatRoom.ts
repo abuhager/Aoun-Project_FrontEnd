@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
+import { SOCKET_EVENTS } from "@/config/socket";
 import { getConversationMessages } from "@/lib/api/conversationApi";
 import type { ChatMessage } from "@/types/chat.types";
 import type { JoinRoomAck, SendMessageAck } from "@/types/socket.types";
@@ -145,7 +146,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
             }
       ));
 
-      socket.emit("join_room", { convId: conversationId }, (response: JoinRoomAck) => {
+      socket.emit(SOCKET_EVENTS.JOIN_ROOM, { convId: conversationId }, (response: JoinRoomAck) => {
         if (cancelled) return;
         clearJoinTimer();
 
@@ -204,7 +205,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
       }
 
       if (senderId(message) !== user?._id) {
-        socket.emit("mark_read", { convId: conversationId });
+        socket.emit(SOCKET_EVENTS.MARK_READ, { convId: conversationId });
       }
     };
 
@@ -250,9 +251,9 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
       ));
     };
 
-    socket.on("receive_message", onReceiveMessage);
-    socket.on("typing_status", onTypingStatus);
-    socket.on("messages_read", onMessagesRead);
+    socket.on(SOCKET_EVENTS.RECEIVE_MESSAGE, onReceiveMessage);
+    socket.on(SOCKET_EVENTS.TYPING_STATUS, onTypingStatus);
+    socket.on(SOCKET_EVENTS.MESSAGES_READ, onMessagesRead);
     socket.on("connect", joinRoom);
     socket.on("disconnect", onDisconnect);
 
@@ -261,9 +262,9 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
     return () => {
       cancelled = true;
       clearJoinTimer();
-      socket.off("receive_message", onReceiveMessage);
-      socket.off("typing_status", onTypingStatus);
-      socket.off("messages_read", onMessagesRead);
+      socket.off(SOCKET_EVENTS.RECEIVE_MESSAGE, onReceiveMessage);
+      socket.off(SOCKET_EVENTS.TYPING_STATUS, onTypingStatus);
+      socket.off(SOCKET_EVENTS.MESSAGES_READ, onMessagesRead);
       socket.off("connect", joinRoom);
       socket.off("disconnect", onDisconnect);
 
@@ -271,10 +272,15 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
         clearTimeout(typingTimerRef.current);
         typingTimerRef.current = null;
         if (socket.connected) {
-          socket.emit("typing_status", { convId: conversationId, isTyping: false });
+          socket.emit(SOCKET_EVENTS.TYPING_STATUS, {
+            convId: conversationId,
+            isTyping: false,
+          });
         }
       }
-      if (socket.connected) socket.emit("leave_room", { convId: conversationId });
+      if (socket.connected) {
+        socket.emit(SOCKET_EVENTS.LEAVE_ROOM, { convId: conversationId });
+      }
 
       olderRequestRef.current?.abort();
       pendingMessages.forEach((pending) => {
@@ -327,7 +333,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
       pendingRef.current.set(correlationId, { timeout, resolve });
 
       socket.emit(
-        "send_message",
+        SOCKET_EVENTS.SEND_MESSAGE,
         { convId: conversationId, text, correlationId },
         (response: SendMessageAck) => {
           if (!response.ok || !response.message) {
@@ -357,11 +363,17 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
 
   const emitTyping = useCallback(() => {
     if (!socket || !conversationId || !canSendMessages) return;
-    socket.emit("typing_status", { convId: conversationId, isTyping: true });
+    socket.emit(SOCKET_EVENTS.TYPING_STATUS, {
+      convId: conversationId,
+      isTyping: true,
+    });
 
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     typingTimerRef.current = setTimeout(() => {
-      socket.emit("typing_status", { convId: conversationId, isTyping: false });
+      socket.emit(SOCKET_EVENTS.TYPING_STATUS, {
+        convId: conversationId,
+        isTyping: false,
+      });
       typingTimerRef.current = null;
     }, 1_500);
   }, [canSendMessages, conversationId, socket]);

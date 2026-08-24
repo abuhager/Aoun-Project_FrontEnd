@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavbar } from "./useNavbar";
 import { useSiteConfig } from "@/context/SiteConfigContext";
 import { useSocket } from "@/context/SocketContext";
+import { SOCKET_EVENTS } from "@/config/socket";
 import NotificationBell from "@/components/NotificationBell";
 import ConversationsDrawer from "@/components/ConversationsDrawer";
 import { listConversations } from "@/lib/api/conversationApi";
@@ -94,12 +95,17 @@ export default function Navbar() {
       fetchUnreadCount().then((total) => setServerChatUnreadCount(total));
     };
 
-    socket.on("conversation_updated", handleRefresh);
-    socket.on("messages_read", handleRefresh);
+    const resyncAfterReconnect = () => {
+      if (!socket.recovered) handleRefresh();
+    };
+    socket.on(SOCKET_EVENTS.CONVERSATION_UPDATED, handleRefresh);
+    socket.on(SOCKET_EVENTS.MESSAGES_READ, handleRefresh);
+    socket.on("connect", resyncAfterReconnect);
 
     return () => {
-      socket.off("conversation_updated", handleRefresh);
-      socket.off("messages_read", handleRefresh);
+      socket.off(SOCKET_EVENTS.CONVERSATION_UPDATED, handleRefresh);
+      socket.off(SOCKET_EVENTS.MESSAGES_READ, handleRefresh);
+      socket.off("connect", resyncAfterReconnect);
     };
   }, [socket, isReadyForUserData, fetchUnreadCount]);
 

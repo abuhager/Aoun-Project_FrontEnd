@@ -5,6 +5,7 @@ import axios from "axios";
 import axiosInstance from "@/lib/api/axiosInstance";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
+import { SOCKET_EVENTS } from "@/config/socket";
 
 export interface LeaderboardEntry {
   rank:           number;
@@ -139,9 +140,14 @@ export function useLeaderboard() {
   useEffect(() => {
     if (!socket) return;
     const handleUpdate = () => void fetchAll(true);
-    socket.on("leaderboard:update", handleUpdate);
+    const resyncAfterReconnect = () => {
+      if (!socket.recovered) handleUpdate();
+    };
+    socket.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, handleUpdate);
+    socket.on("connect", resyncAfterReconnect);
     return () => {
-      socket.off("leaderboard:update", handleUpdate);
+      socket.off(SOCKET_EVENTS.LEADERBOARD_UPDATE, handleUpdate);
+      socket.off("connect", resyncAfterReconnect);
     };
   }, [fetchAll, socket]);
 

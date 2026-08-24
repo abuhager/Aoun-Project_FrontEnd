@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSocket } from '@/context/SocketContext';
+import { SOCKET_EVENTS } from '@/config/socket';
 import { useAuth }   from '@/context/AuthContext';
 import { getNotifications, markAllRead, markOneRead } from '@/lib/api/notificationApi';
 import type { Notification } from '@/types/notification.types';
@@ -61,12 +62,12 @@ export function useNotifications() {
       }
     };
 
-    socket.on('notification:new', onNew);
-    socket.on('notification:refresh', fetchNotifications);
+    socket.on(SOCKET_EVENTS.NOTIFICATION_NEW, onNew);
+    socket.on(SOCKET_EVENTS.NOTIFICATION_REFRESH, fetchNotifications);
     socket.on('connect', fetchNotifications);
     return () => {
-      socket.off('notification:new', onNew);
-      socket.off('notification:refresh', fetchNotifications);
+      socket.off(SOCKET_EVENTS.NOTIFICATION_NEW, onNew);
+      socket.off(SOCKET_EVENTS.NOTIFICATION_REFRESH, fetchNotifications);
       socket.off('connect', fetchNotifications);
     };
   }, [user?._id, isLoggedIn, fetchNotifications, socket]);

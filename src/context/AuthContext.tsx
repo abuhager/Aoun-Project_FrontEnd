@@ -25,8 +25,11 @@ interface AuthContextType {
   isAuthenticated: boolean;
   setUser: (user: AuthUser | null) => void;
   refreshSession: () => Promise<boolean>;
+  invalidateSession: (reason?: SessionEndReason) => void;
   logout: () => Promise<void>;
 }
+
+export type SessionEndReason = "session_expired" | "account_unavailable";
 
 interface RefreshResponse {
   accessToken: string;
@@ -113,6 +116,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return refreshing.current;
   }, [clearLocalSession]);
 
+  const invalidateSession = useCallback((reason: SessionEndReason = "session_expired") => {
+    clearLocalSession();
+    initialized.current = false;
+    refreshing.current = null;
+    isLoggingOut.current = false;
+    setIsLoading(false);
+
+    if (typeof window !== "undefined") {
+      window.location.replace(`/login?reason=${reason}`);
+    }
+  }, [clearLocalSession]);
+
   const logout = useCallback(async () => {
     isLoggingOut.current = true;
     try {
@@ -161,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: Boolean(user),
         setUser,
         refreshSession,
+        invalidateSession,
         logout,
       }}
     >

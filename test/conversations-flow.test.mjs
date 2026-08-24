@@ -32,7 +32,7 @@ test('Hook المحادثة يعاود الانضمام بعد reconnect ويع�
   const source = await readSource('../src/hooks/useChatRoom.ts');
 
   assert.match(source, /socket\.on\("connect", joinRoom\)/);
-  assert.match(source, /socket\.emit\("join_room"[\s\S]*JoinRoomAck/);
+  assert.match(source, /socket\.emit\(SOCKET_EVENTS\.JOIN_ROOM[\s\S]*JoinRoomAck/);
   assert.match(source, /response\.conversationId !== conversationId/);
   assert.match(source, /canSend:\s*response\.canSend !== false/);
   assert.doesNotMatch(source, /room_joined/);
@@ -55,8 +55,8 @@ test('المحادثة المفتوحة تؤكد القراءة فور وصول 
   ]);
 
   assert.match(hook, /senderId\(message\) !== user\?\._id/);
-  assert.match(hook, /socket\.emit\("mark_read"/);
-  assert.match(socketTypes, /'mark_read'/);
+  assert.match(hook, /socket\.emit\(SOCKET_EVENTS\.MARK_READ/);
+  assert.match(socketTypes, /SOCKET_EVENTS\.MARK_READ/);
   assert.match(socketTypes, /readBy:\s*string/);
 });
 
@@ -79,7 +79,7 @@ test('قائمة المحادثات تستخدم عقد API typed وتحدّث �
   assert.match(source, /useSWR<ConversationListItem\[\]>/);
   assert.match(source, /listConversations\(\)/);
   assert.match(source, /markConversationRead\(secureId\)/);
-  assert.match(source, /conversation_updated/);
+  assert.match(source, /SOCKET_EVENTS\.CONVERSATION_UPDATED/);
   assert.doesNotMatch(source, /Record<string, unknown>|responseData|normalized/);
 });
 
@@ -93,8 +93,8 @@ test('إشعار الرسالة يفتح المحادثة المطلوبة وي�
   assert.match(bell, /aoun:open-conversation/);
   assert.match(bell, /notification\.conversationId/);
   assert.match(navbar, /initialConversationId=\{requestedConversationId\}/);
-  assert.match(notifications, /socket\.on\('notification:new'/);
-  assert.match(notifications, /socket\.on\('notification:refresh'/);
+  assert.match(notifications, /socket\.on\(SOCKET_EVENTS\.NOTIFICATION_NEW/);
+  assert.match(notifications, /socket\.on\(SOCKET_EVENTS\.NOTIFICATION_REFRESH/);
   assert.doesNotMatch(navbar, /notification_new/);
 });
 

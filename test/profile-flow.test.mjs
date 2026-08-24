@@ -30,18 +30,25 @@ test('profile password and avatar checks match the backend contract', async () =
 });
 
 test('leaderboard reuses the authenticated shared socket', async () => {
-  const [source, page] = await Promise.all([
+  const [source, page, api, footer, routes] = await Promise.all([
     readSource('../src/app/(main)/(protected)/leaderboard/hooks/useLeaderboard.ts'),
     readSource('../src/app/(main)/(protected)/leaderboard/page.tsx'),
+    readSource('../src/lib/api/axiosInstance.ts'),
+    readSource('../src/components/Footer.tsx'),
+    readSource('../src/config/routes.ts'),
   ]);
   assert.match(source, /useSocket\(\)/);
   assert.match(source, /Promise\.allSettled/);
   assert.match(source, /LEADERBOARD_USER_NOT_ELIGIBLE/);
-  assert.match(source, /socket\.off\("leaderboard:update"/);
+  assert.match(source, /socket\.off\(SOCKET_EVENTS\.LEADERBOARD_UPDATE/);
   assert.doesNotMatch(source, /socket\.disconnect\(\)/);
   assert.doesNotMatch(source, /from "socket\.io-client"/);
   assert.match(page, /rankEligibility === false/);
   assert.match(page, /حسابك غير مشمول في الترتيب/);
+  assert.doesNotMatch(api, /api\\\/leaderboard/);
+  assert.match(routes, /'\/leaderboard'/);
+  assert.match(footer, /authRequired:\s*true/);
+  assert.match(footer, /!authLoading && isAuthenticated/);
 });
 
 test('root layout declares its smooth-scroll behavior for Next navigation', async () => {

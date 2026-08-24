@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/itemApi";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import { useSocket } from '@/context/SocketContext';
+import { SOCKET_EVENTS } from '@/config/socket';
 import type { Item as DashboardItem, MyItemsResponse } from "@/types/item.types";
 
 export type { DashboardItem as Item };
@@ -174,21 +175,26 @@ export function useDashboard() {
     const refreshLifecycle = () => {
       void loadDashboard().catch(() => {});
     };
+    const resyncAfterReconnect = () => {
+      if (!socket.recovered) refreshLifecycle();
+    };
 
-    socket.on("item:recipient_confirmed", handleRecipientConfirmed);
-    socket.on("item:delivered", handleDeliveryCompleted);
-    socket.on("item:booked", refreshLifecycle);
-    socket.on("item:booking_transferred", refreshLifecycle);
-    socket.on("item:booking_cancelled", refreshLifecycle);
-    socket.on("item:waitlist_promoted", refreshLifecycle);
+    socket.on(SOCKET_EVENTS.ITEM_RECIPIENT_CONFIRMED, handleRecipientConfirmed);
+    socket.on(SOCKET_EVENTS.ITEM_DELIVERED, handleDeliveryCompleted);
+    socket.on(SOCKET_EVENTS.ITEM_BOOKED, refreshLifecycle);
+    socket.on(SOCKET_EVENTS.ITEM_BOOKING_TRANSFERRED, refreshLifecycle);
+    socket.on(SOCKET_EVENTS.ITEM_BOOKING_CANCELLED, refreshLifecycle);
+    socket.on(SOCKET_EVENTS.ITEM_WAITLIST_PROMOTED, refreshLifecycle);
+    socket.on("connect", resyncAfterReconnect);
 
     return () => {
-      socket.off("item:recipient_confirmed", handleRecipientConfirmed);
-      socket.off("item:delivered", handleDeliveryCompleted);
-      socket.off("item:booked", refreshLifecycle);
-      socket.off("item:booking_transferred", refreshLifecycle);
-      socket.off("item:booking_cancelled", refreshLifecycle);
-      socket.off("item:waitlist_promoted", refreshLifecycle);
+      socket.off(SOCKET_EVENTS.ITEM_RECIPIENT_CONFIRMED, handleRecipientConfirmed);
+      socket.off(SOCKET_EVENTS.ITEM_DELIVERED, handleDeliveryCompleted);
+      socket.off(SOCKET_EVENTS.ITEM_BOOKED, refreshLifecycle);
+      socket.off(SOCKET_EVENTS.ITEM_BOOKING_TRANSFERRED, refreshLifecycle);
+      socket.off(SOCKET_EVENTS.ITEM_BOOKING_CANCELLED, refreshLifecycle);
+      socket.off(SOCKET_EVENTS.ITEM_WAITLIST_PROMOTED, refreshLifecycle);
+      socket.off("connect", resyncAfterReconnect);
     };
   }, [loadDashboard, socket, showToast]);
 

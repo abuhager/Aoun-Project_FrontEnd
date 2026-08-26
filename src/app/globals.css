@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/*
+ * Tailwind v4 can remove custom utilities that are only referenced through
+ * reusable/dynamic components. Keep the design-system classes in production
+ * so PageIntro and the shared states render the same locally and on Vercel.
+ */
+@source inline("route-intro route-intro--brand route-intro--ink route-intro--warm route-intro--admin route-intro--compact route-intro__content route-intro__copy route-intro__icon route-intro__eyebrow route-intro__title route-intro__description route-intro__actions route-intro__meta route-intro__orb route-intro__orb--one route-intro__orb--two content-panel content-panel--quiet section-kicker data-chip app-form-section admin-page-hero surface-card surface-card-hover section-title page-shell pill-muted skip-link touch-target safe-area-bottom responsive-table-hint responsive-table-scroll");
+
 @theme {
   /* Core colors */
   --color-primary: #00756b;

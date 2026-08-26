@@ -2,6 +2,13 @@ import type { ReactNode } from "react";
 
 type PageIntroTone = "brand" | "ink" | "warm" | "admin";
 
+const TONE_CLASS_NAMES: Record<PageIntroTone, string> = {
+  brand: "route-intro--brand",
+  ink: "route-intro--ink",
+  warm: "route-intro--warm",
+  admin: "route-intro--admin",
+};
+
 interface PageIntroProps {
   eyebrow: string;
   title: ReactNode;
@@ -27,7 +34,7 @@ export default function PageIntro({
 }: PageIntroProps) {
   return (
     <section
-      className={`route-intro route-intro--${tone} ${compact ? "route-intro--compact" : ""} ${className}`.trim()}
+      className={`route-intro ${TONE_CLASS_NAMES[tone]} ${compact ? "route-intro--compact" : ""} ${className}`.trim()}
     >
       <span aria-hidden="true" className="route-intro__orb route-intro__orb--one" />
       <span aria-hidden="true" className="route-intro__orb route-intro__orb--two" />

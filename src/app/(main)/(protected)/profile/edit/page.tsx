@@ -17,6 +17,7 @@ import {
   PASSWORD_REQUIREMENTS_MESSAGE,
 } from "@/lib/validation/auth";
 import type { AuthUser } from "@/types/user.types";
+import PageIntro from "@/components/ui/PageIntro";
 
 type EditForm = {
   name:            string;
@@ -188,13 +189,13 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="min-h-dvh bg-surface pt-20 md:pt-24 pb-12 px-4" dir="rtl">
-      <div className="max-w-2xl mx-auto">
+    <div className="page-shell pb-16 pt-20" dir="rtl">
+      <div className="site-container space-y-6 md:pt-4">
 
         {/* Back */}
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-on-surface-variant hover:text-primary transition-colors mb-6 group"
+          className="group inline-flex items-center gap-1.5 text-sm font-bold text-on-surface-variant transition-colors hover:text-primary"
         >
           <span className="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform">
             arrow_forward
@@ -202,54 +203,59 @@ export default function EditProfilePage() {
           العودة للوحة التحكم
         </Link>
 
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="relative">
-            <div
-              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary/15 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {avatarPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+        <PageIntro
+          eyebrow="إعدادات الحساب"
+          title="تعديل الملف الشخصي"
+          description="حدّث بيانات التواصل وصورتك، أو غيّر كلمة المرور من مساحة واحدة واضحة وآمنة."
+          icon="manage_accounts"
+          tone="ink"
+          actions={
+            <div className="flex items-center gap-3 rounded-[18px] border border-white/12 bg-white/[0.08] p-2.5 pl-4">
+              <div className="relative h-16 w-16 overflow-hidden rounded-[14px] border border-white/15 bg-white/10">
+                {avatarPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarPreview} alt="معاينة الصورة الشخصية" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="material-symbols-outlined flex h-full w-full items-center justify-center text-4xl text-white/75" style={{ fontVariationSettings: "'FILL' 1" }}>
                     account_circle
                   </span>
-                </div>
-              )}
+                )}
+                <button
+                  type="button"
+                  aria-label="اختيار صورة شخصية"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 flex items-end justify-end bg-black/0 p-1.5 text-white hover:bg-black/20"
+                >
+                  <span className="material-symbols-outlined rounded-lg bg-black/45 p-1 text-[15px]">photo_camera</span>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="max-w-48 truncate text-xs font-black text-white" suppressHydrationWarning>
+                  {mounted ? (user?.email ?? "") : ""}
+                </p>
+                <p className="mt-1 text-[10px] font-bold text-white/55">
+                  {avatarFile ? "صورة جديدة جاهزة للحفظ" : `JPEG أو PNG أو WebP · حتى ${maxAvatarMB}MB`}
+                </p>
+              </div>
             </div>
-            <button
-              type="button"
-              aria-label="اختيار صورة شخصية"
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute -bottom-1.5 -left-1.5 w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[14px]">photo_camera</span>
-            </button>
-            <input
-              ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-              className="hidden" onChange={handleAvatarChange}
-            />
-          </div>
+          }
+        />
 
-          <div>
-            <h1 className="text-2xl font-black text-[#191c1d]">تعديل الملف الشخصي</h1>
-            <p className="text-sm text-on-surface-variant mt-0.5" suppressHydrationWarning>
-              {mounted ? (user?.email ?? "") : ""}
+        <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
+          <aside className="content-panel p-2 lg:sticky lg:top-24">
+            <p className="px-3 pb-2 pt-2 text-[10px] font-black tracking-[0.12em] text-on-surface-soft">
+              أقسام الحساب
             </p>
-            {avatarFile && (
-              <span className="text-xs text-primary font-bold mt-1 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                صورة جديدة جاهزة للرفع
-              </span>
-            )}
-          </div>
-        </div>
 
         {/* Tabs */}
-        <div className="flex bg-surface-container-highest rounded-2xl p-1 mb-6">
+        <div className="flex gap-1 lg:flex-col">
           {([
             { key: "info",     label: "المعلومات الشخصية", icon: "person" },
             { key: "password", label: "كلمة المرور",        icon: "lock"   },
@@ -257,10 +263,10 @@ export default function EditProfilePage() {
             <button
               key={tab.key}
               onClick={() => { setActiveTab(tab.key); setError(""); setSuccess(""); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all lg:justify-start ${
                 activeTab === tab.key
-                  ? "bg-white text-primary shadow-sm"
-                  : "text-on-surface-variant hover:text-primary"
+                  ? "bg-primary text-white shadow-[0_8px_20px_rgba(0,117,107,0.2)]"
+                  : "text-on-surface-variant hover:bg-primary-softer hover:text-primary"
               }`}
             >
               <span
@@ -273,6 +279,13 @@ export default function EditProfilePage() {
             </button>
           ))}
         </div>
+            <div className="mt-2 hidden rounded-xl bg-surface-container-low p-3 text-[11px] leading-6 text-on-surface-soft lg:block">
+              <span className="material-symbols-outlined mb-2 block text-[19px] text-primary">shield_lock</span>
+              لا نعرض رقم هاتفك أو بريدك ضمن الملف العام.
+            </div>
+          </aside>
+
+          <div className="min-w-0">
 
         {/* Status */}
         {error && (
@@ -289,7 +302,7 @@ export default function EditProfilePage() {
         )}
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#edeeef] overflow-hidden">
+        <div className="content-panel overflow-hidden">
 
           {/* ── Tab: المعلومات ── */}
           {activeTab === "info" && (
@@ -351,7 +364,7 @@ export default function EditProfilePage() {
 
               <button
                 type="submit" disabled={loading}
-                className="w-full py-3.5 bg-primary text-white rounded-full font-bold text-sm shadow-md hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+                className="btn-primary w-full rounded-xl py-3.5 text-sm active:scale-[0.99]"
               >
                 {loading ? (
                   <><span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>جاري الحفظ...</>
@@ -453,7 +466,7 @@ export default function EditProfilePage() {
 
               <button
                 type="submit" disabled={loading}
-                className="w-full py-3.5 bg-primary text-white rounded-full font-bold text-sm shadow-md hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+                className="btn-primary w-full rounded-xl py-3.5 text-sm active:scale-[0.99]"
               >
                 {loading ? (
                   <><span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>جاري التغيير...</>
@@ -466,7 +479,7 @@ export default function EditProfilePage() {
         </div>
 
         {/* Danger Zone */}
-        <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl">
+        <div className="mt-5 rounded-[16px] border border-red-100 bg-red-50 p-4">
           <p className="text-xs font-black text-red-600 mb-1 flex items-center gap-1.5">
             <span className="material-symbols-outlined text-[16px]">warning</span>منطقة الخطر
           </p>
@@ -480,6 +493,8 @@ export default function EditProfilePage() {
           </button>
         </div>
 
+      </div>
+        </div>
       </div>
     </div>
   );

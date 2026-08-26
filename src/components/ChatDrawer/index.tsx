@@ -13,16 +13,35 @@ interface ChatDrawerProps {
   onClose: () => void;
 }
 
+interface ChatPanelProps {
+  conversationId: string;
+  itemTitle: string;
+  onClose: () => void;
+  onBack?: () => void;
+}
+
 const getSenderId = (message: ChatMessage) => (
   typeof message.sender === "string" ? message.sender : message.sender._id
 );
 
-export default function ChatDrawer({
+const formatMessageTime = (createdAt: string) => (
+  new Date(createdAt).toLocaleTimeString("ar-JO", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
+);
+
+/**
+ * محتوى المحادثة دون غلاف Dialog. يُستخدم داخل مركز الرسائل ذي العمودين،
+ * ويُغلّف بحوار مستقل عند فتح محادثة مباشرة من صفحة الغرض.
+ */
+export function ChatPanel({
   conversationId,
   itemTitle,
-  isOpen,
   onClose,
-}: ChatDrawerProps) {
+  onBack,
+}: ChatPanelProps) {
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -42,30 +61,21 @@ export default function ChatDrawer({
     sendMessage,
     emitTyping,
     loadOlder,
-  } = useChatRoom({ conversationId: isOpen ? conversationId : null });
+  } = useChatRoom({ conversationId: conversationId });
 
   const trimmedText = text.trim();
   const canSend = Boolean(trimmedText) && canSendMessages && !isSending;
   const lastMessageId = messages.at(-1)?._id;
 
   useEffect(() => {
-    if (isOpen) inputRef.current?.focus();
-  }, [isOpen]);
+    const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [conversationId]);
 
   useEffect(() => {
-    if (isOpen && lastMessageId) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
-  }, [isOpen, isTyping, lastMessageId]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+    if (!lastMessageId) return;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [isTyping, lastMessageId]);
 
   const handleSend = async () => {
     if (!canSend) return;
@@ -82,7 +92,7 @@ export default function ChatDrawer({
     const container = scrollRef.current;
     const previousHeight = container?.scrollHeight || 0;
     await loadOlder();
-    requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
       if (container) container.scrollTop += container.scrollHeight - previousHeight;
     });
   };
@@ -94,64 +104,121 @@ export default function ChatDrawer({
     return null;
   }, [error, isJoined, loading]);
 
-  if (!isOpen) return null;
-
   return (
-    <AccessibleDialog
-      ariaLabel={`محادثة حول ${itemTitle}`}
-      onClose={onClose}
-      panelAs="aside"
-      overlayClassName="fixed inset-0 z-[120] bg-[#0f1720]/45 backdrop-blur-[3px]"
-      panelClassName="fixed inset-y-0 right-0 z-[121] flex h-dvh w-full max-w-md flex-col overflow-hidden border-l border-black/5 bg-[#fcfbf8] shadow-2xl"
-    >
-        <div className="flex shrink-0 items-center justify-between border-b border-[#ece7de] bg-white px-5 py-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-black tracking-tight text-[#1c2324]">المحادثة الفورية</p>
-            <p className="mt-0.5 truncate text-[11px] font-bold text-primary">{itemTitle}</p>
-          </div>
+    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white" aria-label={`محادثة حول ${itemTitle}`}>
+      <header className="relative flex min-h-[76px] shrink-0 items-center gap-3 border-b border-black/[0.07] bg-white px-4 sm:px-5">
+        {onBack && (
           <button
             type="button"
-            aria-label="إغلاق"
-            onClick={onClose}
-            className="touch-target flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-[#6f6a63] transition-all hover:bg-[#f2eee8]"
+            onClick={onBack}
+            aria-label="العودة إلى قائمة المحادثات"
+            className="touch-target flex shrink-0 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-primary lg:hidden"
           >
-            ✕
+            <span className="material-symbols-outlined text-[21px]">arrow_forward</span>
           </button>
+        )}
+
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-container">
+          <span
+            aria-hidden="true"
+            className="material-symbols-outlined text-[22px]"
+            style={{ fontVariationSettings: "'FILL' 1, 'wght' 500" }}
+          >
+            forum
+          </span>
         </div>
 
-        <div
-          ref={scrollRef}
-          className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#f8f6f2] px-4 py-4"
-          role="log"
-          aria-live="polite"
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className="truncate text-[15px] font-black text-on-surface sm:text-base">
+              {itemTitle}
+            </h2>
+            <span className="hidden shrink-0 rounded-md bg-surface-container-low px-2 py-1 text-[9px] font-black text-on-surface-soft sm:inline-flex">
+              محادثة الغرض
+            </span>
+          </div>
+          <p className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-on-surface-soft">
+            <span
+              aria-hidden="true"
+              className={`h-1.5 w-1.5 rounded-full ${isJoined ? "bg-emerald-500" : "bg-amber-400"}`}
+            />
+            {isJoined ? "متصل وآمن" : "جاري تجهيز الاتصال"}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          aria-label="إغلاق المحادثة"
+          onClick={onClose}
+          className="touch-target flex shrink-0 items-center justify-center rounded-xl text-on-surface-soft hover:bg-surface-container-low hover:text-on-surface"
         >
+          <span className="material-symbols-outlined text-[21px]">close</span>
+        </button>
+      </header>
+
+      <div
+        ref={scrollRef}
+        className="relative min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain bg-[#f3f7f5] px-4 py-5 sm:px-6"
+        role="log"
+        aria-live="polite"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.32]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, rgba(0,117,107,.10) 1px, transparent 0)",
+            backgroundSize: "24px 24px",
+          }}
+        />
+
+        <div className="relative mx-auto min-h-full w-full max-w-3xl">
           {hasOlder && (
-            <div className="pb-2 text-center">
+            <div className="pb-4 text-center">
               <button
                 type="button"
                 disabled={loadingOlder}
                 onClick={handleLoadOlder}
-                className="rounded-full border border-[#ded8cf] bg-white px-4 py-1.5 text-[11px] font-bold text-primary disabled:opacity-50"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-outline-variant bg-white px-3.5 py-1.5 text-[10px] font-black text-primary shadow-sm hover:border-primary/30 disabled:opacity-50"
               >
+                <span className="material-symbols-outlined text-[15px]">history</span>
                 {loadingOlder ? "جاري التحميل..." : "تحميل رسائل أقدم"}
               </button>
             </div>
           )}
 
           {isJoined && !canSendMessages && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[11px] font-bold text-amber-700">
+            <div className="mx-auto mb-4 max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-[11px] font-bold leading-6 text-amber-800">
               هذه المحادثة للقراءة فقط لأن الحجز لم يعد قائماً.
             </div>
           )}
 
           {statusMessage && messages.length === 0 && (
-            <div className={`py-8 text-center text-xs font-semibold ${error ? "text-red-500" : "animate-pulse text-[#9b948c]"}`}>
+            <div
+              role={error ? "alert" : "status"}
+              className={`flex min-h-52 flex-col items-center justify-center gap-3 text-center text-xs font-bold ${
+                error ? "text-danger" : "text-on-surface-soft"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`material-symbols-outlined text-3xl ${loading ? "animate-pulse" : ""}`}
+              >
+                {error ? "wifi_off" : "sync"}
+              </span>
               {statusMessage}
             </div>
           )}
+
           {!loading && !error && messages.length === 0 && (
-            <div className="py-12 text-center text-xs font-bold text-[#9b948c]">
-              ابدأ المحادثة لتنسيق آلية وموعد التسليم.
+            <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/10 bg-white text-primary shadow-sm">
+                <span className="material-symbols-outlined text-[30px]">handshake</span>
+              </div>
+              <h3 className="mt-4 text-base font-black text-on-surface">ابدأ تنسيق عملية التسليم</h3>
+              <p className="mt-1 max-w-sm text-xs font-semibold leading-6 text-on-surface-soft">
+                اتفقا هنا على الموعد والمكان المناسبين، ولا تشارك بيانات حساسة لا يحتاجها الطرف الآخر.
+              </p>
             </div>
           )}
 
@@ -165,25 +232,29 @@ export default function ChatDrawer({
             return (
               <div
                 key={message._id}
-                className={`flex w-full ${isMe ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : "mt-4"}`}
+                className={`flex w-full ${isGrouped ? "mt-1" : "mt-4"}`}
               >
-                <div className="flex max-w-[75%] flex-col">
+                <div className={`max-w-[84%] sm:max-w-[72%] ${isMe ? "ml-auto" : "mr-auto"}`}>
                   <div
-                    className={`break-words whitespace-pre-wrap px-4 py-2.5 text-right text-[13.5px] leading-relaxed shadow-sm ${
+                    className={`break-words whitespace-pre-wrap px-4 py-2.5 text-right text-[13px] leading-7 shadow-sm sm:text-[13.5px] ${
                       isMe
-                        ? "self-end rounded-[18px] rounded-tl-sm bg-primary text-white"
-                        : "self-start rounded-[18px] rounded-tr-sm border border-[#ece7de] bg-white text-[#1f2526]"
+                        ? "rounded-2xl rounded-br-md bg-primary text-white shadow-[0_8px_20px_rgba(0,117,107,.14)]"
+                        : "rounded-2xl rounded-bl-md border border-black/[0.07] bg-white text-on-surface"
                     } ${isTemporary ? "opacity-60" : ""}`}
                   >
                     <p>{message.text}</p>
-                    <span className={`mt-1 block text-left text-[9px] font-medium ${isMe ? "text-white/70" : "text-[#9b948c]"}`}>
-                      {isTemporary
-                        ? "جاري الإرسال..."
-                        : new Date(message.createdAt).toLocaleTimeString("ar-JO", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          })}
+                    <span
+                      dir="ltr"
+                      className={`mt-1 flex items-center justify-end gap-1 text-[9px] font-semibold ${
+                        isMe ? "text-white/65" : "text-on-surface-soft"
+                      }`}
+                    >
+                      {isTemporary ? "جاري الإرسال..." : formatMessageTime(message.createdAt)}
+                      {isMe && !isTemporary && (
+                        <span className="material-symbols-outlined text-[12px]">
+                          {message.read ? "done_all" : "done"}
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -192,60 +263,94 @@ export default function ChatDrawer({
           })}
 
           {error && messages.length > 0 && (
-            <p className="py-2 text-center text-[11px] font-bold text-red-500">{error}</p>
+            <p role="alert" className="py-3 text-center text-[11px] font-bold text-danger">
+              {error}
+            </p>
           )}
 
           {isTyping && (
-            <div className="mt-2 flex justify-start">
-              <div className="flex items-center gap-1 rounded-[16px] border border-[#ece7de] bg-white px-3.5 py-2 text-[11px] font-bold text-primary">
-                <span>جاري كتابة رد</span>
-                <span className="animate-pulse">...</span>
+            <div className="mt-3 flex justify-start">
+              <div className="inline-flex items-center gap-2 rounded-xl border border-black/[0.07] bg-white px-3.5 py-2 text-[10px] font-bold text-on-surface-variant shadow-sm">
+                <span>الطرف الآخر يكتب</span>
+                <span aria-hidden="true" className="flex gap-0.5">
+                  <i className="h-1 w-1 animate-pulse rounded-full bg-primary" />
+                  <i className="h-1 w-1 animate-pulse rounded-full bg-primary [animation-delay:120ms]" />
+                  <i className="h-1 w-1 animate-pulse rounded-full bg-primary [animation-delay:240ms]" />
+                </span>
               </div>
             </div>
           )}
           <div ref={bottomRef} />
         </div>
+      </div>
 
-        <div className="shrink-0 border-t bg-white px-4 py-3.5">
-          <div className="flex items-end gap-2 rounded-[24px] border border-[#ece7de] bg-[#fbfaf8] p-1.5 transition-all focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/10">
-            <button
-              type="button"
-              aria-label="إرسال الرسالة"
-              onClick={handleSend}
-              disabled={!canSend}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-40 disabled:hover:translate-y-0"
-            >
-              <span className="material-symbols-outlined text-[17px]">
-                {isSending ? "hourglass_top" : "send"}
-              </span>
-            </button>
-            <textarea
-              ref={inputRef}
-              rows={1}
-              maxLength={2_000}
-              value={text}
-              disabled={!canSendMessages}
-              onChange={(event) => {
-                setText(event.target.value);
-                emitTyping();
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  void handleSend();
-                }
-              }}
-              placeholder={
-                !isJoined
-                  ? "جاري الاتصال..."
-                  : canSendMessages
-                    ? "اكتب رسالة لتنسيق التسليم..."
-                    : "المحادثة للقراءة فقط"
+      <footer className="safe-area-bottom shrink-0 border-t border-black/[0.07] bg-white px-3 pt-3 sm:px-5">
+        <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-outline-variant bg-[#f8faf9] p-1.5 shadow-[inset_0_1px_2px_rgba(16,37,34,.025)] focus-within:border-primary/45 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/[0.07]">
+          <button
+            type="button"
+            aria-label="إرسال الرسالة"
+            onClick={handleSend}
+            disabled={!canSend}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-[0_7px_16px_rgba(0,117,107,.2)] hover:bg-primary-container disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {isSending ? "hourglass_top" : "send"}
+            </span>
+          </button>
+          <textarea
+            ref={inputRef}
+            rows={1}
+            maxLength={2_000}
+            value={text}
+            disabled={!canSendMessages}
+            onChange={(event) => {
+              setText(event.target.value);
+              emitTyping();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                void handleSend();
               }
-              className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-3 py-2.5 text-right text-[13px] font-bold text-[#1c2324] outline-none placeholder:font-medium placeholder:text-[#b0a99f] disabled:opacity-60"
-            />
-          </div>
+            }}
+            placeholder={
+              !isJoined
+                ? "جاري الاتصال..."
+                : canSendMessages
+                  ? "اكتب رسالة..."
+                  : "المحادثة للقراءة فقط"
+            }
+            className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2.5 text-right text-sm font-semibold text-on-surface outline-none placeholder:font-medium placeholder:text-on-surface-soft/70 disabled:opacity-60"
+          />
         </div>
+        <p className="mx-auto mt-1.5 max-w-3xl text-center text-[9px] font-semibold text-on-surface-soft/80">
+          Enter للإرسال · Shift + Enter لسطر جديد
+        </p>
+      </footer>
+    </section>
+  );
+}
+
+export default function ChatDrawer({
+  conversationId,
+  itemTitle,
+  isOpen,
+  onClose,
+}: ChatDrawerProps) {
+  if (!isOpen) return null;
+
+  return (
+    <AccessibleDialog
+      ariaLabel={`محادثة حول ${itemTitle}`}
+      onClose={onClose}
+      overlayClassName="fixed inset-0 z-[120] flex items-center justify-center bg-[#071d21]/70 p-0 backdrop-blur-[5px] sm:p-5"
+      panelClassName="relative flex h-dvh w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[min(760px,calc(100dvh-2.5rem))] sm:max-w-3xl sm:rounded-[24px] sm:border sm:border-white/20"
+    >
+      <ChatPanel
+        conversationId={conversationId}
+        itemTitle={itemTitle}
+        onClose={onClose}
+      />
     </AccessibleDialog>
   );
 }

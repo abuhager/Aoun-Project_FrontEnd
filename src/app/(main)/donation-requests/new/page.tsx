@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createDonationRequest, getMyDonationRequests } from '@/lib/api/donationRequestApi';
 import { extractErrorMsg } from '@/lib/api/extractErrorMsg';
 import { useSettings } from '@/hooks/useSettings';
+import PageIntro from '@/components/ui/PageIntro';
 
 const DEFAULT_CATEGORIES = ['كتب', 'إلكترونيات', 'أثاث', 'ملابس', 'أخرى'];
 const DEFAULT_LOCATIONS  = ['عمان', 'الزرقاء', 'إربد', 'العقبة', 'السلط', 'مادبا'];
@@ -67,7 +68,7 @@ export default function NewDonationRequestPage() {
   };
 
   return (
-    <div className="page-shell pb-24" dir="rtl">
+    <div className="page-shell pb-24 pt-20" dir="rtl">
       {toast && (
         <div
           role={toast.ok ? "status" : "alert"}
@@ -78,23 +79,30 @@ export default function NewDonationRequestPage() {
           {toast.msg}
         </div>
       )}
-      <div className="site-container max-w-3xl space-y-6 pt-24 md:pt-28">
-        <div className="flex flex-col gap-4 border-b border-black/[0.06] pb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <span className="eyebrow">
-              <span className="material-symbols-outlined text-[15px]">campaign</span>
-              طلب مساعدة عينية
-            </span>
-            <h1 className="mt-4 text-3xl font-black text-on-surface md:text-4xl">إنشاء طلب جديد</h1>
-            <p className="mt-2 max-w-xl text-sm leading-7 text-on-surface-variant">
-              اشرح احتياجك بوضوح وحدد المنطقة ودرجة الاستعجال ليسهل على المتبرعين مساعدتك.
-            </p>
-          </div>
-          <Link href="/donation-requests" className="btn-secondary self-start text-xs sm:self-auto">
-            <span className="material-symbols-outlined text-[17px]">arrow_forward</span>
-            العودة إلى الطلبات
-          </Link>
-        </div>
+      <div className="site-container max-w-4xl space-y-6 md:pt-4">
+        <PageIntro
+          eyebrow="طلب مساعدة عينية"
+          title="أنشئ طلبًا واضحًا ومحترمًا"
+          description="صف الاحتياج نفسه دون نشر معلومات شخصية. التصنيف والمنطقة ودرجة الاستعجال تساعد المتبرعين المناسبين على الوصول إليك."
+          icon="post_add"
+          tone="warm"
+          actions={
+            <Link href="/donation-requests" className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-xs font-black text-white hover:bg-white/16">
+              <span className="material-symbols-outlined ml-1 text-[17px]">arrow_forward</span>
+              العودة إلى الطلبات
+            </Link>
+          }
+          meta={
+            <>
+              <span className="data-chip">حتى 100 حرف للعنوان</span>
+              <span className="data-chip">حتى 500 حرف للوصف</span>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">privacy_tip</span>
+                لا تكتب رقم هاتف أو عنوانًا دقيقًا
+              </span>
+            </>
+          }
+        />
 
         {/* [FIX-4] شريط quota */}
         {!quotaLoading && quota !== null && (
@@ -110,7 +118,7 @@ export default function NewDonationRequestPage() {
           </div>
         )}
 
-        <form onSubmit={submit} className="surface-card space-y-5 p-5 sm:p-7 md:p-8">
+        <form onSubmit={submit} className="content-panel space-y-5 p-5 sm:p-7 md:p-8">
           <div className="space-y-2">
             <label htmlFor="request-title" className="text-xs font-black text-on-surface-variant">عنوان الطلب</label>
             <input 

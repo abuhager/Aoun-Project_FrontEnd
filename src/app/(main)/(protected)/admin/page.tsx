@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getAdminStats } from "@/lib/api/adminApi";
 import type { AdminStats } from "@/types/admin.types";
+import PageIntro from "@/components/ui/PageIntro";
 
 const CARDS = [
   {
@@ -58,45 +59,25 @@ export default function AdminOverviewPage() {
 
   return (
     <div dir="rtl" className="mx-auto w-full max-w-7xl space-y-6">
-      {/* Header */}
-      <section className="relative overflow-hidden rounded-[32px] border border-[#e7e1d8] bg-[linear-gradient(180deg,#fffdfa_0%,#f8f5ef_100%)] p-6 shadow-[0_14px_40px_rgba(15,23,42,0.05)] md:p-8">
-        <div className="absolute left-0 top-0 h-40 w-40 -translate-x-1/3 -translate-y-1/3 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-40 w-40 translate-x-1/3 translate-y-1/3 rounded-full bg-[#005a8c]/5 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-white text-primary shadow-[0_8px_24px_rgba(15,23,42,0.08)] ring-1 ring-[#efe8de]">
-              <span className="material-symbols-outlined text-[26px]">
-                dashboard
-              </span>
-            </div>
-
-            <div>
-              <div className="mb-2 inline-flex items-center rounded-full border border-primary/10 bg-primary/5 px-3 py-1 text-[11px] font-extrabold tracking-[0.16em] text-primary">
-                ADMIN OVERVIEW
-              </div>
-
-              <h1 className="text-2xl font-black tracking-tight text-[#1f312f] md:text-[2rem]">
-                نظرة عامة
-              </h1>
-
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-[#7a746d]">
-                متابعة سريعة وواضحة لأهم مؤشرات المنصة، مع توزيع بصري أذكى يسهّل
-                قراءة الحالة العامة فورًا.
-              </p>
-            </div>
-          </div>
-
-          <div className="hidden md:flex items-center gap-2 rounded-2xl border border-[#ece6de] bg-white/80 px-4 py-3 shadow-sm">
-            <span className="material-symbols-outlined text-[18px] text-primary">
-              monitoring
-            </span>
-            <span className="text-xs font-bold text-[#6a655e]">
+      <PageIntro
+        eyebrow="ADMIN OVERVIEW"
+        title="مركز متابعة المنصة"
+        description="قراءة مباشرة لحجم المجتمع، التبرعات المكتملة، والحالات التي تحتاج تدخلًا إداريًا."
+        icon="space_dashboard"
+        tone="admin"
+        meta={
+          <>
+            <span className="data-chip">
+              <span className="material-symbols-outlined text-[15px]">monitoring</span>
               مؤشرات مباشرة ومحدّثة
             </span>
-          </div>
-        </div>
-      </section>
+            <span className="data-chip">
+              <span className="material-symbols-outlined text-[15px]">shield</span>
+              وصول إداري محمي
+            </span>
+          </>
+        }
+      />
 
       {/* Loading Bento */}
       {loading ? (
@@ -110,7 +91,7 @@ export default function AdminOverviewPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* 1 — Main KPI */}
-          <article className="group relative overflow-hidden rounded-[30px] border border-[#e8e2d9] bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_22px_44px_rgba(15,23,42,0.08)] lg:col-span-5">
+          <article className="content-panel group relative overflow-hidden p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_22px_44px_rgba(15,23,42,0.08)] lg:col-span-5">
             <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-l from-transparent via-primary/20 to-transparent" />
             <div className="absolute -left-10 top-0 h-28 w-28 rounded-full bg-blue-100/40 blur-3xl" />
 
@@ -141,7 +122,7 @@ export default function AdminOverviewPage() {
           </article>
 
           {/* 2 */}
-          <article className="group rounded-[28px] border border-[#e8e2d9] bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(15,23,42,0.07)] lg:col-span-3">
+          <article className="content-panel group p-5 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(15,23,42,0.07)] lg:col-span-3">
             <div
               className={`flex h-12 w-12 items-center justify-center rounded-2xl ${CARDS[1].iconWrap}`}
             >
@@ -161,7 +142,7 @@ export default function AdminOverviewPage() {
           </article>
 
           {/* 3 */}
-          <article className="group rounded-[28px] border border-[#e8e2d9] bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(15,23,42,0.07)] lg:col-span-4">
+          <article className="content-panel group p-5 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(15,23,42,0.07)] lg:col-span-4">
             <div
               className={`flex h-12 w-12 items-center justify-center rounded-2xl ${CARDS[2].iconWrap}`}
             >
@@ -181,7 +162,7 @@ export default function AdminOverviewPage() {
           </article>
 
           {/* 4 */}
-          <article className="group rounded-[28px] border border-[#e8e2d9] bg-white p-6 shadow-[0_10px_26px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(15,23,42,0.07)] lg:col-span-6">
+          <article className="content-panel group p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(15,23,42,0.07)] lg:col-span-6">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div
@@ -209,7 +190,7 @@ export default function AdminOverviewPage() {
           </article>
 
           {/* 5 */}
-          <article className="group rounded-[28px] border border-[#e8e2d9] bg-white p-6 shadow-[0_10px_26px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(15,23,42,0.07)] lg:col-span-6">
+          <article className="content-panel group p-6 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(15,23,42,0.07)] lg:col-span-6">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div

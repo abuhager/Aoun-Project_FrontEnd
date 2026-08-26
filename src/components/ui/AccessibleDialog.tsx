@@ -1,11 +1,13 @@
-"use client";
+
 
 import {
   type ElementType,
   type ReactNode,
   useEffect,
   useRef,
+  useSyncExternalStore,
 } from "react";
+import { createPortal } from "react-dom";
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -47,6 +49,11 @@ export default function AccessibleDialog({
   dir = "rtl",
   ariaBusy = false,
 }: AccessibleDialogProps) {
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const panelRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const closeDisabledRef = useRef(closeDisabled);
@@ -114,11 +121,13 @@ export default function AccessibleDialog({
       document.body.style.overflow = previousOverflow;
       previousFocusRef.current?.focus({ preventScroll: true });
     };
-  }, []);
+  }, [isClient]);
 
   const Panel = panelAs as ElementType;
 
-  return (
+  if (!isClient) return null;
+
+  return createPortal(
     <div
       className={overlayClassName}
       dir={dir}
@@ -144,6 +153,7 @@ export default function AccessibleDialog({
       >
         {children}
       </Panel>
-    </div>
+    </div>,
+    document.body
   );
 }

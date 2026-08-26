@@ -17,6 +17,7 @@ import {
 import { useSettings } from "@/hooks/useSettings";
 import { usePublicHubs } from "@/hooks/usePublicHubs";
 import AccessibleDialog from "@/components/ui/AccessibleDialog";
+import PageIntro from "@/components/ui/PageIntro";
 
 const DEFAULT_CATEGORIES = ["كتب", "إلكترونيات", "أثاث", "ملابس", "أخرى"];
 const DEFAULT_LOCATIONS = ["عمان", "الزرقاء", "إربد", "العقبة", "السلط", "مادبا"];
@@ -281,7 +282,7 @@ export default function DonationRequestsClient() {
   };
 
   return (
-    <div className="page-shell pb-24" dir="rtl">
+    <div className="page-shell pb-24 pt-20" dir="rtl">
       {toast && (
         <div
           role={toast.ok ? "status" : "alert"}
@@ -295,51 +296,39 @@ export default function DonationRequestsClient() {
         </div>
       )}
 
-      <div className="site-container max-w-6xl space-y-6 pt-20 md:pt-24">
-        {/* Hero */}
-        <section className="relative overflow-hidden rounded-[22px] border border-black/[0.06] bg-white p-6 shadow-sm md:p-8">
-          <div className="absolute left-0 top-0 h-40 w-40 -translate-x-1/3 -translate-y-1/3 rounded-full bg-[#01696f]/[0.06] blur-3xl" />
-          <div className="absolute bottom-0 right-0 h-40 w-40 translate-x-1/3 translate-y-1/3 rounded-full bg-[#005a8c]/[0.05] blur-3xl" />
-
-          <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div>
-              <div className="eyebrow">
-                <span className="material-symbols-outlined text-[15px]">
-                  volunteer_activism
-                </span>
-                مساحة لطلب المساعدة والتبرع
-              </div>
-
-              <h1 className="mt-4 text-3xl font-black tracking-tight text-on-surface md:text-4xl">
-                طلبات التبرع
-              </h1>
-
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-on-surface-variant md:text-base">
-                استعرض الطلبات الحالية وساهم بما تستطيع، أو أنشئ طلبًا جديدًا بطريقة
-                واضحة ومحترمة تحفظ خصوصية وكرامة الجميع.
-              </p>
-
-              <p className="mt-3 text-xs font-bold text-[#8e877f]">
-                {!mounted
-                  ? "تصفح الطلبات وساهم بتبرع"
-                  : myOnly
-                  ? `لديك ${activeMineCount} طلب نشط`
-                  : "تصفح الطلبات وساهم بتبرع"}
-              </p>
-            </div>
-
+      <div className="site-container max-w-6xl space-y-6 md:pt-4">
+        <PageIntro
+          eyebrow="احتياج واضح · استجابة كريمة"
+          title="طلبات التبرع"
+          description="استعرض الاحتياجات المنشورة وساهم بما تستطيع، أو أنشئ طلبًا يحفظ خصوصيتك ويعطي المتبرعين تفاصيل كافية للمساعدة."
+          icon="campaign"
+          tone="warm"
+          actions={
             <Link
               href="/donation-requests/new"
-              className="btn-primary text-xs"
+              className="rounded-xl bg-white px-5 py-3 text-xs font-black text-[#633b17] shadow-lg hover:-translate-y-0.5"
             >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              اطلب تبرعاً
+              <span className="material-symbols-outlined ml-1 text-[16px]">add</span>
+              إنشاء طلب جديد
             </Link>
-          </div>
-        </section>
+          }
+          meta={
+            <>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">list_alt</span>
+                {loading ? "جارٍ تحميل الطلبات" : `${requests.length} طلب في هذه الصفحة`}
+              </span>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">lock</span>
+                بيانات التواصل محمية
+              </span>
+              {mounted && myOnly && <span className="data-chip">لديك {activeMineCount} طلب نشط</span>}
+            </>
+          }
+        />
 
         {/* Controls */}
-        <section className="surface-card p-4 md:p-5">
+        <section className="content-panel p-4 md:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -427,8 +416,9 @@ export default function DonationRequestsClient() {
               {requests.map((request) => (
                 <article
                   key={request._id}
-                  className="surface-card surface-card-hover group p-5"
-                >
+                    className="content-panel group relative overflow-hidden p-5 transition-all hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_18px_44px_rgba(16,37,34,0.09)]"
+                  >
+                  <span className={`absolute inset-y-0 right-0 w-1 ${request.urgency === "high" ? "bg-red-400" : request.urgency === "medium" ? "bg-amber-400" : "bg-primary/55"}`} />
                   <div className="flex h-full flex-col">
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-2">

@@ -15,9 +15,10 @@ export default function ItemCard({ item, imageSrc, priority = false }: ItemCardP
   return (
     <Link
       href={`/items/${item._id}`}
-      className="group flex h-full flex-col overflow-hidden rounded-[20px] border border-black/[0.08] bg-white shadow-[0_8px_28px_rgba(23,33,31,0.05)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_18px_44px_rgba(23,33,31,0.1)]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-[17px] border border-black/[0.075] bg-white shadow-[0_10px_30px_rgba(16,37,34,0.055)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1.5 hover:border-primary/25 hover:shadow-[0_22px_50px_rgba(16,37,34,0.12)]"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-surface-container-low">
+      <span className="absolute inset-y-0 right-0 z-20 w-1 bg-primary/0 transition-colors duration-300 group-hover:bg-primary" />
+      <div className="relative aspect-[5/4] overflow-hidden bg-surface-container-low">
         <Image
           src={safeImageSrc}
           alt={item.title ? `صورة ${item.title}` : "صورة الغرض المتبرع به"}
@@ -31,11 +32,11 @@ export default function ItemCard({ item, imageSrc, priority = false }: ItemCardP
         <div className="absolute inset-0 bg-linear-to-t from-black/45 via-transparent to-transparent" />
 
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-          <span className="rounded-lg border border-white/25 bg-white/90 px-2.5 py-1 text-[11px] font-extrabold text-on-surface shadow-sm backdrop-blur-md">
+          <span className="rounded-[9px] border border-white/25 bg-white/92 px-2.5 py-1 text-[10px] font-extrabold text-on-surface shadow-sm backdrop-blur-md">
             {item.condition || "حالة غير محددة"}
           </span>
           <span
-            className={`rounded-lg px-2.5 py-1 text-[11px] font-extrabold text-white shadow-sm ${
+            className={`rounded-[9px] px-2.5 py-1 text-[10px] font-extrabold text-white shadow-sm ${
               isBooked ? "bg-warning" : "bg-primary"
             }`}
           >
@@ -58,16 +59,16 @@ export default function ItemCard({ item, imageSrc, priority = false }: ItemCardP
 
       <div className="flex grow flex-col p-4.5">
         <div className="mb-2 flex items-center justify-between gap-3">
-          <span className="text-[11px] font-extrabold text-primary">{item.category}</span>
-          <span className="text-[10px] font-bold text-on-surface-soft">تبرع عيني</span>
+          <span className="section-kicker">{item.category}</span>
+          <span className="text-[9px] font-black tracking-[0.08em] text-on-surface-soft">AOUN ITEM</span>
         </div>
-        <h3 className="line-clamp-2 text-[15px] font-black leading-7 text-on-surface">
+        <h3 className="line-clamp-2 text-[16px] font-black leading-7 text-on-surface">
           {item.title}
         </h3>
 
-        <span className="mt-4 inline-flex items-center gap-1.5 border-t border-black/[0.06] pt-3 text-xs font-extrabold text-primary">
-          {isBooked ? "التفاصيل وقائمة الانتظار" : "عرض التفاصيل"}
-          <span className="material-symbols-outlined text-[16px] transition-transform group-hover:-translate-x-1">
+        <span className="mt-4 flex items-center justify-between gap-2 border-t border-black/[0.06] pt-3 text-xs font-extrabold text-primary">
+          <span>{isBooked ? "التفاصيل وقائمة الانتظار" : "عرض التفاصيل"}</span>
+          <span className="material-symbols-outlined flex h-7 w-7 items-center justify-center rounded-lg bg-primary-soft text-[15px] transition-transform group-hover:-translate-x-1 group-hover:bg-primary group-hover:text-white">
             arrow_back
           </span>
         </span>

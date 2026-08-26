@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePublicProfile } from "./hooks/usePublicProfile";
+import PageIntro from "@/components/ui/PageIntro";
 
 // ─── خريطة الـ Badges ───────────────────────────────────────
 const BADGE_META: Record<
@@ -46,7 +47,8 @@ function StatCard({
   tone?: string;
 }) {
   return (
-    <div className="rounded-3xl border border-black/[0.06] bg-white p-4 text-center shadow-sm">
+    <div className="content-panel relative overflow-hidden p-4 text-center">
+      <span className="absolute inset-x-0 top-0 h-1 bg-primary/45" />
       <p className={`text-2xl font-black md:text-3xl ${tone}`}>{value}</p>
       <p className="mt-1 text-[10px] font-bold tracking-wide text-gray-400">
         {label}
@@ -115,102 +117,66 @@ export default function PublicProfilePage() {
   const { user, stats } = profileData;
 
   return (
-    <div
-      className="min-h-dvh bg-[#f7f6f2] pb-20 font-body text-[#191c1d]"
-      dir="rtl"
-    >
-      <div className="mx-auto max-w-6xl px-4 pt-20 md:px-6 md:pt-24">
-        {/* ─── Header shell ─── */}
-        <section className="mb-8 rounded-[32px] border border-black/[0.06] bg-white p-5 shadow-sm md:p-6">
-          <div className="grid gap-6 lg:grid-cols-[auto_1fr_auto] lg:items-center">
-            {/* Avatar */}
-            <div className="mx-auto lg:mx-0">
-              <div className="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-[#f7f6f2] bg-slate-50 ring-4 ring-primary/5 md:h-32 md:w-32">
-                {user.avatar ? (
-                  <Image
-                    src={user.avatar}
-                    alt={user.name}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <span className="material-symbols-outlined text-7xl text-primary">
-                    account_circle
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Identity */}
-            <div className="text-center lg:text-right">
-              <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-                <h1 className="text-2xl font-black md:text-3xl">{user.name}</h1>
-
-                {user.isVerifiedStudent && (
+    <div className="page-shell pb-20 pt-20 font-body" dir="rtl">
+      <div className="site-container space-y-7 md:pt-4">
+        <PageIntro
+          eyebrow={`ملف عضو · منذ ${new Date(user.createdAt).getFullYear()}`}
+          title={user.name}
+          description={
+            <span className="inline-flex flex-wrap items-center gap-2">
+              <span className="inline-flex gap-0.5">
+                {renderStars(averageRating).map(({ key, filled }) => (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full border border-sky-100 bg-sky-50 px-2.5 py-1 text-[10px] font-bold text-sky-700"
-                    title="طالب جامعي"
+                    key={key}
+                    className={`material-symbols-outlined text-[16px] ${filled ? "text-[#f3c36f]" : "text-white/20"}`}
+                    style={{ fontVariationSettings: `'FILL' ${filled ? 1 : 0}` }}
                   >
-                    <span className="material-symbols-outlined text-[13px]">
-                      school
-                    </span>
-                    طالب جامعي
+                    star
                   </span>
-                )}
-
-                {trustScore >= 110 && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700">
-                    <span className="material-symbols-outlined text-[13px]">
-                      verified
-                    </span>
-                    عضو موثوق
-                  </span>
+                ))}
+              </span>
+              <span>{(averageRating / 2).toFixed(1)} من 5</span>
+              <span className="text-white/35">·</span>
+              <span>{stats?.totalRatings ?? 0} تقييم موثّق</span>
+            </span>
+          }
+          icon="person"
+          actions={
+            <div className="flex items-center gap-3 rounded-[18px] border border-white/12 bg-white/[0.08] p-2.5 pl-4 backdrop-blur-sm">
+              <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[14px] border border-white/15 bg-white/10">
+                {user.avatar ? (
+                  <Image src={user.avatar} alt={user.name} fill sizes="56px" className="object-cover" />
+                ) : (
+                  <span className="material-symbols-outlined text-4xl text-white/80">account_circle</span>
                 )}
               </div>
-
-              <div className="mt-3 flex flex-col items-center gap-1 lg:items-start">
-                <div className="flex gap-0.5">
-                  {renderStars(averageRating).map(({ key, filled }) => (
-                    <span
-                      key={key}
-                      className={`material-symbols-outlined text-[16px] ${
-                        filled ? "text-yellow-400" : "text-gray-200"
-                      }`}
-                      style={{ fontVariationSettings: `'FILL' ${filled ? 1 : 0}` }}
-                    >
-                      star
-                    </span>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-1 text-[10px] font-bold">
-                  <span className="text-yellow-600">
-                    {(averageRating / 2).toFixed(1)} / 5
-                  </span>
-                  <span className="font-normal text-gray-400">
-                    ({stats?.totalRatings ?? 0} تقييم)
-                  </span>
-                </div>
-
-                <p className="mt-1 text-[11px] italic text-gray-500">
-                  انضم لعون في {new Date(user.createdAt).getFullYear()}
-                </p>
+              <div>
+                <p className="text-[10px] font-bold text-white/55">مؤشر الثقة</p>
+                <p className="text-2xl font-black leading-none text-[#f3c36f]">{trustScore}</p>
               </div>
             </div>
-
-            {/* CTA / trust summary */}
-            <div className="flex flex-col items-center gap-3 lg:items-end">
-              <div className="rounded-2xl bg-[#f8f6f2] px-4 py-3 text-center">
-                <p className="text-[10px] font-bold text-gray-400">نقاط الثقة</p>
-                <p className="text-2xl font-black text-primary">{trustScore}</p>
-              </div>
-
-            </div>
-          </div>
-        </section>
+          }
+          meta={
+            <>
+              {user.isVerifiedStudent && (
+                <span className="data-chip">
+                  <span className="material-symbols-outlined text-[15px]">school</span>
+                  طالب جامعي موثّق
+                </span>
+              )}
+              {trustScore >= 110 && (
+                <span className="data-chip">
+                  <span className="material-symbols-outlined text-[15px]">verified</span>
+                  عضو موثوق
+                </span>
+              )}
+              {gamification && <span className="data-chip">{gamification.badge} {gamification.title}</span>}
+            </>
+          }
+        />
 
         {/* ─── Stats + level ─── */}
-        <section className="mb-8 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="grid grid-cols-3 gap-3">
             <StatCard value={trustScore} label="نقاط الثقة" tone="text-primary" />
             <StatCard
@@ -226,7 +192,7 @@ export default function PublicProfilePage() {
           </div>
 
           {gamification ? (
-            <div className="rounded-3xl border border-black/[0.06] bg-white p-5 shadow-sm">
+            <div className="content-panel p-5">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-xl text-primary">
@@ -277,7 +243,7 @@ export default function PublicProfilePage() {
               )}
             </div>
           ) : (
-            <div className="rounded-3xl border border-black/[0.06] bg-white p-5 shadow-sm">
+            <div className="content-panel p-5">
               <p className="text-sm font-black text-[#1f2425]">معلومات النشاط</p>
               <p className="mt-2 text-sm leading-7 text-gray-500">
                 هذا العضو يشارك في مجتمع عون، ويمكنك استعراض نشاطه العام من خلال
@@ -290,7 +256,7 @@ export default function PublicProfilePage() {
         {/* ─── Activity ─── */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex gap-1 rounded-2xl border border-black/[0.06] bg-white p-1 shadow-sm">
+            <div className="content-panel flex gap-1 p-1">
               {(["donations", "received"] as const).map((tab) => (
                 <button
                   key={tab}
@@ -306,7 +272,7 @@ export default function PublicProfilePage() {
               ))}
             </div>
 
-            <div className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-[#6a645d] border border-black/[0.06] shadow-sm">
+            <div className="rounded-lg border border-black/[0.06] bg-white px-3 py-1.5 text-[11px] font-black text-on-surface-variant shadow-sm">
               {totalItems} عنصر
             </div>
           </div>
@@ -316,7 +282,7 @@ export default function PublicProfilePage() {
               <Link
                 key={item._id}
                 href={`/items/${item._id}`}
-                className="group flex flex-col overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-sm transition-all hover:shadow-md"
+                className="group flex flex-col overflow-hidden rounded-[18px] border border-black/[0.07] bg-white shadow-[0_10px_28px_rgba(16,37,34,0.05)] transition-all hover:-translate-y-1 hover:shadow-md"
               >
                 <div className="relative h-40 overflow-hidden bg-gray-50">
                   <Image
@@ -362,7 +328,7 @@ export default function PublicProfilePage() {
           </div>
 
           {activeItems.length === 0 && (
-            <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-[#fcfbf8] py-20 text-center">
+            <div className="content-panel content-panel--quiet border-dashed py-20 text-center">
               <span className="material-symbols-outlined mb-2 text-4xl text-gray-300">
                 inventory_2
               </span>

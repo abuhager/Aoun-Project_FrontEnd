@@ -15,6 +15,7 @@ import ChatDrawer from "@/components/ChatDrawer";
 import GlobalRatingModal from "@/components/GlobalRatingModal";
 import { openConversation } from "@/lib/api/conversationApi";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
+import PageIntro from "@/components/ui/PageIntro";
 
 /* ─── Skeleton ──────────────────────────────────────────────── */
 function DashboardSkeleton() {
@@ -135,7 +136,7 @@ export default function DashboardPage() {
   const activeItems = activeTab === "donations" ? data.myDonations : data.myRequests;
 
   return (
-    <div className="page-shell pb-16 font-body" dir="rtl">
+    <div className="page-shell pb-16 pt-20 font-body" dir="rtl">
       {/* ── Modals & Overlays ────────────────────────────────── */}
       <GlobalRatingModal />
 
@@ -175,37 +176,33 @@ export default function DashboardPage() {
       )}
 
       {/* ── Main Content ─────────────────────────────────────── */}
-      <div className="site-container space-y-6 pt-24 md:pt-28">
-        {/* Header */}
-        <section className="flex flex-col gap-4 border-b border-black/[0.06] pb-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="eyebrow">
-            <span className="material-symbols-outlined text-[14px]">dashboard</span>
-            لوحة التحكم
+      <div className="site-container space-y-6 md:pt-4">
+        <PageIntro
+          eyebrow="مساحة العمل الشخصية"
+          title={<>أهلًا {data.user?.name || "بك"}</>}
+          description="تابع التبرعات والحجوزات والإجراءات التي تحتاج انتباهك، وابدأ مهمة جديدة دون مغادرة اللوحة."
+          icon="space_dashboard"
+          tone="ink"
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <Link href="/donation-requests/new" className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-xs font-black text-white hover:bg-white/16">
+                <span className="material-symbols-outlined ml-1 text-[17px]">campaign</span>
+                إنشاء طلب
+              </Link>
+              <Link href="/add-item" className="rounded-xl bg-white px-4 py-3 text-xs font-black text-primary-container shadow-lg">
+                <span className="material-symbols-outlined ml-1 text-[17px]" style={{ fontVariationSettings: "'FILL' 1" }}>add_circle</span>
+                إضافة تبرع
+              </Link>
             </div>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-on-surface md:text-4xl">
-              أهلاً {data.user?.name || "بك"}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-7 text-on-surface-variant">
-              تابع تبرعاتك وحجوزاتك والإجراءات التي تحتاج انتباهك من مكان واحد.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link href="/donation-requests/new" className="btn-secondary text-sm">
-              <span className="material-symbols-outlined text-[18px]">campaign</span>
-              إنشاء طلب
-            </Link>
-            <Link href="/add-item" className="btn-primary text-sm">
-              <span
-                className="material-symbols-outlined text-[18px]"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                add_circle
-              </span>
-              إضافة تبرع
-            </Link>
-          </div>
-        </section>
+          }
+          meta={
+            <>
+              <span className="data-chip">{data.myDonations.length} تبرع</span>
+              <span className="data-chip">{data.myRequests.length} حجز أو طلب</span>
+              <span className="data-chip">{data.user?.trustScore ?? 0} نقطة ثقة</span>
+            </>
+          }
+        />
 
         {/* Summary cards */}
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">

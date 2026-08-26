@@ -17,6 +17,7 @@ import type {
   DonationRequest,
   DonationOffer,
 } from "@/types/donationRequest.types";
+import PageIntro from "@/components/ui/PageIntro";
 
 export default function DonationRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -208,7 +209,7 @@ export default function DonationRequestDetailPage() {
   const showCaseB = request.status === "active" && !isOwner && !isAccepted && !viewerOffer;
 
   return (
-    <div className="min-h-dvh bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
+    <div className="page-shell pb-24 pt-20" dir="rtl">
       {toast && (
         <div
           role={toast.ok ? "status" : "alert"}
@@ -222,7 +223,7 @@ export default function DonationRequestDetailPage() {
         </div>
       )}
 
-      <div className="mx-auto max-w-5xl space-y-5 px-4 pt-20 md:px-6 md:pt-24">
+      <div className="site-container space-y-6 md:pt-4">
         {/* Back */}
         <button
           onClick={() => router.back()}
@@ -232,71 +233,45 @@ export default function DonationRequestDetailPage() {
           رجوع
         </button>
 
-        {/* Hero summary */}
-        <section className="relative overflow-hidden rounded-[32px] border border-black/[0.06] bg-white p-6 shadow-sm md:p-7">
-          <div className="absolute left-0 top-0 h-40 w-40 -translate-x-1/3 -translate-y-1/3 rounded-full bg-[#01696f]/[0.06] blur-3xl" />
-          <div className="absolute bottom-0 right-0 h-40 w-40 translate-x-1/3 translate-y-1/3 rounded-full bg-[#005a8c]/[0.05] blur-3xl" />
-
-          <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge status={request.status} />
-                <span className="rounded-full bg-[#f3f1ec] px-3 py-1 text-[11px] font-black text-[#6b655e]">
-                  {request.category}
-                </span>
-                <span className="rounded-full bg-[#f3f1ec] px-3 py-1 text-[11px] font-black text-[#6b655e]">
-                  📍 {request.location}
-                </span>
-                <span
-                  className={`rounded-full px-3 py-1 text-[11px] font-black ${
-                    request.urgency === "high"
-                      ? "bg-red-50 text-red-600"
-                      : request.urgency === "medium"
-                      ? "bg-yellow-50 text-yellow-700"
-                      : "bg-green-50 text-green-700"
-                  }`}
-                >
-                  {request.urgency === "high"
-                    ? "🔴 عاجل"
-                    : request.urgency === "medium"
-                    ? "🟡 متوسط"
-                    : "🟢 عادي"}
-                </span>
-              </div>
-
-              <h1 className="mt-4 text-xl font-black tracking-tight text-[#1d2324] md:text-3xl">
-                {request.title}
-              </h1>
-
-              {request.description && (
-                <p className="mt-3 max-w-2xl text-sm leading-8 text-[#655f58] md:text-base">
-                  {request.description}
-                </p>
-              )}
-
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold text-[#8c857d]">
-                <span>بواسطة: {request.requester?.name}</span>
-                <span className="text-[#d2ccc4]">•</span>
-                <span>
-                  {new Date(request.createdAt).toLocaleDateString("ar-EG")}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid min-w-[220px] grid-cols-2 gap-3">
+        <PageIntro
+          eyebrow={`طلب مجتمعي · ${request.requester?.name}`}
+          title={request.title}
+          description={request.description || "طلب تبرع منشور ضمن مجتمع عون."}
+          icon="campaign"
+          tone={request.urgency === "high" ? "warm" : "brand"}
+          actions={
+            <div className="grid min-w-[230px] grid-cols-2 gap-2">
               <MiniStat
                 label="عدد العروض"
                 value={isOwner ? offers.length : viewerOffer ? 1 : isAccepted ? 1 : 0}
-                tone="text-primary"
+                tone="text-[#f3c36f]"
+                inverted
               />
               <MiniStat
                 label="الحالة الحالية"
                 value={isAccepted ? "تمت تلبيته" : "مفتوح"}
-                tone="text-[#1f2526]"
+                tone="text-white"
+                inverted
               />
             </div>
-          </div>
-        </section>
+          }
+          meta={
+            <>
+              <StatusBadge status={request.status} />
+              <span className="data-chip">{request.category}</span>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">location_on</span>
+                {request.location}
+              </span>
+              <span className="data-chip">
+                {request.urgency === "high" ? "أولوية عاجلة" : request.urgency === "medium" ? "أولوية متوسطة" : "أولوية عادية"}
+              </span>
+              <span className="data-chip">
+                {new Date(request.createdAt).toLocaleDateString("ar-EG")}
+              </span>
+            </>
+          }
+        />
 
         {/* Main content */}
         <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
@@ -304,7 +279,7 @@ export default function DonationRequestDetailPage() {
           <div className="space-y-5">
             {/* CASE A: طلب نشط وصاحب الطلب يتصفح العروض */}
             {request.status === "active" && isOwner && !isAccepted && (
-              <section className="rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-sm">
+              <section className="content-panel p-5">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-base font-black text-[#1d2324]">
@@ -349,7 +324,7 @@ export default function DonationRequestDetailPage() {
             )}
 
             {!isOwner && viewerOffer && (
-              <section className="rounded-[28px] border border-primary/20 bg-white p-6 text-center shadow-sm">
+              <section className="content-panel border-primary/20 p-6 text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <span className="material-symbols-outlined text-3xl">inventory</span>
                 </div>
@@ -374,7 +349,7 @@ export default function DonationRequestDetailPage() {
 
             {/* CASE C: تم قبول عرض */}
             {isAccepted && respondedItem && (
-              <section className="rounded-[28px] border border-primary/20 bg-white p-5 shadow-sm">
+              <section className="content-panel border-primary/20 p-5">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[22px] text-primary">
                     handshake
@@ -409,7 +384,7 @@ export default function DonationRequestDetailPage() {
 
             {/* CASE B: طلب نشط ومستخدم آخر يريد التبرع */}
             {showCaseB && (
-              <section className="rounded-[28px] border border-primary/20 bg-white p-6 text-center shadow-sm">
+              <section className="content-panel border-primary/20 p-6 text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <span className="material-symbols-outlined text-3xl">
                     volunteer_activism
@@ -435,7 +410,7 @@ export default function DonationRequestDetailPage() {
           {/* Right Column */}
           <div className="space-y-5">
             {isOwner && request.status === "active" && (
-              <section className="rounded-[28px] border border-red-100 bg-white p-5 shadow-sm">
+              <section className="content-panel border-red-100 p-5">
                 <h2 className="text-sm font-black text-[#1f2526]">إدارة الطلب</h2>
                 <p className="mt-2 text-xs leading-6 text-gray-500">
                   إلغاء الطلب يوقف كل العروض المعلقة ويبلغ أصحابها.
@@ -453,7 +428,7 @@ export default function DonationRequestDetailPage() {
 
             {/* عرض صفحة الغرض */}
             {isAccepted && respondedItem && (
-              <section className="rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-sm">
+              <section className="content-panel p-5">
                 <h2 className="text-sm font-black text-[#1f2526]">متابعة الغرض</h2>
                 <p className="mt-2 text-sm leading-7 text-[#716a62]">
                   يمكنك استعراض الصفحة الكاملة للغرض المرتبط بهذا الطلب لمشاهدة التفاصيل والصور.
@@ -474,7 +449,7 @@ export default function DonationRequestDetailPage() {
             )}
 
             {/* بطاقة صاحب الطلب */}
-            <section className="rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-sm">
+            <section className="content-panel p-5">
               <h2 className="text-sm font-black text-[#1f2526]">صاحب الطلب</h2>
               <div className="mt-4 flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-base font-black text-primary">
@@ -504,15 +479,17 @@ function MiniStat({
   label,
   value,
   tone = "text-[#1f2526]",
+  inverted = false,
 }: {
   label: string;
   value: string | number;
   tone?: string;
+  inverted?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-black/[0.05] bg-[#fcfbf8] p-3 text-center">
+    <div className={`rounded-xl border p-3 text-center ${inverted ? "border-white/12 bg-white/[0.08]" : "border-black/[0.05] bg-[#fcfbf8]"}`}>
       <p className={`text-base font-black ${tone}`}>{value}</p>
-      <p className="mt-1 text-[10px] font-bold text-gray-400">{label}</p>
+      <p className={`mt-1 text-[10px] font-bold ${inverted ? "text-white/50" : "text-gray-400"}`}>{label}</p>
     </div>
   );
 }

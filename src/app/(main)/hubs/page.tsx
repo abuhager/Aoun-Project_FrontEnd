@@ -1,6 +1,7 @@
 "use client";
 
 import { useHubs } from "./hooks/useHubs";
+import PageIntro from "@/components/ui/PageIntro";
 
 export default function HubsPage() {
   const {
@@ -17,28 +18,28 @@ export default function HubsPage() {
   } = useHubs();
 
   return (
-    <div className="page-shell" dir="rtl">
-      <section className="site-container pb-20 pt-24 md:pt-28">
-        <div className="mb-8 border-b border-black/[0.06] pb-7">
-          <div className="eyebrow mb-3">
-            <span
-              className="material-symbols-outlined text-[14px]"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              warehouse
-            </span>
-            مواقع موثوقة على مستوى المملكة
-          </div>
-          <h1 className="text-3xl font-black text-on-surface md:text-4xl">
-            مراكز التسليم
-          </h1>
-          <p className="mt-2 max-w-xl text-sm leading-7 text-on-surface-variant">
-            اختر نقطة تسليم عامة لتنسيق الاستلام بطريقة أوضح وأكثر راحة للطرفين.
-          </p>
-        </div>
+    <div className="page-shell pt-20" dir="rtl">
+      <section className="site-container space-y-6 pb-20 md:pt-4">
+        <PageIntro
+          eyebrow="شبكة تسليم موثوقة"
+          title="مراكز التسليم الآمنة"
+          description="أماكن عامة معتمدة تساعد المتبرع والمستفيد على تنسيق الاستلام بوضوح، بعيدًا عن مشاركة العناوين الشخصية."
+          icon="warehouse"
+          tone="ink"
+          meta={
+            <>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">verified_user</span>
+                مواقع يديرها فريق المنصة
+              </span>
+              {!loading && !error && <span className="data-chip">{total} مركز متاح</span>}
+              <span className="data-chip">ساعات العمل موضحة لكل مركز</span>
+            </>
+          }
+        />
 
         {!loading && !error && total > 0 && (
-          <div className="surface-card mb-6 grid gap-3 p-4 sm:grid-cols-[1fr_180px]">
+          <div className="content-panel grid gap-3 p-4 sm:grid-cols-[1fr_180px]">
             <label className="relative block">
               <span className="sr-only">البحث في مراكز التسليم</span>
               <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-gray-400">
@@ -116,8 +117,9 @@ export default function HubsPage() {
             {hubs.map((hub) => (
               <article
                 key={hub._id}
-                className="surface-card surface-card-hover group relative overflow-hidden p-5"
+                className="content-panel group relative overflow-hidden p-5 transition-all hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_18px_42px_rgba(16,37,34,0.09)]"
               >
+                <span className="absolute inset-y-0 right-0 w-1 bg-primary/55" />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-primary/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
                 <div className="relative flex items-start gap-4">

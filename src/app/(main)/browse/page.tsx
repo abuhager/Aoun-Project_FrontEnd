@@ -4,6 +4,7 @@ import Link from "next/link";
 import ItemCard from "@/components/ui/ItemCard";
 import { useSettings } from "@/hooks/useSettings";
 import { useBrowse } from "./hooks/useBrowse";
+import PageIntro from "@/components/ui/PageIntro";
 
 const CITIES = ["عمان", "إربد", "الزرقاء", "العقبة"] as const;
 
@@ -51,38 +52,34 @@ export default function BrowsePage() {
   };
 
   return (
-    <div className="page-shell pb-20" dir="rtl">
-      <section className="border-b border-black/[0.06] bg-white pt-20 md:pt-24">
-        <div className="site-container grid gap-6 py-8 md:grid-cols-[1fr_auto] md:items-end md:py-11">
-          <div className="max-w-2xl">
-            <span className="eyebrow">
-              <span className="material-symbols-outlined text-[15px]">search</span>
-              تبرعات متاحة في مجتمعك
-            </span>
-            <h1 className="mt-4 text-3xl font-black tracking-tight text-on-surface md:text-4xl">
-              اعثر على الغرض المناسب بسهولة
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-on-surface-variant md:text-base">
-              ابحث حسب المدينة أو التصنيف، ثم راجع التفاصيل وطريقة التسليم قبل الحجز.
-            </p>
-          </div>
+    <div className="page-shell pb-20 pt-20" dir="rtl">
+      <div className="site-container space-y-6 md:pt-4">
+        <PageIntro
+          eyebrow="سوق مجتمعي بلا مقابل"
+          title="اكتشف التبرعات المتاحة"
+          description="ابحث بالاسم أو المدينة أو التصنيف، ثم راجع حالة الغرض وخيار التسليم قبل إرسال طلب الحجز."
+          icon="travel_explore"
+          actions={
+            <Link href="/add-item" className="rounded-xl bg-white px-5 py-3 text-xs font-black text-primary-container shadow-lg hover:-translate-y-0.5">
+              <span className="material-symbols-outlined ml-1 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>add_circle</span>
+              إضافة تبرع
+            </Link>
+          }
+          meta={
+            <>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">inventory_2</span>
+                {loading ? "جارٍ تحديث النتائج" : `${total} غرض متاح`}
+              </span>
+              <span className="data-chip">حجز منظم</span>
+              <span className="data-chip">تسليم موثّق من الطرفين</span>
+            </>
+          }
+        />
 
-          <Link href="/add-item" className="btn-primary self-start md:self-auto">
-            <span
-              className="material-symbols-outlined text-[19px]"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              add_circle
-            </span>
-            إضافة تبرع
-          </Link>
-        </div>
-      </section>
-
-      <div className="site-container pt-6 md:pt-8">
         <section
           aria-labelledby="browse-filters-title"
-          className="surface-card overflow-hidden"
+          className="content-panel overflow-hidden"
         >
           <div className="flex flex-col gap-3 border-b border-black/[0.06] bg-primary-softer px-4 py-4 sm:flex-row sm:items-center sm:justify-between md:px-5">
             <div>
@@ -253,7 +250,7 @@ export default function BrowsePage() {
             ))}
           </div>
         ) : error ? (
-          <section className="surface-card px-6 py-14 text-center" role="alert">
+          <section className="content-panel px-6 py-14 text-center" role="alert">
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-danger-bg text-danger">
               <span className="material-symbols-outlined text-[27px]">cloud_off</span>
             </span>
@@ -301,7 +298,7 @@ export default function BrowsePage() {
             )}
           </>
         ) : (
-          <section className="surface-card border-dashed px-6 py-16 text-center">
+          <section className="content-panel border-dashed px-6 py-16 text-center">
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-container-low text-on-surface-soft">
               <span className="material-symbols-outlined text-[28px]">inventory_2</span>
             </span>

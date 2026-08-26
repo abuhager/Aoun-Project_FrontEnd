@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { HubSelector } from "@/components/HubSelector";
 import { useEditItem } from "./hooks/useEditItem";
 import { useSettings } from "@/hooks/useSettings";
+import PageIntro from "@/components/ui/PageIntro";
 
 export default function EditItemPage() {
   const router = useRouter();
@@ -36,20 +37,44 @@ export default function EditItemPage() {
   }
 
   return (
-    <div className="bg-surface min-h-dvh pb-20 md:pb-32 text-[#191c1d]" dir="rtl">
-      <div className="pt-20 md:pt-24 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto font-body">
-        <div className="mb-6 md:mb-10 text-center">
-          <h1 className="text-2xl md:text-3xl font-extrabold font-headline mb-2">
-            تعديل التبرع
-          </h1>
-          <p className="text-sm md:text-base text-on-surface-variant">
-            يمكنك تحديث بيانات الغرض أو استبدال صورته ✏️
-          </p>
-        </div>
+    <div className="page-shell pb-20 pt-20" dir="rtl">
+      <div className="site-container space-y-6 font-body md:pt-4">
+        <PageIntro
+          eyebrow="إدارة التبرع"
+          title="تعديل بيانات الغرض"
+          description="حدّث الصورة أو الوصف أو نقطة التسليم. تبقى حالة الحجز والتسليم محفوظة كما هي."
+          icon="edit_note"
+          tone="ink"
+          actions={
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-xs font-black text-white hover:bg-white/16"
+            >
+              إلغاء والعودة
+            </button>
+          }
+          meta={
+            <>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">image</span>
+                صورة واحدة واضحة
+              </span>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">location_on</span>
+                نقطة تسليم آمنة
+              </span>
+            </>
+          }
+        />
 
-        <div className="bg-white rounded-2xl md:rounded-3xl shadow-[0_20px_60px_rgba(0,97,85,0.08)] p-6 md:p-10 border border-[#edeeef]">
+        <div className="content-panel mx-auto max-w-4xl overflow-hidden">
+          <div className="border-b border-black/[0.06] px-6 py-5 md:px-8">
+            <span className="section-kicker">ITEM DETAILS</span>
+            <h2 className="mt-1 text-lg font-black">المعلومات الظاهرة للمستفيدين</h2>
+          </div>
           <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
-            <div className="relative group">
+            <div className="relative p-6 pb-0 md:p-8 md:pb-0">
               <label className="block mb-2 font-bold text-xs md:text-sm">
                 صورة الغرض
                 <span className="text-on-surface-variant font-normal mr-1">
@@ -58,7 +83,7 @@ export default function EditItemPage() {
               </label>
 
               <div
-                className={`relative border-2 border-dashed rounded-2xl p-6 md:p-10 flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden ${
+                className={`relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[18px] border-2 border-dashed p-6 transition-all md:p-10 ${
                   preview
                     ? "border-primary bg-emerald-50"
                     : "border-outline-variant bg-surface-container-low hover:bg-[#edeeef]"
@@ -97,7 +122,7 @@ export default function EditItemPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 md:gap-6">
+            <div className="grid grid-cols-1 gap-5 px-6 md:gap-6 md:px-8">
               <div className="space-y-2">
                 <label className="block font-bold text-xs md:text-sm mr-1">اسم الغرض</label>
                 <input
@@ -107,7 +132,7 @@ export default function EditItemPage() {
                   value={formData.title}
                   onChange={handleChange}
                   placeholder="مثال: لابتوب ديل مستعمل"
-                  className="w-full bg-surface-container-low text-sm md:text-base border-none rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all placeholder:text-outline"
+                  className="field-control bg-white px-4 py-3 text-sm placeholder:text-outline md:px-5 md:py-4 md:text-base"
                 />
               </div>
 
@@ -121,7 +146,7 @@ export default function EditItemPage() {
                       value={formData.category}
                       onChange={handleChange}
                       disabled={settingsLoading || categories.length === 0}
-                      className="w-full appearance-none bg-surface-container-low text-sm md:text-base border-none rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="field-control w-full appearance-none px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60 md:px-5 md:py-4 md:text-base"
                     >
                       <option value="" disabled>
                         {settingsLoading ? "جاري تحميل التصنيفات..." : "اختر التصنيف"}
@@ -153,7 +178,7 @@ export default function EditItemPage() {
                       name="location"
                       value={formData.location}
                       onChange={handleChange}
-                      className="w-full appearance-none bg-surface-container-low text-sm md:text-base border-none rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                      className="field-control w-full appearance-none px-4 py-3 text-sm md:px-5 md:py-4 md:text-base"
                     >
                       <option value="" disabled>
                         اختر المدينة
@@ -202,20 +227,23 @@ export default function EditItemPage() {
                   onChange={handleChange}
                   placeholder="اكتب تفاصيل إضافية عن القطعة..."
                   rows={4}
-                  className="w-full bg-surface-container-low text-sm md:text-base border-none rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all placeholder:text-outline resize-none"
+                  className="field-control min-h-32 resize-none px-4 py-3 text-sm placeholder:text-outline md:px-5 md:py-4 md:text-base"
                 />
               </div>
             </div>
 
-            <HubSelector
-              value={formData.hubId}
-              onChange={handleHubChange}
-              required={hubRequired}
-            />
+            <div className="px-6 md:px-8">
+              <HubSelector
+                value={formData.hubId}
+                onChange={handleHubChange}
+                required={hubRequired}
+              />
+            </div>
 
             {message.text && (
               <div
-                className={`p-4 rounded-xl text-center text-sm md:text-base font-bold ${
+                role={message.type === "success" ? "status" : "alert"}
+                className={`mx-6 rounded-xl p-4 text-center text-sm font-bold md:mx-8 md:text-base ${
                   message.type === "success"
                     ? "bg-emerald-100 text-emerald-700"
                     : "bg-red-100 text-red-700"
@@ -225,11 +253,11 @@ export default function EditItemPage() {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row-reverse gap-3 md:gap-4 pt-2 md:pt-4">
+            <div className="flex flex-col gap-3 border-t border-black/[0.06] bg-surface-container-low/60 p-6 sm:flex-row-reverse md:gap-4 md:p-8">
               <button
                 type="submit"
                 disabled={loading || settingsLoading || categories.length === 0}
-                className="flex-1 bg-linear-to-br from-primary to-primary-container text-white text-sm md:text-base font-bold py-3 md:py-4 px-6 md:px-8 rounded-full shadow-lg hover:shadow-primary/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="btn-primary flex-1 rounded-xl px-6 py-3 text-sm md:px-8 md:py-4 md:text-base"
               >
                 <span>{loading ? "جاري الحفظ..." : "حفظ التعديلات"}</span>
                 <span className="material-symbols-outlined text-lg md:text-xl">save</span>
@@ -238,7 +266,7 @@ export default function EditItemPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="flex-1 bg-surface-container-low text-on-surface-variant text-sm md:text-base font-bold py-3 md:py-4 px-6 md:px-8 rounded-full hover:bg-surface-container-highest transition-all"
+                className="btn-secondary flex-1 rounded-xl px-6 py-3 text-sm md:px-8 md:py-4 md:text-base"
               >
                 إلغاء
               </button>

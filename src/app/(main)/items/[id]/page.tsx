@@ -105,7 +105,7 @@ export default function ItemDetailsPage() {
   const isRecipientConfirmedActual = item.recipientConfirmed || delivery.isRecipientConfirmed;
 
   return (
-    <div className="page-shell pb-20" dir="rtl">
+    <div className="page-shell pb-20 pt-20" dir="rtl">
       {confirmModal.show && (
         <ConfirmModal
           message={confirmModal.msg}
@@ -125,7 +125,7 @@ export default function ItemDetailsPage() {
         />
       )}
 
-      <div className="site-container pt-20 md:pt-24">
+      <div className="site-container md:pt-4">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-xs font-medium text-gray-400">
           <Link
@@ -140,7 +140,7 @@ export default function ItemDetailsPage() {
 
         <div className="grid grid-cols-1 gap-8 md:gap-10 lg:grid-cols-2">
           {/* صورة الغرض */}
-          <div className="relative overflow-hidden rounded-[22px] border border-black/[0.07] bg-white shadow-md">
+          <div className="content-panel relative h-fit overflow-hidden lg:sticky lg:top-24">
             <div className="relative aspect-square">
               <Image
                 src={imageUrl}
@@ -155,29 +155,29 @@ export default function ItemDetailsPage() {
 
           {/* تفاصيل الغرض */}
           <div className="flex flex-col gap-6">
-            <div className="space-y-3">
+            <div className="route-intro route-intro--compact space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 {item.category && (
-                  <span className="rounded-lg bg-gray-100 px-3 py-1 text-[10px] font-bold text-gray-600">
+                  <span className="data-chip">
                     {item.category}
                   </span>
                 )}
-                <span className="rounded-lg bg-primary/5 px-3 py-1 text-[10px] font-bold text-primary">
+                <span className="data-chip">
                   {item.condition || "حالة جيدة"}
                 </span>
 
                 {(item.waitlistCount ?? 0) > 0 && (
-                  <div className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1">
-                    <span className="material-symbols-outlined text-sm text-blue-500">group</span>
-                    <p className="text-[10px] font-black text-blue-700">
+                  <div className="data-chip">
+                    <span className="material-symbols-outlined text-sm">group</span>
+                    <p className="text-[10px] font-black text-white/80">
                       {item.waitlistCount} ينتظرون
                     </p>
                   </div>
                 )}
               </div>
 
-              <h1 className="text-3xl font-black leading-tight text-on-surface md:text-4xl">{item.title}</h1>
-              <p className="surface-card p-4 text-sm leading-7 text-on-surface-variant">
+              <h1 className="route-intro__title">{item.title}</h1>
+              <p className="max-w-xl text-sm leading-8 text-white/65">
                 {item.description || "لم يضف المتبرع وصفًا لهذا الغرض."}
               </p>
             </div>
@@ -200,7 +200,7 @@ export default function ItemDetailsPage() {
                 { label: "الموقع", val: item.location || "غير محدد", ic: "distance" },
                 { label: "التاريخ", val: new Date(item.createdAt).toLocaleDateString("ar-EG"), ic: "event" },
               ].map((s, i) => (
-                <div key={i} className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white p-3 text-center shadow-sm">
+                <div key={i} className="content-panel flex flex-col items-center p-3 text-center">
                   <span className="mb-1 material-symbols-outlined text-xl text-primary">{s.ic}</span>
                   <p className="text-[10px] font-bold text-gray-400">{s.label}</p>
                   <p className="mt-1 truncate text-[11px] font-black text-primary">{s.val}</p>
@@ -212,7 +212,7 @@ export default function ItemDetailsPage() {
             {item.donor ? (
               <Link
                 href={`/profile/${item.donor._id}`}
-                className="group flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+                className="content-panel group flex items-center justify-between p-4 transition-all hover:border-primary/30 hover:shadow-md"
               >
               <div className="flex items-center gap-3">
                 <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-gray-50">
@@ -241,7 +241,7 @@ export default function ItemDetailsPage() {
 
             {/* مركز التسليم */}
             {item.safeHub && (
-              <div className="space-y-2 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div className="content-panel space-y-2 p-4">
                 <div className="mb-1 flex items-center gap-2">
                   <span className="material-symbols-outlined text-xl text-primary">warehouse</span>
                   <p className="text-sm font-black text-gray-800">مركز التسليم</p>

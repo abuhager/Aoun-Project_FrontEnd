@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { HubSelector } from "@/components/HubSelector";
 import { useAddItem } from "./hooks/useAddItem";
 import { useSettings } from "@/hooks/useSettings";
+import PageIntro from "@/components/ui/PageIntro";
 
 const CONDITIONS = ["جديد", "مستعمل ممتاز", "مستعمل جيد"] as const;
 const CITIES = ["عمان", "إربد", "الزرقاء", "العقبة"] as const;
@@ -26,22 +27,23 @@ export default function AddItemPage() {
   } = useAddItem(hubRequired);
 
   return (
-    <div className="page-shell pb-20 md:pb-28" dir="rtl">
-      <div className="site-container max-w-3xl pt-24 font-body md:pt-28">
-        <div className="mb-7 border-b border-black/[0.06] pb-6">
-          <span className="eyebrow">
-            <span className="material-symbols-outlined text-[15px]">volunteer_activism</span>
-            تبرع عيني
-          </span>
-          <h1 className="mt-4 text-3xl font-black text-on-surface md:text-4xl">
-            إضافة تبرع جديد
-          </h1>
-          <p className="mt-2 max-w-xl text-sm leading-7 text-on-surface-variant md:text-base">
-            أضف صورة واضحة وتفاصيل دقيقة لتسهّل على المستفيد اتخاذ القرار والتنسيق معك.
-          </p>
-        </div>
+    <div className="page-shell pb-20 pt-20 md:pb-28" dir="rtl">
+      <div className="site-container max-w-4xl space-y-6 font-body md:pt-4">
+        <PageIntro
+          eyebrow="تبرع عيني · خطوة واحدة"
+          title="أضف غرضًا ليستفيد منه غيرك"
+          description="صورة حقيقية ووصف دقيق يسرّعان الوصول إلى المستفيد المناسب ويقللان الأسئلة قبل الحجز."
+          icon="add_box"
+          meta={
+            <>
+              <span className="data-chip">صورة JPG أو PNG أو WebP</span>
+              <span className="data-chip">وصف واضح لحالة الغرض</span>
+              <span className="data-chip">تسليم منظم عبر مركز آمن</span>
+            </>
+          }
+        />
 
-        <div className="surface-card p-5 sm:p-7 md:p-9">
+        <div className="content-panel overflow-hidden p-5 sm:p-7 md:p-9">
           <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
             <div className="relative group">
               <label htmlFor="item-image" className="mb-2 block text-xs font-black text-on-surface-variant md:text-sm">

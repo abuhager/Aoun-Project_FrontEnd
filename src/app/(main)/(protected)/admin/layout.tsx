@@ -4,173 +4,122 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "لوحة التحكم", icon: "dashboard" },
-  { href: "/admin/users", label: "المستخدمون", icon: "group" },
-  { href: "/admin/items", label: "الأغراض", icon: "inventory_2" },
-  { href: "/admin/reports", label: "البلاغات", icon: "flag" },
-  { href: "/admin/logs", label: "السجلات", icon: "history" },
-  { href: "/admin/settings", label: "الإعدادات", icon: "settings" },
-  { href: "/admin/hubs", label: "مراكز التسليم", icon: "warehouse" },
-];
+  { href: "/admin", label: "نظرة عامة", icon: "space_dashboard", group: "الرئيسية" },
+  { href: "/admin/users", label: "المستخدمون", icon: "group", group: "الإدارة" },
+  { href: "/admin/items", label: "الأغراض", icon: "inventory_2", group: "الإدارة" },
+  { href: "/admin/reports", label: "البلاغات", icon: "flag", group: "المتابعة" },
+  { href: "/admin/logs", label: "سجل العمليات", icon: "history", group: "المتابعة" },
+  { href: "/admin/settings", label: "الإعدادات", icon: "tune", group: "النظام" },
+  { href: "/admin/hubs", label: "مراكز التسليم", icon: "warehouse", group: "النظام" },
+] as const;
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const GROUPS = ["الرئيسية", "الإدارة", "المتابعة", "النظام"] as const;
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+  const isItemActive = (href: string) =>
+    pathname === href || (href !== "/admin" && pathname.startsWith(href));
+
   return (
-    <div dir="rtl" className="min-h-dvh min-w-0 bg-[#f6f4ef] text-[#1f2328]">
-      {/* ── Desktop Sidebar ───────────────────────────── */}
-      <aside className="fixed bottom-0 right-0 top-[66px] z-40 hidden w-[290px] border-l border-[#e6e0d7] bg-white/95 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-md lg:flex lg:flex-col">
-        {/* Brand / top */}
-        <div className="border-b border-[#f0ebe4] px-5 pb-5 pt-6">
-          <div className="rounded-[24px] border border-[#ebe5dc] bg-[linear-gradient(180deg,#fffdfa_0%,#f8f5ef_100%)] p-4 shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
-            <div className="flex items-start gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <span className="material-symbols-outlined text-[24px]">
-                  admin_panel_settings
-                </span>
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-xs font-extrabold tracking-[0.18em] text-[#9b948b]">
-                  AOUN ADMIN
-                </p>
-                <h2 className="mt-1 text-base font-black text-[#1f312f]">
-                  لوحة الإدارة
-                </h2>
-                <p className="mt-1 text-xs leading-6 text-[#847d75]">
-                  إدارة المستخدمين، الأغراض، البلاغات والإعدادات من مكان واحد.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* nav */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          <div className="mb-3 px-2">
-            <p className="text-[11px] font-extrabold tracking-[0.22em] text-[#a19990]">
-              التنقل الإداري
-            </p>
-          </div>
-
-          <nav className="space-y-1.5" aria-label="التنقل الإداري">
-            {NAV_ITEMS.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/admin" && pathname.startsWith(item.href));
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={[
-                    "group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3.5 py-3 text-sm font-bold transition-all duration-300 ease-out",
-                    isActive
-                      ? "bg-primary text-white shadow-[0_10px_24px_rgba(1,105,111,0.18)]"
-                      : "text-[#62605b] hover:bg-[#f8f5ef] hover:text-[#1f312f]",
-                  ].join(" ")}
-                >
-                  <span
-                    className={[
-                      "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300",
-                      isActive
-                        ? "bg-white/15 text-white"
-                        : "bg-[#f3efe9] text-[#7b756d] group-hover:bg-white",
-                    ].join(" ")}
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {item.icon}
-                    </span>
-                  </span>
-
-                  <span className="truncate">{item.label}</span>
-
-                  {isActive && (
-                    <span className="absolute left-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-white/90" />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* footer note */}
-        <div className="border-t border-[#f0ebe4] px-5 py-4">
-          <div className="rounded-2xl bg-[#faf8f4] px-4 py-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#6e6a64]">
-              <span className="material-symbols-outlined text-[16px] text-primary">
-                verified_user
+    <div dir="rtl" className="min-h-dvh min-w-0 bg-[#eef3f2] text-on-surface">
+      <aside className="fixed bottom-0 right-0 top-[68px] z-40 hidden w-[268px] flex-col overflow-hidden border-l border-white/[0.07] bg-[linear-gradient(180deg,#102a30_0%,#0b2024_100%)] text-white shadow-[0_18px_60px_rgba(4,24,27,0.22)] lg:flex">
+        <div className="border-b border-white/[0.07] px-5 py-5">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-[14px_5px_14px_14px] bg-[#f0be69] text-[#173039] shadow-[0_10px_25px_rgba(0,0,0,0.2)]">
+              <span className="material-symbols-outlined text-[23px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                admin_panel_settings
               </span>
-              جلسة إدارية نشطة
+            </span>
+            <div>
+              <p className="text-[10px] font-black tracking-[0.2em] text-[#f0be69]">AOUN CONTROL</p>
+              <h1 className="mt-1 text-base font-black text-white">مركز إدارة المنصة</h1>
             </div>
-            <p className="mt-1 text-[11px] leading-6 text-[#9a938a]">
-              تأكد من مراجعة البلاغات والسجلات بشكل دوري للحفاظ على جودة المنصة.
+          </div>
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-300/10 bg-emerald-300/[0.06] px-3 py-2 text-[10px] font-bold text-emerald-100/75">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-40" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+            </span>
+            اتصال الإدارة نشط
+          </div>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="التنقل الإداري">
+          {GROUPS.map((group) => (
+            <div key={group} className="mb-4 last:mb-0">
+              <p className="mb-1.5 px-3 text-[9px] font-black tracking-[0.16em] text-white/30">{group}</p>
+              <div className="space-y-1">
+                {NAV_ITEMS.filter((item) => item.group === group).map((item) => {
+                  const isActive = isItemActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`group relative flex min-h-12 items-center gap-3 rounded-[14px] px-3 text-sm font-bold transition-all ${
+                        isActive
+                          ? "bg-white text-[#102a30] shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                          : "text-white/58 hover:bg-white/[0.07] hover:text-white"
+                      }`}
+                    >
+                      <span className={`material-symbols-outlined text-[20px] ${isActive ? "text-primary" : "text-white/45 group-hover:text-[#f0be69]"}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                      {isActive && <span className="mr-auto h-1.5 w-1.5 rounded-full bg-primary" />}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="border-t border-white/[0.07] p-4">
+          <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.045] p-3">
+            <p className="flex items-center gap-2 text-[11px] font-black text-white/80">
+              <span className="material-symbols-outlined text-[16px] text-[#f0be69]">shield_lock</span>
+              إجراءات حساسة ومسجّلة
             </p>
+            <p className="mt-1 text-[10px] leading-5 text-white/35">كل تعديل إداري يظهر في سجل العمليات للمراجعة.</p>
           </div>
         </div>
       </aside>
 
-      {/* ── Mobile Top Header ───────────────────────── */}
-      <header className="sticky top-16 z-30 border-b border-[#e8e2d9] bg-white/90 backdrop-blur-md lg:hidden">
-        <div className="flex items-center justify-between px-4 py-3">
+      <header className="sticky top-16 z-30 border-b border-white/[0.08] bg-[#102a30]/96 px-4 py-3 text-white shadow-lg backdrop-blur-xl lg:hidden">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-extrabold tracking-[0.18em] text-[#a19990]">
-              AOUN ADMIN
-            </p>
-            <h1 className="text-sm font-black text-[#1f312f]">لوحة الإدارة</h1>
+            <p className="text-[9px] font-black tracking-[0.18em] text-[#f0be69]">AOUN CONTROL</p>
+            <p className="mt-0.5 text-sm font-black">مركز إدارة المنصة</p>
           </div>
-
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <span className="material-symbols-outlined text-[22px]">
-              admin_panel_settings
-            </span>
-          </div>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-[#f0be69]">
+            <span className="material-symbols-outlined text-[21px]">admin_panel_settings</span>
+          </span>
         </div>
       </header>
 
-      {/* ── Main area ───────────────────────────────── */}
-      <div className="min-w-0 pt-16 lg:mr-[290px] lg:pt-[66px]">
-
-
-        {/* page content wrapper */}
-        <div className="min-w-0 px-4 pb-28 pt-5 sm:px-5 md:px-6 lg:px-8 lg:pb-10 lg:pt-6 xl:px-10">
-          <div className="mx-auto w-full max-w-[1400px]">
-            {children}
-          </div>
+      <div className="min-w-0 pt-16 lg:mr-[268px] lg:pt-[68px]">
+        <div className="min-w-0 px-4 pb-28 pt-5 sm:px-5 md:px-6 lg:px-8 lg:pb-10 lg:pt-7 xl:px-10">
+          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
         </div>
       </div>
 
-      {/* ── Mobile Bottom Nav ───────────────────────── */}
-      <nav className="safe-area-bottom fixed bottom-0 left-0 right-0 z-40 overflow-x-auto border-t border-[#e7e1d8] bg-white/95 px-2 pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-md lg:hidden" aria-label="التنقل الإداري على الهاتف">
+      <nav className="safe-area-bottom fixed bottom-0 left-0 right-0 z-40 overflow-x-auto border-t border-white/[0.08] bg-[#102a30]/97 px-2 pt-2 shadow-[0_-12px_30px_rgba(4,24,27,0.2)] backdrop-blur-xl lg:hidden" aria-label="التنقل الإداري على الهاتف">
         <div className="mx-auto flex w-max min-w-full gap-1">
           {NAV_ITEMS.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/admin" && pathname.startsWith(item.href));
-
+            const isActive = isItemActive(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={[
-                  "flex min-h-[52px] min-w-[76px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 transition-all duration-300",
-                  isActive
-                    ? "bg-primary text-white shadow-[0_8px_20px_rgba(1,105,111,0.16)]"
-                    : "text-[#8a837a]",
-                ].join(" ")}
+                className={`flex min-h-[54px] min-w-[76px] flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 transition-all ${
+                  isActive ? "bg-white text-[#102a30]" : "text-white/45"
+                }`}
               >
-                <span className="material-symbols-outlined text-[20px]">
-                  {item.icon}
-                </span>
-                <span className="text-[10px] font-extrabold leading-none">
-                  {item.label}
-                </span>
+                <span className={`material-symbols-outlined text-[20px] ${isActive ? "text-primary" : ""}`}>{item.icon}</span>
+                <span className="text-[9px] font-black leading-none">{item.label}</span>
               </Link>
             );
           })}

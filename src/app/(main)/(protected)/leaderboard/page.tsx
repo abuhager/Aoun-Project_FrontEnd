@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useLeaderboard } from "./hooks/useLeaderboard";
 import { useSiteConfig } from "@/context/SiteConfigContext";
+import PageIntro from "@/components/ui/PageIntro";
 
 function medalColor(rank: number) {
   if (rank === 1) return "text-yellow-500";
@@ -13,10 +14,10 @@ function medalColor(rank: number) {
 }
 
 function rowBg(rank: number) {
-  if (rank === 1) return "bg-yellow-50 border border-yellow-200";
-  if (rank === 2) return "bg-slate-50 border border-slate-200";
-  if (rank === 3) return "bg-amber-50 border border-amber-200";
-  return "bg-white border border-black/[0.06]";
+  if (rank === 1) return "border-yellow-200/80 bg-yellow-50/70";
+  if (rank === 2) return "border-slate-200 bg-slate-50/70";
+  if (rank === 3) return "border-amber-200 bg-amber-50/70";
+  return "border-black/[0.055] bg-white";
 }
 
 function topCardBg(rank: number) {
@@ -31,7 +32,7 @@ function topCardBg(rank: number) {
 
 function SkeletonRow() {
   return (
-    <div className="flex items-center gap-4 rounded-3xl border border-black/[0.06] bg-white p-4 animate-pulse">
+    <div className="flex items-center gap-4 border-b border-black/[0.06] bg-white p-4 last:border-b-0 animate-pulse">
       <div className="h-6 w-8 rounded bg-gray-200" />
       <div className="h-11 w-11 rounded-full bg-gray-200 shrink-0" />
       <div className="flex-1 space-y-2">
@@ -76,10 +77,15 @@ function TopThreeCard({
   return (
     <Link
       href={profileHref}
-      className={`group rounded-3xl border p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${topCardBg(
+      className={`group relative overflow-hidden rounded-[20px] border p-5 shadow-[0_14px_35px_rgba(16,37,34,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(16,37,34,0.12)] ${
+        rank === 1 ? "md:-translate-y-3 md:hover:-translate-y-4" : ""
+      } ${topCardBg(
         rank
       )}`}
     >
+      <span className="absolute -left-8 -top-10 font-headline text-[7rem] font-black leading-none text-black/[0.025]">
+        {rank}
+      </span>
       <div className="flex items-start justify-between">
         <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-black text-[#5f5952]">
           <span
@@ -141,8 +147,7 @@ function TopThreeCard({
 }
 
 export default function LeaderboardPage() {
-
-    const { platformName } = useSiteConfig();
+  const { platformName } = useSiteConfig();
 
   const { leaderboard, myRank, rankEligibility, loading } = useLeaderboard();
 
@@ -150,43 +155,42 @@ export default function LeaderboardPage() {
   const rest = leaderboard.slice(3);
 
   return (
-    <div
-      className="min-h-dvh bg-[#f7f6f2] pb-20 font-body text-[#191c1d]"
-      dir="rtl"
-    >
-      <div className="mx-auto max-w-5xl px-4 pt-20 md:px-6 md:pt-24">
-        {/* ── Header ── */}
-        <section className="mb-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-[11px] font-black text-yellow-700">
-            <span className="material-symbols-outlined text-[15px]">
-              workspace_premium
-            </span>
-            الترتيب المجتمعي
-          </div>
-
-          <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h1 className="text-2xl font-black tracking-tight md:text-3xl">
-                لوحة المتصدرين
-              </h1>
-              <p className="mt-1 text-sm text-gray-500">
-                أكثر الأعضاء نشاطاً وموثوقيةً على منصة {platformName}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm border border-black/[0.06]">
-              <p className="text-[10px] font-bold text-gray-400">نوع الترتيب</p>
-              <p className="text-sm font-black text-[#1d2324]">
-                حسب الثقة والتبرعات
-              </p>
-            </div>
-          </div>
-        </section>
+    <div className="page-shell pb-20 pt-20 font-body" dir="rtl">
+      <div className="site-container space-y-7 md:pt-4">
+        <PageIntro
+          eyebrow="مجتمع عون · أثر موثّق"
+          title="لوحة المتصدرين"
+          description={`مساحة تقدير لأكثر أعضاء ${platformName} نشاطًا وثقةً، مبنية على عمليات التبرع المكتملة والتقييمات الموثوقة.`}
+          icon="workspace_premium"
+          tone="warm"
+          actions={
+            <Link
+              href="/dashboard"
+              className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-xs font-black text-white hover:bg-white/16"
+            >
+              عرض نشاطي
+            </Link>
+          }
+          meta={
+            <>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">groups</span>
+                {loading ? "جارٍ التحميل" : `${leaderboard.length} عضو في الترتيب`}
+              </span>
+              <span className="data-chip">
+                <span className="material-symbols-outlined text-[15px]">verified</span>
+                الترتيب حسب الثقة والعطاء
+              </span>
+              {myRank && <span className="data-chip">ترتيبك الحالي #{myRank.rank}</span>}
+            </>
+          }
+        />
 
         {/* ── My rank ── */}
         {!loading && myRank && (
-          <section className="mb-6">
-            <div className="rounded-3xl border border-primary/15 bg-white p-4 shadow-sm md:p-5">
+          <section>
+            <div className="content-panel relative overflow-hidden p-4 md:p-5">
+              <span className="absolute inset-y-0 right-0 w-1.5 bg-primary" />
               <div className="flex flex-col gap-4 md:flex-row md:items-center">
                 <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-primary/8">
                   <span className="text-[10px] font-bold text-primary">
@@ -215,7 +219,7 @@ export default function LeaderboardPage() {
                   </p>
                 </div>
 
-                <div className="shrink-0 rounded-2xl bg-[#f8f6f2] px-4 py-3 text-center">
+                <div className="shrink-0 rounded-xl bg-primary-softer px-5 py-3 text-center">
                   <p className="text-xl font-black text-primary">
                     {myRank.totalDonations}
                   </p>
@@ -227,8 +231,8 @@ export default function LeaderboardPage() {
         )}
 
         {!loading && rankEligibility === false && (
-          <section className="mb-6">
-            <div className="flex items-start gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+          <section>
+            <div className="flex items-start gap-3 rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
               <span className="material-symbols-outlined mt-0.5 text-[20px]">
                 info
               </span>
@@ -244,17 +248,20 @@ export default function LeaderboardPage() {
 
         {/* ── Top 3 ── */}
         {!loading && topThree.length > 0 && (
-          <section className="mb-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-black text-[#1d2324]">
+          <section className="pt-2">
+            <div className="mb-7 flex items-end justify-between">
+              <div>
+                <span className="section-kicker">TOP CONTRIBUTORS</span>
+                <h2 className="mt-1 text-xl font-black text-on-surface">
                 أصحاب المراكز الأولى
-              </h2>
+                </h2>
+              </div>
               <span className="text-[11px] font-bold text-gray-400">
-                أعلى 3 أعضاء هذا الترتيب
+                أعلى 3 أعضاء
               </span>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-4 pt-3 md:grid-cols-3">
               {topThree.map((entry) => (
                 <TopThreeCard
                   key={entry._id}
@@ -273,24 +280,27 @@ export default function LeaderboardPage() {
         )}
 
         {/* ── List ── */}
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-black text-[#1f2425]">بقية الترتيب</h2>
+        <section className="content-panel overflow-hidden">
+          <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-4">
+            <div>
+              <span className="section-kicker">COMMUNITY RANKING</span>
+              <h2 className="mt-1 text-base font-black text-on-surface">بقية الترتيب</h2>
+            </div>
             {!loading && (
-              <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-[#6a645d] border border-black/[0.06] shadow-sm">
+              <span className="rounded-lg bg-surface-container-low px-3 py-1.5 text-[11px] font-black text-on-surface-variant">
                 {leaderboard.length} عضو
               </span>
             )}
           </div>
 
-          <div className="space-y-2.5">
+          <div>
             {loading
               ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
               : rest.map((entry) => (
                   <Link
                     key={entry._id}
                     href={`/profile/${entry._id}`}
-                    className={`flex items-center gap-4 rounded-2xl p-4 transition-all duration-200 hover:shadow-sm active:scale-[.99] ${rowBg(
+                    className={`flex items-center gap-4 border-b p-4 transition-colors duration-200 last:border-b-0 hover:bg-primary-softer/70 ${rowBg(
                       entry.rank
                     )}`}
                   >
@@ -363,7 +373,7 @@ export default function LeaderboardPage() {
 
         {/* Empty state */}
         {!loading && leaderboard.length === 0 && (
-          <div className="py-20 text-center">
+          <div className="content-panel py-20 text-center">
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm border border-black/[0.06]">
               <span className="material-symbols-outlined text-3xl text-gray-300">
                 leaderboard

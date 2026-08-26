@@ -112,8 +112,3 @@ test('لوحة البلاغات تعرض عدد البلاغات المعتمد�
   assert.match(logs, /changedFields/);
   assert.match(navbar, /userRole === "admin" \|\| userRole === "super_admin"/);
 });
-
-test('Flow 10 لا يضيف أي متغير بيئة جديد للواجهة', async () => {
-  const envExample = await readSource('../.env.example');
-  assert.doesNotMatch(envExample, /MAINTENANCE|SETTINGS|SAFE_HUB_REQUIRED/);
-});

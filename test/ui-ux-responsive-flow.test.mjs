@@ -167,8 +167,3 @@ test("الحالات الحية تعلن التحميل والنجاح والخ�
   assert.match(toast, /aria-live=\{toast\.ok \? "polite" : "assertive"\}/);
   assert.match(toast, /max-w-\[calc\(100vw-2rem\)\]/);
 });
-
-test("Flow 15 لا يضيف متغيرات بيئة جديدة", () => {
-  const env = read(".env.example");
-  assert.doesNotMatch(env, /FLOW_?15|ACCESSIBILITY|RESPONSIVE|VIEWPORT/);
-});

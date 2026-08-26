@@ -67,7 +67,7 @@ export default function NewDonationRequestPage() {
   };
 
   return (
-    <div className="bg-surface min-h-dvh pb-24 text-[#191c1d]" dir="rtl">
+    <div className="page-shell pb-24" dir="rtl">
       {toast && (
         <div
           role={toast.ok ? "status" : "alert"}
@@ -78,96 +78,117 @@ export default function NewDonationRequestPage() {
           {toast.msg}
         </div>
       )}
-      <div className="pt-20 md:pt-24 px-4 md:px-8 max-w-3xl mx-auto space-y-6">
-        <div className="space-y-3 text-center">
-          <h1 className="text-2xl md:text-3xl font-black">إنشاء طلب جديد</h1>
-          <div className="flex justify-center">
-            <Link href="/donation-requests" className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-gray-200 text-sm font-black text-gray-700 hover:bg-gray-50 transition-all">
-              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-              العودة إلى الطلبات
-            </Link>
+      <div className="site-container max-w-3xl space-y-6 pt-24 md:pt-28">
+        <div className="flex flex-col gap-4 border-b border-black/[0.06] pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <span className="eyebrow">
+              <span className="material-symbols-outlined text-[15px]">campaign</span>
+              طلب مساعدة عينية
+            </span>
+            <h1 className="mt-4 text-3xl font-black text-on-surface md:text-4xl">إنشاء طلب جديد</h1>
+            <p className="mt-2 max-w-xl text-sm leading-7 text-on-surface-variant">
+              اشرح احتياجك بوضوح وحدد المنطقة ودرجة الاستعجال ليسهل على المتبرعين مساعدتك.
+            </p>
           </div>
+          <Link href="/donation-requests" className="btn-secondary self-start text-xs sm:self-auto">
+            <span className="material-symbols-outlined text-[17px]">arrow_forward</span>
+            العودة إلى الطلبات
+          </Link>
         </div>
 
         {/* [FIX-4] شريط quota */}
         {!quotaLoading && quota !== null && (
-          <div className={`rounded-2xl px-4 py-3 text-[12px] font-bold leading-6 border ${isQuotaExceeded ? 'bg-red-50 border-red-100 text-red-700' : 'bg-blue-50 border-blue-100 text-blue-700'}`}>
-            {isQuotaExceeded
-              ? `🚫 وصلت الحد الأقصى (${quota.max} طلبات). الشهر القادم يمكنك النشر مجدداً.`
-              : `📊 الطلبات الشهرية: ${quota.used} / ${quota.max} — متبقي ${quota.remaining}`}
+          <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-xs font-bold leading-6 ${isQuotaExceeded ? 'border-red-100 bg-red-50 text-red-700' : 'border-blue-100 bg-blue-50 text-blue-700'}`}>
+            <span className="material-symbols-outlined mt-0.5 text-[18px]">
+              {isQuotaExceeded ? "block" : "data_usage"}
+            </span>
+            <span>
+              {isQuotaExceeded
+                ? `وصلت الحد الأقصى (${quota.max} طلبات). يمكنك النشر مجددًا الشهر القادم.`
+                : `الطلبات الشهرية: ${quota.used} من ${quota.max} — متبقي ${quota.remaining}`}
+            </span>
           </div>
         )}
 
-        <form onSubmit={submit} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 md:p-6 space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs font-black text-gray-700">عنوان الطلب *</label>
+        <form onSubmit={submit} className="surface-card space-y-5 p-5 sm:p-7 md:p-8">
+          <div className="space-y-2">
+            <label htmlFor="request-title" className="text-xs font-black text-on-surface-variant">عنوان الطلب</label>
             <input 
+              id="request-title"
+              required
               value={form.title} 
               onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} 
               maxLength={100}
               placeholder="مثال: أحتاج لابتوب للدراسة" 
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary" 
+              className="field-control px-4 py-3 text-sm font-bold"
             />
-            <p className="text-[11px] text-gray-400 text-left">{form.title.length} / 100</p>
+            <p dir="ltr" className="text-left text-[11px] text-on-surface-soft">{form.title.length} / 100</p>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-black text-gray-700">التصنيف *</label>
+            <div className="space-y-2">
+              <label htmlFor="request-category" className="text-xs font-black text-on-surface-variant">التصنيف</label>
               <select 
+                id="request-category"
+                required
                 value={form.category} 
                 onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} 
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+                className="field-control px-4 py-3 text-sm font-bold"
               >
                 <option value="">اختر التصنيف</option>
                 {categories.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-black text-gray-700">المنطقة *</label>
+            <div className="space-y-2">
+              <label htmlFor="request-location" className="text-xs font-black text-on-surface-variant">المنطقة</label>
               <select 
+                id="request-location"
+                required
                 value={form.location} 
                 onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} 
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+                className="field-control px-4 py-3 text-sm font-bold"
               >
                 <option value="">اختر المنطقة</option>
                 {locations.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-black text-gray-700">درجة الاستعجال</label>
+          <div className="space-y-2">
+            <label htmlFor="request-urgency" className="text-xs font-black text-on-surface-variant">درجة الاستعجال</label>
             <select
+              id="request-urgency"
               value={form.urgency}
               onChange={(e) => setForm((p) => ({
                 ...p,
                 urgency: e.target.value as 'low' | 'medium' | 'high',
               }))}
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+              className="field-control px-4 py-3 text-sm font-bold"
             >
               <option value="low">عادي</option>
               <option value="medium">متوسط</option>
               <option value="high">عاجل</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-black text-gray-700">الوصف *</label>
+          <div className="space-y-2">
+            <label htmlFor="request-description" className="text-xs font-black text-on-surface-variant">الوصف</label>
             <textarea 
+              id="request-description"
+              required
               value={form.description} 
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} 
               rows={7} 
               maxLength={500}
               placeholder="اشرح حاجتك بوضوح" 
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:border-primary resize-none" 
+              className="field-control resize-none px-4 py-3 text-sm font-bold"
             />
-            <p className="text-[11px] text-gray-400 text-left">{form.description.length} / 500</p>
+            <p dir="ltr" className="text-left text-[11px] text-on-surface-soft">{form.description.length} / 500</p>
           </div>
           {/* [FIX-4] زر معطّل عند تجاوز الحد */}
           <button 
             type="submit" 
             disabled={submitting || isFormInvalid || isQuotaExceeded}
-            className="w-full py-3 rounded-2xl bg-primary text-white text-sm font-black hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="btn-primary w-full py-3.5 text-sm"
           >
-            {submitting ? 'جارٍ النشر...' : isQuotaExceeded ? '🚫 وصلت الحد الأقصى' : 'نشر الطلب'}
+            {submitting ? 'جارٍ النشر...' : isQuotaExceeded ? 'وصلت الحد الأقصى' : 'نشر الطلب'}
           </button>
         </form>
       </div>

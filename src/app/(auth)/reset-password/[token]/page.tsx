@@ -16,7 +16,7 @@ export default function LegacyResetPasswordPage() {
   }, [token]);
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-surface">
+    <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-surface md:min-h-[calc(100dvh-5rem)]">
       <span className="material-symbols-outlined animate-spin text-4xl text-primary">
         progress_activity
       </span>

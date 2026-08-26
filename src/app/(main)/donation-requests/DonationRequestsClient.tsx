@@ -281,7 +281,7 @@ export default function DonationRequestsClient() {
   };
 
   return (
-    <div className="min-h-dvh bg-[#f7f6f2] pb-24 text-[#191c1d]" dir="rtl">
+    <div className="page-shell pb-24" dir="rtl">
       {toast && (
         <div
           role={toast.ok ? "status" : "alert"}
@@ -295,26 +295,26 @@ export default function DonationRequestsClient() {
         </div>
       )}
 
-      <div className="mx-auto max-w-6xl space-y-6 px-4 pt-20 md:px-8 md:pt-24">
+      <div className="site-container max-w-6xl space-y-6 pt-20 md:pt-24">
         {/* Hero */}
-        <section className="relative overflow-hidden rounded-[32px] border border-black/[0.06] bg-white p-6 shadow-sm md:p-8">
+        <section className="relative overflow-hidden rounded-[22px] border border-black/[0.06] bg-white p-6 shadow-sm md:p-8">
           <div className="absolute left-0 top-0 h-40 w-40 -translate-x-1/3 -translate-y-1/3 rounded-full bg-[#01696f]/[0.06] blur-3xl" />
           <div className="absolute bottom-0 right-0 h-40 w-40 translate-x-1/3 translate-y-1/3 rounded-full bg-[#005a8c]/[0.05] blur-3xl" />
 
           <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#d9ecea] bg-[#ecf8f6] px-3 py-1.5 text-[11px] font-black text-primary">
+              <div className="eyebrow">
                 <span className="material-symbols-outlined text-[15px]">
                   volunteer_activism
                 </span>
                 مساحة لطلب المساعدة والتبرع
               </div>
 
-              <h1 className="mt-4 text-2xl font-black tracking-tight text-[#191c1d] md:text-4xl">
+              <h1 className="mt-4 text-3xl font-black tracking-tight text-on-surface md:text-4xl">
                 طلبات التبرع
               </h1>
 
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-[#6e675f] md:text-base">
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-on-surface-variant md:text-base">
                 استعرض الطلبات الحالية وساهم بما تستطيع، أو أنشئ طلبًا جديدًا بطريقة
                 واضحة ومحترمة تحفظ خصوصية وكرامة الجميع.
               </p>
@@ -330,7 +330,7 @@ export default function DonationRequestsClient() {
 
             <Link
               href="/donation-requests/new"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-xs font-black text-white shadow-[0_10px_24px_rgba(1,105,111,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/90"
+              className="btn-primary text-xs"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               اطلب تبرعاً
@@ -339,7 +339,7 @@ export default function DonationRequestsClient() {
         </section>
 
         {/* Controls */}
-        <section className="rounded-3xl border border-black/[0.06] bg-white p-4 shadow-sm md:p-5">
+        <section className="surface-card p-4 md:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -375,7 +375,7 @@ export default function DonationRequestsClient() {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="rounded-2xl border border-[#e4dfd7] bg-[#fcfbf8] px-4 py-2.5 text-xs font-black text-[#393531] outline-none transition-all focus:border-primary focus:bg-white"
+                className="field-control min-h-11 px-4 py-2.5 text-xs font-black sm:min-w-44"
               >
                 <option value="">كل التصنيفات</option>
                 {settingsCategories.map((c) => (
@@ -388,7 +388,7 @@ export default function DonationRequestsClient() {
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
-                className="rounded-2xl border border-[#e4dfd7] bg-[#fcfbf8] px-4 py-2.5 text-xs font-black text-[#393531] outline-none transition-all focus:border-primary focus:bg-white"
+                className="field-control min-h-11 px-4 py-2.5 text-xs font-black sm:min-w-44"
               >
                 <option value="">كل المناطق</option>
                 {settingsLocations.map((l) => (
@@ -410,7 +410,7 @@ export default function DonationRequestsClient() {
               ))}
             </div>
           ) : requests.length === 0 ? (
-            <div className="rounded-[28px] border border-dashed border-[#ddd7cf] bg-white p-12 text-center shadow-sm">
+            <div className="surface-card border-dashed p-12 text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f4f1eb]">
                 <span className="material-symbols-outlined text-4xl text-[#b9b1a8]">
                   inbox
@@ -427,7 +427,7 @@ export default function DonationRequestsClient() {
               {requests.map((request) => (
                 <article
                   key={request._id}
-                  className="group rounded-[28px] border border-black/[0.06] bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                  className="surface-card surface-card-hover group p-5"
                 >
                   <div className="flex h-full flex-col">
                     <div className="flex items-start justify-between gap-3">

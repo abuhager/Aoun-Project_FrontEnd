@@ -17,10 +17,10 @@ export default function HubsPage() {
   } = useHubs();
 
   return (
-    <div className="min-h-dvh bg-[#f7f6f2]" dir="rtl">
-      <section className="mx-auto max-w-5xl px-4 pb-20 pt-24 md:px-8 md:pt-28">
-        <div className="mb-8">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.07] px-3.5 py-1.5 text-[11px] font-black tracking-wide text-primary">
+    <div className="page-shell" dir="rtl">
+      <section className="site-container pb-20 pt-24 md:pt-28">
+        <div className="mb-8 border-b border-black/[0.06] pb-7">
+          <div className="eyebrow mb-3">
             <span
               className="material-symbols-outlined text-[14px]"
               style={{ fontVariationSettings: "'FILL' 1" }}
@@ -29,17 +29,16 @@ export default function HubsPage() {
             </span>
             مواقع موثوقة على مستوى المملكة
           </div>
-          <h1 className="text-2xl font-black text-gray-900 md:text-3xl">
+          <h1 className="text-3xl font-black text-on-surface md:text-4xl">
             مراكز التسليم
           </h1>
-          <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-gray-400">
-            نقاط تسليم آمنة وموثوقة منتشرة في مدن الأردن لتسهيل إيصال التبرعات
-            بين المتبرعين والمستفيدين
+          <p className="mt-2 max-w-xl text-sm leading-7 text-on-surface-variant">
+            اختر نقطة تسليم عامة لتنسيق الاستلام بطريقة أوضح وأكثر راحة للطرفين.
           </p>
         </div>
 
         {!loading && !error && total > 0 && (
-          <div className="mb-6 grid gap-3 rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm sm:grid-cols-[1fr_180px]">
+          <div className="surface-card mb-6 grid gap-3 p-4 sm:grid-cols-[1fr_180px]">
             <label className="relative block">
               <span className="sr-only">البحث في مراكز التسليم</span>
               <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-gray-400">
@@ -49,7 +48,7 @@ export default function HubsPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="ابحث بالاسم أو العنوان..."
-                className="w-full rounded-xl border border-gray-200 bg-[#faf9f6] py-3 pl-4 pr-10 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                className="field-control py-3 pl-4 pr-10 text-sm font-bold"
               />
             </label>
 
@@ -58,7 +57,7 @@ export default function HubsPage() {
               <select
                 value={city}
                 onChange={(event) => setCity(event.target.value)}
-                className="w-full appearance-none rounded-xl border border-gray-200 bg-[#faf9f6] px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                className="field-control appearance-none px-4 py-3 text-sm font-bold"
               >
                 {cities.map((option) => (
                   <option key={option} value={option}>
@@ -78,7 +77,7 @@ export default function HubsPage() {
             {[1, 2, 3, 4].map((item) => (
               <div
                 key={item}
-                className="animate-pulse rounded-2xl border border-black/[0.06] bg-white p-5 shadow-sm"
+                className="animate-pulse rounded-[20px] border border-black/[0.06] bg-white p-5 shadow-sm"
               >
                 <div className="flex items-start gap-4">
                   <div className="h-12 w-12 shrink-0 rounded-xl bg-gray-100" />
@@ -96,7 +95,7 @@ export default function HubsPage() {
         {!loading && error && (
           <div
             role="alert"
-            className="flex flex-col items-center rounded-2xl border border-red-100 bg-white px-6 py-14 text-center shadow-sm"
+            className="surface-card flex flex-col items-center px-6 py-14 text-center"
           >
             <span className="material-symbols-outlined text-[34px] text-red-400">
               cloud_off
@@ -105,7 +104,7 @@ export default function HubsPage() {
             <button
               type="button"
               onClick={() => void refetch()}
-              className="mt-5 rounded-xl bg-primary px-5 py-2.5 text-xs font-black text-white transition hover:bg-primary/90"
+              className="btn-primary mt-5 text-xs"
             >
               إعادة المحاولة
             </button>
@@ -117,7 +116,7 @@ export default function HubsPage() {
             {hubs.map((hub) => (
               <article
                 key={hub._id}
-                className="group relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-black/[0.06]"
+                className="surface-card surface-card-hover group relative overflow-hidden p-5"
               >
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-primary/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
@@ -133,7 +132,7 @@ export default function HubsPage() {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <h2 className="text-[15px] font-black text-gray-900">
+                      <h2 className="text-[15px] font-black text-on-surface">
                         {hub.name}
                       </h2>
                       <span className="shrink-0 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-600">
@@ -175,7 +174,7 @@ export default function HubsPage() {
         )}
 
         {!loading && !error && total > 0 && hubs.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-14 text-center">
+          <div className="surface-card border-dashed py-14 text-center">
             <p className="text-sm font-black text-gray-700">لا توجد نتائج مطابقة</p>
             <button
               type="button"
@@ -191,7 +190,7 @@ export default function HubsPage() {
         )}
 
         {!loading && !error && total === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center">
+          <div className="surface-card flex flex-col items-center justify-center border-dashed py-16 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
               <span className="material-symbols-outlined text-[30px] text-gray-300">
                 warehouse

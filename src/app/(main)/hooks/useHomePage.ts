@@ -42,7 +42,7 @@ export function useHomePage() {
 
   const getImageUrl = (item: HomeItem) => {
     const raw = item.imageUrl || item.image;
-    if (!raw) return "/placeholder.png";
+    if (!raw) return "/placeholder.svg";
     if (raw.startsWith("http")) return raw;
     const path = raw.startsWith("/") ? raw : `/${raw}`;
     return `${apiUrl}${path}`;

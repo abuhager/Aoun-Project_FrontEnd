@@ -1,19 +1,54 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
-import { useHomePage, FEATURES, HIGHLIGHTS } from "./hooks/useHomePage";
+import Link from "next/link";
+import ItemCard from "@/components/ui/ItemCard";
 import { useSiteConfig } from "@/context/SiteConfigContext";
+import { FEATURES, useHomePage } from "./hooks/useHomePage";
 
-function SkeletonCard() {
+const ENTRY_PATHS = [
+  {
+    icon: "volunteer_activism",
+    title: "لديّ غرض أريد التبرع به",
+    description: "أضف صورته وتفاصيله، واختر طريقة تسليم مناسبة وآمنة.",
+    href: "/add-item",
+    action: "إضافة تبرع",
+    tone: "bg-primary text-white",
+  },
+  {
+    icon: "search",
+    title: "أبحث عن غرض متاح",
+    description: "تصفّح التبرعات حسب المدينة والتصنيف والحالة.",
+    href: "/browse",
+    action: "استكشاف الأغراض",
+    tone: "bg-[#173f3b] text-white",
+  },
+  {
+    icon: "campaign",
+    title: "أحتاج غرضًا محددًا",
+    description: "انشر احتياجك ليتمكن المتبرعون المناسبون من تقديم عروضهم.",
+    href: "/donation-requests/new",
+    action: "إنشاء طلب",
+    tone: "bg-secondary text-white",
+  },
+] as const;
+
+const TRUST_POINTS = [
+  { icon: "verified_user", label: "هوية وثقة متدرّجة" },
+  { icon: "handshake", label: "تأكيد تسليم من الطرفين" },
+  { icon: "warehouse", label: "مراكز تسليم آمنة" },
+] as const;
+
+function ItemCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-[30px] border border-[#e9e3da] bg-white shadow-[0_10px_35px_rgba(15,23,42,0.05)]">
-      <div className="h-56 w-full animate-pulse bg-linear-to-br from-[#f4f0ea] via-[#ece7df] to-[#f8f5f0]" />
-      <div className="space-y-4 p-5">
-        <div className="h-3 w-24 animate-pulse rounded-full bg-[#ebe6de]" />
-        <div className="h-4 w-full animate-pulse rounded-full bg-[#efebe4]" />
-        <div className="h-4 w-3/4 animate-pulse rounded-full bg-[#efebe4]" />
-        <div className="mt-5 h-11 w-full animate-pulse rounded-2xl bg-[#f3efe8]" />
+    <div className="overflow-hidden rounded-[20px] border border-black/[0.06] bg-white shadow-sm">
+      <div className="aspect-[4/3] animate-pulse bg-surface-container-high" />
+      <div className="space-y-3 p-4.5">
+        <div className="h-3 w-20 animate-pulse rounded-full bg-surface-container-high" />
+        <div className="h-4 w-full animate-pulse rounded-full bg-surface-container-high" />
+        <div className="h-4 w-2/3 animate-pulse rounded-full bg-surface-container-high" />
+        <div className="h-px bg-surface-container-high" />
+        <div className="h-3 w-28 animate-pulse rounded-full bg-surface-container-high" />
       </div>
     </div>
   );
@@ -24,140 +59,101 @@ export default function HomePage() {
   const { platformName } = useSiteConfig();
 
   return (
-    // ← div واحد بس، بدون <main> داخلي (الـ MainLayout يوفّره)
-    <div
-      dir="rtl"
-      className="overflow-x-hidden bg-[#f8f6f1] text-[#211d18] antialiased"
-      style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
-    >
-      {/* ─── Hero ───────────────────────────────────────────── */}
-      <section className="relative overflow-hidden pb-14 pt-8 md:pb-24 md:pt-14">
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,#fdfcf9_0%,#f7f4ee_55%,#f6f3ed_100%)]" />
-        <div className="absolute -right-25 top-16 -z-10 h-80 w-80 rounded-full bg-[#01696f]/8 blur-3xl" />
-        <div className="absolute bottom-0 -left-20 -z-10 h-72 w-72 rounded-full bg-[#005a8c]/8 blur-3xl" />
+    <div className="overflow-x-clip bg-surface text-on-surface" dir="rtl">
+      <section className="px-4 pb-12 pt-22 md:px-6 md:pb-18 md:pt-26">
+        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[28px] bg-[#073f39] text-white shadow-[0_28px_70px_rgba(7,63,57,0.2)] md:rounded-[36px]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(255,255,255,0.11),transparent_28rem)]" />
+          <div className="pointer-events-none absolute -bottom-40 -right-32 h-100 w-100 rounded-full border-[70px] border-white/[0.035]" />
 
-        <div className="container mx-auto px-6">
-          <div className="mb-6 flex flex-wrap items-center justify-center gap-3 md:mb-10 md:justify-start">
-            {[
-              { icon: "verified", label: "نظام ثقة واضح" },
-              { icon: "bolt", label: "إشعارات فورية" },
-              { icon: "favorite", label: "عطاء بكرامة" },
-            ].map((badge, i) => (
-              <div
-                key={i}
-                className="inline-flex items-center gap-2 rounded-full border border-[#ddd7ce] bg-white/85 px-4 py-2 text-xs font-extrabold text-[#365155] shadow-[0_6px_18px_rgba(15,23,42,0.05)] backdrop-blur-sm"
-              >
-                <span className="material-symbols-outlined text-[17px] text-[#01696f]">
-                  {badge.icon}
+          <div className="relative grid items-center gap-9 px-5 py-9 sm:px-8 md:px-12 md:py-14 lg:grid-cols-[1.05fr_0.95fr] lg:px-16 lg:py-16">
+            <div>
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-3.5 py-2 text-xs font-extrabold text-white/85 backdrop-blur-sm">
+                <span
+                  className="material-symbols-outlined text-[17px] text-[#f0c77f]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  favorite
                 </span>
-                {badge.label}
+                منصة مجتمعية للتبرع العيني
               </div>
-            ))}
-          </div>
 
-          <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-            <div className="order-2 lg:order-1">
-              <h1 className="max-w-2xl text-4xl font-black leading-[1.12] text-[#173335] md:text-[3.8rem]">
-                اجعل فائضك
-                <span className="block bg-linear-to-l from-[#01696f] via-[#117b7f] to-[#005a8c] bg-clip-text text-transparent">
-                  فرصة حياةٍ لغيرك
-                </span>
+              <h1 className="max-w-2xl text-[2.45rem] font-black leading-[1.12] tracking-[-0.04em] text-white sm:text-5xl lg:text-[3.7rem]">
+                ما لا تحتاجه اليوم
+                <span className="mt-1 block text-[#f0c77f]">قد يصنع فرقًا غدًا</span>
               </h1>
 
-              <p className="mt-6 max-w-xl text-base leading-8 text-[#665f58] md:text-lg">
-                {platformName} منصة مجتمعية لتبادل الخير بثقة؛ تساعدك على التبرع بالمواد
-                والخدمات بسهولة، وتُمكّن الآخرين من الوصول لما يحتاجونه بسرعة واحترام.
+              <p className="mt-5 max-w-xl text-sm leading-8 text-white/70 sm:text-base md:leading-9">
+                {platformName} يربط المتبرعين بمن يحتاجون الأغراض بطريقة واضحة تحفظ
+                الكرامة، وتسهّل التنسيق، وتبني الثقة خطوة بخطوة.
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/add-item"
-                  className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#01696f] px-8 py-3.5 text-sm font-black text-white shadow-[0_16px_34px_rgba(1,105,111,0.24)] transition-all duration-300 ease-in-out hover:-translate-y-1 hover:bg-[#0c5a5f] hover:shadow-[0_22px_46px_rgba(1,105,111,0.30)]"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] bg-white px-6 py-3 text-sm font-black text-primary-container shadow-lg shadow-black/10 hover:-translate-y-0.5 hover:bg-[#f8fffc]"
                 >
-                  <span className="material-symbols-outlined text-[20px] transition-transform duration-300 group-hover:scale-110">
-                    volunteer_activism
+                  <span
+                    className="material-symbols-outlined text-[20px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    add_circle
                   </span>
-                  ابدأ التبرع الآن
+                  تبرع بغرض الآن
                 </Link>
-
                 <Link
                   href="/browse"
-                  className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#d8d1c8] bg-white px-8 py-3.5 text-sm font-bold text-[#234547] shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition-all duration-300 ease-in-out hover:-translate-y-1 hover:border-[#01696f]/30 hover:bg-[#f6fffd] hover:shadow-[0_15px_32px_rgba(1,105,111,0.10)]"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-white/18 bg-white/[0.08] px-6 py-3 text-sm font-extrabold text-white backdrop-blur-sm hover:-translate-y-0.5 hover:bg-white/[0.14]"
                 >
-                  تصفح الاحتياجات
-                  <span className="material-symbols-outlined text-[18px] transition-transform duration-300 group-hover:-translate-x-1">
-                    arrow_back
-                  </span>
+                  تصفّح التبرعات
+                  <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                 </Link>
               </div>
 
-              <div className="mt-10 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
-                {[
-                  { value: "+٥٠٠٠", label: "عملية تبادل ناجحة" },
-                  { value: "+١٢٠٠", label: "مستفيد على المنصة" },
-                  { value: "+٣٠",   label: "مدينة ومجتمع محلي" },
-                ].map((stat, i) => (
+              <div className="mt-8 grid gap-2.5 sm:grid-cols-3">
+                {TRUST_POINTS.map((point) => (
                   <div
-                    key={i}
-                    className="rounded-[24px] border border-[#e8e2d8] bg-white/90 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] backdrop-blur-sm"
+                    key={point.label}
+                    className="flex items-center gap-2.5 rounded-[14px] border border-white/10 bg-black/10 px-3 py-3 text-[11px] font-bold text-white/75"
                   >
-                    <p className="text-2xl font-black text-[#01696f]">{stat.value}</p>
-                    <p className="mt-1 text-xs font-bold leading-6 text-[#7a746d]">{stat.label}</p>
+                    <span className="material-symbols-outlined text-[17px] text-[#f0c77f]">
+                      {point.icon}
+                    </span>
+                    {point.label}
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="order-1 lg:order-2">
-              <div className="relative mx-auto max-w-140">
-                <div className="absolute inset-0 rounded-[38px] bg-linear-to-br from-[#01696f]/10 via-transparent to-[#005a8c]/10 blur-2xl" />
-                <div className="relative overflow-hidden rounded-[36px] border border-white/70 bg-white/70 p-3 shadow-[0_28px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl">
-                  <div className="relative h-90 overflow-hidden rounded-[30px] md:h-135">
-                    <Image
-                      src="/Home.png"
-                      alt={`منصة ${platformName} للتكافل الاجتماعي`}
-                      fill
-                      priority
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-[#0f1d1f]/35 via-transparent to-white/10" />
-                  </div>
-
-                  <div className="absolute right-6 top-6 rounded-[24px] border border-white/25 bg-white/20 p-4 shadow-lg backdrop-blur-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-white">
-                        <span className="material-symbols-outlined text-[20px]">notifications_active</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-white">تنبيه فوري</p>
-                        <p className="text-xs text-white/80">عند إضافة احتياج جديد</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="absolute bottom-6 left-6 right-6 rounded-[26px] border border-white/25 bg-white/20 p-4 shadow-lg backdrop-blur-xl md:p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-[#01696f] to-[#005a8c] text-white shadow-md">
-                        <span className="material-symbols-outlined text-[22px]">handshake</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-white md:text-base">
-                          المساعدة تصل بطريقة تحفظ الكرامة
-                        </p>
-                        <p className="mt-1 text-xs leading-6 text-white/85 md:text-sm">
-                          تجربة محسوبة لتشجع العطاء، وتقليل التعقيد، وتعزيز الثقة بين أفراد المجتمع.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+            <div className="relative mx-auto w-full max-w-xl">
+              <div className="absolute inset-8 rounded-full bg-[#86c5ae]/20 blur-3xl" />
+              <div className="relative overflow-hidden rounded-[26px] border border-white/12 bg-[#dbe6c6] p-3 shadow-2xl shadow-black/20 md:rounded-[30px]">
+                <div className="relative aspect-square overflow-hidden rounded-[20px] bg-[#cad8b2] md:rounded-[24px]">
+                  <Image
+                    src="/Home.png"
+                    alt={`مجتمع ${platformName} يتعاون لتبادل الخير`}
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 90vw, 42vw"
+                    className="object-contain"
+                  />
                 </div>
+              </div>
 
-                <div className="absolute -left-4 top-10 hidden w-44 rounded-[24px] border border-[#e9e3da] bg-white p-4 shadow-[0_18px_42px_rgba(15,23,42,0.08)] md:block">
-                  <p className="text-xs font-extrabold text-[#8a837a]">مستوى الثقة</p>
-                  <p className="mt-1 text-lg font-black text-[#183738]">موثوق ومتدرّج</p>
-                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#edf1ef]">
-                    <div className="h-full w-[82%] rounded-full bg-linear-to-l from-[#01696f] to-[#35aaa7]" />
+              <div className="absolute -bottom-4 right-4 max-w-[15rem] rounded-[16px] border border-white/30 bg-white p-3.5 text-on-surface shadow-xl md:-right-5 md:bottom-8">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                    <span
+                      className="material-symbols-outlined text-[20px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      shield
+                    </span>
+                  </span>
+                  <div>
+                    <p className="text-xs font-black">تبادل أكثر أمانًا</p>
+                    <p className="mt-0.5 text-[10px] leading-5 text-on-surface-soft">
+                      خطوات واضحة من الحجز حتى التسليم
+                    </p>
                   </div>
                 </div>
               </div>
@@ -166,431 +162,189 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── Trust strip ────────────────────────────────────── */}
-      <section className="pb-8 md:pb-12">
-        <div className="container mx-auto px-6">
-          <div className="rounded-[34px] border border-[#e9e3da] bg-white/85 p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)] backdrop-blur-sm md:p-6">
-            <div className="grid gap-4 md:grid-cols-4">
-              {[
-                { icon: "verified_user", title: "ثقة وشفافية",     desc: "بنية واضحة تعزز مصداقية التفاعل بين أفراد المجتمع" },
-                { icon: "bolt",          title: "استجابة أسرع",    desc: "الإشعارات الفورية تساعد على وصول المساعدة في الوقت المناسب" },
-                { icon: "groups",        title: "مجتمع متفاعل",    desc: "كل إضافة جديدة تفتح فرصة نفع حقيقي داخل المجتمع المحلي" },
-                { icon: "workspace_premium", title: "تجربة احترافية", desc: "واجهة سهلة ومريحة تشجع المستخدم على البدء دون تردد" },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="rounded-[24px] bg-[#fcfbf8] p-4 transition-all duration-300 hover:bg-[#f8fffd] hover:shadow-[0_10px_24px_rgba(1,105,111,0.08)]"
-                >
-                  <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#e8f5f3] text-[#01696f]">
-                    <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                  </div>
-                  <h3 className="text-sm font-black text-[#193536]">{item.title}</h3>
-                  <p className="mt-2 text-xs leading-6 text-[#756f68]">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Partner / logo cloud ───────────────────────────── */}
-      <section className="pb-14 md:pb-16">
-        <div className="container mx-auto px-6">
-          <div className="rounded-[30px] border border-[#ebe4db] bg-white p-6 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-            <div className="mb-5 text-center">
-              <p className="text-xs font-extrabold tracking-[0.18em] text-[#8b857d]">
-                مؤشرات ثقة وشراكات مجتمعية
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-              {["جمعيات محلية", "متطوعون", "مبادرات شبابية", "شركاء مجتمعيون", "داعمون", "جهات موثوقة"].map((logo, i) => (
-                <div
-                  key={i}
-                  className="flex min-h-16 items-center justify-center rounded-2xl border border-[#f0ebe4] bg-[#fcfbf8] px-4 py-3 text-center text-xs font-black text-[#6d6760] transition-all duration-300 hover:border-[#01696f]/20 hover:text-[#01696f]"
-                >
-                  {logo}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── How it works ───────────────────────────────────── */}
-      <section id="how-it-works" className="bg-white py-18 md:py-24">
-        <div className="container mx-auto px-6">
-          <div className="mb-14 max-w-2xl">
-            <span className="inline-flex items-center rounded-full border border-[#01696f]/10 bg-[#01696f]/6 px-4 py-2 text-xs font-extrabold tracking-wide text-[#01696f]">
-              كيف تعمل عون؟
-            </span>
-            <h2 className="mt-5 text-3xl font-black leading-tight text-[#173335] md:text-5xl">
-              خطوات واضحة،
-              <span className="block text-[#01696f]">وتجربة أسهل من المتوقع</span>
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-[#746d65] md:text-base">
-              من لحظة الإضافة وحتى الوصول للمحتاج المناسب، الواجهة صممت لتقليل التردد
-              وجعل مسار العطاء مباشرًا وواضحًا.
-            </p>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="relative overflow-hidden rounded-[34px] bg-linear-to-bl from-[#01696f] via-[#117a7f] to-[#005a8c] p-8 text-white shadow-[0_26px_58px_rgba(1,105,111,0.20)] md:p-10">
-              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_2px_2px,white_1px,transparent_0)] bg-size-[28px_28px]" />
-              <div className="absolute -left-10 -top-10 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
-              <div className="relative z-10">
-                <span className="material-symbols-outlined mb-8 block text-5xl text-white/85">
-                  volunteer_activism
-                </span>
-                <h3 className="text-2xl font-black leading-tight md:text-3xl">
-                  ليست مجرد منصة عرض
-                </h3>
-                <p className="mt-4 max-w-md text-sm leading-7 text-white/85 md:text-base">
-                  صممنا الصفحة لتشعر المستخدم مباشرة أن المنصة موثوقة، عملية، وقريبة من الناس،
-                  مع إبراز القيمة الإنسانية قبل أي شيء آخر.
-                </p>
-                <div className="mt-8 grid grid-cols-2 gap-3">
-                  {["واجهة مريحة وسلسة", "تركيز بصري على الإجراء", "إشارات ثقة واضحة", "بطاقات أسهل للمسح السريع"].map((point, i) => (
-                    <div key={i} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold backdrop-blur-sm">
-                      {point}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4">
-              {FEATURES.map((f, i) => (
-                <div
-                  key={i}
-                  className="group flex gap-4 rounded-[28px] border border-[#ebe5dd] bg-[#fcfbf8] p-5 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition-all duration-300 ease-in-out hover:-translate-y-1 hover:border-[#01696f]/20 hover:bg-white hover:shadow-[0_18px_40px_rgba(1,105,111,0.10)] md:p-6"
-                >
-                  <div className="flex flex-col items-center">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-linear-to-br from-[#e8f5f3] to-[#edf7fb] text-[#01696f] transition-transform duration-300 group-hover:scale-105">
-                      <span className="material-symbols-outlined text-[28px]">{f.icon}</span>
-                    </div>
-                    {i !== FEATURES.length - 1 && (
-                      <div className="mt-3 h-full w-px bg-linear-to-b from-[#01696f]/20 to-transparent" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <h3 className="text-lg font-black text-[#1d3939]">{f.t}</h3>
-                      <span className="text-xs font-black tracking-[0.2em] text-[#b4aca2]">0{i + 1}</span>
-                    </div>
-                    <p className="text-sm leading-7 text-[#726b63]">{f.d}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-5 md:grid-cols-3">
-            {HIGHLIGHTS.map((h, i) => (
-              <div
-                key={i}
-                className={`${h.bg} group relative overflow-hidden rounded-[30px] p-7 text-white shadow-[0_15px_35px_rgba(15,23,42,0.10)] transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(15,23,42,0.16)]`}
-              >
-                <div className="absolute inset-0 bg-linear-to-tl from-black/20 via-transparent to-white/5" />
-                <span className="material-symbols-outlined absolute left-5 top-5 text-6xl opacity-15 transition-all duration-300 group-hover:scale-110">
-                  {h.icon}
-                </span>
-                <div className="relative z-10">
-                  <h4 className="text-xl font-black">{h.title}</h4>
-                  <p className="mt-2 text-sm leading-7 text-white/85">{h.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Impact section ─────────────────────────────────── */}
-      <section className="py-18 md:py-24">
-        <div className="container mx-auto px-6">
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="rounded-[34px] border border-[#e9e3da] bg-white p-7 shadow-[0_14px_36px_rgba(15,23,42,0.05)] md:p-8">
-              <span className="inline-flex items-center rounded-full border border-[#01696f]/10 bg-[#01696f]/6 px-4 py-2 text-xs font-extrabold tracking-wide text-[#01696f]">
-                أثر المنصة
-              </span>
-              <h2 className="mt-5 text-3xl font-black leading-tight text-[#173335] md:text-4xl">
-                عندما تصبح المساعدة
-                <span className="block text-[#01696f]">أسهل… يكبر الأثر</span>
-              </h2>
-              <p className="mt-4 text-sm leading-7 text-[#746d65] md:text-base">
-                هذا القسم يمنح الصفحة عمقًا أكبر من مجرد العرض، لأنه يحول المنصة من &quot;واجهة جميلة&quot;
-                إلى &quot;منتج له أثر واضح ومفهوم&quot;.
-              </p>
-              <div className="mt-8 space-y-4">
-                {[
-                  "الوصول لعدد أكبر من المحتاجين في وقت أقصر",
-                  "تقوية الثقة بين المستخدمين عبر نظام مستويات الثقة",
-                  "تشجيع ثقافة إعادة الاستخدام بدل الهدر",
-                  "إتاحة فرصة المساهمة لكل فرد مهما كان بسيطًا ما يملكه",
-                ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e8f5f3] text-[#01696f]">
-                      <span className="material-symbols-outlined text-[16px]">check</span>
-                    </div>
-                    <p className="text-sm leading-7 text-[#5f5952]">{item}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2">
-              {[
-                { num: "+٥٠٠٠", label: "عنصر أو خدمة تم تداولها",    color: "from-[#01696f] to-[#12777b]"  },
-                { num: "+١٢٠٠", label: "مستفيد من المجتمع",            color: "from-[#005a8c] to-[#2872a1]"  },
-                { num: "+٣٠",   label: "منطقة نشطة",                  color: "from-[#7a39bb] to-[#9a5ed6]"  },
-                { num: "24/7",  label: "جاهزية التصفح والإشعارات",     color: "from-[#da7101] to-[#f09737]"  },
-              ].map((card, i) => (
-                <div
-                  key={i}
-                  className="rounded-[30px] border border-[#e9e3da] bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
-                >
-                  <div className="inline-flex rounded-2xl bg-linear-to-l from-[#01696f] to-[#35aaa7] px-4 py-2 text-sm font-black text-white">
-                    {card.num}
-                  </div>
-                  <p className="mt-4 text-sm font-bold leading-7 text-[#5e5952]">{card.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Latest donations ───────────────────────────────── */}
-      <section className="bg-white py-18 md:py-24">
-        <div className="container mx-auto px-6">
-          <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <section className="pb-16 md:pb-22">
+        <div className="site-container">
+          <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <span className="inline-flex items-center rounded-full border border-[#01696f]/10 bg-[#01696f]/6 px-4 py-2 text-xs font-extrabold tracking-wide text-[#01696f]">
-                جديد المجتمع
+              <span className="eyebrow">
+                <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
+                وصل حديثًا
               </span>
-              <h2 className="mt-4 text-3xl font-black leading-tight text-[#173335] md:text-5xl">
-                أحدث ما أُضيف
-                <span className="block text-[#01696f]">على منصة {platformName}</span>
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-[#736d65] md:text-base">
-                قسم واضح وسريع المسح يسهّل على المستخدم استكشاف المواد المتاحة بأقل جهد بصري.
+              <h2 className="section-title mt-3">تبرعات متاحة الآن</h2>
+              <p className="mt-2 max-w-xl text-sm text-on-surface-soft">
+                ابدأ من أحدث الأغراض، أو استخدم البحث للوصول لما يناسبك.
               </p>
             </div>
-            <Link
-              href="/browse"
-              className="group inline-flex min-h-11 items-center gap-2 self-start rounded-full border border-[#d8d1c8] bg-[#fcfbf8] px-5 py-2.5 text-sm font-black text-[#214547] shadow-[0_8px_22px_rgba(15,23,42,0.04)] transition-all duration-300 ease-in-out hover:-translate-y-1 hover:border-[#01696f]/30 hover:bg-[#01696f] hover:text-white"
-            >
-              عرض الكل
-              <span className="material-symbols-outlined text-[18px] transition-transform duration-300 group-hover:-translate-x-1">
-                arrow_back
-              </span>
+            <Link href="/browse" className="btn-secondary self-start sm:self-auto">
+              عرض كل الأغراض
+              <span className="material-symbols-outlined text-[17px]">arrow_back</span>
             </Link>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <ItemCardSkeleton key={index} />
+              ))}
             </div>
           ) : items.length > 0 ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-              {items.map((item) => (
-                <Link
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {items.map((item, index) => (
+                <ItemCard
                   key={item._id}
-                  href={`/items/${item._id}`}
-                  className="group flex h-full flex-col overflow-hidden rounded-[30px] border border-[#ebe4db] bg-white shadow-[0_12px_34px_rgba(15,23,42,0.05)] transition-all duration-300 ease-in-out hover:-translate-y-1.5 hover:border-[#01696f]/18 hover:shadow-[0_24px_52px_rgba(1,105,111,0.12)]"
-                >
-                  <div className="relative h-56 w-full overflow-hidden bg-[#f2ede5]">
-                    <Image
-                      src={getImageUrl(item)}
-                      alt={item.title}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
-                    <span className="absolute right-4 top-4 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-black text-white backdrop-blur-md">
-                      {item.category || "عام"}
-                    </span>
-                  </div>
-                  <div className="flex grow flex-col p-5">
-                    <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-[#7b746c]">
-                      <span className="material-symbols-outlined text-[16px] text-[#01696f]">location_on</span>
-                      <span>{item.location || "عمّان"}</span>
-                    </div>
-                    <h3 className="grow text-base font-black leading-7 text-[#241f1a] line-clamp-2">
-                      {item.title}
-                    </h3>
-                    <div className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl border border-[#e7e1d8] bg-[#faf8f4] px-4 py-2.5 text-sm font-black text-[#01696f] transition-all duration-300 group-hover:border-[#01696f] group-hover:bg-[#01696f] group-hover:text-white">
-                      عرض التفاصيل
-                    </div>
-                  </div>
-                </Link>
+                  item={item}
+                  imageSrc={getImageUrl(item)}
+                  priority={index < 2}
+                />
               ))}
             </div>
           ) : (
-            <div className="rounded-[34px] border-2 border-dashed border-[#d8d2ca] bg-[#fcfbf8] px-6 py-16 text-center shadow-[0_12px_34px_rgba(15,23,42,0.04)] md:px-10 md:py-20">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#01696f]/8 text-[#01696f]">
-                <span className="material-symbols-outlined text-[30px]">inventory_2</span>
-              </div>
-              <h3 className="mt-5 text-xl font-black text-[#1f3a3a]">لا توجد إضافات حالياً</h3>
-              <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[#7a746d]">
-                ابدأ أول مساهمة على المنصة، واجعل هذه المساحة بداية لعطاء جديد يصل لمن يحتاجه.
+            <div className="surface-card px-6 py-12 text-center">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+                <span className="material-symbols-outlined text-[28px]">inventory_2</span>
+              </span>
+              <h3 className="mt-4 text-lg font-black">لا توجد أغراض معروضة حاليًا</h3>
+              <p className="mt-2 text-sm text-on-surface-soft">
+                كن أول من يضيف تبرعًا ويبدأ دائرة خير جديدة.
               </p>
-              <Link
-                href="/add-item"
-                className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#01696f] px-6 py-3 text-sm font-black text-white shadow-[0_14px_28px_rgba(1,105,111,0.22)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#0c5a5f]"
-              >
-                <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                أضف أول تبرع
+              <Link href="/add-item" className="btn-primary mt-5">
+                إضافة أول تبرع
               </Link>
             </div>
           )}
         </div>
       </section>
 
-      {/* ─── Testimonials ───────────────────────────────────── */}
-      <section className="py-18 md:py-24">
-        <div className="container mx-auto px-6">
-          <div className="mb-12 text-center">
-            <span className="inline-flex items-center rounded-full border border-[#01696f]/10 bg-[#01696f]/6 px-4 py-2 text-xs font-extrabold tracking-wide text-[#01696f]">
-              أصوات من المجتمع
-            </span>
-            <h2 className="mt-5 text-3xl font-black text-[#173335] md:text-5xl">
-              الثقة لا تُقال فقط
-              <span className="block text-[#01696f]">بل تُلمس في التجربة</span>
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#746d65] md:text-base">
-              وجود شهادات وتجارب مختصرة يعزز الإحساس بأن المنصة حقيقية ومؤثرة وقريبة من الناس.
+      <section className="border-y border-black/[0.06] bg-white py-16 md:py-22">
+        <div className="site-container">
+          <div className="max-w-2xl">
+            <span className="eyebrow">اختر ما تريد إنجازه</span>
+            <h2 className="section-title mt-3">ثلاث طرق بسيطة لتبدأ</h2>
+            <p className="mt-3 text-sm leading-7 text-on-surface-soft md:text-base">
+              لا تحتاج لمعرفة كل تفاصيل المنصة؛ اختر هدفك وسنقودك للخطوة المناسبة.
             </p>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[34px] border border-[#e8e2da] bg-white p-7 shadow-[0_14px_36px_rgba(15,23,42,0.05)] md:p-8">
-              <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e8f5f3] text-[#01696f]">
-                  <span className="material-symbols-outlined text-[24px]">format_quote</span>
-                </div>
-                <div>
-                  <p className="text-sm font-black text-[#173335]">تجربة مجتمعية موثوقة</p>
-                  <p className="text-xs text-[#7a746d]">يمكن استبدال هذا النص لاحقًا بشهادة حقيقية</p>
-                </div>
-              </div>
-              <p className="text-lg font-bold leading-9 text-[#2a2621]">
-                &quot;الشيء الأجمل في {platformName} أن الواجهة تشعرك أن التبرع ليس عملية معقدة، بل خطوة طبيعية وسريعة،
-                ومع الوقت صار من السهل علينا مشاركة ما لا نحتاجه مع من ينتفع به.&quot;
-              </p>
-              <div className="mt-6 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-br from-[#01696f] to-[#005a8c] text-sm font-black text-white">
-                  س
-                </div>
-                <div>
-                  <p className="text-sm font-black text-[#173335]">سارة أحمد</p>
-                  <p className="text-xs text-[#7a746d]">متبرعة على المنصة</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-5">
-              {[
-                { title: "من البداية حتى الاستلام",       desc: "وضوح الخطوات يجعل المستخدم أكثر استعدادًا لإكمال العملية دون تردد.",          icon: "route"    },
-                { title: "إشارات ثقة في الأماكن الصحيحة", desc: "وجود مؤشرات الثقة قرب الأزرار يرفع الإحساس بالاحترافية والطمأنينة.",           icon: "shield"   },
-                { title: "واجهة تشجع على العطاء",          desc: "كل قسم مصمم ليقود المستخدم بسهولة إلى الفعل الأساسي دون تشتيت.",             icon: "favorite" },
-              ].map((card, i) => (
-                <div
-                  key={i}
-                  className="rounded-[28px] border border-[#ebe4db] bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(1,105,111,0.08)]"
-                >
-                  <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#edf7f5] text-[#01696f]">
-                    <span className="material-symbols-outlined text-[20px]">{card.icon}</span>
-                  </div>
-                  <h3 className="text-sm font-black text-[#193536]">{card.title}</h3>
-                  <p className="mt-2 text-xs leading-6 text-[#756f68]">{card.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── FAQ ────────────────────────────────────────────── */}
-      <section className="bg-white py-18 md:py-24">
-        <div className="container mx-auto px-6">
-          <div className="mb-12 text-center">
-            <span className="inline-flex items-center rounded-full border border-[#01696f]/10 bg-[#01696f]/6 px-4 py-2 text-xs font-extrabold tracking-wide text-[#01696f]">
-              الأسئلة الشائعة
-            </span>
-            <h2 className="mt-5 text-3xl font-black text-[#173335] md:text-5xl">
-              كل ما قد يحتاجه المستخدم
-              <span className="block text-[#01696f]">قبل أن يبدأ</span>
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#746d65] md:text-base">
-              وجود FAQ في الصفحة الرئيسية يساعد على إزالة الاعتراضات الشائعة وتقليل التردد.
-            </p>
-          </div>
-
-          <div className="mx-auto grid max-w-5xl gap-4">
-            {[
-              { q: "كيف أبدأ بالتبرع عبر منصة عون؟",      a: "يمكنك إضافة العنصر أو الخدمة بسهولة من خلال زر 'ابدأ التبرع الآن'، ثم تعبئة البيانات الأساسية وانتظار التفاعل من المستخدمين المهتمين." },
-              { q: "هل استخدام المنصة مجاني؟",             a: "نعم، تجربة الاستخدام الأساسية على المنصة مجانية، والهدف منها تسهيل التكافل وتبادل النفع داخل المجتمع." },
-              { q: "كيف يتم تعزيز الثقة بين المستخدمين؟",  a: "تعتمد المنصة على مؤشرات وثقة مجتمعية وتجربة واضحة تساعد على بناء الموثوقية وتحسين جودة التفاعل." },
-              { q: "هل أستطيع تصفح الاحتياجات دون إضافة تبرع؟", a: "نعم، يمكنك استعراض الإضافات والاحتياجات مباشرة عبر صفحة التصفح، ثم اتخاذ الإجراء المناسب حسب ما يناسبك." },
-            ].map((item, i) => (
-              <details
-                key={i}
-                className="group rounded-[26px] border border-[#ebe5dd] bg-[#fcfbf8] p-5 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-all duration-300 open:bg-white open:shadow-[0_16px_36px_rgba(15,23,42,0.06)]"
+          <div className="mt-8 grid gap-4 lg:grid-cols-3">
+            {ENTRY_PATHS.map((path, index) => (
+              <Link
+                key={path.href}
+                href={path.href}
+                className={`group relative overflow-hidden rounded-[22px] p-6 shadow-md transition-transform hover:-translate-y-1 ${path.tone}`}
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-right">
-                  <span className="text-sm font-black text-[#1a3738] md:text-base">{item.q}</span>
-                  <span className="material-symbols-outlined text-[#01696f] transition-transform duration-300 group-open:rotate-45">add</span>
-                </summary>
-                <p className="mt-4 pr-1 text-sm leading-7 text-[#6d6760]">{item.a}</p>
-              </details>
+                <span className="absolute left-5 top-4 font-headline text-6xl font-black text-white/[0.07]">
+                  0{index + 1}
+                </span>
+                <span className="flex h-11 w-11 items-center justify-center rounded-[13px] bg-white/12">
+                  <span
+                    className="material-symbols-outlined text-[23px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    {path.icon}
+                  </span>
+                </span>
+                <h3 className="mt-5 text-xl font-black text-white">{path.title}</h3>
+                <p className="mt-2 min-h-14 text-sm leading-7 text-white/72">
+                  {path.description}
+                </p>
+                <span className="mt-5 inline-flex items-center gap-1.5 text-xs font-black text-white">
+                  {path.action}
+                  <span className="material-symbols-outlined text-[16px] transition-transform group-hover:-translate-x-1">
+                    arrow_back
+                  </span>
+                </span>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Final CTA ──────────────────────────────────────── */}
-      <section className="pb-10 pt-18 md:pb-14 md:pt-24">
-        <div className="container mx-auto px-6">
-          <div className="relative overflow-hidden rounded-[38px] bg-linear-to-bl from-[#0d5559] via-[#01696f] to-[#005a8c] px-6 py-12 shadow-[0_34px_80px_rgba(1,105,111,0.28)] md:px-12 md:py-16">
-            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_2px_2px,white_1px,transparent_0)] bg-size-[30px_30px]" />
-            <div className="absolute -left-24 top-0 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-20 right-0 h-72 w-72 rounded-full bg-[#98f994]/10 blur-3xl" />
+      <section id="how-it-works" className="py-16 md:py-22">
+        <div className="site-container">
+          <div className="mx-auto max-w-2xl text-center">
+            <span className="eyebrow">من الإضافة إلى التسليم</span>
+            <h2 className="section-title mt-3">رحلة واضحة في أربع خطوات</h2>
+            <p className="mt-3 text-sm text-on-surface-soft md:text-base">
+              صممنا كل خطوة لتكون مفهومة، قابلة للتتبع، وتحفظ حق الطرفين.
+            </p>
+          </div>
 
-            <div className="relative z-10 grid items-center gap-8 lg:grid-cols-[1fr_auto]">
-              <div className="text-center lg:text-right">
-                <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-extrabold tracking-wide text-white/90">
-                  ابدأ بخطوة بسيطة
+          <ol className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map((feature, index) => (
+              <li
+                key={feature.t}
+                className="relative rounded-[20px] border border-black/[0.07] bg-white p-5 shadow-sm"
+              >
+                <span className="absolute left-4 top-4 font-headline text-sm font-black text-primary/30">
+                  0{index + 1}
                 </span>
-                <h2 className="mt-5 text-3xl font-black leading-tight text-white md:text-5xl">
-                  الشيء الذي لم يعد مهمًا لك
-                  <span className="block text-white/80">قد يكون مهمًا جدًا لشخص آخر</span>
-                </h2>
-                <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/80 lg:mx-0 md:text-base">
-                  انضم إلى مجتمع {platformName} وشارك ما لديك من أدوات أو مواد أو خدمات، ضمن تجربة
-                  أنيقة وواضحة ومصممة لتشجع العطاء.
-                </p>
-              </div>
-
-              <div className="flex flex-col items-center gap-3 sm:flex-row lg:flex-col">
-                <Link
-                  href="/add-item"
-                  className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-black text-[#01696f] shadow-[0_16px_35px_rgba(0,0,0,0.18)] transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-[0_24px_48px_rgba(0,0,0,0.24)]"
-                >
-                  <span className="material-symbols-outlined text-[20px] transition-transform duration-300 group-hover:rotate-12">
-                    volunteer_activism
+                <span className="flex h-11 w-11 items-center justify-center rounded-[13px] bg-primary-soft text-primary">
+                  <span
+                    className="material-symbols-outlined text-[22px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    {feature.icon}
                   </span>
-                  ابدأ التبرع الآن
+                </span>
+                <h3 className="mt-5 text-base font-black">{feature.t}</h3>
+                <p className="mt-2 text-xs leading-6 text-on-surface-soft">{feature.d}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="pb-16 md:pb-22">
+        <div className="site-container">
+          <div className="grid overflow-hidden rounded-[28px] border border-black/[0.07] bg-white shadow-md lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="relative min-h-72 overflow-hidden bg-surface-container-low lg:min-h-96">
+              <Image
+                src="/Volunteer-Background.png"
+                alt="يدان تتصافحان تعبيرًا عن الثقة والتعاون"
+                fill
+                sizes="(max-width: 1024px) 100vw, 45vw"
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-primary-container/45 to-transparent" />
+            </div>
+            <div className="flex flex-col justify-center p-6 sm:p-9 lg:p-12">
+              <span className="eyebrow self-start">الثقة قبل كل شيء</span>
+              <h2 className="section-title mt-4">تسليم منظم يحمي التجربة</h2>
+              <p className="mt-4 text-sm leading-8 text-on-surface-variant md:text-base">
+                يمكنك التنسيق المباشر أو اختيار مركز تسليم آمن، مع إشعارات فورية
+                وتأكيد مستقل من المتبرع والمستفيد قبل إغلاق العملية.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href="/hubs" className="btn-primary">
+                  استكشاف مراكز التسليم
                 </Link>
-                <Link
-                  href="/browse"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-8 py-3.5 text-sm font-bold text-white backdrop-blur-sm transition-all duration-300 ease-in-out hover:-translate-y-1 hover:border-white/40 hover:bg-white/16"
-                >
-                  تصفح الاحتياجات
-                  <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                <Link href="/donation-requests" className="btn-secondary">
+                  عرض الاحتياجات
                 </Link>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-8 md:px-6 md:pb-12">
+        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[28px] bg-primary px-6 py-10 text-center text-white md:px-12 md:py-14">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_130%,rgba(255,255,255,0.18),transparent_28rem)]" />
+          <div className="relative mx-auto max-w-2xl">
+            <span className="material-symbols-outlined text-[34px] text-[#f0c77f]">
+              volunteer_activism
+            </span>
+            <h2 className="mt-3 text-3xl font-black text-white">غرض واحد قد يبدأ أثرًا كبيرًا</h2>
+            <p className="mt-3 text-sm leading-7 text-white/72 md:text-base">
+              أضف ما لم تعد تحتاجه، واترك لـ{platformName} مهمة تسهيل الرحلة.
+            </p>
+            <Link
+              href="/add-item"
+              className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] bg-white px-7 py-3 text-sm font-black text-primary-container shadow-lg hover:-translate-y-0.5"
+            >
+              ابدأ التبرع الآن
+              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            </Link>
           </div>
         </div>
       </section>

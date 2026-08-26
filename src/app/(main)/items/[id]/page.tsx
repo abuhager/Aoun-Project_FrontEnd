@@ -74,7 +74,7 @@ export default function ItemDetailsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-[#f7f6f2]" dir="rtl">
+      <div className="page-shell flex items-center justify-center" dir="rtl">
         <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
@@ -82,10 +82,13 @@ export default function ItemDetailsPage() {
 
   if (!item) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-[#f7f6f2] px-4" dir="rtl">
-        <div className="rounded-2xl border border-gray-200 bg-white px-8 py-10 text-center shadow-sm">
-          <p className="text-sm font-bold text-gray-700">
-            🛑 {loadError || "القطعة غير موجودة"}
+      <div className="page-shell flex items-center justify-center px-4" dir="rtl">
+        <div className="surface-card max-w-md px-8 py-10 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-danger-bg text-danger">
+            <span className="material-symbols-outlined text-[24px]">inventory_2</span>
+          </span>
+          <p className="mt-4 text-sm font-bold text-on-surface-variant">
+            {loadError || "الغرض غير موجود"}
           </p>
         </div>
       </div>
@@ -94,7 +97,7 @@ export default function ItemDetailsPage() {
 
   const isRequestLinked = Boolean(item.linkedRequestId);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
-  const imageUrl = item.imageUrl ?? "/placeholder-item.png";
+  const imageUrl = item.imageUrl ?? "/placeholder.svg";
   const showCountdown =
     !isRequestLinked && item.status === "محجوز" && (isBooker || isDonor);
   const showChat = (isDonor || isBooker) && item.status === "محجوز";
@@ -102,7 +105,7 @@ export default function ItemDetailsPage() {
   const isRecipientConfirmedActual = item.recipientConfirmed || delivery.isRecipientConfirmed;
 
   return (
-    <div className="min-h-dvh bg-[#f7f6f2] pb-20 text-[#191c1d]" dir="rtl">
+    <div className="page-shell pb-20" dir="rtl">
       {confirmModal.show && (
         <ConfirmModal
           message={confirmModal.msg}
@@ -122,7 +125,7 @@ export default function ItemDetailsPage() {
         />
       )}
 
-      <div className="mx-auto max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
+      <div className="site-container pt-20 md:pt-24">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-xs font-medium text-gray-400">
           <Link
@@ -137,7 +140,7 @@ export default function ItemDetailsPage() {
 
         <div className="grid grid-cols-1 gap-8 md:gap-10 lg:grid-cols-2">
           {/* صورة الغرض */}
-          <div className="relative overflow-hidden rounded-3xl border border-[#e3e0db] bg-white shadow-sm">
+          <div className="relative overflow-hidden rounded-[22px] border border-black/[0.07] bg-white shadow-md">
             <div className="relative aspect-square">
               <Image
                 src={imageUrl}
@@ -173,9 +176,9 @@ export default function ItemDetailsPage() {
                 )}
               </div>
 
-              <h1 className="text-2xl font-black leading-tight md:text-3xl">{item.title}</h1>
-              <p className="rounded-2xl border border-gray-100 bg-white p-4 text-sm leading-7 text-gray-600 shadow-sm">
-                {item.description}
+              <h1 className="text-3xl font-black leading-tight text-on-surface md:text-4xl">{item.title}</h1>
+              <p className="surface-card p-4 text-sm leading-7 text-on-surface-variant">
+                {item.description || "لم يضف المتبرع وصفًا لهذا الغرض."}
               </p>
             </div>
 

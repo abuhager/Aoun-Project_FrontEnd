@@ -16,62 +16,52 @@ export function StatsGrid({
       icon: "shield",
       value: trustScore,
       label: "نقاط الثقة",
-      tone: "text-primary",
-      iconBg: "bg-primary/[0.08]",
-      iconColor: "text-primary",
-      accent: "from-primary/[0.05]",
+      detail: "ترتفع مع إتمام التبادل",
+      iconClassName: "bg-primary-soft text-primary",
     },
     {
       icon: "bookmark",
       value: availableRequests,
       label: "رصيد الطلبات المتاح",
-      tone: "text-blue-600",
-      iconBg: "bg-blue-50",
-      iconColor: "text-blue-500",
-      accent: "from-blue-500/[0.04]",
+      detail: "طلبات يمكنك حجزها الآن",
+      iconClassName: "bg-info-bg text-info",
     },
     {
       icon: "volunteer_activism",
       value: donationsCount,
       label: "تبرعاتك",
-      tone: "text-emerald-600",
-      iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-600",
-      accent: "from-emerald-500/[0.04]",
+      detail: "إجمالي الأغراض المضافة",
+      iconClassName: "bg-success-bg text-success",
     },
   ];
 
   return (
-    <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      {cards.map((card, i) => (
+    <section aria-label="ملخص الحساب" className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1">
+      {cards.map((card) => (
         <div
-          key={i}
-          className="relative overflow-hidden rounded-[28px] border border-black/[0.06] bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-black/[0.05]"
+          key={card.label}
+          className="surface-card flex items-center gap-3.5 p-4 transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md"
         >
-          <div
-            className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${card.accent} to-transparent`}
-          />
-
-          <div className="relative">
-            <div
-              className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${card.iconBg}`}
+          <span
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${card.iconClassName}`}
+          >
+            <span
+              className="material-symbols-outlined text-[21px]"
+              style={{ fontVariationSettings: "'FILL' 1" }}
             >
-              <span
-                className={`material-symbols-outlined text-[18px] ${card.iconColor}`}
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                {card.icon}
-              </span>
+              {card.icon}
+            </span>
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="truncate text-xs font-black text-on-surface-variant">
+                {card.label}
+              </p>
+              <p className="text-2xl font-black tabular-nums text-on-surface">{card.value}</p>
             </div>
-
-            <p className={`text-2xl font-black tabular-nums ${card.tone}`}>
-              {card.value}
+            <p className="mt-1 truncate text-[10px] font-medium text-on-surface-soft">
+              {card.detail}
             </p>
-
-            <p className="mt-0.5 text-[11px] font-bold text-gray-400">
-              {card.label}
-            </p>
-
           </div>
         </div>
       ))}

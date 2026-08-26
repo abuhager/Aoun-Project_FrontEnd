@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import AuthSidePanel from "@/components/auth/AuthSidePanel";
 import { useRedirectIfAuth } from "../hooks/useRedirectIfAuth";
 import { useRegister } from "./hooks/useRegister";
 import { useSiteConfig } from "@/context/SiteConfigContext";
@@ -39,48 +39,24 @@ export default function RegisterPage() {
     : "border-transparent focus:ring-2 focus:ring-primary/20 focus:bg-white";
 
   return (
-    <div className="bg-surface text-on-background min-h-dvh flex flex-col overflow-x-hidden">
-      <div className="grow flex flex-col md:flex-row-reverse">
-
-        {/* ─── القسم الأيسر: الصورة (decorative) ─── */}
-        <section
-          className="hidden md:flex md:w-1/2 relative overflow-hidden bg-primary items-center justify-center min-h-75 md:min-h-full"
-          aria-hidden="true"
-        >
-          <div className="absolute inset-0 z-0">
-            <Image src="/students-bg.jpg" alt="" fill priority sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
-            <div className="absolute inset-0 bg-black/50 z-10" />
-          </div>
-          <div className="relative z-20 p-6 md:p-12 max-w-lg w-full">
-            <div className="bg-white/10 backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-2xl border border-white/20">
-              <div className="w-12 h-12 rounded-2xl bg-[#96f7e9]/20 flex items-center justify-center mb-6 border border-[#96f7e9]/30">
-                <span aria-hidden="true" className="material-symbols-outlined text-[#96f7e9] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>hub</span>
-              </div>
-              <h2 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
-                انضم إلى <br /> مجتمع <span className="text-[#96f7e9]">{platformName}</span>
-              </h2>
-              <p className="text-white/90 text-base md:text-lg leading-relaxed mb-8">
-                نحن نبني جسوراً من العطاء بين طلاب الجامعات والمجتمع. سجل اليوم لتكون جزءاً من التغيير الإيجابي.
-              </p>
-              <div className="flex items-center gap-4 text-white bg-white/10 p-4 rounded-2xl border border-white/10">
-                <span aria-hidden="true" className="material-symbols-outlined text-3xl md:text-4xl text-[#96f7e9]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                <div className="flex flex-col">
-                  <span className="font-bold text-lg">شارة الطالب الموثق</span>
-                  <span className="text-xs text-white/70">استخدم إيميلك الجامعي للحصول عليها</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ─── القسم الأيمن: فورم التسجيل ─── */}
-        <section className="flex w-full items-center justify-center bg-surface p-4 sm:p-6 md:w-1/2 md:p-8 lg:p-12 xl:p-16">
+    <div
+      className="flex min-h-[calc(100dvh-4rem)] bg-white md:min-h-[calc(100dvh-5rem)]"
+      dir="rtl"
+    >
+        <section className="flex w-full items-center justify-center px-4 py-10 sm:px-8 lg:w-[54%] lg:px-12 xl:px-20">
           <div className="w-full max-w-md">
 
-            <div className="mb-6 md:mb-8 text-right">
-              <div className="text-3xl md:text-4xl font-black text-primary tracking-tight mb-1 brand-font">{platformName}</div>
-              <h1 className="text-xl md:text-2xl font-bold text-on-background">إنشاء حساب جديد</h1>
-              <p className="text-sm text-on-surface-variant mt-1">ابدأ رحلتك في العمل المجتمعي اليوم</p>
+            <div className="mb-7 text-right">
+              <span className="eyebrow">
+                <span className="material-symbols-outlined text-[15px]">person_add</span>
+                انضم إلى {platformName}
+              </span>
+              <h1 className="mt-4 text-3xl font-black tracking-tight text-on-surface md:text-4xl">
+                إنشاء حساب جديد
+              </h1>
+              <p className="mt-2 text-sm leading-7 text-on-surface-variant">
+                أدخل معلوماتك الأساسية لتبدأ التبرع أو طلب الأغراض.
+              </p>
             </div>
 
             {/* [UX-07] ✅ role="alert" و role="status" */}
@@ -117,7 +93,7 @@ export default function RegisterPage() {
                 <div className="relative">
                   <span aria-hidden="true" className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">person</span>
                   <input id="reg-name" name="name" type="text" required autoComplete="name" value={formData.name} onChange={handleChange} placeholder="أدخل اسمك الثلاثي"
-                    className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm md:text-base" />
+                    className="field-control w-full py-3 pr-12 pl-4 text-sm font-bold" />
                 </div>
               </div>
 
@@ -127,7 +103,7 @@ export default function RegisterPage() {
                 <div className="relative">
                   <span aria-hidden="true" className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">mail</span>
                   <input id="reg-email" name="email" type="email" required dir="ltr" autoComplete="email" value={formData.email} onChange={handleChange} placeholder="example@university.edu"
-                    className="w-full pr-12 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-left text-sm md:text-base" />
+                    className="field-control w-full py-3 pr-12 pl-4 text-left text-sm font-bold" />
                 </div>
               </div>
 
@@ -135,7 +111,7 @@ export default function RegisterPage() {
               <div className="space-y-1.5">
                 <label htmlFor="reg-phone" className="text-xs font-bold text-on-surface-soft mr-1">رقم الهاتف (للتواصل)</label>
                 <div className="relative group">
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-[#edeeef] pointer-events-none select-none z-10">
+                  <div className="pointer-events-none absolute right-2 top-1/2 z-10 flex -translate-y-1/2 select-none items-center gap-1.5 rounded-lg border border-outline-variant bg-surface-container-low px-2.5 py-1.5">
                     <span aria-hidden="true" className="text-sm">🇯🇴</span>
                     <span className="text-sm font-black text-on-surface-variant" dir="ltr">+962</span>
                     <div className="w-px h-4 bg-gray-200" />
@@ -155,7 +131,7 @@ export default function RegisterPage() {
                     maxLength={9}
                     aria-describedby="phone-hint"
                     aria-invalid={phoneError}
-                    className={`w-full pr-28 pl-4 py-3 md:py-4 bg-surface-container-highest rounded-xl border-2 outline-none transition-all text-sm md:text-base ${phoneBorderClass}`}
+                    className={`field-control w-full py-3 pr-28 pl-4 text-left text-sm font-bold ${phoneBorderClass}`}
                   />
                 </div>
                 {/* [UX-10] ✅ رسالة توجيه واضحة */}
@@ -172,7 +148,7 @@ export default function RegisterPage() {
                 <div className="relative">
                   <span aria-hidden="true" className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">lock</span>
                   <input id="reg-password" name="password" type={showPassword ? "text" : "password"} required dir="ltr" autoComplete="new-password" value={formData.password} onChange={handleChange} placeholder="••••••••"
-                    className="w-full pr-12 pl-12 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm md:text-base" />
+                    className="field-control w-full py-3 pr-12 pl-12 text-left text-sm font-bold" />
                   {/* [UX-01] ✅ */}
                   <button type="button" onClick={() => setShowPassword((p) => !p)}
                     aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"} aria-pressed={showPassword}
@@ -188,7 +164,7 @@ export default function RegisterPage() {
                 <div className="relative">
                   <span aria-hidden="true" className="absolute right-4 top-1/2 -translate-y-1/2 text-outline material-symbols-outlined text-xl">lock_reset</span>
                   <input id="reg-confirm-password" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} required dir="ltr" autoComplete="new-password" value={formData.confirmPassword} onChange={handleChange} placeholder="••••••••"
-                    className="w-full pr-12 pl-12 py-3 md:py-4 bg-surface-container-highest rounded-xl border-none outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm md:text-base" />
+                    className="field-control w-full py-3 pr-12 pl-12 text-left text-sm font-bold" />
                   <button type="button" onClick={() => setShowConfirmPassword((p) => !p)}
                     aria-label={showConfirmPassword ? "إخفاء تأكيد كلمة المرور" : "إظهار تأكيد كلمة المرور"} aria-pressed={showConfirmPassword}
                     className="touch-target absolute left-1 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-lg text-outline transition-colors hover:text-primary sm:left-2">
@@ -198,7 +174,7 @@ export default function RegisterPage() {
               </div>
 
               {/* [UX-08] ✅ btn-primary موحَّد */}
-              <button type="submit" disabled={loading || !phoneValid} className="btn-primary mt-2">
+              <button type="submit" disabled={loading || !phoneValid} className="btn-primary mt-2 w-full py-3.5">
                 {loading ? (
                   <><span aria-hidden="true" className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>جاري الإنشاء...</span></>
                 ) : "إنشاء الحساب"}
@@ -211,7 +187,12 @@ export default function RegisterPage() {
             </form>
           </div>
         </section>
-      </div>
+
+        <AuthSidePanel
+          platformName={platformName}
+          title="ابدأ حسابك بخطوات بسيطة وواضحة"
+          description="بياناتك الأساسية تساعدنا على تنظيم التواصل وحماية تجربة التبادل للطرفين."
+        />
     </div>
   );
 }

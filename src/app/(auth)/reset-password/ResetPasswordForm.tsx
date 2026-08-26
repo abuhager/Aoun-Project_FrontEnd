@@ -21,7 +21,7 @@ export default function ResetPasswordForm() {
 
   if (!tokenReady) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-surface">
+      <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-surface md:min-h-[calc(100dvh-5rem)]">
         <span className="material-symbols-outlined animate-spin text-4xl text-primary">
           progress_activity
         </span>
@@ -31,27 +31,27 @@ export default function ResetPasswordForm() {
 
   return (
     <div
-      className="flex min-h-dvh items-center justify-center bg-surface p-4 font-body"
+      className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-[radial-gradient(circle_at_top,var(--color-primary-softer),var(--color-surface)_28rem)] p-4 font-body md:min-h-[calc(100dvh-5rem)]"
       dir="rtl"
     >
-      <div className="w-full max-w-md rounded-3xl border border-[#edeeef] bg-white p-8 text-center shadow-sm">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-          <span className="material-symbols-outlined text-3xl text-primary">
+      <section className="surface-card w-full max-w-md p-6 text-center sm:p-8">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+          <span className="material-symbols-outlined text-[27px]" style={{ fontVariationSettings: "'FILL' 1" }}>
             {isSuccess ? "verified" : "lock_reset"}
           </span>
         </div>
 
-        <h1 className="mb-2 font-headline text-2xl font-black text-[#191c1d]">
+        <h1 className="mt-5 font-headline text-2xl font-black text-on-surface">
           {isSuccess ? "تم التغيير بنجاح!" : "تعيين كلمة مرور جديدة"}
         </h1>
-        <p className="mb-8 text-sm text-on-surface-variant">
+        <p className="mb-7 mt-2 text-sm leading-7 text-on-surface-variant">
           {isSuccess
             ? "تم تحديث كلمة المرور الخاصة بك. يمكنك الآن تسجيل الدخول."
             : "أدخل كلمة المرور الجديدة الخاصة بك أدناه لضمان أمان حسابك."}
         </p>
 
         {message && (
-          <div className="mb-6 rounded-xl border border-green-100 bg-green-50 p-4 text-sm font-bold text-green-700">
+          <div role="status" aria-live="polite" className="mb-6 rounded-xl border border-green-100 bg-green-50 p-4 text-sm font-bold text-green-700">
             {message}
             <p className="mt-2 text-[10px] opacity-80">
               جاري تحويلك لصفحة تسجيل الدخول... ⏳
@@ -59,7 +59,7 @@ export default function ResetPasswordForm() {
           </div>
         )}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-600">
+          <div role="alert" aria-live="assertive" className="mb-6 rounded-xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-600">
             {error}
           </div>
         )}
@@ -67,7 +67,7 @@ export default function ResetPasswordForm() {
         {!isSuccess && (
           <form onSubmit={handleSubmit} className="space-y-6 text-right">
             <div className="space-y-2">
-              <label className="mr-2 block text-xs font-bold text-gray-500">
+              <label htmlFor="reset-password" className="block text-xs font-black text-on-surface-variant">
                 كلمة المرور الجديدة
               </label>
               <div className="group relative">
@@ -75,19 +75,20 @@ export default function ResetPasswordForm() {
                   lock
                 </span>
                 <input
+                  id="reset-password"
                   type="password"
                   required
                   autoComplete="new-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full rounded-xl border-none bg-surface-container-highest py-4 pl-4 pr-12 text-sm font-bold tracking-widest outline-none transition-all placeholder:font-normal placeholder:tracking-normal focus:bg-white focus:ring-2 focus:ring-primary/20"
+                  className="field-control py-3 pl-4 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="mr-2 block text-xs font-bold text-gray-500">
+              <label htmlFor="reset-password-confirmation" className="block text-xs font-black text-on-surface-variant">
                 تأكيد كلمة المرور
               </label>
               <div className="group relative">
@@ -100,13 +101,14 @@ export default function ResetPasswordForm() {
                   </span>
                 )}
                 <input
+                  id="reset-password-confirmation"
                   type="password"
                   required
                   autoComplete="new-password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  className="w-full rounded-xl border-none bg-surface-container-highest py-4 pl-12 pr-12 text-sm font-bold tracking-widest outline-none transition-all placeholder:font-normal placeholder:tracking-normal focus:bg-white focus:ring-2 focus:ring-primary/20"
+                  className="field-control py-3 pl-12 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
                 />
               </div>
             </div>
@@ -114,7 +116,7 @@ export default function ResetPasswordForm() {
             <button
               type="submit"
               disabled={isDisabled}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 font-black text-white shadow-md shadow-primary/20 transition-all hover:bg-primary-container active:scale-95 disabled:opacity-50"
+              className="btn-primary mt-4 w-full py-3.5"
             >
               {loading ? (
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -133,13 +135,12 @@ export default function ResetPasswordForm() {
         {isSuccess && (
           <Link
             href="/login"
-            className="mt-4 inline-block rounded-full bg-surface-container-low px-8 py-3 text-sm font-bold text-on-surface-variant shadow-sm transition-colors hover:bg-gray-200"
+            className="btn-secondary mt-4"
           >
             العودة لتسجيل الدخول الآن
           </Link>
         )}
-      </div>
+      </section>
     </div>
   );
 }
-

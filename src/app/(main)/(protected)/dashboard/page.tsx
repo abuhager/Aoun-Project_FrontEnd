@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useDashboard } from "./hooks/useDashboard";
 import { ActionModal } from "./components/ActionModal";
 import { Toast } from "./components/Toast";
@@ -18,25 +19,25 @@ import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 /* ─── Skeleton ──────────────────────────────────────────────── */
 function DashboardSkeleton() {
   return (
-    <div className="min-h-dvh bg-[#f7f6f2] pb-16 pt-20 md:pt-24" dir="rtl">
-      <div className="mx-auto max-w-7xl space-y-4 px-4 md:px-6">
+    <div className="page-shell pb-16 pt-24" dir="rtl">
+      <div className="site-container space-y-4">
         <div className="animate-pulse space-y-2">
-          <div className="h-6 w-48 rounded-xl bg-gray-200" />
-          <div className="h-4 w-72 rounded-xl bg-gray-100" />
+          <div className="h-6 w-48 rounded-xl bg-surface-container-high" />
+          <div className="h-4 w-72 rounded-xl bg-surface-container" />
         </div>
-        <div className="animate-pulse rounded-3xl border border-black/[0.06] bg-white p-4 shadow-sm md:p-5">
+        <div className="animate-pulse rounded-[20px] border border-black/[0.06] bg-white p-4 shadow-sm md:p-5">
           <div className="flex items-center gap-4">
-            <div className="h-14 w-14 shrink-0 rounded-full bg-gray-100" />
+            <div className="h-14 w-14 shrink-0 rounded-full bg-surface-container" />
             <div className="flex-1 space-y-2">
-              <div className="h-5 w-40 rounded-lg bg-gray-100" />
-              <div className="h-3 w-56 rounded-lg bg-gray-100" />
-              <div className="h-2.5 w-full rounded-full bg-gray-100" />
+              <div className="h-5 w-40 rounded-lg bg-surface-container" />
+              <div className="h-3 w-56 rounded-lg bg-surface-container" />
+              <div className="h-2.5 w-full rounded-full bg-surface-container" />
             </div>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 rounded-3xl border border-black/[0.06] bg-white p-4" />
+            <div key={i} className="h-24 rounded-[20px] border border-black/[0.06] bg-white p-4" />
           ))}
         </div>
         <div className="animate-pulse rounded-2xl border border-black/[0.06] bg-white p-1 shadow-sm">
@@ -47,11 +48,11 @@ function DashboardSkeleton() {
         </div>
         <div className="space-y-3 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-4 rounded-3xl border border-black/[0.06] bg-white p-4">
-              <div className="h-14 w-14 shrink-0 rounded-2xl bg-gray-100" />
+            <div key={i} className="flex items-center gap-4 rounded-[20px] border border-black/[0.06] bg-white p-4">
+              <div className="h-14 w-14 shrink-0 rounded-2xl bg-surface-container" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 w-3/5 rounded-lg bg-gray-100" />
-                <div className="h-3 w-2/5 rounded-lg bg-gray-100" />
+                <div className="h-4 w-3/5 rounded-lg bg-surface-container" />
+                <div className="h-3 w-2/5 rounded-lg bg-surface-container" />
               </div>
             </div>
           ))}
@@ -102,7 +103,7 @@ export default function DashboardPage() {
 
   if (!data) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#f7f6f2] p-8" dir="rtl">
+      <div className="page-shell flex flex-col items-center justify-center gap-4 p-8" dir="rtl">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50">
           <span className="material-symbols-outlined text-4xl text-red-400">error_outline</span>
         </div>
@@ -134,7 +135,7 @@ export default function DashboardPage() {
   const activeItems = activeTab === "donations" ? data.myDonations : data.myRequests;
 
   return (
-    <div className="min-h-dvh bg-[#f7f6f2] pb-16 font-body text-[#191c1d]" dir="rtl">
+    <div className="page-shell pb-16 font-body" dir="rtl">
       {/* ── Modals & Overlays ────────────────────────────────── */}
       <GlobalRatingModal />
 
@@ -174,23 +175,35 @@ export default function DashboardPage() {
       )}
 
       {/* ── Main Content ─────────────────────────────────────── */}
-      <div className="mx-auto max-w-7xl space-y-5 px-4 pt-20 md:px-6 md:pt-24">
+      <div className="site-container space-y-6 pt-24 md:pt-28">
         {/* Header */}
-        <section className="flex flex-col gap-2">
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/10 bg-primary/5 px-3 py-1 text-[11px] font-black text-primary">
+        <section className="flex flex-col gap-4 border-b border-black/[0.06] pb-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="eyebrow">
             <span className="material-symbols-outlined text-[14px]">dashboard</span>
             لوحة التحكم
-          </div>
-          <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-[#1d2324] md:text-3xl">
-                أهلاً {data.user?.name || "بك"}
-              </h1>
-              <p className="mt-1 text-sm font-medium text-[#7a756f]">
-                راقب تبرعاتك وطلباتك، وتابع حالة العناصر والإجراءات الجارية من مكان واحد.
-              </p>
             </div>
-            <div className="text-xs font-bold text-[#9b948d]">آخر تحديث للبيانات من جلستك الحالية</div>
+            <h1 className="mt-3 text-3xl font-black tracking-tight text-on-surface md:text-4xl">
+              أهلاً {data.user?.name || "بك"}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-on-surface-variant">
+              تابع تبرعاتك وحجوزاتك والإجراءات التي تحتاج انتباهك من مكان واحد.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link href="/donation-requests/new" className="btn-secondary text-sm">
+              <span className="material-symbols-outlined text-[18px]">campaign</span>
+              إنشاء طلب
+            </Link>
+            <Link href="/add-item" className="btn-primary text-sm">
+              <span
+                className="material-symbols-outlined text-[18px]"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                add_circle
+              </span>
+              إضافة تبرع
+            </Link>
           </div>
         </section>
 
@@ -208,7 +221,7 @@ export default function DashboardPage() {
         {/* Work area */}
         <section className="space-y-3">
           {/* Tabs card */}
-          <div className="rounded-3xl border border-black/[0.06] bg-white p-1.5 shadow-sm">
+          <div className="rounded-[20px] border border-black/[0.06] bg-white p-1.5 shadow-sm">
             <div className="grid grid-cols-2 gap-1">
               {(["donations", "requests"] as const).map((t) => (
                 <button
@@ -217,7 +230,7 @@ export default function DashboardPage() {
                   className={`flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-black transition-all duration-300 ${
                     activeTab === t
                       ? "bg-primary text-white shadow-[0_10px_24px_rgba(1,105,111,0.16)]"
-                      : "text-gray-500 hover:bg-[#f8f6f2] hover:text-[#1d2324]"
+                      : "text-on-surface-soft hover:bg-surface-container-low hover:text-on-surface"
                   }`}
                 >
                   <span
@@ -229,7 +242,7 @@ export default function DashboardPage() {
                   <span>{t === "donations" ? "تبرعاتي" : "طلباتي"}</span>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${
-                      activeTab === t ? "bg-white/15 text-white" : "bg-[#f1efea] text-gray-600"
+                      activeTab === t ? "bg-white/15 text-white" : "bg-surface-container text-on-surface-variant"
                     }`}
                   >
                     {t === "donations" ? data.myDonations.length : data.myRequests.length}
@@ -240,19 +253,19 @@ export default function DashboardPage() {
           </div>
 
           {/* Table card wrapper */}
-          <div className="overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-sm">
+          <div className="overflow-hidden rounded-[20px] border border-black/[0.06] bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-black/[0.05] px-4 py-3 md:px-5">
               <div>
-                <h2 className="text-sm font-black text-[#1f2425]">
+                <h2 className="text-sm font-black text-on-surface">
                   {activeTab === "donations" ? "سجل التبرعات" : "سجل الطلبات"}
                 </h2>
-                <p className="mt-0.5 text-xs font-medium text-[#8a847d]">
+                <p className="mt-0.5 text-xs font-medium text-on-surface-soft">
                   {activeTab === "donations"
                     ? "راجع التبرعات التي أضفتها وتابع حالتها الحالية."
                     : "راجع العناصر التي قمت بحجزها أو تنتظرها."}
                 </p>
               </div>
-              <div className="rounded-full bg-[#f6f3ee] px-3 py-1 text-[11px] font-black text-[#5f5952]">
+              <div className="rounded-full bg-surface-container-low px-3 py-1 text-[11px] font-black text-on-surface-variant">
                 {activeItems.length} عنصر
               </div>
             </div>

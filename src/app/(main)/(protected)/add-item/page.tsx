@@ -26,34 +26,40 @@ export default function AddItemPage() {
   } = useAddItem(hubRequired);
 
   return (
-    <div className="bg-surface min-h-dvh pb-20 md:pb-32 text-[#191c1d]" dir="rtl">
-      <div className="pt-20 md:pt-24 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto font-body">
-        <div className="mb-6 md:mb-10 text-center">
-          <h1 className="text-2xl md:text-3xl font-extrabold font-headline mb-2">
+    <div className="page-shell pb-20 md:pb-28" dir="rtl">
+      <div className="site-container max-w-3xl pt-24 font-body md:pt-28">
+        <div className="mb-7 border-b border-black/[0.06] pb-6">
+          <span className="eyebrow">
+            <span className="material-symbols-outlined text-[15px]">volunteer_activism</span>
+            تبرع عيني
+          </span>
+          <h1 className="mt-4 text-3xl font-black text-on-surface md:text-4xl">
             إضافة تبرع جديد
           </h1>
-          <p className="text-sm md:text-base text-on-surface-variant">
-            شارك الخير مع مجتمعك واجعل أثرك يمتد 🎁
+          <p className="mt-2 max-w-xl text-sm leading-7 text-on-surface-variant md:text-base">
+            أضف صورة واضحة وتفاصيل دقيقة لتسهّل على المستفيد اتخاذ القرار والتنسيق معك.
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl md:rounded-3xl shadow-[0_20px_60px_rgba(0,97,85,0.08)] p-6 md:p-10 border border-[#edeeef]">
+        <div className="surface-card p-5 sm:p-7 md:p-9">
           <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
             <div className="relative group">
-              <label className="block mb-2 font-bold text-xs md:text-sm">صور الغرض</label>
+              <label htmlFor="item-image" className="mb-2 block text-xs font-black text-on-surface-variant md:text-sm">
+                صورة الغرض
+              </label>
 
               <div
-                className={`border-2 border-dashed rounded-2xl p-6 md:p-10 flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden ${
+                className={`flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed p-6 transition-all md:p-10 ${
                   preview
-                    ? "border-primary bg-emerald-50"
-                    : "border-outline-variant bg-surface-container-low hover:bg-[#edeeef]"
+                    ? "border-primary bg-primary-softer"
+                    : "border-outline-variant bg-surface-container-low hover:border-primary/35 hover:bg-primary-softer"
                 }`}
               >
                 {preview ? (
                   <div className="relative w-full h-40 md:h-48">
                     <Image
                       src={preview}
-                      alt="Preview"
+                      alt="معاينة صورة الغرض"
                       fill
                       className="object-contain rounded-xl"
                     />
@@ -63,51 +69,55 @@ export default function AddItemPage() {
                     <span className="material-symbols-outlined text-4xl md:text-5xl text-primary/60 mb-3 md:mb-4">
                       cloud_upload
                     </span>
-                    <p className="font-medium text-sm md:text-base mb-1">
+                    <p className="mb-1 text-sm font-black text-on-surface md:text-base">
                       اسحب الصورة هنا أو اضغط للرفع
                     </p>
-                    <p className="text-on-surface-variant text-[10px] md:text-xs italic">
+                    <p id="item-image-hint" className="text-[10px] text-on-surface-soft md:text-xs">
                       يدعم JPEG وPNG وWebP (حد أقصى 5MB)
                     </p>
                   </>
                 )}
 
                 <input
+                  id="item-image"
                   required
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   onChange={handleImageChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  aria-describedby={preview ? undefined : "item-image-hint"}
+                  className="absolute inset-0 cursor-pointer opacity-0"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-5 md:gap-6">
               <div className="space-y-2">
-                <label className="block font-bold text-xs md:text-sm mr-1">اسم الغرض</label>
+                <label htmlFor="item-title" className="block text-xs font-black text-on-surface-variant md:text-sm">اسم الغرض</label>
                 <input
+                  id="item-title"
                   required
                   name="title"
                   type="text"
                   value={formData.title}
                   onChange={handleChange}
                   placeholder="مثال: لابتوب ديل مستعمل"
-                  className="w-full bg-surface-container-low text-sm md:text-base border-none rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all placeholder:text-outline"
+                  className="field-control px-4 py-3 text-sm font-bold placeholder:font-medium placeholder:text-on-surface-soft/70 md:px-5 md:text-base"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                 <div className="space-y-2">
-                  <label className="block font-bold text-xs md:text-sm mr-1">التصنيف</label>
+                  <label htmlFor="item-category" className="block text-xs font-black text-on-surface-variant md:text-sm">التصنيف</label>
 
                   <div className="relative">
                     <select
+                      id="item-category"
                       required
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
                       disabled={settingsLoading || categories.length === 0}
-                      className="w-full appearance-none bg-surface-container-low text-sm md:text-base border-none rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="field-control appearance-none px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60 md:px-5 md:text-base"
                     >
                       <option value="" disabled>
                         {settingsLoading ? "جاري تحميل التصنيفات..." : "اختر التصنيف"}
@@ -133,15 +143,16 @@ export default function AddItemPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block font-bold text-xs md:text-sm mr-1">المدينة</label>
+                  <label htmlFor="item-location" className="block text-xs font-black text-on-surface-variant md:text-sm">المدينة</label>
 
                   <div className="relative">
                     <select
+                      id="item-location"
                       required
                       name="location"
                       value={formData.location}
                       onChange={handleChange}
-                      className="w-full appearance-none bg-surface-container-low text-sm md:text-base border-none rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                      className="field-control appearance-none px-4 py-3 text-sm font-bold md:px-5 md:text-base"
                     >
                       <option value="" disabled>
                         اختر المدينة
@@ -162,7 +173,7 @@ export default function AddItemPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="block font-bold text-xs md:text-sm mr-1">حالة الغرض</label>
+                <span className="block text-xs font-black text-on-surface-variant md:text-sm">حالة الغرض</span>
 
                 <div className="flex flex-wrap gap-2 md:gap-3">
                   {CONDITIONS.map((cond) => (
@@ -173,9 +184,9 @@ export default function AddItemPage() {
                         value={cond}
                         onChange={handleChange}
                         checked={formData.condition === cond}
-                        className="hidden peer"
+                        className="peer sr-only"
                       />
-                      <div className="bg-surface-container-low peer-checked:bg-[#98f994] peer-checked:text-[#002204] text-on-surface-variant px-3 py-2.5 md:px-4 md:py-3 rounded-xl text-center transition-all text-xs md:text-sm font-medium hover:bg-surface-container-highest">
+                      <div className="rounded-xl border border-transparent bg-surface-container-low px-3 py-2.5 text-center text-xs font-bold text-on-surface-variant transition-all hover:bg-surface-container-high peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30 peer-checked:border-primary/20 peer-checked:bg-primary-soft peer-checked:text-primary-container md:px-4 md:py-3 md:text-sm">
                         {cond}
                       </div>
                     </label>
@@ -184,15 +195,16 @@ export default function AddItemPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="block font-bold text-xs md:text-sm mr-1">الوصف التفصيلي</label>
+                <label htmlFor="item-description" className="block text-xs font-black text-on-surface-variant md:text-sm">الوصف التفصيلي</label>
                 <textarea
+                  id="item-description"
                   required
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
                   placeholder="اكتب تفاصيل إضافية عن القطعة..."
                   rows={4}
-                  className="w-full bg-surface-container-low text-sm md:text-base border-none rounded-xl px-4 py-3 md:px-5 md:py-4 outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all placeholder:text-outline resize-none"
+                  className="field-control resize-none px-4 py-3 text-sm font-bold placeholder:font-medium placeholder:text-on-surface-soft/70 md:px-5 md:text-base"
                 />
               </div>
             </div>
@@ -205,7 +217,9 @@ export default function AddItemPage() {
 
             {message.text && (
               <div
-                className={`p-4 rounded-xl text-center text-sm md:text-base font-bold ${
+                role={message.type === "success" ? "status" : "alert"}
+                aria-live={message.type === "success" ? "polite" : "assertive"}
+                className={`rounded-xl p-4 text-center text-sm font-bold md:text-base ${
                   message.type === "success"
                     ? "bg-emerald-100 text-emerald-700"
                     : "bg-red-100 text-red-700"
@@ -215,11 +229,11 @@ export default function AddItemPage() {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row-reverse gap-3 md:gap-4 pt-2 md:pt-4">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row-reverse md:gap-4 md:pt-4">
               <button
                 type="submit"
                 disabled={loading || settingsLoading || categories.length === 0}
-                className="flex-1 bg-linear-to-br from-primary to-primary-container text-white text-sm md:text-base font-bold py-3 md:py-4 px-6 md:px-8 rounded-full shadow-lg hover:shadow-primary/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="btn-primary flex-1 py-3.5 text-sm md:text-base"
               >
                 <span>{loading ? "جاري النشر..." : "انشر التبرع الآن"}</span>
                 <span className="material-symbols-outlined text-lg md:text-xl">
@@ -230,7 +244,7 @@ export default function AddItemPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="flex-1 bg-surface-container-low text-on-surface-variant text-sm md:text-base font-bold py-3 md:py-4 px-6 md:px-8 rounded-full hover:bg-surface-container-highest transition-all"
+                className="btn-secondary flex-1 py-3.5 text-sm md:text-base"
               >
                 إلغاء
               </button>

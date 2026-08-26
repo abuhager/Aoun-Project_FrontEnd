@@ -10,13 +10,14 @@ import { SOCKET_EVENTS } from "@/config/socket";
 import NotificationBell from "@/components/NotificationBell";
 import ConversationsDrawer from "@/components/ConversationsDrawer";
 import { listConversations } from "@/lib/api/conversationApi";
+import BrandMark from "@/components/ui/BrandMark";
 
 const NAV_LINKS = [
-  { href: "/#how-it-works", icon: "help", label: "كيف نعمل؟", authRequired: false },
+  { href: "/browse", icon: "explore", label: "تصفح الأغراض", authRequired: false },
+  { href: "/donation-requests", icon: "volunteer_activism", label: "طلبات التبرع", authRequired: false },
   { href: "/hubs", icon: "warehouse", label: "مراكز التسليم", authRequired: false },
+  { href: "/#how-it-works", icon: "help", label: "كيف نعمل؟", authRequired: false },
   { href: "/leaderboard", icon: "leaderboard", label: "المتصدرون", authRequired: true }, // ✅ محصور فقط للمسجلين
-  { href: "/browse", icon: "explore", label: "تصفح الأغراض", authRequired: true },
-  { href: "/donation-requests", icon: "volunteer_activism", label: "طلبات التبرع", authRequired: true },
 ] as const;
 
 export default function Navbar() {
@@ -195,33 +196,24 @@ export default function Navbar() {
   }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
   const isNavLinkActive = (href: string) => {
-    if (href.startsWith("/#")) return pathname === "/";
+    if (href.startsWith("/#")) return false;
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   if (isLogoOnlyPage) {
     return (
       <nav
-        className="fixed inset-x-0 top-0 z-50 h-16 border-b border-black/[0.05] bg-white/88 backdrop-blur-xl md:h-20"
+        className="fixed inset-x-0 top-0 z-50 h-16 border-b border-black/[0.06] bg-white/92 shadow-[0_1px_0_rgba(23,33,31,0.02)] backdrop-blur-xl md:h-20"
         dir="rtl"
         aria-label="التنقل الرئيسي"
       >
-        <div className="mx-auto flex h-full max-w-[1480px] items-center px-4 md:px-8">
-          <Link href="/" aria-label={`العودة إلى الرئيسية — ${platformName}`} className="group flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-[0_10px_22px_rgba(1,105,111,0.18)] transition-all duration-300 group-hover:scale-[1.03] group-hover:shadow-[0_14px_28px_rgba(1,105,111,0.24)]">
-              <span
-                className="material-symbols-outlined text-[21px] text-white"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                volunteer_activism
-              </span>
-            </div>
-            <div className="leading-none">
-              <span className="text-xl font-black tracking-tight text-[#171717]">{platformName}</span>
-              <p className="mt-1 text-[10px] font-semibold text-[#91897f]">
-                عطاء يصل لمن يحتاجه
-              </p>
-            </div>
+        <div className="site-container flex h-full items-center">
+          <Link
+            href="/"
+            aria-label={`العودة إلى الرئيسية — ${platformName}`}
+            className="rounded-xl"
+          >
+            <BrandMark name={platformName} tagline="عطاء يصل لمن يحتاجه" />
           </Link>
         </div>
       </nav>
@@ -231,33 +223,22 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className="fixed inset-x-0 top-0 z-50 border-b border-black/[0.05] bg-white/88 backdrop-blur-xl"
+        className="fixed inset-x-0 top-0 z-50 border-b border-black/[0.06] bg-white/92 shadow-[0_1px_0_rgba(23,33,31,0.02)] backdrop-blur-xl"
         dir="rtl"
         aria-label="التنقل الرئيسي"
       >
-        <div className="mx-auto flex h-16 max-w-[1480px] items-center justify-between px-3 md:h-[66px] md:px-6">
+        <div className="site-container flex h-16 items-center justify-between lg:h-[68px]">
           <div className="flex shrink-0 items-center">
-            <Link href="/" aria-label={`العودة إلى الرئيسية — ${platformName}`} className="group flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-[0_8px_20px_rgba(1,105,111,0.18)] transition-all duration-300 group-hover:scale-[1.03] group-hover:shadow-[0_12px_24px_rgba(1,105,111,0.24)] md:h-10 md:w-10">
-                <span
-                  className="material-symbols-outlined text-[20px] text-white md:text-[21px]"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  volunteer_activism
-                </span>
-              </div>
-              <div className="hidden sm:block leading-none">
-                <span className="text-lg font-black tracking-tight text-[#171717] md:text-xl">
-                  {platformName}
-                </span>
-                <p className="mt-1 text-[10px] font-semibold text-[#91897f]">
-                  عطاء أسهل وأكثر ثقة
-                </p>
-              </div>
+            <Link
+              href="/"
+              aria-label={`العودة إلى الرئيسية — ${platformName}`}
+              className="rounded-xl"
+            >
+              <BrandMark name={platformName} compact />
             </Link>
           </div>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-center px-6 md:flex">
+          <div className="hidden min-w-0 flex-1 items-center justify-center px-5 lg:flex">
             <div className="flex items-center gap-1.5">
               {visibleLinks.map((link) => {
                 const isActive = isNavLinkActive(link.href);
@@ -268,8 +249,8 @@ export default function Navbar() {
                     aria-current={isActive ? "page" : undefined}
                     className={`group relative inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-bold transition-all duration-300 ${
                       isActive
-                        ? "bg-[#f2f7f6] text-primary"
-                        : "text-[#6f6a63] hover:bg-[#f7f4ee] hover:text-[#191919]"
+                        ? "bg-primary-soft text-primary-container"
+                        : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
                     }`}
                   >
                     <span
@@ -288,12 +269,12 @@ export default function Navbar() {
             </div>
           </div>
 
-          <div className="hidden shrink-0 items-center gap-2 md:flex">
+          <div className="hidden shrink-0 items-center gap-2 lg:flex">
             {!isMounted ? (
-              <div className="h-10 w-28 animate-pulse rounded-2xl bg-[#f2eee8]" />
+              <div className="h-10 w-28 animate-pulse rounded-2xl bg-surface-container-high" />
             ) : isLoggedIn ? (
               <>
-                <div className="flex items-center gap-1 rounded-[18px] border border-black/[0.05] bg-[#fbfaf8] p-1 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
+                <div className="flex items-center gap-1 rounded-[16px] border border-black/[0.06] bg-surface-container-lowest p-1 shadow-sm">
                   {isAdmin && (
                     <Link
                       href="/admin"
@@ -436,7 +417,7 @@ export default function Navbar() {
             )}
           </div>
 
-          <div className="flex items-center gap-1 md:hidden">
+          <div className="flex items-center gap-1 lg:hidden">
             {isMounted && isLoggedIn && (
               <>
                 <button
@@ -478,7 +459,7 @@ export default function Navbar() {
         </div>
 
         {isMobileMenuOpen && (
-          <div id={mobileMenuId} className="md:hidden">
+          <div id={mobileMenuId} className="lg:hidden">
             <button
               type="button"
               aria-label="إغلاق القائمة"

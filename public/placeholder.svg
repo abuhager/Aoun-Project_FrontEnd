@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
+  <title id="title">صورة غير متاحة</title>
+  <desc id="desc">عنصر نائب لصورة الغرض</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#edf4ef"/>
+      <stop offset="1" stop-color="#dce9e3"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <circle cx="400" cy="284" r="118" fill="#fff" opacity=".72"/>
+  <path d="M330 265 400 225l70 40v82l-70 40-70-40z" fill="none" stroke="#006155" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M330 265 400 307l70-42M400 307v80" fill="none" stroke="#006155" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M449 199c20-32 75-16 68 24-6 31-44 49-68 67-24-18-62-36-68-67-7-40 48-56 68-24z" fill="#b57820"/>
+</svg>

@@ -55,13 +55,12 @@ test('صفحة الغرض تعتمد حالة الانتظار من Backend وت
 });
 
 test('إضافة وتعديل الغرض يتحققان من الصورة والمركز والمسار القديم يحوّل للجديد', async () => {
-  const [addHook, addPage, editHook, editPage, legacyPage, legacyHook] = await Promise.all([
+  const [addHook, addPage, editHook, editPage, legacyPage] = await Promise.all([
     readSource('../src/app/(main)/(protected)/add-item/hooks/useAddItem.ts'),
     readSource('../src/app/(main)/(protected)/add-item/page.tsx'),
     readSource('../src/app/(main)/(protected)/items/[id]/edit/hooks/useEditItem.ts'),
     readSource('../src/app/(main)/(protected)/items/[id]/edit/page.tsx'),
     readSource('../src/app/(main)/(protected)/edit-item/[id]/page.tsx'),
-    readSource('../src/app/(main)/(protected)/edit-item/[id]/hooks/useEditItem.ts'),
   ]);
 
   for (const source of [addHook, editHook]) {
@@ -75,7 +74,6 @@ test('إضافة وتعديل الغرض يتحققان من الصورة وال
   assert.match(addPage, /<HubSelector[\s\S]*required/);
   assert.match(editPage, /<HubSelector[\s\S]*required/);
   assert.match(legacyPage, /redirect\(`\/items\/\$\{id\}\/edit`\)/);
-  assert.doesNotMatch(legacyHook, /localStorage|\/api\/items\/update\//);
 });
 
 test('Dashboard يطابق أحداث ومسارات دورة الحجز ويحتفظ بحالة الترقية', async () => {

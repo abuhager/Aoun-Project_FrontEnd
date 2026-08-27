@@ -8,6 +8,9 @@ const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const read = (relativePath) =>
   readFileSync(path.join(projectRoot, relativePath), "utf8");
 
+const isLayoutFile = (filePath) =>
+  /(^|[\\/])layout\.tsx$/.test(filePath);
+
 const tsxFilesUnder = (relativeDir) => {
   const directory = path.join(projectRoot, relativeDir);
   return readdirSync(directory, { recursive: true })
@@ -43,7 +46,7 @@ test("التخطي إلى المحتوى موجود ولا توجد عناصر m
   const routedFiles = [
     ...tsxFilesUnder("src/app/(main)"),
     ...tsxFilesUnder("src/app/(auth)"),
-  ].filter(({ path: filePath }) => !filePath.endsWith("/layout.tsx"));
+  ].filter(({ path: filePath }) => !isLayoutFile(filePath));
 
   for (const file of routedFiles) {
     assert.doesNotMatch(file.source, /^\s*<main\b/m, `main متداخل في ${file.path}`);
@@ -84,7 +87,6 @@ test("حوارات المسارات الحساسة تستخدم الغلاف ا�
     "src/components/ChatDrawer/index.tsx",
     "src/components/ConversationList/index.tsx",
     "src/app/(main)/(protected)/dashboard/components/ActionModal.tsx",
-    "src/app/(main)/(protected)/dashboard/components/OtpModal.tsx",
     "src/app/(main)/items/[id]/components/ConfirmModal.tsx",
     "src/app/(main)/(protected)/admin/users/page.tsx",
     "src/app/(main)/(protected)/admin/items/page.tsx",
@@ -150,7 +152,7 @@ test("لا تبقى وحدات vh القديمة ولا Navbar مكرر داخل
   }
 
   const appFiles = tsxFilesUnder("src/app").filter(
-    ({ path: filePath }) => !filePath.endsWith("/layout.tsx")
+    ({ path: filePath }) => !isLayoutFile(filePath)
   );
   for (const file of appFiles) {
     assert.doesNotMatch(file.source, /<Navbar\s*\/>/, `Navbar مكرر في ${file.path}`);

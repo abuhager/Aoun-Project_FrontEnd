@@ -42,7 +42,7 @@ export function usePublicProfile() {
   }, [id, page]);
 
   const getImageUrl = (url: string) => {
-    if (!url) return "/placeholder.png";
+    if (!url) return "/placeholder.svg";
     return url.startsWith("http") ? url : `${apiUrl}/${url}`;
   };
 

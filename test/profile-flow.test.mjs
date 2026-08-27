@@ -21,12 +21,17 @@ test('public profile consumes the backend donations/received/rating contract', a
 });
 
 test('profile password and avatar checks match the backend contract', async () => {
-  const source = await readSource('../src/app/(main)/(protected)/profile/edit/page.tsx');
-  assert.match(source, /isStrongPassword/);
-  assert.match(source, /PASSWORD_REQUIREMENTS_MESSAGE/);
-  assert.match(source, /image\/jpeg,image\/png,image\/webp/);
-  assert.match(source, /void logout\(\)/);
-  assert.doesNotMatch(source, /const PASSWORD_REGEX/);
+  const [editPage, publicProfileHook] = await Promise.all([
+    readSource('../src/app/(main)/(protected)/profile/edit/page.tsx'),
+    readSource('../src/app/(main)/(protected)/profile/[id]/hooks/usePublicProfile.ts'),
+  ]);
+  assert.match(editPage, /isStrongPassword/);
+  assert.match(editPage, /PASSWORD_REQUIREMENTS_MESSAGE/);
+  assert.match(editPage, /image\/jpeg,image\/png,image\/webp/);
+  assert.match(editPage, /void logout\(\)/);
+  assert.doesNotMatch(editPage, /const PASSWORD_REGEX/);
+  assert.match(publicProfileHook, /return "\/placeholder\.svg"/);
+  assert.doesNotMatch(publicProfileHook, /placeholder\.png/);
 });
 
 test('leaderboard reuses the authenticated shared socket', async () => {

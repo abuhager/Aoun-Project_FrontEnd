@@ -1,47 +1,55 @@
 # Aoun Frontend
 
-Comprehensive technical documentation for the Aoun Platform frontend, showcasing Next.js 16 App Router, TypeScript, and clean modular architecture.
+The frontend application for **Aoun**, built with Next.js 16 App Router and TypeScript. It covers authentication, donation items and needs, bookings and handovers, conversations, notifications, profiles, and administrative workflows.
 
-🔗 **Live Demo**: [https://aoun-project-theta.vercel.app/](https://aoun-project-theta.vercel.app/)
+> Current status: the core product flows are complete. The project is undergoing cleanup, testing, and production-readiness work before a limited pilot. Optional demo login cards are disabled by default and configured only through server-side environment values.
 
----
+## Requirements
 
-## Overview
+- Node.js 20.19 or newer
+- A local or test instance of the Aoun backend
 
-Frontend application for **Aoun**, a charitable giving platform that helps users discover donation opportunities and manage related user workflows through a modern web interface.
+## Local setup
 
-The frontend is built with **Next.js** and **TypeScript**. It leverages the **App Router** structure and separates authentication flows, main application views, shared components, configurations, contexts, custom hooks, utilities, and strict type definitions.
+```bash
+npm ci
+cp .env.example .env.local
+npm run dev
+```
 
----
+On Windows PowerShell:
 
-## Main Capabilities
+```powershell
+Copy-Item .env.example .env.local
+npm run dev
+```
 
-* **Authentication & Account Security**: User registration, login, email/account verification, forgot password, and password reset flows.
-* **Donation Discovery & Management**: Browsing available donation opportunities, submitting donation requests, and managing listed items.
-* **Safe Hubs & Delivery**: Dedicated interfaces for safe hubs and community handover interactions.
-* **Protected Routes & Security**: Route protection mechanisms guarding authenticated areas.
-* **Global State & React Context**: Centralized authentication, application state, and reusable custom hooks.
-* **Modern UI & Responsive Design**: Global styling and highly reusable UI components across all screen sizes.
+Update `NEXT_PUBLIC_API_URL` and `BACKEND_URL` in `.env.local` if the backend uses a different origin.
 
----
+## Verification
 
-## Project Structure
+```bash
+npm run verify
+npm run build
+```
+
+- `verify` runs ESLint, the TypeScript compiler, and all flow/regression tests.
+- `build` creates the optimized production build and requires `NEXT_PUBLIC_API_URL`.
+
+## Project structure
 
 ```text
-.
-├── public/                # Static assets
-├── src/
-│   ├── app/               # Next.js App Router pages and layouts
-│   │   ├── (auth)/        # Authentication route group (Login, Register, Reset, Verify)
-│   │   └── (main)/        # Main route group (Dashboard, Browse, Requests, Hubs, Items)
-│   ├── components/        # Reusable UI components
-│   ├── config/            # Frontend configuration
-│   ├── context/           # Shared React context providers
-│   ├── hooks/             # Reusable React hooks
-│   ├── lib/               # API clients and shared utilities
-│   ├── types/             # TypeScript interfaces and types
-│   └── proxy.ts           # Request and route-protection proxy logic
-├── next.config.ts         # Next.js configuration
-├── eslint.config.mjs      # ESLint configuration
-├── postcss.config.mjs     # PostCSS configuration
-└── tsconfig.json          # TypeScript configuration
+public/                 Static assets used by the application
+src/app/                App Router pages and layouts
+src/components/         Shared UI components
+src/config/             Route, feature, Socket.IO, and CSP configuration
+src/context/            Authentication, Socket.IO, and platform configuration
+src/hooks/              Shared hooks
+src/lib/                API clients, validation, and utilities
+src/types/              TypeScript contracts shared with the backend
+test/                   Flow, accessibility, security, and regression tests
+```
+
+## Environment variables
+
+Required and optional values are documented in [`.env.example`](.env.example). Never commit `.env.local`, Firebase keys, credentials, or other secrets. Demo login is enabled with `DEMO_LOGIN_ENABLED=true`; configure only the demo roles you want to display, and keep it disabled on any deployment that contains real user data.

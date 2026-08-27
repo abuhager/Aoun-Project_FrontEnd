@@ -1,7 +1,9 @@
 {
   "name": "aoun-frontend",
   "version": "0.1.0",
+  "description": "Next.js frontend for the Aoun donation platform",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,24 +11,21 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
+    "verify": "npm run lint && npm run typecheck && npm test",
     "clean": "node -e \"const fs=require('node:fs'); for (const path of ['.next','node_modules/.cache']) fs.rmSync(path,{recursive:true,force:true})\""
   },
   "dependencies": {
     "axios": "^1.14.0",
     "firebase": "^12.17.1",
-    "joi": "^18.2.1",
-    "jose": "^5.10.0",
-    "js-cookie": "^3.0.5",
     "next": "16.3.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-hot-toast": "^2.6.0",
+    "server-only": "^0.0.1",
     "socket.io-client": "^4.8.3",
     "swr": "^2.4.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

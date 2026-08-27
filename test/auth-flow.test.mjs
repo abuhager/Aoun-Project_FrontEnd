@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 
 const readSource = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
@@ -10,9 +10,27 @@ test('لا يحفظ AuthContext بيانات المستخدم في cookie قاب
   assert.match(source, /setUserState\(data\.user\)/);
 });
 
-test('صفحة الدخول لا تحتوي كلمة مرور أو حسابات Demo', async () => {
-  const source = await readSource('../src/app/(auth)/login/page.tsx');
-  assert.doesNotMatch(source, /handleQuickFill|Demo Accounts|syntheticEvent/);
+test('حسابات Demo تُدار من بيئة السيرفر ولا تحتوي بيانات اعتماد ثابتة', async () => {
+  const srcRoot = new URL('../src/', import.meta.url);
+  const paths = (await readdir(srcRoot, { recursive: true }))
+    .filter((path) => typeof path === 'string' && /\.(?:ts|tsx|js|jsx|mjs)$/.test(path));
+  const source = (await Promise.all(
+    paths.map((path) => readFile(new URL(path, srcRoot), 'utf8'))
+  )).join('\n');
+  const serverConfig = await readSource('../src/config/demoAccounts.server.ts');
+  const page = await readSource('../src/app/(auth)/login/page.tsx');
+  const client = await readSource('../src/app/(auth)/login/LoginClient.tsx');
+  const envExample = await readSource('../.env.example');
+
+  assert.doesNotMatch(source, /1870547aA|admin@aoun\.jo|donor@gmail\.com|sara@student\.ju\.edu\.jo/);
+  assert.doesNotMatch(source, /NEXT_PUBLIC_DEMO/);
+  assert.match(serverConfig, /import "server-only"/);
+  assert.match(serverConfig, /process\.env\.DEMO_LOGIN_ENABLED !== "true"/);
+  assert.match(page, /export const dynamic = "force-dynamic"/);
+  assert.match(page, /getDemoAccounts\(\)/);
+  assert.match(client, /demoAccounts\.length > 0/);
+  assert.match(client, /fillDemoCredentials\(account\.email, account\.password\)/);
+  assert.match(envExample, /DEMO_LOGIN_ENABLED=false/);
 });
 
 test('التحقق من كلمة المرور يطابق عقد Backend', async () => {

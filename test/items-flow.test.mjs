@@ -92,9 +92,15 @@ test('Dashboard يطابق أحداث ومسارات دورة الحجز ويح�
   assert.match(source, /SOCKET_EVENTS\.ITEM_DELIVERED/);
   assert.match(source, /SOCKET_EVENTS\.ITEM_BOOKING_TRANSFERRED/);
   assert.match(source, /await loadDashboard\(\)/);
+  assert.match(source, /deliveryInFlightRef/);
+  assert.match(source, /deliveryLoadingItemId/);
+  assert.match(source, /if \(!beginDeliveryRequest\(itemId\)\) return/);
   assert.doesNotMatch(source, /delivery:recipient_confirmed|delivery:completed/);
   assert.doesNotMatch(source, /\/api\/items\/delete\//);
   assert.match(table, /!item\.recipientConfirmed/);
+  assert.match(table, /deliveryLoadingItemId === item\._id/);
+  assert.match(table, /disabled=\{deliveryLoadingItemId !== null\}/);
+  assert.doesNotMatch(table, /deliveryLoading && deliveryState\.itemId/);
 });
 
 test('الإشعارات الجديدة لها fallback آمن ورابط داخلي فقط', async () => {

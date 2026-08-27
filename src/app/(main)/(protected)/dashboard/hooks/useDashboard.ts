@@ -59,7 +59,7 @@ export function useDashboard() {
     itemId: null,
     waitingForDonor: false,
   });
-  const [deliveryLoading, setDeliveryLoading] = useState(false);
+  const [deliveryLoadingItemId, setDeliveryLoadingItemId] = useState<string | null>(null);
 
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
     open: false,
@@ -76,11 +76,25 @@ export function useDashboard() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const appealReportIdRef = useRef<string>("");
+  const deliveryInFlightRef = useRef<string | null>(null);
 
   const showToast = useCallback((msg: string, type: "success" | "error") => {
     setToast({ msg, type });
     const id = setTimeout(() => setToast(null), 3500);
     timeoutIdsRef.current.push(id);
+  }, []);
+
+  const beginDeliveryRequest = useCallback((itemId: string) => {
+    if (deliveryInFlightRef.current) return false;
+    deliveryInFlightRef.current = itemId;
+    setDeliveryLoadingItemId(itemId);
+    return true;
+  }, []);
+
+  const endDeliveryRequest = useCallback((itemId: string) => {
+    if (deliveryInFlightRef.current !== itemId) return;
+    deliveryInFlightRef.current = null;
+    setDeliveryLoadingItemId(null);
   }, []);
 
   const loadDashboard = useCallback(async (signal?: AbortSignal) => {
@@ -200,7 +214,7 @@ export function useDashboard() {
 
   const handleRecipientConfirm = useCallback(
     async (itemId: string) => {
-      setDeliveryLoading(true);
+      if (!beginDeliveryRequest(itemId)) return;
 
       try {
         const { msg } = await confirmReceipt(itemId);
@@ -220,15 +234,15 @@ export function useDashboard() {
       } catch (requestError) {
         showToast(extractErrorMsg(requestError, "تعذّر تأكيد الاستلام"), "error");
       } finally {
-        setDeliveryLoading(false);
+        endDeliveryRequest(itemId);
       }
     },
-    [showToast]
+    [beginDeliveryRequest, endDeliveryRequest, showToast]
   );
 
   const handleDonorConfirm = useCallback(
     async (itemId: string) => {
-      setDeliveryLoading(true);
+      if (!beginDeliveryRequest(itemId)) return;
 
       try {
         const { msg } = await confirmDelivery(itemId);
@@ -239,10 +253,10 @@ export function useDashboard() {
       } catch (requestError) {
         showToast(extractErrorMsg(requestError, "تعذّر تأكيد التسليم"), "error");
       } finally {
-        setDeliveryLoading(false);
+        endDeliveryRequest(itemId);
       }
     },
-    [loadDashboard, showToast]
+    [beginDeliveryRequest, endDeliveryRequest, loadDashboard, showToast]
   );
 
   const handleDelete = useCallback(
@@ -390,7 +404,7 @@ export function useDashboard() {
     confirmModal,
     setConfirmModal,
     deliveryState,
-    deliveryLoading,
+    deliveryLoadingItemId,
     handleRecipientConfirm,
     handleDonorConfirm,
     handleDelete,

@@ -76,7 +76,7 @@ export default function DashboardPage() {
     toast,
     setToast,
     deliveryState,
-    deliveryLoading,
+    deliveryLoadingItemId,
     handleRecipientConfirm,
     handleDonorConfirm,
     handleDelete,
@@ -276,7 +276,7 @@ export default function DashboardPage() {
                 onDonorCancelBooking={handleDonorCancelBooking}
                 onEdit={handleEdit}
                 deliveryState={deliveryState}
-                deliveryLoading={deliveryLoading}
+                deliveryLoadingItemId={deliveryLoadingItemId}
                 onRecipientConfirm={handleRecipientConfirm}
                 onDonorConfirm={handleDonorConfirm}
                 onOpenChat={handleOpenChatFlow}

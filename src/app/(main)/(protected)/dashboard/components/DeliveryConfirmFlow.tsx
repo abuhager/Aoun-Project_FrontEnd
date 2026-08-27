@@ -6,12 +6,13 @@ interface DeliveryConfirmFlowProps {
   item:           { _id: string; title: string; recipientConfirmed?: boolean };
   role:           'recipient' | 'donor';
   loading:        boolean;
+  disabled?:      boolean;
   onConfirm:      (itemId: string) => void;
   waitingDonor?:  boolean; // المستلم أكّد وننتظر المتبرع
 }
 
 export function DeliveryConfirmFlow({
-  item, role, loading, onConfirm, waitingDonor = false,
+  item, role, loading, disabled = false, onConfirm, waitingDonor = false,
 }: DeliveryConfirmFlowProps) {
 
   // ── المستلم: لم يؤكد بعد ──────────────────────────────────
@@ -19,7 +20,7 @@ export function DeliveryConfirmFlow({
     return (
       <button
         onClick={() => onConfirm(item._id)}
-        disabled={loading}
+        disabled={loading || disabled}
         className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50
                    text-white text-xs font-black px-3 py-1.5 rounded-xl transition-colors"
       >
@@ -59,7 +60,7 @@ export function DeliveryConfirmFlow({
     return (
       <button
         onClick={() => onConfirm(item._id)}
-        disabled={loading}
+        disabled={loading || disabled}
         className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 disabled:opacity-50
                    text-white text-xs font-black px-3 py-1.5 rounded-xl transition-colors
                    animate-pulse"

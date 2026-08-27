@@ -36,6 +36,8 @@ test("حدود Next العامة توفر reset ولا تعرض رسالة ال�
     assert.doesNotMatch(source, />\s*\{error\.message\}\s*</);
   }
   assert.match(globalError, /<html lang="ar" dir="rtl">/);
+  assert.match(globalError, /import Link from "next\/link"/);
+  assert.doesNotMatch(globalError, /<a\s+href="\/"/);
   assert.match(notFound, /404/);
 });
 

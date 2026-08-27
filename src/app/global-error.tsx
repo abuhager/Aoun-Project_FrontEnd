@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 
 interface GlobalErrorProps {
@@ -75,7 +76,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             >
               إعادة المحاولة
             </button>
-            <a
+            <Link
               href="/"
               style={{
                 minHeight: "44px",
@@ -91,7 +92,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               }}
             >
               الصفحة الرئيسية
-            </a>
+            </Link>
           </div>
         </main>
       </body>

@@ -160,10 +160,18 @@ test("لا تبقى وحدات vh القديمة ولا Navbar مكرر داخل
 test("الحالات الحية تعلن التحميل والنجاح والخطأ لقارئ الشاشة", () => {
   const loading = read("src/app/loading.tsx");
   const toast = read("src/hooks/useToast.tsx");
+  const dashboardToast = read(
+    "src/app/(main)/(protected)/dashboard/components/Toast.tsx"
+  );
 
   assert.match(loading, /role="status"/);
   assert.match(loading, /aria-busy="true"/);
   assert.match(toast, /role=\{toast\.ok \? "status" : "alert"\}/);
   assert.match(toast, /aria-live=\{toast\.ok \? "polite" : "assertive"\}/);
   assert.match(toast, /max-w-\[calc\(100vw-2rem\)\]/);
+  assert.match(dashboardToast, /useRef\(onClose\)/);
+  assert.match(dashboardToast, /onCloseRef\.current\(\)/);
+  assert.match(dashboardToast, /\[msg, type\]/);
+  assert.match(dashboardToast, /role=\{isSuccess \? "status" : "alert"\}/);
+  assert.doesNotMatch(dashboardToast, /setTimeout\(onClose/);
 });

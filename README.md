@@ -1,6 +1,6 @@
 # Aoun Frontend
 
-Comprehensive technical documentation for the Aoun Platform frontend, showcasing Next.js 14 App Router, TypeScript, and clean modular architecture.
+Comprehensive technical documentation for the Aoun Platform frontend, showcasing Next.js 16 App Router, TypeScript, and clean modular architecture.
 
 🔗 **Live Demo**: [https://aoun-project-theta.vercel.app/](https://aoun-project-theta.vercel.app/)
 
@@ -39,9 +39,9 @@ The frontend is built with **Next.js** and **TypeScript**. It leverages the **Ap
 │   ├── context/           # Shared React context providers
 │   ├── hooks/             # Reusable React hooks
 │   ├── lib/               # API clients and shared utilities
-│   ├── types/             # TypeScript interfaces and types[cite: 2]
-│   └── proxy.ts           # Request and route-protection proxy logic[cite: 2]
-├── next.config.ts         # Next.js configuration[cite: 2]
-├── eslint.config.mjs      # ESLint configuration[cite: 2]
-├── postcss.config.mjs     # PostCSS configuration[cite: 2]
-└── tsconfig.json          # TypeScript configuration[cite: 2]
+│   ├── types/             # TypeScript interfaces and types
+│   └── proxy.ts           # Request and route-protection proxy logic
+├── next.config.ts         # Next.js configuration
+├── eslint.config.mjs      # ESLint configuration
+├── postcss.config.mjs     # PostCSS configuration
+└── tsconfig.json          # TypeScript configuration

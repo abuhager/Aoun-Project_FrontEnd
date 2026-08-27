@@ -21,7 +21,7 @@ interface ItemsTableProps {
   onDonorCancelBooking: (id: string) => void;
   onEdit: (id: string) => void;
   deliveryState: DeliveryState;
-  deliveryLoading: boolean;
+  deliveryLoadingItemId: string | null;
   onRecipientConfirm: (itemId: string) => void;
   onDonorConfirm: (itemId: string) => void;
   onOpenChat?: (item: DashboardItem) => void;
@@ -91,7 +91,7 @@ export function ItemsTable({
   onDonorCancelBooking,
   onEdit,
   deliveryState,
-  deliveryLoading,
+  deliveryLoadingItemId,
   onRecipientConfirm,
   onDonorConfirm,
   onOpenChat,
@@ -222,7 +222,8 @@ export function ItemsTable({
                   <DeliveryConfirmFlow
                     item={item}
                     role="recipient"
-                    loading={deliveryLoading && deliveryState.itemId === item._id}
+                    loading={deliveryLoadingItemId === item._id}
+                    disabled={deliveryLoadingItemId !== null}
                     onConfirm={onRecipientConfirm}
                   />
                 )}
@@ -231,7 +232,8 @@ export function ItemsTable({
                   <DeliveryConfirmFlow
                     item={item}
                     role="donor"
-                    loading={deliveryLoading && deliveryState.itemId === item._id}
+                    loading={deliveryLoadingItemId === item._id}
+                    disabled={deliveryLoadingItemId !== null}
                     onConfirm={onDonorConfirm}
                     waitingDonor={
                       item.recipientConfirmed === true ||

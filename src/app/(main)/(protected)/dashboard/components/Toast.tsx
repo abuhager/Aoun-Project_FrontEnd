@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface ToastProps {
   msg: string;
@@ -9,10 +9,16 @@ interface ToastProps {
 }
 
 export function Toast({ msg, type, onClose }: ToastProps) {
+  const onCloseRef = useRef(onClose);
+
   useEffect(() => {
-    const t = setTimeout(onClose, 4000);
-    return () => clearTimeout(t);
+    onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    const t = setTimeout(() => onCloseRef.current(), 4000);
+    return () => clearTimeout(t);
+  }, [msg, type]);
 
   const isSuccess = type === "success";
 
@@ -23,8 +29,8 @@ export function Toast({ msg, type, onClose }: ToastProps) {
           ? "border-emerald-200 bg-white text-emerald-700 shadow-emerald-100"
           : "border-red-200 bg-white text-red-700 shadow-red-100"
       }`}
-      role="status"
-      aria-live="polite"
+      role={isSuccess ? "status" : "alert"}
+      aria-live={isSuccess ? "polite" : "assertive"}
     >
       <span
         className={`material-symbols-outlined text-[18px] ${

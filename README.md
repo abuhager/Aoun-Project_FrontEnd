@@ -1,55 +1,36 @@
-# Aoun Frontend
+# QA04 Playwright
 
-The frontend application for **Aoun**, built with Next.js 16 App Router and TypeScript. It covers authentication, donation items and needs, bookings and handovers, conversations, notifications, profiles, and administrative workflows.
+ضع هذه الملفات في جذر `aoun-frontend`.
 
-> Current status: the core product flows are complete. The project is undergoing cleanup, testing, and production-readiness work before a limited pilot. Optional demo login cards are disabled by default and configured only through server-side environment values.
-
-## Requirements
-
-- Node.js 20.19 or newer
-- A local or test instance of the Aoun backend
-
-## Local setup
-
-```bash
-npm ci
-cp .env.example .env.local
-npm run dev
-```
-
-On Windows PowerShell:
+شغّل Backend وFrontend أولاً، ثم أضف بيانات Demo إلى جلسة PowerShell الحالية:
 
 ```powershell
-Copy-Item .env.example .env.local
-npm run dev
+$env:DEMO_STUDENT_EMAIL="ضع-الإيميل-هنا"
+$env:DEMO_STUDENT_PASSWORD="ضع-كلمة-المرور-هنا"
 ```
 
-Update `NEXT_PUBLIC_API_URL` and `BACKEND_URL` in `.env.local` if the backend uses a different origin.
-
-## Verification
+لتشغيل الاختبارات الأساسية:
 
 ```bash
-npm run verify
-npm run build
+npx playwright test
 ```
 
-- `verify` runs ESLint, the TypeScript compiler, and all flow/regression tests.
-- `build` creates the optimized production build and requires `NEXT_PUBLIC_API_URL`.
+دورة التبرع الكاملة تغيّر قاعدة البيانات وتستهلك كوتا الطالب، لذلك تُتخطى افتراضيًا.
+لا تشغّلها على حساب Demo المعتاد. استخدم حسابات اختبار مخصصة وكوتا متاحة، ثم عرّف:
 
-## Project structure
-
-```text
-public/                 Static assets used by the application
-src/app/                App Router pages and layouts
-src/components/         Shared UI components
-src/config/             Route, feature, Socket.IO, and CSP configuration
-src/context/            Authentication, Socket.IO, and platform configuration
-src/hooks/              Shared hooks
-src/lib/                API clients, validation, and utilities
-src/types/              TypeScript contracts shared with the backend
-test/                   Flow, accessibility, security, and regression tests
+```powershell
+$env:DEMO_DONOR_EMAIL="إيميل المتبرع"
+$env:DEMO_DONOR_PASSWORD="كلمة مرور المتبرع"
+$env:E2E_RUN_MUTATING="true"
+npx playwright test
 ```
 
-## Environment variables
+الأفضل لاحقًا تشغيلها على قاعدة اختبار منفصلة مع Seed وCleanup تلقائيين.
 
-Required and optional values are documented in [`.env.example`](.env.example). Never commit `.env.local`, Firebase keys, credentials, or other secrets. Demo login is enabled with `DEMO_LOGIN_ENABLED=true`; configure only the demo roles you want to display, and keep it disabled on any deployment that contains real user data.
+لرؤية التقرير:
+
+```bash
+npx playwright show-report
+```
+
+لا تُحفظ كلمات المرور داخل الملفات أو GitHub. إذا لم تُعرّف المتغيرات، سيتخطى الاختبار بدل إعطاء نجاح زائف.

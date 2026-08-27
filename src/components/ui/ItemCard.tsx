@@ -6,15 +6,24 @@ interface ItemCardProps {
   item: Item;
   imageSrc?: string;
   priority?: boolean;
+  returnTo?: string;
 }
 
-export default function ItemCard({ item, imageSrc, priority = false }: ItemCardProps) {
+export default function ItemCard({
+  item,
+  imageSrc,
+  priority = false,
+  returnTo,
+}: ItemCardProps) {
   const isBooked = item.status === "محجوز";
   const safeImageSrc = imageSrc || item.imageUrl || "/placeholder.svg";
+  const itemHref = returnTo
+    ? `/items/${item._id}?returnTo=${encodeURIComponent(returnTo)}`
+    : `/items/${item._id}`;
 
   return (
     <Link
-      href={`/items/${item._id}`}
+      href={itemHref}
       className="group relative flex h-full flex-col overflow-hidden rounded-[17px] border border-black/[0.075] bg-white shadow-[0_10px_30px_rgba(16,37,34,0.055)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1.5 hover:border-primary/25 hover:shadow-[0_22px_50px_rgba(16,37,34,0.12)]"
     >
       <span className="absolute inset-y-0 right-0 z-20 w-1 bg-primary/0 transition-colors duration-300 group-hover:bg-primary" />

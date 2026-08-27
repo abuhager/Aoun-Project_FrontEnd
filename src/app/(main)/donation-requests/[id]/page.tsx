@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 import { useAuth } from "@/context/AuthContext";
@@ -22,6 +22,7 @@ import PageIntro from "@/components/ui/PageIntro";
 export default function DonationRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
 
   const [request, setRequest] = useState<DonationRequest | null>(null);
@@ -33,6 +34,12 @@ export default function DonationRequestDetailPage() {
   const [canceling, setCanceling] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const currentUserId = user?._id ?? null;
+  const requestedReturnTo = searchParams.get("returnTo");
+  const listReturnTo =
+    requestedReturnTo === "/donation-requests" ||
+    requestedReturnTo?.startsWith("/donation-requests?")
+      ? requestedReturnTo
+      : "/donation-requests";
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
@@ -226,7 +233,7 @@ export default function DonationRequestDetailPage() {
       <div className="site-container space-y-6 md:pt-4">
         {/* Back */}
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push(listReturnTo)}
           className="flex items-center gap-1 text-xs font-black text-gray-500 transition-colors hover:text-primary"
         >
           <span className="material-symbols-outlined text-[16px]">arrow_forward</span>

@@ -30,6 +30,11 @@ const CONDITIONS = ["جديد", "مستعمل ممتاز", "مستعمل جيد"
 const OFFER_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_OFFER_IMAGE_BYTES = 5 * 1024 * 1024;
 
+const normalizePage = (value: string | null) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+};
+
 function RequestStatusBadge({ status }: { status: DonationRequest["status"] }) {
   const styles = {
     active: "bg-emerald-50 text-emerald-700 border-emerald-100",
@@ -84,6 +89,7 @@ function RequestCardSkeleton() {
 export default function DonationRequestsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const mineFromUrl = searchParams.get("mine") === "true";
   const { user, isLoading: authLoading } = useAuth();
   const currentUserId = user?._id;
   const { requireHubForBooking } = useSiteConfig();
@@ -96,13 +102,18 @@ export default function DonationRequestsClient() {
     ? publicSettings.locations
     : DEFAULT_LOCATIONS;
 
-  const [myOnly, setMyOnly] = useState(false);
+  const [myOnly, setMyOnly] = useState(
+    () => mineFromUrl
+  );
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setMyOnly(searchParams.get("mine") === "true");
-  }, [searchParams]);
+  }, []);
+
+  useEffect(() => {
+    setMyOnly(mineFromUrl);
+  }, [mineFromUrl]);
 
   useEffect(() => {
     if (authLoading || user || !myOnly) return;
@@ -115,7 +126,7 @@ export default function DonationRequestsClient() {
   const [loadError, setLoadError] = useState<NormalizedApiError | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => normalizePage(searchParams.get("page")));
   const [pages, setPages] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -135,9 +146,38 @@ export default function DonationRequestsClient() {
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const listQuery = searchParams.toString();
+  const listReturnTo = listQuery
+    ? `/donation-requests?${listQuery}`
+    : "/donation-requests";
+  const requestDetailsHref = (requestId: string) =>
+    `/donation-requests/${requestId}?returnTo=${encodeURIComponent(listReturnTo)}`;
 
   const stateRef = useRef({ myOnly, selectedCategory, selectedLocation, page });
   const loadControllerRef = useRef<AbortController | null>(null);
+  const filtersKeyRef = useRef(`${myOnly}|${selectedCategory}|${selectedLocation}`);
+
+  const writePageToHistory = useCallback(
+    (nextPage: number, mode: "push" | "replace" = "push") => {
+      const safePage = Math.max(1, Math.floor(nextPage));
+      const params = new URLSearchParams(window.location.search);
+
+      if (safePage === 1) params.delete("page");
+      else params.set("page", String(safePage));
+
+      const query = params.toString();
+      const href = query ? `/donation-requests?${query}` : "/donation-requests";
+      if (mode === "replace") window.history.replaceState(null, "", href);
+      else window.history.pushState(null, "", href);
+      setPage(safePage);
+    },
+    []
+  );
+
+  useEffect(() => {
+    const urlPage = normalizePage(searchParams.get("page"));
+    setPage((current) => (current === urlPage ? current : urlPage));
+  }, [searchParams]);
   useEffect(() => {
     stateRef.current = { myOnly, selectedCategory, selectedLocation, page };
   });
@@ -204,7 +244,7 @@ export default function DonationRequestsClient() {
       setImagePreview(null);
       setToast({ msg: res.msg ?? "تم إرسال العرض للمراجعة", ok: true });
       await load(stateRef.current.page);
-      setTimeout(() => router.push(`/donation-requests/${requestId}`), 700);
+      setTimeout(() => router.push(requestDetailsHref(requestId)), 700);
     } catch (err) {
       setToast({ msg: extractErrorMsg(err, "تعذر الاستجابة للطلب"), ok: false });
     } finally {
@@ -228,7 +268,16 @@ export default function DonationRequestsClient() {
 
   useEffect(() => {
     if (!mounted || authLoading || (myOnly && !currentUserId)) return;
-    void load(1, selectedCategory, myOnly, selectedLocation);
+    const filtersKey = `${myOnly}|${selectedCategory}|${selectedLocation}`;
+    const filtersChanged = filtersKeyRef.current !== filtersKey;
+    filtersKeyRef.current = filtersKey;
+
+    if (filtersChanged && page !== 1) {
+      writePageToHistory(1, "replace");
+      return;
+    }
+
+    void load(page, selectedCategory, myOnly, selectedLocation);
     return () => loadControllerRef.current?.abort();
   }, [
     authLoading,
@@ -238,6 +287,8 @@ export default function DonationRequestsClient() {
     selectedCategory,
     selectedLocation,
     currentUserId,
+    page,
+    writePageToHistory,
   ]);
 
   useEffect(() => {
@@ -465,7 +516,7 @@ export default function DonationRequestsClient() {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  router.push(`/donation-requests/${request._id}`)
+                                  router.push(requestDetailsHref(request._id))
                                 }
                                 className="inline-flex items-center gap-1 rounded-2xl bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700 transition-all hover:bg-emerald-100"
                               >
@@ -480,7 +531,7 @@ export default function DonationRequestsClient() {
                             <button
                               type="button"
                               onClick={() =>
-                                router.push(`/donation-requests/${request._id}`)
+                                router.push(requestDetailsHref(request._id))
                               }
                               className="inline-flex items-center gap-1 rounded-2xl bg-[#f3f1ec] px-4 py-2 text-xs font-black text-[#625c55] transition-all hover:bg-[#ebe6df]"
                             >
@@ -541,7 +592,7 @@ export default function DonationRequestsClient() {
           {pages > 1 && (
             <div className="flex items-center justify-center gap-2 pt-4">
               <button
-                onClick={() => load(page - 1)}
+                onClick={() => writePageToHistory(page - 1)}
                 disabled={page <= 1 || loading}
                 className="rounded-2xl bg-[#f0ece5] px-4 py-2 text-xs font-black text-[#6b655e] transition-all hover:bg-[#e8e2d9] disabled:opacity-40"
               >
@@ -553,7 +604,7 @@ export default function DonationRequestsClient() {
               </span>
 
               <button
-                onClick={() => load(page + 1)}
+                onClick={() => writePageToHistory(page + 1)}
                 disabled={page >= pages || loading}
                 className="rounded-2xl bg-[#f0ece5] px-4 py-2 text-xs font-black text-[#6b655e] transition-all hover:bg-[#e8e2d9] disabled:opacity-40"
               >

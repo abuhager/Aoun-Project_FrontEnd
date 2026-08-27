@@ -17,9 +17,11 @@ test('Item API يستخدم مسارات Backend الفعلية ويترك FormD
 });
 
 test('Browse يرسل الفلاتر والصفحة إلى السيرفر ولا يرشح الصفحة الأولى محلياً', async () => {
-  const [hook, page] = await Promise.all([
+  const [hook, page, card, details] = await Promise.all([
     readSource('../src/app/(main)/browse/hooks/useBrowse.ts'),
     readSource('../src/app/(main)/browse/page.tsx'),
+    readSource('../src/components/ui/ItemCard.tsx'),
+    readSource('../src/app/(main)/items/[id]/page.tsx'),
   ]);
 
   assert.match(hook, /getItems\(/);
@@ -28,8 +30,16 @@ test('Browse يرسل الفلاتر والصفحة إلى السيرفر ولا
   assert.match(hook, /location: selectedCity/);
   assert.match(hook, /category: selectedCategory/);
   assert.match(hook, /AbortController/);
+  assert.match(hook, /useSearchParams/);
+  assert.match(hook, /window\.history\.pushState/);
+  assert.match(hook, /window\.history\.replaceState/);
+  assert.match(hook, /searchParams\.get\("page"\)/);
+  assert.match(hook, /filtersKeyRef\.current === filtersKey/);
   assert.doesNotMatch(hook, /\.filter\(/);
   assert.match(page, /صفحة \{currentPage\} من \{totalPages\}/);
+  assert.match(page, /returnTo=\{browseReturnTo\}/);
+  assert.match(card, /returnTo=\$\{encodeURIComponent\(returnTo\)\}/);
+  assert.match(details, /requestedReturnTo\?\.startsWith\("\/browse\?"\)/);
   assert.match(page, /إعادة المحاولة/);
 });
 

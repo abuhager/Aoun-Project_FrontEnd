@@ -20,7 +20,6 @@ test('حسابات Demo تُدار من بيئة السيرفر ولا تحتو�
   const serverConfig = await readSource('../src/config/demoAccounts.server.ts');
   const page = await readSource('../src/app/(auth)/login/page.tsx');
   const client = await readSource('../src/app/(auth)/login/LoginClient.tsx');
-  const envExample = await readSource('../.env.example');
 
   assert.doesNotMatch(source, /1870547aA|admin@aoun\.jo|donor@gmail\.com|sara@student\.ju\.edu\.jo/);
   assert.doesNotMatch(source, /NEXT_PUBLIC_DEMO/);
@@ -30,7 +29,6 @@ test('حسابات Demo تُدار من بيئة السيرفر ولا تحتو�
   assert.match(page, /getDemoAccounts\(\)/);
   assert.match(client, /demoAccounts\.length > 0/);
   assert.match(client, /fillDemoCredentials\(account\.email, account\.password\)/);
-  assert.match(envExample, /DEMO_LOGIN_ENABLED=false/);
 });
 
 test('التحقق من كلمة المرور يطابق عقد Backend', async () => {

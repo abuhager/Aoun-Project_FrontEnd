@@ -8,7 +8,7 @@ import { CountdownTimer } from "./components/CountdownTimer";
 import { useItemDetails } from "./hooks/useItemDetails";
 import LevelGate from "@/components/LevelGate";
 import ChatDrawer from "@/components/ChatDrawer";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDeliveryConfirmation } from "@/hooks/useDeliveryConfirmation";
 import { useAuth } from "@/context/AuthContext";
 import { openConversation } from "@/lib/api/conversationApi";
@@ -16,6 +16,7 @@ import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
 
 export default function ItemDetailsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isLoggedIn, user } = useAuth();
   const {
     item,
@@ -96,6 +97,11 @@ export default function ItemDetailsPage() {
   }
 
   const isRequestLinked = Boolean(item.linkedRequestId);
+  const requestedReturnTo = searchParams.get("returnTo");
+  const browseReturnTo =
+    requestedReturnTo === "/browse" || requestedReturnTo?.startsWith("/browse?")
+      ? requestedReturnTo
+      : "/browse";
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const imageUrl = item.imageUrl ?? "/placeholder.svg";
   const showCountdown =
@@ -129,7 +135,11 @@ export default function ItemDetailsPage() {
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-xs font-medium text-gray-400">
           <Link
-            href={isRequestLinked ? `/donation-requests/${item.linkedRequestId}` : "/browse"}
+            href={
+              isRequestLinked
+                ? `/donation-requests/${item.linkedRequestId}`
+                : browseReturnTo
+            }
             className="font-bold transition-colors hover:text-primary"
           >
             {isRequestLinked ? "طلب التبرع" : "تصفح التبرعات"}

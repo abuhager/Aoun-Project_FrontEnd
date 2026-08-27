@@ -19,7 +19,7 @@ test('إرسال العرض لا يفتح offerId كأنه Item ID', async () =>
 
   assert.doesNotMatch(source, /`\/items\/\$\{res\.offerId\}`/);
   assert.match(source, /تم إرسال العرض للمراجعة/);
-  assert.match(source, /router\.push\(`\/donation-requests\/\$\{requestId\}`\)/);
+  assert.match(source, /router\.push\(requestDetailsHref\(requestId\)\)/);
 });
 
 test('قائمة الطلبات تمنع التبرع للطلب الشخصي وتتعامل مع الزائر', async () => {
@@ -29,6 +29,26 @@ test('قائمة الطلبات تمنع التبرع للطلب الشخصي و
   assert.match(source, /login\?redirect=/);
   assert.match(source, /MAX_OFFER_IMAGE_BYTES/);
   assert.match(source, /image\/webp/);
+});
+
+test('قائمتا الأغراض وطلبات التبرع تحفظان الصفحة في URL عند الرجوع من التفاصيل', async () => {
+  const [browseHook, requestsPage, requestDetails] = await Promise.all([
+    readSource('../src/app/(main)/browse/hooks/useBrowse.ts'),
+    readSource('../src/app/(main)/donation-requests/DonationRequestsClient.tsx'),
+    readSource('../src/app/(main)/donation-requests/[id]/page.tsx'),
+  ]);
+
+  for (const source of [browseHook, requestsPage]) {
+    assert.match(source, /searchParams\.get\("page"\)/);
+    assert.match(source, /window\.history\.pushState/);
+    assert.match(source, /window\.history\.replaceState/);
+  }
+
+  assert.match(requestsPage, /writePageToHistory\(page - 1\)/);
+  assert.match(requestsPage, /writePageToHistory\(page \+ 1\)/);
+  assert.match(requestsPage, /returnTo=\$\{encodeURIComponent\(listReturnTo\)\}/);
+  assert.match(requestDetails, /router\.push\(listReturnTo\)/);
+  assert.doesNotMatch(requestsPage, /onClick=\{\(\) => load\(page [+-] 1\)\}/);
 });
 
 test('تفاصيل الطلب تستخدم AuthContext ولا تطلب auth\/me مرة ثانية', async () => {

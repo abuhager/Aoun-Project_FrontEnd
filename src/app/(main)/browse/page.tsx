@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import ItemCard from "@/components/ui/ItemCard";
 import { useSettings } from "@/hooks/useSettings";
 import { useBrowse } from "./hooks/useBrowse";
@@ -24,6 +25,8 @@ function SkeletonCard() {
 }
 
 export default function BrowsePage() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const {
     items,
     loading,
@@ -44,6 +47,8 @@ export default function BrowsePage() {
   const { categories, isLoading: settingsLoading } = useSettings();
   const hasActiveFilters =
     Boolean(searchQuery.trim()) || Boolean(selectedCity) || Boolean(selectedCategory);
+  const query = searchParams.toString();
+  const browseReturnTo = query ? `${pathname}?${query}` : pathname;
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -264,7 +269,12 @@ export default function BrowsePage() {
           <>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {items.map((item, index) => (
-                <ItemCard key={item._id} item={item} priority={index < 4} />
+                <ItemCard
+                  key={item._id}
+                  item={item}
+                  priority={index < 4}
+                  returnTo={browseReturnTo}
+                />
               ))}
             </div>
 

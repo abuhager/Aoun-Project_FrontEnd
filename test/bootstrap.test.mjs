@@ -16,7 +16,7 @@ test('يطبع API origins بشكل موحد ويرفض URL يحتوي مسار�
   );
   assert.throws(
     () => configModule.normalizeBaseUrl('https://api.aoun.example/v1', 'API_URL'),
-    /يجب ألا يحتوي مساراً/
+    /يجب ألا يحتوي مسار/
   );
 });
 

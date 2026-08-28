@@ -141,9 +141,17 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="safe-area-bottom flex flex-col gap-2 pt-6 text-[11px] font-bold text-white/35 sm:flex-row sm:items-center sm:justify-between">
+        <div className="safe-area-bottom flex flex-col gap-3 pt-6 text-[11px] font-bold text-white/35 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} {platformName}. جميع الحقوق محفوظة.</p>
-          <p>صُممت لتجعل مشاركة الخير أوضح وأكثر كرامة.</p>
+          <nav aria-label="الروابط القانونية" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link href="/privacy" className="hover:text-white">
+              سياسة الخصوصية
+            </Link>
+            <Link href="/terms" className="hover:text-white">
+              شروط الاستخدام
+            </Link>
+            <span>صُممت لتجعل مشاركة الخير أوضح وأكثر كرامة.</span>
+          </nav>
         </div>
       </div>
     </footer>

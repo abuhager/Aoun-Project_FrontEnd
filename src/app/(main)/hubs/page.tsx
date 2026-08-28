@@ -21,19 +21,19 @@ export default function HubsPage() {
     <div className="page-shell pt-20" dir="rtl">
       <section className="site-container space-y-6 pb-20 md:pt-4">
         <PageIntro
-          eyebrow="شبكة تسليم موثوقة"
-          title="مراكز التسليم الآمنة"
-          description="أماكن عامة معتمدة تساعد المتبرع والمستفيد على تنسيق الاستلام بوضوح، بعيدًا عن مشاركة العناوين الشخصية."
+          eyebrow="تنسيق تسليم أوضح"
+          title="نقاط التسليم"
+          description="أماكن يقترحها فريق المنصة لتنسيق الاستلام بعيدًا عن مشاركة العناوين الشخصية. تحقّق من توفر النقطة وساعاتها قبل التوجه إليها."
           icon="warehouse"
           tone="ink"
           meta={
             <>
               <span className="data-chip">
                 <span className="material-symbols-outlined text-[15px]">verified_user</span>
-                مواقع يديرها فريق المنصة
+                بيانات تجريبية خلال مرحلة الإطلاق المحدود
               </span>
               {!loading && !error && <span className="data-chip">{total} مركز متاح</span>}
-              <span className="data-chip">ساعات العمل موضحة لكل مركز</span>
+              <span className="data-chip">التوفر النهائي يحتاج تأكيدًا مسبقًا</span>
             </>
           }
         />

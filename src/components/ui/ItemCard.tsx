@@ -69,7 +69,7 @@ export default function ItemCard({
       <div className="flex grow flex-col p-4.5">
         <div className="mb-2 flex items-center justify-between gap-3">
           <span className="section-kicker">{item.category}</span>
-          <span className="text-[9px] font-black tracking-[0.08em] text-on-surface-soft">AOUN ITEM</span>
+          <span className="text-[9px] font-black tracking-[0.08em] text-on-surface-soft">تبرع عيني</span>
         </div>
         <h3 className="line-clamp-2 text-[16px] font-black leading-7 text-on-surface">
           {item.title}

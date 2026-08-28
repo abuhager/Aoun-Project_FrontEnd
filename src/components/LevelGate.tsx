@@ -3,10 +3,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/AuthContext';
 import type { TrustLevel } from '@/types/user.types'; // ✅ استيراد
-import PhoneVerifyModal from './PhoneVerifyModal';
 import { featureFlags } from '@/config/features';
+
+const PhoneVerifyModal = dynamic(() => import('./PhoneVerifyModal'), {
+  ssr: false,
+});
 
 interface LevelGateProps {
   requiredLevel?:           TrustLevel;
@@ -83,7 +87,7 @@ export default function LevelGate({
         </div>
       </div>
 
-      {phoneVerificationEnabled && (
+      {phoneVerificationEnabled && showModal && (
         <PhoneVerifyModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}

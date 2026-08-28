@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { io, type Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import { SOCKET_EVENTS } from "@/config/socket";
 import { useAuth, type SessionEndReason } from "@/context/AuthContext";
 import { subscribeAccessToken } from "@/lib/api/axiosInstance";
@@ -96,6 +96,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let disposed = false;
+    let creatingSocket = false;
     let removeInstanceListeners = () => {};
 
     const disconnectSocket = () => {
@@ -128,7 +129,29 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       return attempt;
     };
 
-    const createSocket = (token: string) => {
+    const createSocket = async () => {
+      if (creatingSocket) return;
+      creatingSocket = true;
+
+      let socketClient: typeof import("socket.io-client");
+      try {
+        socketClient = await import("socket.io-client");
+      } catch {
+        if (!disposed) {
+          setStatus("error");
+          setLastError("تعذر تحميل الاتصال الفوري");
+        }
+        creatingSocket = false;
+        return;
+      }
+
+      const token = activeTokenRef.current;
+      if (disposed || !token) {
+        creatingSocket = false;
+        return;
+      }
+
+      const { io } = socketClient;
       const instance = io(SOCKET_URL, {
         auth: { token },
         withCredentials: true,
@@ -221,6 +244,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setSocketInstance(instance);
       setStatus("connecting");
       instance.connect();
+      creatingSocket = false;
     };
 
     const connectWithToken = (token: string | null) => {
@@ -232,7 +256,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
       const current = socketRef.current;
       if (!current) {
-        createSocket(token);
+        activeTokenRef.current = token;
+        void createSocket();
         return;
       }
 

@@ -14,6 +14,10 @@ interface OpenConversationData {
   isNew: boolean;
 }
 
+interface ConversationUnreadCountData {
+  unreadCount: number;
+}
+
 interface MessagesEnvelope extends ConversationMessagesPage {
   status: string;
 }
@@ -24,6 +28,14 @@ export async function listConversations(signal?: AbortSignal) {
     { signal }
   );
   return response.data.data;
+}
+
+export async function getConversationUnreadCount(signal?: AbortSignal) {
+  const response = await axiosInstance.get<ApiEnvelope<ConversationUnreadCountData>>(
+    '/api/conversations/unread-count',
+    { signal }
+  );
+  return response.data.data.unreadCount;
 }
 
 export async function openConversation(itemId: string) {

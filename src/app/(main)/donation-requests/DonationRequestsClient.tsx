@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { DonationRequest } from "@/types/donationRequest.types";
+import type { DonationRequestsListResponse } from "@/types/donationRequest.types";
 import {
   extractErrorMsg,
   normalizeApiError,
@@ -86,7 +87,11 @@ function RequestCardSkeleton() {
   );
 }
 
-export default function DonationRequestsClient() {
+export default function DonationRequestsClient({
+  initialData,
+}: {
+  initialData: DonationRequestsListResponse | null;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mineFromUrl = searchParams.get("mine") === "true";
@@ -121,13 +126,17 @@ export default function DonationRequestsClient() {
     router.replace("/donation-requests");
   }, [authLoading, myOnly, router, user]);
 
-  const [requests, setRequests] = useState<DonationRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [requests, setRequests] = useState<DonationRequest[]>(
+    () => initialData?.requests ?? []
+  );
+  const [loading, setLoading] = useState(!initialData);
   const [loadError, setLoadError] = useState<NormalizedApiError | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [page, setPage] = useState(() => normalizePage(searchParams.get("page")));
-  const [pages, setPages] = useState(1);
+  const [page, setPage] = useState(
+    () => initialData?.page ?? normalizePage(searchParams.get("page"))
+  );
+  const [pages, setPages] = useState(() => initialData?.pages ?? 1);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [respondingTo, setRespondingTo] = useState<DonationRequest | null>(null);
@@ -156,6 +165,7 @@ export default function DonationRequestsClient() {
   const stateRef = useRef({ myOnly, selectedCategory, selectedLocation, page });
   const loadControllerRef = useRef<AbortController | null>(null);
   const filtersKeyRef = useRef(`${myOnly}|${selectedCategory}|${selectedLocation}`);
+  const consumedInitialDataRef = useRef(false);
 
   const writePageToHistory = useCallback(
     (nextPage: number, mode: "push" | "replace" = "push") => {
@@ -277,6 +287,20 @@ export default function DonationRequestsClient() {
       return;
     }
 
+    if (
+      !consumedInitialDataRef.current &&
+      initialData &&
+      !currentUserId &&
+      !myOnly &&
+      !selectedCategory &&
+      !selectedLocation &&
+      page === initialData.page
+    ) {
+      consumedInitialDataRef.current = true;
+      setLoading(false);
+      return;
+    }
+
     void load(page, selectedCategory, myOnly, selectedLocation);
     return () => loadControllerRef.current?.abort();
   }, [
@@ -289,6 +313,7 @@ export default function DonationRequestsClient() {
     currentUserId,
     page,
     writePageToHistory,
+    initialData,
   ]);
 
   useEffect(() => {

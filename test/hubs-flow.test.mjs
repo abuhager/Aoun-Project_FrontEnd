@@ -60,17 +60,20 @@ test('API يفك غلاف استجابة التعطيل وإعادة التفع�
   assert.doesNotMatch(axiosSource, /hubs[^\n]*getOnly: false/);
 });
 
-test('صفحة المراكز تعتمد Navbar المشترك وتعرض البحث والخطأ وإعادة المحاولة', async () => {
-  const [page, hook] = await Promise.all([
+test('صفحة المراكز تعتمد Server wrapper وClient island للبحث وإعادة المحاولة', async () => {
+  const [page, explorer, hook] = await Promise.all([
     readSource('../src/app/(main)/hubs/page.tsx'),
+    readSource('../src/app/(main)/hubs/HubsExplorer.tsx'),
     readSource('../src/app/(main)/hubs/hooks/useHubs.ts'),
   ]);
 
   assert.doesNotMatch(page, /import Navbar|<Navbar/);
-  assert.match(page, /role="alert"/);
-  assert.match(page, /setSearch/);
-  assert.match(page, /setCity/);
-  assert.match(page, /إعادة المحاولة/);
+  assert.match(page, /getPublicHubsServer/);
+  assert.match(page, /<HubsExplorer initialHubs=\{hubs\}/);
+  assert.match(explorer, /role="alert"/);
+  assert.match(explorer, /setSearch/);
+  assert.match(explorer, /setCity/);
+  assert.match(explorer, /إعادة المحاولة/);
   assert.match(hook, /usePublicHubs/);
   assert.doesNotMatch(hook, /getHubs\(/);
   assert.match(hook, /toLocaleLowerCase/);

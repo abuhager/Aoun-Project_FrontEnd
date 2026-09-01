@@ -22,6 +22,8 @@
 ## التقنيات
 
 - Next.js 16، React 19، TypeScript، Tailwind CSS.
+- Server Components للصفحات العامة، مع Client islands للتفاعل والمصادقة والـSocket.
+- `fetch` على السيرفر مع revalidation للبيانات العامة ووقت انتظار محدود.
 - Axios، SWR، Socket.IO Client، Firebase.
 - Playwright لاختبارات E2E، وNode Test Runner لاختبارات العقود والانحدار.
 
@@ -39,7 +41,11 @@ npm run dev
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000
 BACKEND_URL=http://localhost:5000
+SERVER_API_TIMEOUT_MS=10000
 ```
+
+`BACKEND_URL` هو العنوان الذي تستخدمه Server Components داخل Vercel، بينما
+`NEXT_PUBLIC_API_URL` يبقى عنوان الـAPI/Socket الذي تحتاجه الواجهة في المتصفح.
 
 يمكن إدارة ظهور حسابات Demo من متغيرات بيئة السيرفر. لا تضع كلمات المرور داخل ملفات المصدر أو README.
 
@@ -61,7 +67,7 @@ npx playwright test --workers=1
 src/app/          صفحات ومسارات Next.js
 src/components/   مكونات الواجهة المشتركة
 src/context/      المصادقة والإعدادات والـSocket
-src/lib/api/      عميل API وعقوده
+src/lib/api/      عميل المتصفح وطبقة API العامة الخاصة بالسيرفر
 src/types/        أنواع البيانات المشتركة
 test/             اختبارات العقود والانحدار
 tests/            اختبارات Playwright E2E

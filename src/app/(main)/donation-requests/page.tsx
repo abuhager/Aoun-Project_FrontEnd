@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import DonationRequestsClient from "./DonationRequestsClient";
+import { getPublicDonationRequestsServer } from "@/lib/api/publicApiServer";
 
 function RequestsPageSkeleton() {
   return (
@@ -72,10 +73,29 @@ function RequestsPageSkeleton() {
   );
 }
 
-export default function DonationRequestsPage() {
+const normalizePage = (value: string | string[] | undefined) => {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+};
+
+export default async function DonationRequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = await searchParams;
+  const mine = (Array.isArray(query.mine) ? query.mine[0] : query.mine) === "true";
+  const initialData = mine
+    ? null
+    : await getPublicDonationRequestsServer({
+        page: normalizePage(query.page),
+        limit: 10,
+      }).catch(() => null);
+
   return (
     <Suspense fallback={<RequestsPageSkeleton />}>
-      <DonationRequestsClient />
+      <DonationRequestsClient initialData={initialData} />
     </Suspense>
   );
 }

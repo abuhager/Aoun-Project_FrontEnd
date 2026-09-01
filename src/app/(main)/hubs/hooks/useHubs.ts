@@ -2,15 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { usePublicHubs } from "@/hooks/usePublicHubs";
+import type { SafeHub } from "@/types/hub.types";
 
-export function useHubs() {
+export function useHubs(initialHubs: SafeHub[] = []) {
   const {
     hubs: allHubs,
     error: requestError,
     isLoading,
     isValidating,
     refresh,
-  } = usePublicHubs();
+  } = usePublicHubs(initialHubs);
   const [search, setSearch] = useState("");
   const [city, setCity] = useState("الكل");
 

@@ -7,10 +7,11 @@ import {
 } from '@/lib/api/hubApi';
 import type { SafeHub } from '@/types/hub.types';
 
-export function usePublicHubs() {
+export function usePublicHubs(initialHubs: SafeHub[] = []) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<SafeHub[]>(
     PUBLIC_HUBS_CACHE_KEY,
-    () => getHubs()
+    () => getHubs(),
+    { fallbackData: initialHubs }
   );
 
   return {

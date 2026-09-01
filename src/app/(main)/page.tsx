@@ -1,10 +1,19 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import ItemCard from "@/components/ui/ItemCard";
-import { useSiteConfig } from "@/context/SiteConfigContext";
-import { FEATURES, useHomePage } from "./hooks/useHomePage";
+import { siteConfig } from "@/config/site.config";
+import {
+  getPublicItemsServer,
+  resolvePublicAssetUrl,
+} from "@/lib/api/publicApiServer";
+import { getServerPublicSettings } from "@/lib/api/publicSettingsServer";
+
+const FEATURES = [
+  { icon: "person_add", t: "سجّل حسابك", d: "انضم لمجتمعنا بخطوات بسيطة وآمنة لحماية خصوصيتك." },
+  { icon: "add_box", t: "أضف غرضاً أو اطلبه", d: "اعرض ما لا تحتاجه أو تصفح ما يحتاجه الآخرون بكل سهولة." },
+  { icon: "handshake", t: "تم اللقاء والتبادل", d: "نسّق موعد الاستلام في مكان عام وآمن للجميع." },
+  { icon: "star", t: "قيّم تجربتك", d: "ساهم في بناء مجتمع الثقة من خلال تقييم التبادل." },
+] as const;
 
 const ENTRY_PATHS = [
   {
@@ -39,24 +48,13 @@ const TRUST_POINTS = [
   { icon: "warehouse", label: "مراكز تسليم آمنة" },
 ] as const;
 
-function ItemCardSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-[20px] border border-black/[0.06] bg-white shadow-sm">
-      <div className="aspect-[4/3] animate-pulse bg-surface-container-high" />
-      <div className="space-y-3 p-4.5">
-        <div className="h-3 w-20 animate-pulse rounded-full bg-surface-container-high" />
-        <div className="h-4 w-full animate-pulse rounded-full bg-surface-container-high" />
-        <div className="h-4 w-2/3 animate-pulse rounded-full bg-surface-container-high" />
-        <div className="h-px bg-surface-container-high" />
-        <div className="h-3 w-28 animate-pulse rounded-full bg-surface-container-high" />
-      </div>
-    </div>
-  );
-}
-
-export default function HomePage() {
-  const { items, loading, getImageUrl } = useHomePage();
-  const { platformName } = useSiteConfig();
+export default async function HomePage() {
+  const [settings, itemResult] = await Promise.all([
+    getServerPublicSettings(),
+    getPublicItemsServer({ page: 1, limit: 4 }).catch(() => null),
+  ]);
+  const platformName = settings?.platformName ?? siteConfig.name;
+  const items = itemResult?.items.slice(0, 4) ?? [];
 
   return (
     <div className="overflow-x-clip bg-surface text-on-surface" dir="rtl">
@@ -181,19 +179,13 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {loading ? (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <ItemCardSkeleton key={index} />
-              ))}
-            </div>
-          ) : items.length > 0 ? (
+          {items.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {items.map((item, index) => (
                 <ItemCard
                   key={item._id}
                   item={item}
-                  imageSrc={getImageUrl(item)}
+                  imageSrc={resolvePublicAssetUrl(item.imageUrl)}
                   priority={index < 2}
                 />
               ))}

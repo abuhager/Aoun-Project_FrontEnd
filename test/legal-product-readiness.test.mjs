@@ -22,7 +22,7 @@ test("صفحات الخصوصية والشروط عامة ومربوطة من ا
 test("واجهة المنتج لا تعرض نصوص placeholder الإنجليزية أو ادعاء إدارة المراكز", async () => {
   const [card, hubs] = await Promise.all([
     read("src/components/ui/ItemCard.tsx"),
-    read("src/app/(main)/hubs/page.tsx"),
+    read("src/app/(main)/hubs/HubsExplorer.tsx"),
   ]);
 
   assert.doesNotMatch(card, /AOUN ITEM/);

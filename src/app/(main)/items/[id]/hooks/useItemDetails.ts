@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   bookItem,
   cancelBooking,
@@ -30,16 +30,15 @@ interface ConfirmModalState {
   onConfirm: () => void;
 }
 
-export function useItemDetails() {
-  const params = useParams<{ id: string }>();
+export function useItemDetails(itemId: string, initialItem: Item | null) {
   const router = useRouter();
   const { user, isLoading: authLoading, isLoggedIn } = useAuth();
   const { socket } = useSocket();
-  const itemId = Array.isArray(params.id) ? params.id[0] : params.id;
-
-  const [item, setItem] = useState<Item | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const [item, setItem] = useState<Item | null>(initialItem);
+  const [loading, setLoading] = useState(!initialItem);
+  const [loadError, setLoadError] = useState(
+    initialItem ? "" : "تعذّر تحميل بيانات الغرض"
+  );
   const [message, setMessage] = useState({ type: "", text: "" });
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
@@ -92,10 +91,16 @@ export function useItemDetails() {
 
   useEffect(() => {
     if (authLoading) return;
+    // البيانات العامة وصلت ضمن HTML من Server Component. نعيد الطلب فقط
+    // للمستخدم المسجل حتى نحصل على حقول حالته الشخصية (قائمة الانتظار وغيرها).
+    if (initialItem && !currentUserId) {
+      setLoading(false);
+      return;
+    }
     const controller = new AbortController();
     void fetchItem(false, controller.signal);
     return () => controller.abort();
-  }, [authLoading, currentUserId, fetchItem]);
+  }, [authLoading, currentUserId, fetchItem, initialItem]);
 
   useEffect(() => {
     if (!socket || !itemId) return;

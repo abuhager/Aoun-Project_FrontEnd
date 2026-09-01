@@ -7,7 +7,7 @@ const readSource = (relativePath) => readFile(new URL(relativePath, import.meta.
 test('واجهة فتح المحادثة ترسل itemId فقط وتترك تحديد الطرفين للـBackend', async () => {
   const [api, itemPage, dashboard] = await Promise.all([
     readSource('../src/lib/api/conversationApi.ts'),
-    readSource('../src/app/(main)/items/[id]/page.tsx'),
+    readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx'),
     readSource('../src/app/(main)/(protected)/dashboard/page.tsx'),
   ]);
 

@@ -1,11 +1,11 @@
 import 'server-only';
 
 import { cache } from 'react';
-import { getPublicSettings } from '@/lib/api/publicSettingsApi';
+import { getPublicSettingsServer } from '@/lib/api/publicApiServer';
 
 export const getServerPublicSettings = cache(async () => {
   try {
-    return await getPublicSettings();
+    return await getPublicSettingsServer();
   } catch {
     return null;
   }

@@ -32,17 +32,18 @@ test('قائمة الطلبات تمنع التبرع للطلب الشخصي و
 });
 
 test('قائمتا الأغراض وطلبات التبرع تحفظان الصفحة في URL عند الرجوع من التفاصيل', async () => {
-  const [browseHook, requestsPage, requestDetails] = await Promise.all([
-    readSource('../src/app/(main)/browse/hooks/useBrowse.ts'),
+  const [browsePage, requestsPage, requestDetails] = await Promise.all([
+    readSource('../src/app/(main)/browse/page.tsx'),
     readSource('../src/app/(main)/donation-requests/DonationRequestsClient.tsx'),
-    readSource('../src/app/(main)/donation-requests/[id]/page.tsx'),
+    readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx'),
   ]);
 
-  for (const source of [browseHook, requestsPage]) {
-    assert.match(source, /searchParams\.get\("page"\)/);
-    assert.match(source, /window\.history\.pushState/);
-    assert.match(source, /window\.history\.replaceState/);
-  }
+  assert.match(browsePage, /normalizePage\(firstValue\(rawParams\.page\)\)/);
+  assert.match(browsePage, /buildBrowseHref\(values, \{ page:/);
+  assert.match(browsePage, /returnTo=\{browseReturnTo\}/);
+  assert.match(requestsPage, /searchParams\.get\("page"\)/);
+  assert.match(requestsPage, /window\.history\.pushState/);
+  assert.match(requestsPage, /window\.history\.replaceState/);
 
   assert.match(requestsPage, /writePageToHistory\(page - 1\)/);
   assert.match(requestsPage, /writePageToHistory\(page \+ 1\)/);
@@ -52,7 +53,7 @@ test('قائمتا الأغراض وطلبات التبرع تحفظان الص�
 });
 
 test('تفاصيل الطلب تستخدم AuthContext ولا تطلب auth\/me مرة ثانية', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/[id]/page.tsx');
+  const source = await readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx');
 
   assert.match(source, /useAuth\(\)/);
   assert.match(source, /request\.requester\?\._id !== currentUserId/);
@@ -62,7 +63,7 @@ test('تفاصيل الطلب تستخدم AuthContext ولا تطلب auth\/me 
 });
 
 test('صاحب الطلب يستطيع قبول أو رفض العرض والمتبرع يستطيع سحب عرضه المعلق', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/[id]/page.tsx');
+  const source = await readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx');
 
   assert.match(source, /acceptOffer\(id, offerId\)/);
   assert.match(source, /rejectOffer\(id, offerId\)/);
@@ -72,7 +73,7 @@ test('صاحب الطلب يستطيع قبول أو رفض العرض والم�
 });
 
 test('صاحب العرض المرفوض لا يرى تفاصيل أو رابط الغرض الفائز', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/[id]/page.tsx');
+  const source = await readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx');
 
   assert.match(source, /viewerOffer\?\.status === "accepted"/);
   assert.match(source, /const respondedItem = canViewFulfilledItem/);
@@ -82,7 +83,7 @@ test('صاحب العرض المرفوض لا يرى تفاصيل أو رابط 
 });
 
 test('صفحة الغرض المرتبط بالطلب تمنع دورة الحجز العامة وتبقي التسليم للطرفين', async () => {
-  const source = await readSource('../src/app/(main)/items/[id]/page.tsx');
+  const source = await readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx');
 
   assert.match(source, /const isRequestLinked = Boolean\(item\.linkedRequestId\)/);
   assert.match(source, /!isRequestLinked && item\.status === "محجوز"/);

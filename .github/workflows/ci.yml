@@ -24,6 +24,7 @@ jobs:
       CI: "true"
       NEXT_PUBLIC_API_URL: https://api.aoun.invalid
       BACKEND_URL: https://api.aoun.invalid
+      SERVER_API_TIMEOUT_MS: "1000"
 
     steps:
       - name: Checkout repository

@@ -17,25 +17,21 @@ test('Item API يستخدم مسارات Backend الفعلية ويترك FormD
 });
 
 test('Browse يرسل الفلاتر والصفحة إلى السيرفر ولا يرشح الصفحة الأولى محلياً', async () => {
-  const [hook, page, card, details] = await Promise.all([
-    readSource('../src/app/(main)/browse/hooks/useBrowse.ts'),
+  const [page, card, details] = await Promise.all([
     readSource('../src/app/(main)/browse/page.tsx'),
     readSource('../src/components/ui/ItemCard.tsx'),
-    readSource('../src/app/(main)/items/[id]/page.tsx'),
+    readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx'),
   ]);
 
-  assert.match(hook, /getItems\(/);
-  assert.match(hook, /page: currentPage/);
-  assert.match(hook, /search: debouncedSearch/);
-  assert.match(hook, /location: selectedCity/);
-  assert.match(hook, /category: selectedCategory/);
-  assert.match(hook, /AbortController/);
-  assert.match(hook, /useSearchParams/);
-  assert.match(hook, /window\.history\.pushState/);
-  assert.match(hook, /window\.history\.replaceState/);
-  assert.match(hook, /searchParams\.get\("page"\)/);
-  assert.match(hook, /filtersKeyRef\.current === filtersKey/);
-  assert.doesNotMatch(hook, /\.filter\(/);
+  assert.match(page, /getPublicItemsServer\(/);
+  assert.match(page, /page: values\.page/);
+  assert.match(page, /search: values\.search/);
+  assert.match(page, /location: values\.location/);
+  assert.match(page, /category: values\.category/);
+  assert.match(page, /searchParams: Promise<BrowseSearchParams>/);
+  assert.match(page, /<form action="\/browse" method="get"/);
+  assert.match(page, /buildBrowseHref/);
+  assert.doesNotMatch(page, /\.filter\(/);
   assert.match(page, /صفحة \{currentPage\} من \{totalPages\}/);
   assert.match(page, /returnTo=\{browseReturnTo\}/);
   assert.match(card, /returnTo=\$\{encodeURIComponent\(returnTo\)\}/);
@@ -46,7 +42,7 @@ test('Browse يرسل الفلاتر والصفحة إلى السيرفر ولا
 test('صفحة الغرض تعتمد حالة الانتظار من Backend وتنتظر تهيئة الهوية', async () => {
   const [hook, page, deliveryHook] = await Promise.all([
     readSource('../src/app/(main)/items/[id]/hooks/useItemDetails.ts'),
-    readSource('../src/app/(main)/items/[id]/page.tsx'),
+    readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx'),
     readSource('../src/hooks/useDeliveryConfirmation.ts'),
   ]);
 

@@ -32,6 +32,10 @@ export default function SettingsSync() {
   }, [applySettings]);
 
   useEffect(() => {
+    void refreshSettings();
+  }, [refreshSettings]);
+
+  useEffect(() => {
     if (!socket) return;
 
     const onSettingsUpdated = (settings: PublicSettings) => applySettings(settings);

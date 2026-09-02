@@ -7,7 +7,6 @@ import "./globals.css";
 import { AuthProvider }       from "@/context/AuthContext";
 import GlobalRatingModal      from "@/components/GlobalRatingModal";
 import { SiteConfigProvider } from "@/context/SiteConfigContext";
-import { getServerPublicSettings } from "@/lib/api/publicSettingsServer";
 import { siteConfig }         from "@/config/site.config";
 import { SocketProvider }     from "@/context/SocketContext";
 import MaintenanceGate       from "@/components/MaintenanceGate";
@@ -36,24 +35,18 @@ const cairo = Cairo({
   display:  "swap",
 });
 
-// ── Metadata ديناميكية ─────────────────────────────────────────
-export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getServerPublicSettings();
-  const name     = settings?.platformName ?? siteConfig.name;
-
-  return {
-    title:       { default: name, template: `%s | ${name}` },
-    description: siteConfig.description,
-  };
-}
+export const metadata: Metadata = {
+  title: {
+    default: siteConfig.name,
+    template: `%s | ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+};
 
 // ── Layout الرئيسي ─────────────────────────────────────────────
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-
-  const settings = await getServerPublicSettings();
-
   return (
     <html
       lang="ar"
@@ -76,11 +69,8 @@ export default async function RootLayout({
 
       {/* body: flex column لضمان توزيع العناصر بشكل مرن */}
       <body className="flex min-h-dvh flex-col overflow-x-clip bg-surface text-on-surface antialiased">
-        <ApiStateProvider initialPublicSettings={settings}>
-          <SiteConfigProvider
-            key={settings?.updatedAt ?? "site-config-fallback"}
-            settings={settings}
-          >
+        <ApiStateProvider initialPublicSettings={null}>
+          <SiteConfigProvider settings={null}>
             <AuthProvider>
               {/*
                 ✅ ARCH-01: الترتيب الصحيح للـ Providers (من الخارج للداخل):

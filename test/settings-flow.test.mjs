@@ -65,6 +65,7 @@ test('الإعدادات تتزامن فورياً عبر Socket وSWR وتُر�
   assert.match(types, /SOCKET_EVENTS\.SETTINGS_UPDATED/);
   assert.match(sync, /socket\.on\(SOCKET_EVENTS\.SETTINGS_UPDATED/);
   assert.match(sync, /mutate\(PUBLIC_SETTINGS_CACHE_KEY, settings/);
+  assert.match(sync, /useEffect\(\(\) => \{\s*void refreshSettings\(\);/);
   assert.match(sync, /socket\.recovered/);
   assert.match(layout, /<SocketProvider>[\s\S]*<SettingsSync \/>[\s\S]*<MaintenanceGate>/);
 });

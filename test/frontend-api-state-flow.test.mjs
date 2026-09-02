@@ -20,14 +20,18 @@ const walkSource = (directory) => {
   });
 };
 
-test("RootLayout يزرع إعدادات السيرفر في مخزن SWR المركزي", () => {
+test("RootLayout لا ينتظر Backend ويترك مزامنة الإعدادات للعميل", () => {
   const layout = read("src/app/layout.tsx");
   const provider = read("src/components/ApiStateProvider.tsx");
+  const sync = read("src/components/SettingsSync.tsx");
   const config = read("src/lib/api/swrConfig.ts");
 
-  assert.match(layout, /ApiStateProvider initialPublicSettings=\{settings\}/);
+  assert.match(layout, /ApiStateProvider initialPublicSettings=\{null\}/);
+  assert.match(layout, /SiteConfigProvider settings=\{null\}/);
+  assert.doesNotMatch(layout, /getServerPublicSettings|generateMetadata|async function RootLayout/);
   assert.match(provider, /SWRConfig/);
   assert.match(provider, /PUBLIC_SETTINGS_CACHE_KEY/);
+  assert.match(sync, /void refreshSettings\(\)/);
   assert.match(config, /dedupingInterval/);
   assert.match(config, /shouldRetryOnError: shouldRetryApiRequest/);
 });

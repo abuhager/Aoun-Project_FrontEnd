@@ -16,8 +16,8 @@ type PublicFetchOptions = {
 };
 
 const getServerApiTimeoutMs = () => {
-  const parsed = Number(process.env.SERVER_API_TIMEOUT_MS ?? 10_000);
-  if (!Number.isFinite(parsed)) return 10_000;
+  const parsed = Number(process.env.SERVER_API_TIMEOUT_MS ?? 5_000);
+  if (!Number.isFinite(parsed)) return 5_000;
   return Math.min(30_000, Math.max(1_000, Math.floor(parsed)));
 };
 
@@ -49,24 +49,33 @@ async function publicApiFetch<T>(
   path: string,
   { revalidate = 30, tags = [] }: PublicFetchOptions = {}
 ): Promise<T> {
-  const response = await fetch(`${getBackendOrigin()}${path}`, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(getServerApiTimeoutMs()),
-    cache: revalidate === false ? "no-store" : undefined,
-    next:
-      revalidate === false
-        ? undefined
-        : {
-            revalidate,
-            tags,
-          },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort(new DOMException("Public API request timed out", "TimeoutError"));
+  }, getServerApiTimeoutMs());
 
-  if (!response.ok) {
-    throw new Error(`Public API request failed with status ${response.status}`);
+  try {
+    const response = await fetch(`${getBackendOrigin()}${path}`, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+      cache: revalidate === false ? "no-store" : undefined,
+      next:
+        revalidate === false
+          ? undefined
+          : {
+              revalidate,
+              tags,
+            },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Public API request failed with status ${response.status}`);
+    }
+
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return (await response.json()) as T;
 }
 
 export const getPublicItemsServer = (

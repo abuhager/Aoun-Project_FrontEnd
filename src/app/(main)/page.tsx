@@ -1,12 +1,8 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import ItemCard from "@/components/ui/ItemCard";
 import { siteConfig } from "@/config/site.config";
-import {
-  getPublicItemsServer,
-  resolvePublicAssetUrl,
-} from "@/lib/api/publicApiServer";
-import { getServerPublicSettings } from "@/lib/api/publicSettingsServer";
+import LatestItems, { LatestItemsSkeleton } from "./LatestItems";
 
 const FEATURES = [
   { icon: "person_add", t: "سجّل حسابك", d: "انضم لمجتمعنا بخطوات بسيطة وآمنة لحماية خصوصيتك." },
@@ -48,13 +44,8 @@ const TRUST_POINTS = [
   { icon: "warehouse", label: "مراكز تسليم آمنة" },
 ] as const;
 
-export default async function HomePage() {
-  const [settings, itemResult] = await Promise.all([
-    getServerPublicSettings(),
-    getPublicItemsServer({ page: 1, limit: 4 }).catch(() => null),
-  ]);
-  const platformName = settings?.platformName ?? siteConfig.name;
-  const items = itemResult?.items.slice(0, 4) ?? [];
+export default function HomePage() {
+  const platformName = siteConfig.name;
 
   return (
     <div className="overflow-x-clip bg-surface text-on-surface" dir="rtl">
@@ -179,31 +170,9 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {items.length > 0 ? (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {items.map((item, index) => (
-                <ItemCard
-                  key={item._id}
-                  item={item}
-                  imageSrc={resolvePublicAssetUrl(item.imageUrl)}
-                  priority={index < 2}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="surface-card px-6 py-12 text-center">
-              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-                <span className="material-symbols-outlined text-[28px]">inventory_2</span>
-              </span>
-              <h3 className="mt-4 text-lg font-black">لا توجد أغراض معروضة حاليًا</h3>
-              <p className="mt-2 text-sm text-on-surface-soft">
-                كن أول من يضيف تبرعًا ويبدأ دائرة خير جديدة.
-              </p>
-              <Link href="/add-item" className="btn-primary mt-5">
-                إضافة أول تبرع
-              </Link>
-            </div>
-          )}
+          <Suspense fallback={<LatestItemsSkeleton />}>
+            <LatestItems />
+          </Suspense>
         </div>
       </section>
 

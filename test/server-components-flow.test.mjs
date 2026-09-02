@@ -10,7 +10,9 @@ test("طبقة API العامة تعمل على السيرفر فقط وتستخ
   assert.match(source, /import "server-only"/);
   assert.match(source, /process\.env\.BACKEND_URL/);
   assert.match(source, /await fetch\(/);
-  assert.match(source, /AbortSignal\.timeout\(getServerApiTimeoutMs\(\)\)/);
+  assert.match(source, /new AbortController\(\)/);
+  assert.match(source, /controller\.abort\(/);
+  assert.match(source, /clearTimeout\(timeout\)/);
   assert.match(source, /import \{ cache \} from "react"/);
   assert.match(source, /getPublicItemServer = cache/);
   assert.match(source, /revalidate/);
@@ -18,14 +20,19 @@ test("طبقة API العامة تعمل على السيرفر فقط وتستخ
   assert.doesNotMatch(source, /axiosInstance/);
 });
 
-test("الصفحة الرئيسية وBrowse أصبحا Server Components", async () => {
-  const [home, browse] = await Promise.all([
+test("الصفحة الرئيسية تبث الأغراض داخل Suspense وBrowse بقي Server Component", async () => {
+  const [home, latestItems, browse] = await Promise.all([
     read("src/app/(main)/page.tsx"),
+    read("src/app/(main)/LatestItems.tsx"),
     read("src/app/(main)/browse/page.tsx"),
   ]);
 
   assert.doesNotMatch(home, /^"use client"/);
-  assert.match(home, /getPublicItemsServer/);
+  assert.match(home, /<Suspense fallback=\{<LatestItemsSkeleton \/>\}>/);
+  assert.doesNotMatch(home, /export default async function HomePage/);
+  assert.match(latestItems, /export default async function LatestItems/);
+  assert.match(latestItems, /getPublicItemsServer/);
+  assert.match(latestItems, /\.catch\(/);
   assert.doesNotMatch(browse, /^"use client"/);
   assert.match(browse, /getPublicItemsServer/);
   assert.match(browse, /searchParams: Promise<BrowseSearchParams>/);

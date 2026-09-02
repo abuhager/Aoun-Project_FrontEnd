@@ -41,11 +41,19 @@ npm run dev
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000
 BACKEND_URL=http://localhost:5000
-SERVER_API_TIMEOUT_MS=10000
+SERVER_API_TIMEOUT_MS=5000
 ```
 
 `BACKEND_URL` هو العنوان الذي تستخدمه Server Components داخل Vercel، بينما
 `NEXT_PUBLIC_API_URL` يبقى عنوان الـAPI/Socket الذي تحتاجه الواجهة في المتصفح.
+في Vercel يجب أن يشير المتغيران إلى Backend على Render، وليس إلى localhost أو
+إلى رابط Vercel نفسه:
+
+```env
+NEXT_PUBLIC_API_URL=https://aoun-project-backend.onrender.com
+BACKEND_URL=https://aoun-project-backend.onrender.com
+SERVER_API_TIMEOUT_MS=5000
+```
 
 يمكن إدارة ظهور حسابات Demo من متغيرات بيئة السيرفر. لا تضع كلمات المرور داخل ملفات المصدر أو README.
 

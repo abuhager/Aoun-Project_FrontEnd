@@ -2,6 +2,7 @@
 
 import type { Metadata, Viewport } from "next";
 import { Tajawal, Cairo } from "next/font/google";
+import { connection } from "next/server";
 import "./globals.css";
 
 import { AuthProvider }       from "@/context/AuthContext";
@@ -44,9 +45,13 @@ export const metadata: Metadata = {
 };
 
 // ── Layout الرئيسي ─────────────────────────────────────────────
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // The per-request CSP nonce is created in proxy.ts. Static HTML is generated
+  // before that nonce exists, so it would ship blocked inline Next.js scripts.
+  await connection();
+
   return (
     <html
       lang="ar"

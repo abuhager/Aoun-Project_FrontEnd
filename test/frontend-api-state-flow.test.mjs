@@ -20,7 +20,7 @@ const walkSource = (directory) => {
   });
 };
 
-test("RootLayout لا ينتظر Backend ويترك مزامنة الإعدادات للعميل", () => {
+test("RootLayout لا ينتظر Backend ويُرسم ديناميكياً لتطبيق CSP nonce", () => {
   const layout = read("src/app/layout.tsx");
   const provider = read("src/components/ApiStateProvider.tsx");
   const sync = read("src/components/SettingsSync.tsx");
@@ -28,7 +28,10 @@ test("RootLayout لا ينتظر Backend ويترك مزامنة الإعداد�
 
   assert.match(layout, /ApiStateProvider initialPublicSettings=\{null\}/);
   assert.match(layout, /SiteConfigProvider settings=\{null\}/);
-  assert.doesNotMatch(layout, /getServerPublicSettings|generateMetadata|async function RootLayout/);
+  assert.match(layout, /import \{ connection \} from "next\/server"/);
+  assert.match(layout, /await connection\(\)/);
+  assert.match(layout, /async function RootLayout/);
+  assert.doesNotMatch(layout, /getServerPublicSettings|generateMetadata/);
   assert.match(provider, /SWRConfig/);
   assert.match(provider, /PUBLIC_SETTINGS_CACHE_KEY/);
   assert.match(sync, /void refreshSettings\(\)/);

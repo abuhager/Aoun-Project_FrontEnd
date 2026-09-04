@@ -15,7 +15,7 @@ test('Donation Request API يطابق مسارات القبول والرفض و�
 });
 
 test('إرسال العرض لا يفتح offerId كأنه Item ID', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/DonationRequestsClient.tsx');
+  const source = await readSource('../src/app/(main)/donation-requests/hooks/useDonationRequests.ts');
 
   assert.doesNotMatch(source, /`\/items\/\$\{res\.offerId\}`/);
   assert.match(source, /تم إرسال العرض للمراجعة/);
@@ -23,9 +23,13 @@ test('إرسال العرض لا يفتح offerId كأنه Item ID', async () =>
 });
 
 test('قائمة الطلبات تمنع التبرع للطلب الشخصي وتتعامل مع الزائر', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/DonationRequestsClient.tsx');
+  const [hook, card] = await Promise.all([
+    readSource('../src/app/(main)/donation-requests/hooks/useDonationRequests.ts'),
+    readSource('../src/app/(main)/donation-requests/components/DonationRequestCard.tsx'),
+  ]);
+  const source = `${hook}\n${card}`;
 
-  assert.match(source, /request\.requester\?\._id !== user\?\._id/);
+  assert.match(source, /request\.requester\?\._id !== currentUserId/);
   assert.match(source, /login\?redirect=/);
   assert.match(source, /MAX_OFFER_IMAGE_BYTES/);
   assert.match(source, /image\/webp/);
@@ -34,7 +38,7 @@ test('قائمة الطلبات تمنع التبرع للطلب الشخصي و
 test('قائمتا الأغراض وطلبات التبرع تحفظان الصفحة في URL عند الرجوع من التفاصيل', async () => {
   const [browsePage, requestsPage, requestDetails] = await Promise.all([
     readSource('../src/app/(main)/browse/page.tsx'),
-    readSource('../src/app/(main)/donation-requests/DonationRequestsClient.tsx'),
+    readSource('../src/app/(main)/donation-requests/hooks/useDonationRequests.ts'),
     readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx'),
   ]);
 
@@ -45,8 +49,9 @@ test('قائمتا الأغراض وطلبات التبرع تحفظان الص�
   assert.match(requestsPage, /window\.history\.pushState/);
   assert.match(requestsPage, /window\.history\.replaceState/);
 
-  assert.match(requestsPage, /writePageToHistory\(page - 1\)/);
-  assert.match(requestsPage, /writePageToHistory\(page \+ 1\)/);
+  const pagination = await readSource('../src/components/ui/PaginationControls.tsx');
+  assert.match(pagination, /changePage\(currentPage - 1\)/);
+  assert.match(pagination, /changePage\(currentPage \+ 1\)/);
   assert.match(requestsPage, /returnTo=\$\{encodeURIComponent\(listReturnTo\)\}/);
   assert.match(requestDetails, /router\.push\(listReturnTo\)/);
   assert.doesNotMatch(requestsPage, /onClick=\{\(\) => load\(page [+-] 1\)\}/);

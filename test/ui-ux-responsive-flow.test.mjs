@@ -88,11 +88,11 @@ test("حوارات المسارات الحساسة تستخدم الغلاف ا�
     "src/components/ConversationList/index.tsx",
     "src/app/(main)/(protected)/dashboard/components/ActionModal.tsx",
     "src/app/(main)/items/[id]/components/ConfirmModal.tsx",
-    "src/app/(main)/(protected)/admin/users/page.tsx",
-    "src/app/(main)/(protected)/admin/items/page.tsx",
-    "src/app/(main)/(protected)/admin/reports/page.tsx",
+    "src/app/(main)/(protected)/admin/users/components/UserActionDialog.tsx",
+    "src/app/(main)/(protected)/admin/items/components/DeleteItemDialog.tsx",
+    "src/app/(main)/(protected)/admin/reports/components/ReportReviewDialog.tsx",
     "src/app/(main)/(protected)/admin/hubs/page.tsx",
-    "src/app/(main)/donation-requests/DonationRequestsClient.tsx",
+    "src/app/(main)/donation-requests/components/DonationOfferDialog.tsx",
   ];
 
   for (const filePath of modalFiles) {
@@ -136,11 +136,14 @@ test("كل وجهات الإدارة تظهر على الهاتف والجداو
   assert.match(responsiveTable, /tabIndex=\{0\}/);
   assert.match(responsiveTable, /مرّر أفقياً/);
 
-  for (const page of ["users", "items", "reports", "logs"]) {
-    assert.match(
-      read(`src/app/(main)/(protected)/admin/${page}/page.tsx`),
-      /ResponsiveTable/
-    );
+  const tableFiles = [
+    "src/app/(main)/(protected)/admin/users/components/AdminUsersTable.tsx",
+    "src/app/(main)/(protected)/admin/items/components/AdminItemsTable.tsx",
+    "src/app/(main)/(protected)/admin/reports/components/AdminReportsContent.tsx",
+    "src/app/(main)/(protected)/admin/logs/components/AdminLogsTable.tsx",
+  ];
+  for (const filePath of tableFiles) {
+    assert.match(read(filePath), /ResponsiveTable/);
   }
 });
 

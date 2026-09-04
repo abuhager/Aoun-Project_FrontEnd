@@ -38,14 +38,14 @@ test('نافذة الاعتراض تستخدم API الموحد ولا تعرض 
 });
 
 test('لوحة الإشراف لا تطلب البلاغات قبل حسم صلاحية المستخدم', async () => {
-  const page = await readSource('../src/app/(main)/(protected)/admin/reports/page.tsx');
+  const hook = await readSource('../src/app/(main)/(protected)/admin/reports/hooks/useAdminReports.ts');
 
-  assert.match(page, /!authLoading && isAdmin \? SWR_KEY/);
-  assert.match(page, /getAdminReports/);
-  assert.match(page, /resolveAdminReport/);
-  assert.match(page, /await mutate\(\)/);
-  assert.doesNotMatch(page, /globalMutate/);
-  assert.doesNotMatch(page, /axiosInstance\.post/);
+  assert.match(hook, /!authLoading && isAdmin \? reportsKey/);
+  assert.match(hook, /getAdminReports/);
+  assert.match(hook, /resolveAdminReport/);
+  assert.match(hook, /await mutate\(\)/);
+  assert.doesNotMatch(hook, /globalMutate/);
+  assert.doesNotMatch(hook, /axiosInstance\.post/);
 });
 
 test('API الإدارة يرسل الفلتر فقط عند اختيار حالة فعلية', async () => {

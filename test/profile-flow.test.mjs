@@ -15,7 +15,8 @@ test('public profile consumes the backend donations/received/rating contract', a
   assert.match(hook, /profileData\?\.received/);
   assert.match(hook, /averageRating/);
   assert.match(page, /renderStars\(averageRating\)/);
-  assert.match(page, /totalPages > 1/);
+  assert.match(page, /<PaginationControls/);
+  assert.match(page, /totalPages={totalPages}/);
   assert.doesNotMatch(page, /wa\.me|user\.whatsapp/);
   assert.match(types, /averageRating:\s+number/);
 });

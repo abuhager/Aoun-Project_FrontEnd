@@ -8,11 +8,15 @@ const read = (relativePath) =>
 
 test("صفحة طلبات التبرع بقيت الصفحة الكاملة بعد استخراج RequestState", () => {
   const page = read("src/app/(main)/donation-requests/DonationRequestsClient.tsx");
+  const hook = read("src/app/(main)/donation-requests/hooks/useDonationRequests.ts");
+  const list = read("src/app/(main)/donation-requests/components/DonationRequestsList.tsx");
 
   assert.match(page, /export default function DonationRequestsClient/);
-  assert.match(page, /getDonationRequests/);
-  assert.match(page, /RequestState/);
-  assert.match(page, /loadError/);
+  assert.match(page, /useDonationRequests/);
+  assert.match(page, /DonationRequestsList/);
+  assert.match(hook, /getDonationRequests/);
+  assert.match(hook, /loadError/);
+  assert.match(list, /RequestState/);
   assert.doesNotMatch(page, /export default function RequestState/);
 });
 
@@ -43,10 +47,26 @@ test("حدود Next العامة توفر reset ولا تعرض رسالة ال�
 
 test("تطبيع أخطاء API هو المصدر المشترك للرسالة والكود ورقم الطلب", () => {
   const apiError = read("src/lib/api/apiError.ts");
-  const page = read("src/app/(main)/donation-requests/DonationRequestsClient.tsx");
+  const hook = read("src/app/(main)/donation-requests/hooks/useDonationRequests.ts");
 
   assert.match(apiError, /interface NormalizedApiError/);
   assert.match(apiError, /requestId: string \| null/);
   assert.match(apiError, /isNetworkError/);
-  assert.match(page, /normalizeApiError/);
+  assert.match(hook, /normalizeApiError/);
+});
+
+test("صفحات الإدارة وطلبات التبرع تفصل منطق الحالة عن واجهة العرض", () => {
+  const requestPage = read("src/app/(main)/donation-requests/DonationRequestsClient.tsx");
+  const usersPage = read("src/app/(main)/(protected)/admin/users/page.tsx");
+  const itemsPage = read("src/app/(main)/(protected)/admin/items/page.tsx");
+  const logsPage = read("src/app/(main)/(protected)/admin/logs/page.tsx");
+
+  assert.match(requestPage, /useDonationRequests/);
+  assert.match(usersPage, /useAdminUsers/);
+  assert.match(itemsPage, /useAdminItems/);
+  assert.match(logsPage, /useAdminLogs/);
+  assert.doesNotMatch(requestPage, /getDonationRequests\(/);
+  assert.doesNotMatch(usersPage, /getAdminUsers\(/);
+  assert.doesNotMatch(itemsPage, /getAdminItems\(/);
+  assert.doesNotMatch(logsPage, /getAdminLogs\(/);
 });

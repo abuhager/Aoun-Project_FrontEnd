@@ -87,7 +87,7 @@ test('سياسة Safe Hub الديناميكية تطبق على الإضافة 
     readSource('../src/app/(main)/(protected)/items/[id]/edit/hooks/useEditItem.ts'),
     readSource('../src/app/(main)/(protected)/items/[id]/edit/page.tsx'),
     readSource('../src/app/(main)/donation-requests/[id]/offer/page.tsx'),
-    readSource('../src/app/(main)/donation-requests/DonationRequestsClient.tsx'),
+    readSource('../src/app/(main)/donation-requests/hooks/useDonationRequests.ts'),
     readSource('../src/lib/api/donationRequestApi.ts'),
   ]);
 
@@ -102,8 +102,8 @@ test('سياسة Safe Hub الديناميكية تطبق على الإضافة 
 
 test('لوحة البلاغات تعرض عدد البلاغات المعتمدة وسجل الإعدادات واضح للمشرف', async () => {
   const [reports, logs, navbar] = await Promise.all([
-    readSource('../src/app/(main)/(protected)/admin/reports/page.tsx'),
-    readSource('../src/app/(main)/(protected)/admin/logs/page.tsx'),
+    readSource('../src/app/(main)/(protected)/admin/reports/components/ReportReviewDialog.tsx'),
+    readSource('../src/app/(main)/(protected)/admin/logs/components/AdminLogsTable.tsx'),
     readSource('../src/components/Navbar/index.tsx'),
   ]);
 

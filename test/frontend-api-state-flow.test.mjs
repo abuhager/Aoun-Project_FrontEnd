@@ -43,7 +43,7 @@ test("المراكز العامة تستخدم cache واحداً بدل طلب 
   const hook = read("src/hooks/usePublicHubs.ts");
   const pageHook = read("src/app/(main)/hubs/hooks/useHubs.ts");
   const selector = read("src/components/HubSelector.tsx");
-  const requests = read("src/app/(main)/donation-requests/DonationRequestsClient.tsx");
+  const requests = read("src/app/(main)/donation-requests/hooks/useDonationRequests.ts");
 
   assert.match(hook, /useSWR<SafeHub\[]>/);
   assert.match(hook, /PUBLIC_HUBS_CACHE_KEY/);
@@ -71,10 +71,10 @@ test("الصفحات والـhooks لا تتجاوز طبقة API المشترك
 });
 
 test("طلبات القوائم الحساسة للفلتر تلغي الرد القديم", () => {
-  const requests = read("src/app/(main)/donation-requests/DonationRequestsClient.tsx");
+  const requests = read("src/app/(main)/donation-requests/hooks/useDonationRequests.ts");
   const profile = read("src/app/(main)/(protected)/profile/[id]/hooks/usePublicProfile.ts");
   const notifications = read("src/hooks/useNotifications.ts");
-  const adminUsers = read("src/app/(main)/(protected)/admin/users/page.tsx");
+  const adminUsers = read("src/app/(main)/(protected)/admin/users/hooks/useAdminUsers.ts");
 
   assert.match(requests, /loadControllerRef\.current\?\.abort\(\)/);
   assert.match(requests, /getDonationRequests\([\s\S]*controller\.signal/);

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePublicProfile } from "./hooks/usePublicProfile";
 import PageIntro from "@/components/ui/PageIntro";
+import PaginationControls from "@/components/ui/PaginationControls";
 
 // ─── خريطة الـ Badges ───────────────────────────────────────
 const BADGE_META: Record<
@@ -338,29 +339,13 @@ export default function PublicProfilePage() {
             </div>
           )}
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                className="rounded-full border border-black/[0.08] bg-white px-4 py-2 text-xs font-bold text-primary disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                السابق
-              </button>
-              <span className="text-xs font-bold text-gray-500">
-                صفحة {page} من {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                className="rounded-full border border-black/[0.08] bg-white px-4 py-2 text-xs font-bold text-primary disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                التالي
-              </button>
-            </div>
-          )}
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            mode="compact"
+            className="pt-2"
+          />
         </section>
       </div>
     </div>

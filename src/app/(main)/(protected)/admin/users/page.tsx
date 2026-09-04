@@ -1,199 +1,30 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import Image from "next/image";
-import ResponsiveTable from "@/components/ui/ResponsiveTable";
-import AccessibleDialog from "@/components/ui/AccessibleDialog";
-import { useToast } from "@/hooks/useToast";
-import {
-  banUser,
-  demoteUser,
-  getAdminUsers,
-  promoteUser,
-  unbanUser,
-} from "@/lib/api/adminApi";
-import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
-import type { AdminUser } from "@/types/admin.types";
-
-type PendingAction = {
-  userId: string;
-  userName: string;
-  type: "ban" | "unban" | "promote" | "demote";
-};
+import PaginationControls from "@/components/ui/PaginationControls";
+import AdminUsersTable from "./components/AdminUsersTable";
+import UserActionDialog from "./components/UserActionDialog";
+import { useAdminUsers } from "./hooks/useAdminUsers";
 
 export default function AdminUsersPage() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL!;
-
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
-
-  const [busy, setBusy] = useState<Record<string, boolean>>({});
-  const [pending, setPending] = useState<PendingAction | null>(null);
-  const [note, setNote] = useState("");
-
-  const { show: showToast, ToastComponent } = useToast();
-
-  const getAvatar = (url?: string) =>
-    url ? (url.startsWith("http") ? url : apiUrl + url) : null;
-
-  const getUserId = (user: AdminUser) => user._id;
-
-  const loadUsers = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    try {
-      const data = await getAdminUsers({ page, search }, signal);
-      if (!signal?.aborted) {
-        setUsers(data.users);
-        setPages(data.pages);
-      }
-    } catch {
-      if (!signal?.aborted) showToast("تعذر تحميل المستخدمين", false);
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, [page, search, showToast]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void loadUsers(controller.signal);
-    return () => controller.abort();
-  }, [loadUsers]);
-
-  const openConfirm = (u: AdminUser, type: PendingAction["type"]) => {
-    setPending({
-      userId: getUserId(u),
-      userName: u.name,
-      type,
-    });
-    setNote("");
-  };
-
-  const confirmAction = async () => {
-    if (!pending) return;
-
-    const { userId, type } = pending;
-    if (busy[userId]) return;
-
-    const cleanedNote = note.trim();
-    if (type === "ban" && cleanedNote.length < 5) {
-      showToast("سبب الحظر مطلوب ويجب أن يكون 5 أحرف على الأقل", false);
-      return;
-    }
-
-    setBusy((prev) => ({ ...prev, [userId]: true }));
-    setPending(null);
-
-    try {
-      if (type === "ban") {
-        await banUser(userId, {
-          reason: cleanedNote,
-          adminNote: cleanedNote,
-        });
-
-        showToast("تم حظر المستخدم بنجاح", true);
-
-        setUsers((prev) =>
-          prev.map((u) =>
-            getUserId(u) === userId ? { ...u, isBanned: true } : u
-          )
-        );
-      } else if (type === "unban") {
-        await unbanUser(
-          userId,
-          cleanedNote ? { adminNote: cleanedNote } : {}
-        );
-
-        showToast("تم فك الحظر بنجاح", true);
-
-        setUsers((prev) =>
-          prev.map((u) =>
-            getUserId(u) === userId ? { ...u, isBanned: false } : u
-          )
-        );
-      } else if (type === "promote") {
-        const res = await promoteUser(
-          userId,
-          cleanedNote ? { adminNote: cleanedNote } : {}
-        );
-
-        const newLevel = res.user.trustLevel;
-
-        showToast(`تمت ترقية المستخدم إلى المستوى ${newLevel}`, true);
-
-        setUsers((prev) =>
-          prev.map((u) =>
-            getUserId(u) === userId ? { ...u, trustLevel: newLevel } : u
-          )
-        );
-      } else if (type === "demote") {
-        const res = await demoteUser(
-          userId,
-          cleanedNote ? { adminNote: cleanedNote } : {}
-        );
-
-        const newLevel = res.user.trustLevel;
-
-        showToast(`تم تخفيض المستخدم إلى المستوى ${newLevel}`, true);
-
-        setUsers((prev) =>
-          prev.map((u) =>
-            getUserId(u) === userId ? { ...u, trustLevel: newLevel } : u
-          )
-        );
-      }
-    } catch (err: unknown) {
-      showToast(extractErrorMsg(err, "حدث خطأ أثناء تنفيذ الإجراء"), false);
-    } finally {
-      setBusy((prev) => ({ ...prev, [userId]: false }));
-    }
-  };
-
-  const ACTION_LABELS: Record<
-    PendingAction["type"],
-    { title: string; btn: string; btnColor: string; icon: string; tone: string }
-  > = {
-    ban: {
-      title: "تأكيد حظر المستخدم",
-      btn: "تأكيد الحظر",
-      btnColor: "bg-red-600 hover:bg-red-700 text-white",
-      icon: "block",
-      tone: "bg-red-50 text-red-600",
-    },
-    unban: {
-      title: "تأكيد فك الحظر",
-      btn: "فك الحظر",
-      btnColor: "bg-green-600 hover:bg-green-700 text-white",
-      icon: "verified",
-      tone: "bg-green-50 text-green-600",
-    },
-    promote: {
-      title: "تأكيد ترقية المستخدم",
-      btn: "ترقية إلى Level 2",
-      btnColor: "bg-blue-600 hover:bg-blue-700 text-white",
-      icon: "arrow_upward",
-      tone: "bg-blue-50 text-blue-600",
-    },
-    demote: {
-      title: "تأكيد تخفيض المستخدم",
-      btn: "تخفيض إلى Level 1",
-      btnColor: "bg-orange-500 hover:bg-orange-600 text-white",
-      icon: "arrow_downward",
-      tone: "bg-orange-50 text-orange-600",
-    },
-  };
-
-  const stats = useMemo(() => {
-    const total = users.length;
-    const banned = users.filter((u) => u.isBanned).length;
-    const active = users.filter((u) => !u.isBanned).length;
-    const lvl2 = users.filter((u) => u.trustLevel === 2).length;
-    const lvl1 = users.filter((u) => u.trustLevel === 1).length;
-    return { total, banned, active, lvl1, lvl2 };
-  }, [users]);
+  const {
+    busy,
+    closeAction,
+    confirmAction,
+    getAvatar,
+    loading,
+    note,
+    openAction,
+    page,
+    pages,
+    pending,
+    search,
+    setNote,
+    setPage,
+    setSearch,
+    stats,
+    ToastComponent,
+    users,
+  } = useAdminUsers();
 
   return (
     <div
@@ -203,78 +34,14 @@ export default function AdminUsersPage() {
     >
       {ToastComponent}
 
-      {pending && (
-        <AccessibleDialog
-          ariaLabel={ACTION_LABELS[pending.type].title}
-          onClose={() => setPending(null)}
-          role="alertdialog"
-          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-[#1a1815]/45 p-4 backdrop-blur-sm"
-          panelClassName="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[30px] border border-white/50 bg-white p-5 shadow-[0_30px_80px_rgba(15,23,42,0.18)] sm:p-6"
-        >
-            <div className="mb-5 flex items-start gap-3">
-              <div
-                className={`flex h-12 w-12 items-center justify-center rounded-2xl ${ACTION_LABELS[pending.type].tone}`}
-              >
-                <span className="material-symbols-outlined text-[22px]">
-                  {ACTION_LABELS[pending.type].icon}
-                </span>
-              </div>
-
-              <div>
-                <h2 className="text-base font-black text-[#1f312f]">
-                  {ACTION_LABELS[pending.type].title}
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-[#7c766f]">
-                  المستخدم:{" "}
-                  <span className="font-black text-[#263735]">
-                    {pending.userName}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-xs font-extrabold text-[#8a837b]">
-                {pending.type === "ban" ? "سبب الحظر" : "ملاحظة إدارية"}{" "}
-                {pending.type === "ban" ? (
-                  <span className="text-red-500">*</span>
-                ) : (
-                  <span className="font-normal">(اختياري)</span>
-                )}
-              </label>
-              <textarea
-                aria-label={pending.type === "ban" ? "سبب الحظر" : "ملاحظة إدارية"}
-                rows={4}
-                maxLength={500}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={
-                  pending.type === "ban"
-                    ? "اكتب سبب الحظر (5 أحرف على الأقل)..."
-                    : "أدخل سبب الإجراء أو أي ملاحظة داخلية..."
-                }
-                className="w-full rounded-2xl border border-[#e7e1d8] bg-[#fcfaf7] px-4 py-3 text-sm text-[#24302f] outline-none transition-all duration-300 placeholder:text-[#b3aba1] focus:border-primary focus:shadow-[0_0_0_4px_rgba(1,105,111,0.08)]"
-              />
-            </div>
-
-            <div className="mt-5 flex gap-3">
-              <button
-                onClick={confirmAction}
-                type="button"
-                className={`flex-1 rounded-2xl py-3 text-sm font-black transition-all duration-300 ${ACTION_LABELS[pending.type].btnColor}`}
-              >
-                {ACTION_LABELS[pending.type].btn}
-              </button>
-              <button
-                onClick={() => setPending(null)}
-                type="button"
-                className="flex-1 rounded-2xl bg-[#f3f0ea] py-3 text-sm font-black text-[#5f5a54] transition-all duration-300 hover:bg-[#eae5dd]"
-              >
-                إلغاء
-              </button>
-            </div>
-        </AccessibleDialog>
-      )}
+      <UserActionDialog
+        action={pending}
+        note={note}
+        busy={Boolean(pending && busy[pending.userId])}
+        onNoteChange={setNote}
+        onConfirm={confirmAction}
+        onClose={closeAction}
+      />
 
       {/* Hero */}
       <section className="admin-page-hero relative overflow-hidden rounded-[32px] border border-[#e7e1d8] bg-[linear-gradient(180deg,#fffdfa_0%,#f7f4ee_100%)] p-6 shadow-[0_10px_30px_rgba(15,23,42,0.04)] md:p-7">
@@ -418,10 +185,7 @@ export default function AdminUsersPage() {
             </span>
             <input
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
+              onChange={(event) => setSearch(event.target.value)}
               placeholder="ابحث بالاسم أو البريد الإلكتروني..."
               className="w-full rounded-2xl border border-[#e8e2d9] bg-[#fcfaf7] py-3 pl-4 pr-10 text-sm text-[#263735] outline-none transition-all duration-300 placeholder:text-[#b1a99f] focus:border-primary focus:shadow-[0_0_0_4px_rgba(1,105,111,0.08)]"
             />
@@ -438,216 +202,19 @@ export default function AdminUsersPage() {
         </div>
       </section>
 
-      {/* Table */}
-      <section className="overflow-hidden rounded-[30px] border border-[#e8e2d9] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-        <div className="flex flex-col gap-3 border-b border-[#f0ebe4] bg-[#faf8f4] px-5 py-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-sm font-black text-[#233433]">قائمة المستخدمين</h2>
-            <p className="mt-1 text-xs leading-6 text-[#8a837a]">
-              راقب الثقة، التبرعات، حالة الحظر، ثم نفّذ الإجراء من نفس الصف.
-            </p>
-          </div>
+      <AdminUsersTable
+        users={users}
+        loading={loading}
+        busy={busy}
+        getAvatar={getAvatar}
+        onAction={openAction}
+      />
 
-          <div className="rounded-full border border-[#e9e3db] bg-white px-3 py-1 text-[11px] font-extrabold text-[#8e877f]">
-            {users.length} مستخدم
-          </div>
-        </div>
-
-        <ResponsiveTable label="جدول مستخدمي المنصة">
-          <table className="min-w-[1120px] w-full text-sm">
-            <thead className="bg-white">
-              <tr className="border-b border-[#f0ebe4] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#a39b92]">
-                <th className="p-4 text-right">المستخدم</th>
-                <th className="p-4 text-right">نقاط الثقة</th>
-                <th className="p-4 text-right">التبرعات</th>
-                <th className="p-4 text-right">المستوى</th>
-                <th className="p-4 text-right">الحالة</th>
-                <th className="p-4 text-right">الإجراء الرئيسي</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="border-b border-[#f5f1eb]">
-                    {Array.from({ length: 6 }).map((__, j) => (
-                      <td key={j} className="p-4">
-                        <div className="h-4 animate-pulse rounded-full bg-[#f1ece5]" />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-20 text-center">
-                    <div className="flex flex-col items-center justify-center text-[#b3aba1]">
-                      <span className="material-symbols-outlined mb-3 text-5xl">
-                        group_off
-                      </span>
-                      <p className="text-base font-black text-[#7b756d]">
-                        لا يوجد مستخدمون
-                      </p>
-                      <p className="mt-1 text-sm text-[#a39b92]">
-                        لم يتم العثور على نتائج مطابقة لعملية البحث الحالية.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                users.map((u) => {
-                  const avatarUrl = getAvatar(u.avatar);
-                  const userId = getUserId(u);
-
-                  return (
-                    <tr
-                      key={userId || `${u.email}-${u.name}`}
-                      className="border-b border-[#f5f1eb] align-middle transition-colors hover:bg-[#fcfaf7]"
-                    >
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#ece6de] bg-[#f2eee7]">
-                            {avatarUrl ? (
-                              <Image
-                                src={avatarUrl}
-                                alt={u.name}
-                                width={48}
-                                height={48}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <span className="material-symbols-outlined text-[#a39b92]">
-                                account_circle
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-[#223433]">
-                              {u.name}
-                            </p>
-                            <p className="mt-0.5 truncate text-xs text-[#9b948c]">
-                              {u.email}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="p-4">
-                        <div className="inline-flex items-center gap-2 rounded-2xl bg-primary/5 px-3 py-2">
-                          <span className="material-symbols-outlined text-[16px] text-primary">
-                            shield
-                          </span>
-                          <span className="text-sm font-black text-primary">
-                            {u.trustScore}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="p-4">
-                        <span className="inline-flex rounded-2xl bg-[#f5f1eb] px-3 py-2 text-xs font-black text-[#5f5a54]">
-                          {u.totalDonations} تبرع
-                        </span>
-                      </td>
-
-                      <td className="p-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`rounded-xl px-3 py-1.5 text-[11px] font-black ${
-                              u.trustLevel === 2
-                                ? "bg-blue-50 text-blue-600"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            Level {u.trustLevel}
-                          </span>
-
-                          {u.trustLevel === 1 && (
-                            <button
-                              onClick={() => openConfirm(u, "promote")}
-                              disabled={busy[userId]}
-                              title="ترقية إلى Level 2"
-                              className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-100 disabled:opacity-40"
-                            >
-                              <span className="material-symbols-outlined text-[16px]">
-                                arrow_upward
-                              </span>
-                            </button>
-                          )}
-
-                          {u.trustLevel === 2 && (
-                            <button
-                              onClick={() => openConfirm(u, "demote")}
-                              disabled={busy[userId]}
-                              title="تخفيض إلى Level 1"
-                              className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50 text-orange-600 transition-all duration-300 hover:-translate-y-0.5 hover:bg-orange-100 disabled:opacity-40"
-                            >
-                              <span className="material-symbols-outlined text-[16px]">
-                                arrow_downward
-                              </span>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="p-4">
-                        <span
-                          className={`rounded-xl px-3 py-1.5 text-[11px] font-black ${
-                            u.isBanned
-                              ? "bg-red-50 text-red-600"
-                              : "bg-green-50 text-green-600"
-                          }`}
-                        >
-                          {u.isBanned ? "محظور" : "نشط"}
-                        </span>
-                      </td>
-
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() =>
-                              openConfirm(u, u.isBanned ? "unban" : "ban")
-                            }
-                            disabled={busy[userId]}
-                            className={`rounded-xl px-3.5 py-2 text-xs font-black transition-all duration-300 disabled:opacity-40 ${
-                              u.isBanned
-                                ? "bg-green-50 text-green-600 hover:bg-green-100"
-                                : "bg-red-50 text-red-600 hover:bg-red-100"
-                            }`}
-                          >
-                            {busy[userId]
-                              ? "..."
-                              : u.isBanned
-                              ? "فك الحظر"
-                              : "حظر"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </ResponsiveTable>
-      </section>
-
-      {pages > 1 && (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPage(p)}
-              className={`h-10 min-w-10 rounded-2xl px-3 text-sm font-black transition-all duration-300 ${
-                page === p
-                  ? "bg-primary text-white shadow-[0_10px_20px_rgba(1,105,111,0.18)]"
-                  : "border border-[#e5dfd6] bg-white text-[#746e67] hover:bg-[#faf8f4]"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
+      <PaginationControls
+        page={page}
+        totalPages={pages}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

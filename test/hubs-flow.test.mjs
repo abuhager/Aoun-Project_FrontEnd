@@ -88,14 +88,17 @@ test('اختيار المركز إلزامي عند طلبه ويتيح إعاد
 });
 
 test('لوحة الأدمن تستخدم التحقق المشترك ولا تخفي الإحداثي صفر', async () => {
-  const [page, types] = await Promise.all([
+  const [page, hook, list, types] = await Promise.all([
     readSource('../src/app/(main)/(protected)/admin/hubs/page.tsx'),
+    readSource('../src/app/(main)/(protected)/admin/hubs/hooks/useAdminHubs.ts'),
+    readSource('../src/app/(main)/(protected)/admin/hubs/components/HubList.tsx'),
     readSource('../src/types/hub.types.ts'),
   ]);
 
-  assert.match(page, /buildHubPayload/);
-  assert.match(page, /hub\.coordinates &&/);
-  assert.doesNotMatch(page, /hub\.coordinates\?\.lat &&/);
+  assert.match(page, /useAdminHubs/);
+  assert.match(hook, /buildHubPayload/);
+  assert.match(list, /hub\.coordinates &&/);
+  assert.doesNotMatch(list, /hub\.coordinates\?\.lat &&/);
   assert.doesNotMatch(types, /isActive\?:\s+boolean/);
   assert.match(types, /coordinates\?:\s+HubCoordinates \| null/);
 });

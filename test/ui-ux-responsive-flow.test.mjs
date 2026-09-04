@@ -91,7 +91,7 @@ test("حوارات المسارات الحساسة تستخدم الغلاف ا�
     "src/app/(main)/(protected)/admin/users/components/UserActionDialog.tsx",
     "src/app/(main)/(protected)/admin/items/components/DeleteItemDialog.tsx",
     "src/app/(main)/(protected)/admin/reports/components/ReportReviewDialog.tsx",
-    "src/app/(main)/(protected)/admin/hubs/page.tsx",
+    "src/app/(main)/(protected)/admin/hubs/components/HubFormDialog.tsx",
     "src/app/(main)/donation-requests/components/DonationOfferDialog.tsx",
   ];
 

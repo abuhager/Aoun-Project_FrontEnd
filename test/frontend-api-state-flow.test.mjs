@@ -111,7 +111,7 @@ test("التقييم يعيد الاستعلام بعد الحفظ دون مهل
 });
 
 test("تحديث إعدادات الإدارة يحدّث SiteConfig وSWR بنفس العملية", () => {
-  const settings = read("src/app/(main)/(protected)/admin/settings/page.tsx");
+  const settings = read("src/app/(main)/(protected)/admin/settings/hooks/useAdminSettings.ts");
 
   assert.match(settings, /applyPublicSettings\(result\.publicSettings\)/);
   assert.match(settings, /mutate\(PUBLIC_SETTINGS_CACHE_KEY, result\.publicSettings/);

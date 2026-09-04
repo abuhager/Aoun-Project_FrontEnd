@@ -61,15 +61,19 @@ test("صفحات الإدارة وطلبات التبرع تفصل منطق ال
   const itemsPage = read("src/app/(main)/(protected)/admin/items/page.tsx");
   const logsPage = read("src/app/(main)/(protected)/admin/logs/page.tsx");
   const hubsPage = read("src/app/(main)/(protected)/admin/hubs/page.tsx");
+  const settingsPage = read("src/app/(main)/(protected)/admin/settings/page.tsx");
 
   assert.match(requestPage, /useDonationRequests/);
   assert.match(usersPage, /useAdminUsers/);
   assert.match(itemsPage, /useAdminItems/);
   assert.match(logsPage, /useAdminLogs/);
   assert.match(hubsPage, /useAdminHubs/);
+  assert.match(settingsPage, /useAdminSettings/);
+  assert.match(settingsPage, /SettingsForm/);
   assert.doesNotMatch(requestPage, /getDonationRequests\(/);
   assert.doesNotMatch(usersPage, /getAdminUsers\(/);
   assert.doesNotMatch(itemsPage, /getAdminItems\(/);
   assert.doesNotMatch(logsPage, /getAdminLogs\(/);
   assert.doesNotMatch(hubsPage, /getAllHubsAdmin\(/);
+  assert.doesNotMatch(settingsPage, /getAdminSettings\(|updateAdminSettings\(/);
 });

@@ -29,16 +29,21 @@ test('عقد الإعدادات العامة يغطي الهوية والقوا�
 });
 
 test('صفحة الإدارة ترسل الحقول المتغيرة فقط وتحصر التعديل بالمشرف الأعلى', async () => {
-  const page = await readSource(
-    '../src/app/(main)/(protected)/admin/settings/page.tsx'
-  );
+  const [page, hook, form] = await Promise.all([
+    readSource('../src/app/(main)/(protected)/admin/settings/page.tsx'),
+    readSource('../src/app/(main)/(protected)/admin/settings/hooks/useAdminSettings.ts'),
+    readSource('../src/app/(main)/(protected)/admin/settings/components/SettingsForm.tsx'),
+  ]);
 
-  assert.match(page, /const changedFields = useMemo/);
-  assert.match(page, /Object\.fromEntries\([\s\S]*changedFields/);
-  assert.match(page, /user\?\.role === "super_admin"/);
-  assert.match(page, /disabled=\{!canEdit \|\| saving\}/);
-  assert.match(page, /window\.confirm/);
-  assert.match(page, /applyPublicSettings\(result\.publicSettings\)/);
+  assert.match(page, /useAdminSettings/);
+  assert.match(page, /<SettingsForm/);
+  assert.doesNotMatch(page, /getAdminSettings\(|updateAdminSettings\(/);
+  assert.match(hook, /const changedFields = useMemo/);
+  assert.match(hook, /Object\.fromEntries\([\s\S]*changedFields/);
+  assert.match(hook, /user\?\.role === "super_admin"/);
+  assert.match(form, /disabled=\{!canEdit \|\| saving\}/);
+  assert.match(hook, /window\.confirm/);
+  assert.match(hook, /applyPublicSettings\(result\.publicSettings\)/);
 
   for (const field of [
     'studentQuota',
@@ -49,7 +54,7 @@ test('صفحة الإدارة ترسل الحقول المتغيرة فقط وت
     'maxAvatarSizeMb',
     'profilePageSize',
   ]) {
-    assert.match(page, new RegExp(`\\b${field}\\b`));
+    assert.match(`${hook}\n${form}`, new RegExp(`\\b${field}\\b`));
   }
 });
 

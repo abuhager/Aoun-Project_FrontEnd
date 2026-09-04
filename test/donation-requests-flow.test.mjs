@@ -99,7 +99,7 @@ test('صفحة الغرض المرتبط بالطلب تمنع دورة الحج
 });
 
 test('صفحة العرض المخصصة تتحقق من الصورة وتعود للطلب بعد الإرسال', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/[id]/offer/page.tsx');
+  const source = await readSource('../src/app/(main)/donation-requests/[id]/offer/PageClient.tsx');
 
   assert.match(source, /MAX_IMAGE_BYTES = 5 \* 1024 \* 1024/);
   assert.match(source, /image\/jpeg/);
@@ -110,7 +110,7 @@ test('صفحة العرض المخصصة تتحقق من الصورة وتعود
 });
 
 test('نموذج الطلب الجديد يطابق حدود Backend ويدعم urgency', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/new/page.tsx');
+  const source = await readSource('../src/app/(main)/donation-requests/new/PageClient.tsx');
 
   assert.match(source, /maxLength=\{100\}/);
   assert.match(source, /maxLength=\{500\}/);

@@ -89,7 +89,7 @@ test('اختيار المركز إلزامي عند طلبه ويتيح إعاد
 
 test('لوحة الأدمن تستخدم التحقق المشترك ولا تخفي الإحداثي صفر', async () => {
   const [page, hook, list, types] = await Promise.all([
-    readSource('../src/app/(main)/(protected)/admin/hubs/page.tsx'),
+    readSource('../src/app/(main)/(protected)/admin/hubs/PageClient.tsx'),
     readSource('../src/app/(main)/(protected)/admin/hubs/hooks/useAdminHubs.ts'),
     readSource('../src/app/(main)/(protected)/admin/hubs/components/HubList.tsx'),
     readSource('../src/types/hub.types.ts'),

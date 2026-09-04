@@ -30,7 +30,7 @@ test('عقد الإعدادات العامة يغطي الهوية والقوا�
 
 test('صفحة الإدارة ترسل الحقول المتغيرة فقط وتحصر التعديل بالمشرف الأعلى', async () => {
   const [page, hook, form] = await Promise.all([
-    readSource('../src/app/(main)/(protected)/admin/settings/page.tsx'),
+    readSource('../src/app/(main)/(protected)/admin/settings/PageClient.tsx'),
     readSource('../src/app/(main)/(protected)/admin/settings/hooks/useAdminSettings.ts'),
     readSource('../src/app/(main)/(protected)/admin/settings/components/SettingsForm.tsx'),
   ]);
@@ -88,10 +88,10 @@ test('واجهة الصيانة تسمح بدخول الإدارة وتحجب م
 test('سياسة Safe Hub الديناميكية تطبق على الإضافة والتعديل وعروض الطلبات', async () => {
   const sources = await Promise.all([
     readSource('../src/app/(main)/(protected)/add-item/hooks/useAddItem.ts'),
-    readSource('../src/app/(main)/(protected)/add-item/page.tsx'),
+    readSource('../src/app/(main)/(protected)/add-item/PageClient.tsx'),
     readSource('../src/app/(main)/(protected)/items/[id]/edit/hooks/useEditItem.ts'),
-    readSource('../src/app/(main)/(protected)/items/[id]/edit/page.tsx'),
-    readSource('../src/app/(main)/donation-requests/[id]/offer/page.tsx'),
+    readSource('../src/app/(main)/(protected)/items/[id]/edit/PageClient.tsx'),
+    readSource('../src/app/(main)/donation-requests/[id]/offer/PageClient.tsx'),
     readSource('../src/app/(main)/donation-requests/hooks/useDonationRequests.ts'),
     readSource('../src/lib/api/donationRequestApi.ts'),
   ]);

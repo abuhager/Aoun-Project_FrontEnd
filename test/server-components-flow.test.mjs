@@ -1,8 +1,20 @@
 import assert from "node:assert/strict";
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
 const read = (path) => readFile(path, "utf8");
+
+test("كل ملفات page تبقى Server Components وتحصر التفاعل في Client islands", async () => {
+  const entries = await readdir("src/app", { recursive: true });
+  const pagePaths = entries
+    .map(String)
+    .filter((path) => path.endsWith("page.tsx"))
+    .map((path) => `src/app/${path}`);
+
+  assert.equal(pagePaths.length, 30);
+  const pages = await Promise.all(pagePaths.map(read));
+  for (const source of pages) assert.doesNotMatch(source, /^"use client";/);
+});
 
 test("طبقة API العامة تعمل على السيرفر فقط وتستخدم Next fetch cache", async () => {
   const source = await read("src/lib/api/publicApiServer.ts");

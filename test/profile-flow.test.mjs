@@ -7,7 +7,7 @@ const readSource = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 test('public profile consumes the backend donations/received/rating contract', async () => {
   const [hook, page, types] = await Promise.all([
     readSource('../src/app/(main)/(protected)/profile/[id]/hooks/usePublicProfile.ts'),
-    readSource('../src/app/(main)/(protected)/profile/[id]/page.tsx'),
+    readSource('../src/app/(main)/(protected)/profile/[id]/PageClient.tsx'),
     readSource('../src/types/user.types.ts'),
   ]);
 
@@ -23,7 +23,7 @@ test('public profile consumes the backend donations/received/rating contract', a
 
 test('profile password and avatar checks match the backend contract', async () => {
   const [editPage, publicProfileHook] = await Promise.all([
-    readSource('../src/app/(main)/(protected)/profile/edit/page.tsx'),
+    readSource('../src/app/(main)/(protected)/profile/edit/PageClient.tsx'),
     readSource('../src/app/(main)/(protected)/profile/[id]/hooks/usePublicProfile.ts'),
   ]);
   assert.match(editPage, /isStrongPassword/);
@@ -38,7 +38,7 @@ test('profile password and avatar checks match the backend contract', async () =
 test('leaderboard reuses the authenticated shared socket', async () => {
   const [source, page, api, footer, routes] = await Promise.all([
     readSource('../src/app/(main)/(protected)/leaderboard/hooks/useLeaderboard.ts'),
-    readSource('../src/app/(main)/(protected)/leaderboard/page.tsx'),
+    readSource('../src/app/(main)/(protected)/leaderboard/PageClient.tsx'),
     readSource('../src/lib/api/axiosInstance.ts'),
     readSource('../src/components/Footer.tsx'),
     readSource('../src/config/routes.ts'),

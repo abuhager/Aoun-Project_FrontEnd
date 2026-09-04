@@ -57,11 +57,11 @@ test("تطبيع أخطاء API هو المصدر المشترك للرسالة 
 
 test("صفحات الإدارة وطلبات التبرع تفصل منطق الحالة عن واجهة العرض", () => {
   const requestPage = read("src/app/(main)/donation-requests/DonationRequestsClient.tsx");
-  const usersPage = read("src/app/(main)/(protected)/admin/users/page.tsx");
-  const itemsPage = read("src/app/(main)/(protected)/admin/items/page.tsx");
-  const logsPage = read("src/app/(main)/(protected)/admin/logs/page.tsx");
-  const hubsPage = read("src/app/(main)/(protected)/admin/hubs/page.tsx");
-  const settingsPage = read("src/app/(main)/(protected)/admin/settings/page.tsx");
+  const usersPage = read("src/app/(main)/(protected)/admin/users/PageClient.tsx");
+  const itemsPage = read("src/app/(main)/(protected)/admin/items/PageClient.tsx");
+  const logsPage = read("src/app/(main)/(protected)/admin/logs/PageClient.tsx");
+  const hubsPage = read("src/app/(main)/(protected)/admin/hubs/PageClient.tsx");
+  const settingsPage = read("src/app/(main)/(protected)/admin/settings/PageClient.tsx");
 
   assert.match(requestPage, /useDonationRequests/);
   assert.match(usersPage, /useAdminUsers/);

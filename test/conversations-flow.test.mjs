@@ -8,7 +8,7 @@ test('واجهة فتح المحادثة ترسل itemId فقط وتترك تح�
   const [api, itemPage, dashboard] = await Promise.all([
     readSource('../src/lib/api/conversationApi.ts'),
     readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx'),
-    readSource('../src/app/(main)/(protected)/dashboard/page.tsx'),
+    readSource('../src/app/(main)/(protected)/dashboard/PageClient.tsx'),
   ]);
 
   assert.match(api, /post<ApiEnvelope<OpenConversationData>>/);

@@ -63,9 +63,9 @@ test('صفحة الغرض تعتمد حالة الانتظار من Backend وت
 test('إضافة وتعديل الغرض يتحققان من الصورة والمركز والمسار القديم يحوّل للجديد', async () => {
   const [addHook, addPage, editHook, editPage, legacyPage] = await Promise.all([
     readSource('../src/app/(main)/(protected)/add-item/hooks/useAddItem.ts'),
-    readSource('../src/app/(main)/(protected)/add-item/page.tsx'),
+    readSource('../src/app/(main)/(protected)/add-item/PageClient.tsx'),
     readSource('../src/app/(main)/(protected)/items/[id]/edit/hooks/useEditItem.ts'),
-    readSource('../src/app/(main)/(protected)/items/[id]/edit/page.tsx'),
+    readSource('../src/app/(main)/(protected)/items/[id]/edit/PageClient.tsx'),
     readSource('../src/app/(main)/(protected)/edit-item/[id]/page.tsx'),
   ]);
 

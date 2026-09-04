@@ -42,7 +42,7 @@ test("صفحة reset لا تُخزّن ولا ترسل Referer", async () => {
 test("reset token ينتقل من fragment إلى JSON body ولا يدخل API URL أو Storage", () => {
   const hook = read("src/app/(auth)/reset-password/hooks/useResetPassword.ts");
   const authApi = read("src/lib/api/authApi.ts");
-  const legacyPage = read("src/app/(auth)/reset-password/[token]/page.tsx");
+  const legacyPage = read("src/app/(auth)/reset-password/[token]/PageClient.tsx");
 
   assert.match(hook, /window\.location\.hash/);
   assert.match(hook, /window\.history\.replaceState/);
@@ -64,4 +64,3 @@ test("session marker يبقى SameSite=Lax في production", () => {
   assert.match(cookieUtils, /SameSite=Lax/);
   assert.doesNotMatch(cookieUtils, /SameSite=None/);
 });
-

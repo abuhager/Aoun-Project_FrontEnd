@@ -18,10 +18,10 @@ test("عميل الإدارة يطابق طرق ومسارات Backend الفع�
 test("صفحات الإدارة تعتمد العقود المشتركة وتعرض imageUrl الحقيقي", () => {
   const users = read("src/app/(main)/(protected)/admin/users/hooks/useAdminUsers.ts");
   const items = [
-    read("src/app/(main)/(protected)/admin/items/page.tsx"),
+    read("src/app/(main)/(protected)/admin/items/PageClient.tsx"),
     read("src/app/(main)/(protected)/admin/items/hooks/useAdminItems.ts"),
   ].join("\n");
-  const overview = read("src/app/(main)/(protected)/admin/page.tsx");
+  const overview = read("src/app/(main)/(protected)/admin/PageClient.tsx");
 
   assert.match(users, /getAdminUsers/);
   assert.match(users, /cleanedNote\.length < 5/);

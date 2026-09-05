@@ -194,3 +194,5 @@ export function useNavbarController() {
     setServerChatUnreadCount,
   };
 }
+
+export type NavbarController = ReturnType<typeof useNavbarController>;

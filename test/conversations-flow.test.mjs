@@ -74,7 +74,11 @@ test('السجل يدعم تحميل الصفحات الأقدم دون تغيي
 });
 
 test('قائمة المحادثات تستخدم عقد API typed وتحدّث العداد بعد أحداث Socket', async () => {
-  const source = await readSource('../src/components/ConversationList/index.tsx');
+  const [view, controller] = await Promise.all([
+    readSource('../src/components/ConversationList/index.tsx'),
+    readSource('../src/components/ConversationList/useConversationListController.ts'),
+  ]);
+  const source = `${view}\n${controller}`;
 
   assert.match(source, /useSWR<ConversationListItem\[\]>/);
   assert.match(source, /listConversations\(\)/);

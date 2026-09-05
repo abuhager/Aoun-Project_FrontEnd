@@ -101,14 +101,19 @@ test("حوارات المسارات الحساسة تستخدم الغلاف ا�
 });
 
 test("القائمة الرئيسية متاحة بالكيبورد ولا تبقي قائمة الهاتف مخفية بصرياً فقط", () => {
-  const navbar = `${read("src/components/Navbar/index.tsx")}\n${read("src/components/Navbar/useNavbarController.ts")}`;
+  const navbar = [
+    "src/components/Navbar/index.tsx",
+    "src/components/Navbar/useNavbarController.ts",
+    "src/components/Navbar/NavbarDesktopLinks.tsx",
+    "src/components/Navbar/NavbarMobileMenu.tsx",
+  ].map(read).join("\n");
 
   assert.match(navbar, /aria-controls=\{mobileMenuId\}/);
   assert.match(navbar, /aria-expanded=\{isMobileMenuOpen\}/);
   assert.match(navbar, /aria-current=\{isActive \? "page" : undefined\}/);
   assert.match(navbar, /event\.key !== "Escape"/);
   assert.match(navbar, /document\.body\.style\.overflow = "hidden"/);
-  assert.match(navbar, /\{isMobileMenuOpen && \(/);
+  assert.match(navbar, /if \(!isMobileMenuOpen\) return null/);
   assert.match(navbar, /max-h-\[calc\(100dvh-4rem\)\]/);
 });
 

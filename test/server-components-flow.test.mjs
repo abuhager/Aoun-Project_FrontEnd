@@ -74,11 +74,14 @@ test("صفحات التفاصيل تجلب النسخة العامة على ال
 });
 
 test("الجزر العميلة الكبيرة تفصل منطق الحالة عن مكونات العرض", async () => {
-  const [requestClient, profileClient, itemClient, navbar] = await Promise.all([
+  const [requestClient, profileClient, itemClient, navbar, conversations, settings, itemsTable] = await Promise.all([
     read("src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx"),
     read("src/app/(main)/(protected)/profile/edit/PageClient.tsx"),
     read("src/app/(main)/items/[id]/ItemDetailsClient.tsx"),
     read("src/components/Navbar/index.tsx"),
+    read("src/components/ConversationList/index.tsx"),
+    read("src/app/(main)/(protected)/admin/settings/components/SettingsForm.tsx"),
+    read("src/app/(main)/(protected)/dashboard/components/ItemsTable.tsx"),
   ]);
 
   assert.match(requestClient, /useDonationRequestDetails/);
@@ -86,11 +89,22 @@ test("الجزر العميلة الكبيرة تفصل منطق الحالة ع
   assert.doesNotMatch(requestClient, /getOffersByRequest|acceptOffer\(/);
 
   assert.match(profileClient, /useEditProfile/);
+  assert.match(profileClient, /<ProfileForms/);
   assert.doesNotMatch(profileClient, /useState|updateMyProfile\(/);
 
   assert.match(itemClient, /<ItemActions/);
   assert.doesNotMatch(itemClient, /<LevelGate/);
 
   assert.match(navbar, /useNavbarController/);
+  assert.match(navbar, /<NavbarAccountActions/);
+  assert.match(navbar, /<NavbarMobileMenu/);
   assert.doesNotMatch(navbar, /useEffect|useState|getConversationUnreadCount/);
+
+  assert.match(conversations, /useConversationListController/);
+  assert.match(conversations, /<ConversationInbox/);
+  assert.doesNotMatch(conversations, /useSWR|markConversationRead/);
+
+  assert.match(settings, /settingsFieldDefinitions/);
+  assert.match(settings, /<NumericSection/);
+  assert.match(itemsTable, /<DashboardItemCard/);
 });

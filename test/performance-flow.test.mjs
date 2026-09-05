@@ -6,10 +6,11 @@ const readSource = (relativePath) =>
   readFile(new URL(relativePath, import.meta.url), 'utf8');
 
 test('المكونات الثقيلة لا تدخل حزمة الزائر وتُحمّل عند الحاجة فقط', async () => {
-  const [socketContext, levelGate, navbar] = await Promise.all([
+  const [socketContext, levelGate, navbar, accountActions] = await Promise.all([
     readSource('../src/context/SocketContext.tsx'),
     readSource('../src/components/LevelGate.tsx'),
     readSource('../src/components/Navbar/index.tsx'),
+    readSource('../src/components/Navbar/NavbarAccountActions.tsx'),
   ]);
 
   assert.match(socketContext, /await import\("socket\.io-client"\)/);
@@ -19,22 +20,23 @@ test('المكونات الثقيلة لا تدخل حزمة الزائر وتُ
   assert.match(levelGate, /phoneVerificationEnabled && showModal/);
   assert.doesNotMatch(levelGate, /import PhoneVerifyModal from/);
 
-  assert.match(navbar, /dynamic\(\(\) => import\("@\/components\/NotificationBell"\)/);
+  assert.match(accountActions, /dynamic\(\(\) => import\("@\/components\/NotificationBell"\)/);
   assert.match(navbar, /import\("@\/components\/ConversationsDrawer"\)/);
 });
 
 test('Navbar يطلب عداد المحادثات الخفيف ويركب جرساً واحداً فقط', async () => {
-  const [navbarView, navbarController, api] = await Promise.all([
+  const [navbarView, navbarController, accountActions, api] = await Promise.all([
     readSource('../src/components/Navbar/index.tsx'),
     readSource('../src/components/Navbar/useNavbarController.ts'),
+    readSource('../src/components/Navbar/NavbarAccountActions.tsx'),
     readSource('../src/lib/api/conversationApi.ts'),
   ]);
   const navbar = `${navbarView}\n${navbarController}`;
 
   assert.match(navbar, /getConversationUnreadCount\(\)/);
   assert.doesNotMatch(navbar, /listConversations/);
-  assert.equal((navbarView.match(/<NotificationBell\s*\/>/g) || []).length, 1);
-  assert.equal((navbarView.match(/onClick=\{openChatInbox\}/g) || []).length, 1);
+  assert.equal((accountActions.match(/<NotificationBell\s*\/>/g) || []).length, 1);
+  assert.equal((accountActions.match(/onClick=\{openChatInbox\}/g) || []).length, 1);
 
   assert.match(api, /export async function getConversationUnreadCount/);
   assert.match(api, /['"]\/api\/conversations\/unread-count['"]/);

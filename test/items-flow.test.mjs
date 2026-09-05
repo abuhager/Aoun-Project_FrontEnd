@@ -91,10 +91,12 @@ test('إضافة وتعديل الغرض يتحققان من الصورة وال
 });
 
 test('Dashboard يطابق أحداث ومسارات دورة الحجز ويحتفظ بحالة الترقية', async () => {
-  const [source, table] = await Promise.all([
+  const [source, table, actions] = await Promise.all([
     readSource('../src/app/(main)/(protected)/dashboard/hooks/useDashboard.ts'),
     readSource('../src/app/(main)/(protected)/dashboard/components/ItemsTable.tsx'),
+    readSource('../src/app/(main)/(protected)/dashboard/components/DashboardItemActions.tsx'),
   ]);
+  const dashboardView = `${table}\n${actions}`;
 
   assert.match(source, /deleteItem\(id\)/);
   assert.match(source, /cancelBooking\(id\)/);
@@ -109,10 +111,10 @@ test('Dashboard يطابق أحداث ومسارات دورة الحجز ويح�
   assert.match(source, /if \(!beginDeliveryRequest\(itemId\)\) return/);
   assert.doesNotMatch(source, /delivery:recipient_confirmed|delivery:completed/);
   assert.doesNotMatch(source, /\/api\/items\/delete\//);
-  assert.match(table, /!item\.recipientConfirmed/);
-  assert.match(table, /deliveryLoadingItemId === item\._id/);
-  assert.match(table, /disabled=\{deliveryLoadingItemId !== null\}/);
-  assert.doesNotMatch(table, /deliveryLoading && deliveryState\.itemId/);
+  assert.match(dashboardView, /!item\.recipientConfirmed/);
+  assert.match(dashboardView, /deliveryLoadingItemId === item\._id/);
+  assert.match(dashboardView, /disabled=\{deliveryLoadingItemId !== null\}/);
+  assert.doesNotMatch(dashboardView, /deliveryLoading && deliveryState\.itemId/);
 });
 
 test('الإشعارات الجديدة لها fallback آمن ورابط داخلي فقط', async () => {

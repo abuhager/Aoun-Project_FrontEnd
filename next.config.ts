@@ -86,6 +86,9 @@ const allowLocalImages = !isProduction || isLocalTarget;
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // يسمح بفتح نسخة التطوير نفسها من هاتف/جهاز آخر على الشبكة المحلية.
+  // هذا الخيار يخص `next dev` فقط ولا ينشئ نسخة هاتف منفصلة ولا يؤثر على Vercel.
+  allowedDevOrigins: ['192.168.100.118'],
 
   async headers() {
     return [

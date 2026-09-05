@@ -202,3 +202,5 @@ export function useEditProfile() {
     handleChangePassword,
   };
 }
+
+export type EditProfileController = ReturnType<typeof useEditProfile>;

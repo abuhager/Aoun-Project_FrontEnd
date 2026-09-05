@@ -24,7 +24,7 @@ export interface MyRank {
   pointsToNext: number | null;
 }
 
-export interface IneligibleRank {
+interface IneligibleRank {
   eligible: false;
   reason: string;
 }

@@ -84,11 +84,13 @@ test('قائمة المحادثات تستخدم عقد API typed وتحدّث �
 });
 
 test('إشعار الرسالة يفتح المحادثة المطلوبة ويستخدم notification:new الموحد', async () => {
-  const [bell, navbar, notifications] = await Promise.all([
+  const [bell, navbarView, navbarController, notifications] = await Promise.all([
     readSource('../src/components/NotificationBell.tsx'),
     readSource('../src/components/Navbar/index.tsx'),
+    readSource('../src/components/Navbar/useNavbarController.ts'),
     readSource('../src/hooks/useNotifications.ts'),
   ]);
+  const navbar = `${navbarView}\n${navbarController}`;
 
   assert.match(bell, /aoun:open-conversation/);
   assert.match(bell, /notification\.conversationId/);

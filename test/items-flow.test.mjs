@@ -4,6 +4,14 @@ import { readFile } from 'node:fs/promises';
 
 const readSource = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
+const readItemDetailsSource = async () => {
+  const sources = await Promise.all([
+    readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx'),
+    readSource('../src/app/(main)/items/[id]/components/ItemActions.tsx'),
+  ]);
+  return sources.join('\n');
+};
+
 test('Item API يستخدم مسارات Backend الفعلية ويترك FormData يحدد boundary', async () => {
   const source = await readSource('../src/lib/api/itemApi.ts');
 
@@ -20,7 +28,7 @@ test('Browse يرسل الفلاتر والصفحة إلى السيرفر ولا
   const [page, card, details] = await Promise.all([
     readSource('../src/app/(main)/browse/page.tsx'),
     readSource('../src/components/ui/ItemCard.tsx'),
-    readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx'),
+    readItemDetailsSource(),
   ]);
 
   assert.match(page, /getPublicItemsServer\(/);
@@ -42,7 +50,7 @@ test('Browse يرسل الفلاتر والصفحة إلى السيرفر ولا
 test('صفحة الغرض تعتمد حالة الانتظار من Backend وتنتظر تهيئة الهوية', async () => {
   const [hook, page, deliveryHook] = await Promise.all([
     readSource('../src/app/(main)/items/[id]/hooks/useItemDetails.ts'),
-    readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx'),
+    readItemDetailsSource(),
     readSource('../src/hooks/useDeliveryConfirmation.ts'),
   ]);
 
@@ -53,8 +61,8 @@ test('صفحة الغرض تعتمد حالة الانتظار من Backend وت
   assert.match(hook, /SOCKET_EVENTS\.ITEM_RECIPIENT_CONFIRMED/);
   assert.match(hook, /SOCKET_EVENTS\.ITEM_DELETED/);
   assert.doesNotMatch(hook, /localStorage/);
-  assert.match(page, /disabled=\{delivery\.isLoading \|\| !isRecipientConfirmedActual\}/);
-  assert.match(page, /!isRecipientConfirmedActual &&/);
+  assert.match(page, /disabled=\{deliveryLoading \|\| !isRecipientConfirmed\}/);
+  assert.match(page, /!isRecipientConfirmed &&/);
   assert.match(page, /سجل دخولك للانضمام لقائمة الانتظار/);
   assert.match(deliveryHook, /confirmDeliveryRequest\(itemId\)/);
   assert.match(deliveryHook, /onError/);

@@ -1,15 +1,11 @@
 // src/types/user.types.ts
-import type { Item } from './item.types';
-
-export type DashboardItem = Item & { reportId: string | null };
-
 export type UserRole = 'user' | 'admin' | 'super_admin';
 
 // trustLevel يعكس تحقق الهوية (1/2)، وهو منفصل عن gamification.level (1–5).
 export type TrustLevel = 1 | 2;
 
 // FIXED [BUG-PROFILE-03]
-export interface Gamification {
+interface Gamification {
   trustScore:     number;
   totalDonations: number;
   level:          number;
@@ -41,7 +37,7 @@ export interface AuthUser {
   gamification?: Gamification;
 }
 
-export interface ProfileUser {
+interface ProfileUser {
   _id:               string;
   name:              string;
   avatar:            string;
@@ -55,28 +51,13 @@ export interface ProfileUser {
   gamification:      Gamification;
 }
 
-export interface ProfileActivityItem {
+interface ProfileActivityItem {
   _id:       string;
   title:     string;
   category:  string;
   status:    string;
   imageUrl:  string;
   createdAt: string;
-}
-
-export interface PublicUser {
-  name:              string;
-  avatar:            string;
-  trustLevel:        TrustLevel; // ← 1 | 2
-  isVerifiedStudent: boolean;
-  createdAt:         string;
-  gamification: {
-    level:          number;
-    title:          string;
-    nextLevelAt:    number;
-    progressPct:    number;
-    totalDonations: number;
-  };
 }
 
 export interface ProfileResponse {
@@ -104,30 +85,4 @@ export interface BookedByUser {
   name:   string;
   phone?: string;
   email?: string;
-}
-
-export interface DonorUser extends PublicUser {
-  phone?: string;
-}
-
-export interface DashboardStats {
-  quota:        number;
-  trustScore:   number;
-  trustLevel:   TrustLevel; // ← 1 | 2
-  gamification: Gamification;
-}
-
-// ✅ [FLOW2-FIX-04] نوع جديد لاستجابة getMeLogic مع pagination كامل
-export interface GetMeResponse {
-  user:               AuthUser;
-  donations:          ProfileActivityItem[];
-  received:           ProfileActivityItem[];
-  page:               number;
-  pageSize:           number;
-  donationsTotal:     number;
-  receivedTotal:      number;
-  hasMoreDonations:   boolean;
-  hasMoreReceived:    boolean;
-  totalDonationPages: number;
-  totalReceivedPages: number;
 }

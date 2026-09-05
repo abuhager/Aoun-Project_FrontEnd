@@ -79,9 +79,9 @@ export interface AdminPersonReference {
   title: string | null;
 }
 
-export type AdminTargetReference = AdminPersonReference | string | null;
+type AdminTargetReference = AdminPersonReference | string | null;
 
-export interface AdminAuditMeta {
+interface AdminAuditMeta {
   targetName?:       string;
   targetEmail?:      string;
   itemTitle?:        string;

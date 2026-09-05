@@ -30,8 +30,6 @@ export const setAccessToken = (t: string | null) => {
   accessTokenListeners.forEach((listener) => listener(t));
 };
 
-export const getAccessToken = () => accessToken;
-
 export const subscribeAccessToken = (listener: AccessTokenListener) => {
   accessTokenListeners.add(listener);
   listener(accessToken);

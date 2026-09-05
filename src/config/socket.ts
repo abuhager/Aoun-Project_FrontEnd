@@ -28,5 +28,3 @@ export const SOCKET_EVENTS = {
   NOTIFICATION_NEW: "notification:new",
   NOTIFICATION_REFRESH: "notification:refresh",
 } as const;
-
-export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];

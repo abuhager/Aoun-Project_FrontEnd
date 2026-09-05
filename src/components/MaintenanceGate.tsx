@@ -77,5 +77,3 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
     </main>
   );
 }
-
-export { AUTH_BYPASS_PATHS, isAuthBypassPath };

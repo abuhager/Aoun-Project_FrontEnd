@@ -39,9 +39,3 @@ export interface HubMutationResponse {
   msg: string;
   hub: SafeHub;
 }
-
-export interface HubSelectOption {
-  value:    string;   // _id
-  label:    string;   // "اسم المركز — المدينة"
-  isActive: boolean;
-}

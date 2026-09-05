@@ -13,7 +13,7 @@ export interface HubFormValues {
   lng: string;
 }
 
-export interface HubFormPayload {
+interface HubFormPayload {
   name: string;
   address: string;
   city: string;

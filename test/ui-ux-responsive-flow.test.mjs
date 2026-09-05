@@ -101,7 +101,7 @@ test("حوارات المسارات الحساسة تستخدم الغلاف ا�
 });
 
 test("القائمة الرئيسية متاحة بالكيبورد ولا تبقي قائمة الهاتف مخفية بصرياً فقط", () => {
-  const navbar = read("src/components/Navbar/index.tsx");
+  const navbar = `${read("src/components/Navbar/index.tsx")}\n${read("src/components/Navbar/useNavbarController.ts")}`;
 
   assert.match(navbar, /aria-controls=\{mobileMenuId\}/);
   assert.match(navbar, /aria-expanded=\{isMobileMenuOpen\}/);

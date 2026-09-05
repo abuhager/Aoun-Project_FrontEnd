@@ -1,10 +1,10 @@
 // src/types/item.types.ts — ✅ PATCHED [FRONT-01]: أنواع كاملة لكل API response
 import type { SafeHub } from "@/types/hub.types";
 
-export type ItemStatus = "متاح" | "محجوز" | "تم التسليم" | "مخفي";
+type ItemStatus = "متاح" | "محجوز" | "تم التسليم" | "مخفي";
 export type ItemCondition = "جديد" | "مستعمل ممتاز" | "مستعمل جيد";
 
-export interface ItemDonor {
+interface ItemDonor {
   _id:                string;
   name:               string;
   avatar?:            string;
@@ -14,7 +14,7 @@ export interface ItemDonor {
   phone?:             string;
 }
 
-export interface WaitlistEntry {
+interface WaitlistEntry {
   user:     { _id: string; name: string; avatar?: string; trustLevel?: number };
   joinedAt: string;
 }

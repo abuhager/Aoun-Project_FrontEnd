@@ -27,14 +27,6 @@ export interface UserRating {
   rater:     { _id: string; name: string | null; avatar: string | null } | null;
 }
 
-export interface RatingPrompt {
-  itemId:    string;
-  itemTitle: string;
-  donorName: string;
-  donorId:   string;
-  show:      boolean;
-}
-
 export interface PendingRatingResponse {
   pendingRating: {
     _id: string;

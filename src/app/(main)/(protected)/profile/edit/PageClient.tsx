@@ -1,184 +1,32 @@
-// src/app/(main)/(protected)/profile/edit/page.tsx
-// ✅ FIX [SEC-PROF-01]  : PASSWORD_REGEX مطابق لـ strongPassword في authDto.js
-// ✅ FIX [SEC-PROF-02]  : استخدام msg وليس message — مطابق لـ Backend
-// ✅ FIX [DUP-PROF-02]  : عرض phone الحالي من user context عند فتح الصفحة
-// ✅ FIX [HC-PROF-01]   : maxAvatarMB ديناميكي من /api/settings/public
-// ✅ FIX [ARCH-PROF-01] : فحص isFullyLoaded قبل عرض البيانات
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
-import { changeMyPassword, updateMyProfile } from "@/lib/api/profileApi";
-import { extractErrorMsg } from "@/lib/api/apiError";
-import { useSettings } from "@/hooks/useSettings";
-import {
-  isStrongPassword,
-  PASSWORD_REQUIREMENTS_MESSAGE,
-} from "@/lib/validation/auth";
-import type { AuthUser } from "@/types/user.types";
 import PageIntro from "@/components/ui/PageIntro";
-
-type EditForm = {
-  name:            string;
-  phone:           string;
-  currentPassword: string;
-  newPassword:     string;
-  confirmPassword: string;
-};
+import { useEditProfile } from "./hooks/useEditProfile";
 
 export default function EditProfileClient() {
-  // ✅ FIX [ARCH-PROF-01]: استخدام isFullyLoaded
-  const { user, setUser, logout, isFullyLoaded, isLoading } = useAuth();
-  const { settings } = useSettings();
+  const profile = useEditProfile();
+  const {
+    user,
+    mounted,
+    form,
+    loading,
+    success,
+    error,
+    activeTab,
+    avatarPreview,
+    avatarFile,
+    fileInputRef,
+    maxAvatarMB,
+    selectTab,
+    handleChange,
+    handlePhoneChange,
+    handleAvatarChange,
+    handleSaveInfo,
+    handleChangePassword,
+  } = profile;
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  const [form, setForm] = useState<EditForm>({
-    name:            "",
-    phone:           "",
-    currentPassword: "",
-    newPassword:     "",
-    confirmPassword: "",
-  });
-
-  const [loading, setLoading]     = useState(false);
-  const [success, setSuccess]     = useState("");
-  const [error, setError]         = useState("");
-  const [activeTab, setActiveTab] = useState<"info" | "password">("info");
-
-  // ✅ FIX [HC-PROF-01]: حجم الصورة الأقصى ديناميكي
-  const maxAvatarMB = settings?.maxAvatarSizeMb ?? 5;
-
-  const fileInputRef                      = useRef<HTMLInputElement>(null);
-  const avatarObjectUrlRef                = useRef<string | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string>("");
-  const [avatarFile, setAvatarFile]       = useState<File | null>(null);
-
-  const revokeAvatarObjectUrl = () => {
-    if (!avatarObjectUrlRef.current) return;
-    URL.revokeObjectURL(avatarObjectUrlRef.current);
-    avatarObjectUrlRef.current = null;
-  };
-
-  useEffect(() => () => {
-    if (avatarObjectUrlRef.current) {
-      URL.revokeObjectURL(avatarObjectUrlRef.current);
-      avatarObjectUrlRef.current = null;
-    }
-  }, []);
-
-  // ✅ FIX [DUP-PROF-02]: عرض phone الحالي من user context
-  useEffect(() => {
-    if (!user) return;
-    const typedUser = user as AuthUser;
-    if (typedUser.name)   setForm(prev => ({ ...prev, name: typedUser.name }));
-    if (typedUser.phone)  {
-      // حذف +962 للعرض في حقل الإدخال (المستخدم يدخل الأرقام فقط)
-      const cleanPhone = typedUser.phone.replace(/^\+962/, "");
-      setForm(prev => ({ ...prev, phone: cleanPhone }));
-    }
-    if (typedUser.avatar) setAvatarPreview(typedUser.avatar);
-  }, [user]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    setError(""); setSuccess("");
-  };
-
-  // ✅ FIX [HC-PROF-01]: استخدام maxAvatarMB الديناميكي
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setError("نوع الصورة غير مدعوم — اختر JPEG أو PNG أو WebP");
-      e.target.value = "";
-      return;
-    }
-    if (file.size > maxAvatarMB * 1024 * 1024) {
-      setError(`حجم الصورة يجب أن يكون أقل من ${maxAvatarMB}MB`);
-      e.target.value = "";
-      return;
-    }
-    revokeAvatarObjectUrl();
-    const objectUrl = URL.createObjectURL(file);
-    avatarObjectUrlRef.current = objectUrl;
-    setAvatarFile(file);
-    setAvatarPreview(objectUrl);
-    setError("");
-    setSuccess("");
-  };
-
-  // ── حفظ المعلومات ──
-  const handleSaveInfo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim()) { setError("الاسم مطلوب"); return; }
-    setLoading(true); setError(""); setSuccess("");
-    try {
-      const fd = new FormData();
-      fd.append("name", form.name.trim());
-      if (form.phone.trim()) fd.append("phone", form.phone.trim());
-      if (avatarFile)        fd.append("avatar", avatarFile);
-
-      const updatedUser = await updateMyProfile(fd);
-      setUser(updatedUser);
-      setSuccess("تم تحديث المعلومات بنجاح ✓");
-      setAvatarFile(null);
-      revokeAvatarObjectUrl();
-      setAvatarPreview(updatedUser.avatar ?? "");
-    } catch (err: unknown) {
-      // ✅ FIX [SEC-PROF-02]: extractMsg يبحث عن msg أولاً
-      setError(extractErrorMsg(err, "حدث خطأ، حاول مجدداً"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── تغيير كلمة المرور ──
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.currentPassword) { setError("أدخل كلمة المرور الحالية"); return; }
-
-    // ✅ FIX [SEC-PROF-01]: فحص strongPassword مطابق للـ Backend
-    if (!isStrongPassword(form.newPassword)) {
-      setError(PASSWORD_REQUIREMENTS_MESSAGE);
-      return;
-    }
-    if (form.newPassword !== form.confirmPassword) {
-      setError("كلمتا المرور غير متطابقتين");
-      return;
-    }
-
-    setLoading(true); setError(""); setSuccess("");
-    try {
-      await changeMyPassword({
-        currentPassword: form.currentPassword,
-        newPassword: form.newPassword,
-      });
-      setSuccess("تم تغيير كلمة المرور بنجاح ✓ — سيتم تحويلك لتسجيل الدخول");
-      setForm(prev => ({ ...prev, currentPassword: "", newPassword: "", confirmPassword: "" }));
-      window.setTimeout(() => void logout(), 900);
-    } catch (err: unknown) {
-      // ✅ FIX [SEC-PROF-02]
-      setError(extractErrorMsg(err, "كلمة المرور الحالية غير صحيحة"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ FIX [ARCH-PROF-01]: انتظر اكتمال تحميل بيانات المستخدم
-  if (isLoading || !mounted) {
-    return (
-      <div className="flex justify-center items-center min-h-dvh">
-        <span className="material-symbols-outlined text-primary text-4xl animate-spin">
-          progress_activity
-        </span>
-      </div>
-    );
-  }
-
-  if (!isFullyLoaded && !user) {
+  if (!profile.isReady) {
     return (
       <div className="flex justify-center items-center min-h-dvh">
         <span className="material-symbols-outlined text-primary text-4xl animate-spin">
@@ -262,7 +110,7 @@ export default function EditProfileClient() {
           ] as const).map(tab => (
             <button
               key={tab.key}
-              onClick={() => { setActiveTab(tab.key); setError(""); setSuccess(""); }}
+              onClick={() => selectTab(tab.key)}
               className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all lg:justify-start ${
                 activeTab === tab.key
                   ? "bg-primary text-white shadow-[0_8px_20px_rgba(0,117,107,0.2)]"
@@ -352,10 +200,7 @@ export default function EditProfileClient() {
                   <input
                     name="phone" type="tel" dir="ltr" inputMode="numeric" maxLength={9}
                     value={form.phone}
-                    onChange={e => {
-                      const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
-                      setForm(prev => ({ ...prev, phone: digits }));
-                    }}
+                    onChange={handlePhoneChange}
                     placeholder="7XXXXXXXX"
                     className="w-full pr-12 pl-[72px] py-3.5 bg-surface-container-highest rounded-xl border-2 border-transparent outline-none focus:border-primary/30 focus:bg-white transition-all text-sm font-bold text-left tracking-wide"
                   />

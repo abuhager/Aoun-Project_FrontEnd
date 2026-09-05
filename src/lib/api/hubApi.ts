@@ -6,7 +6,6 @@ import axiosInstance from '@/lib/api/axiosInstance';
 import type {
   CreateHubPayload,
   HubMutationResponse,
-  HubSelectOption,
   SafeHub,
   UpdateHubPayload,
 } from '@/types/hub.types';
@@ -17,16 +16,6 @@ export const PUBLIC_HUBS_CACHE_KEY = '/api/hubs';
 export const getHubs = async (signal?: AbortSignal): Promise<SafeHub[]> => {
   const res = await axiosInstance.get<SafeHub[]>(PUBLIC_HUBS_CACHE_KEY, { signal });
   return res.data;
-};
-
-// ─── دالة 2: تحويلها إلى خيارات Dropdown ───────────────────
-export const getHubOptions = async (signal?: AbortSignal): Promise<HubSelectOption[]> => {
-  const hubs = await getHubs(signal);
-  return hubs.map((h) => ({
-    value:    h._id,
-    label:    `${h.name} — ${h.city}`,
-    isActive: h.isActive,
-  }));
 };
 
 // ─── دالة 3: Admin — كل الـ Hubs (نشطة + معطّلة) ───────────

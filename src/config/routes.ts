@@ -1,6 +1,6 @@
 // src/config/routes.ts
 
-export const PROTECTED_PREFIXES = [
+const PROTECTED_PREFIXES = [
   '/dashboard',
   '/profile',
   '/add-item',
@@ -14,9 +14,7 @@ export const PROTECTED_PREFIXES = [
   '/leaderboard',
 ] as const;
 
-export type ProtectedPrefix = typeof PROTECTED_PREFIXES[number];
-
-export const AUTH_ONLY_PATHS = [
+const AUTH_ONLY_PATHS = [
   '/login',
   '/register',
   '/forgot-password',
@@ -24,9 +22,7 @@ export const AUTH_ONLY_PATHS = [
   '/verify',
 ] as const;
 
-export type AuthOnlyPath = typeof AUTH_ONLY_PATHS[number];
-
-export const AUTH_PUBLIC_PATHS = [
+const AUTH_PUBLIC_PATHS = [
   '/auth/refresh',
   '/auth/login',
   '/auth/register',
@@ -36,7 +32,7 @@ export const AUTH_PUBLIC_PATHS = [
   '/auth/resend-otp',
 ] as const;
 
-export const matchesRoutePrefix = (pathname: string, prefix: string): boolean =>
+const matchesRoutePrefix = (pathname: string, prefix: string): boolean =>
   pathname === prefix || pathname.startsWith(`${prefix}/`);
 
 // ✅ استثناء مسار تفاصيل الغرض /items/:id ليتمكن الزائر من مشاهدته

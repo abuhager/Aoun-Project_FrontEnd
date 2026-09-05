@@ -1,8 +1,6 @@
 // src/types/auth.types.ts
 import type { AuthUser } from '@/types/user.types';
 
-export type { AuthUser };
-
 export interface LoginRequest {
   email:    string;
   password: string;
@@ -71,10 +69,4 @@ export interface RefreshResponse {
   accessToken:          string;
   user:                 AuthUser;
   refreshRaceRecovered?: boolean;
-}
-
-export interface ApiErrorResponse {
-  msg:   string;
-  code?: 'OTP_ATTEMPTS_EXCEEDED' | 'OTP_EXPIRED' | 'EMAIL_NOT_VERIFIED' | 'ACCOUNT_BANNED' | 'ACCOUNT_FROZEN' | string;
-  // ✅ [FLOW2-FIX-07] ACCOUNT_FROZEN أضيف لقائمة الكودات المعروفة
 }

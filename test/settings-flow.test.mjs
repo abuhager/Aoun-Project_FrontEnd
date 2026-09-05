@@ -5,9 +5,10 @@ import { readFile } from 'node:fs/promises';
 const readSource = (relativePath) => readFile(new URL(relativePath, import.meta.url), 'utf8');
 
 test('عقد الإعدادات العامة يغطي الهوية والقوائم والصيانة وسياسة Safe Hub', async () => {
-  const [types, api] = await Promise.all([
+  const [types, api, publicApi] = await Promise.all([
     readSource('../src/types/settings.types.ts'),
     readSource('../src/lib/api/settingsApi.ts'),
+    readSource('../src/lib/api/publicSettingsApi.ts'),
   ]);
 
   for (const field of [
@@ -24,7 +25,7 @@ test('عقد الإعدادات العامة يغطي الهوية والقوا�
     assert.match(types, new RegExp(`\\b${field}\\b`));
   }
 
-  assert.match(api, /PUBLIC_SETTINGS_CACHE_KEY/);
+  assert.match(publicApi, /PUBLIC_SETTINGS_CACHE_KEY/);
   assert.match(api, /UpdateSettingsResponse/);
 });
 
@@ -109,7 +110,7 @@ test('لوحة البلاغات تعرض عدد البلاغات المعتمد�
   const [reports, logs, navbar] = await Promise.all([
     readSource('../src/app/(main)/(protected)/admin/reports/components/ReportReviewDialog.tsx'),
     readSource('../src/app/(main)/(protected)/admin/logs/components/AdminLogsTable.tsx'),
-    readSource('../src/components/Navbar/index.tsx'),
+    readSource('../src/components/Navbar/useNavbarController.ts'),
   ]);
 
   assert.match(reports, /actionedReportsAgainstUser/);

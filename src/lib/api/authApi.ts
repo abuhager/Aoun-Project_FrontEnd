@@ -2,7 +2,7 @@
 // ✅ DUP-AUTH-01: استيراد setSessionCookie/clearSessionCookie من cookieUtils بدل إعادة تعريفهما
 
 import axiosInstance, { setAccessToken } from './axiosInstance';
-import { setSessionCookie, clearSessionCookie } from '@/lib/utils/cookieUtils'; // ← جديد
+import { setSessionCookie } from '@/lib/utils/cookieUtils';
 import type {
   LoginRequest,
   RegisterRequest,
@@ -97,27 +97,4 @@ export async function requestRefreshSession(): Promise<RefreshResponse> {
 
 export async function requestLogout(): Promise<void> {
   await axiosInstance.post('/api/auth/logout', {}, { withCredentials: true });
-}
-
-// ── تجديد الجلسة ─────────────────────────────────────────────
-export async function refreshAccessToken(): Promise<string> {
-  const data = await requestRefreshSession();
-  if (data.accessToken) {
-    setAccessToken(data.accessToken);
-    setSessionCookie();
-  }
-  return data.accessToken;
-}
-
-// ── تسجيل الخروج ─────────────────────────────────────────────
-export async function logout(): Promise<void> {
-  try {
-    await requestLogout();
-  } finally {
-    setAccessToken(null);
-    clearSessionCookie();
-    if (typeof window !== 'undefined') {
-      window.location.replace('/login');
-    }
-  }
 }

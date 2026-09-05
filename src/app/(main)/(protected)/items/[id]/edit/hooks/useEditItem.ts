@@ -16,8 +16,6 @@ const CITIES = ["عمان", "إربد", "الزرقاء", "العقبة"] as con
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
-export { CONDITIONS, CITIES };
-
 interface EditItemForm {
   title: string;
   description: string;

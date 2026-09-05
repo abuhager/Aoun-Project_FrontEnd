@@ -14,7 +14,7 @@ export interface ChatMessage {
   correlationId?: string;
 }
 
-export interface ConversationItem {
+interface ConversationItem {
   _id: string;
   title: string;
   imageUrl?: string;

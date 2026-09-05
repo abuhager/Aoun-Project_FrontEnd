@@ -3,13 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useEffect, useId, useMemo, useRef, useState, useCallback } from "react";
-import { useNavbar } from "./useNavbar";
-import { useSiteConfig } from "@/context/SiteConfigContext";
-import { useSocket } from "@/context/SocketContext";
-import { SOCKET_EVENTS } from "@/config/socket";
-import { getConversationUnreadCount } from "@/lib/api/conversationApi";
 import BrandMark from "@/components/ui/BrandMark";
+import { useNavbarController } from "./useNavbarController";
 
 const NotificationBell = dynamic(() => import("@/components/NotificationBell"), {
   ssr: false,
@@ -23,24 +18,13 @@ const ConversationsDrawer = dynamic(
   { ssr: false }
 );
 
-const NAV_LINKS = [
-  { href: "/browse", icon: "explore", label: "تصفح الأغراض", authRequired: false },
-  { href: "/donation-requests", icon: "volunteer_activism", label: "طلبات التبرع", authRequired: false },
-  { href: "/hubs", icon: "warehouse", label: "مراكز التسليم", authRequired: false },
-  { href: "/#how-it-works", icon: "help", label: "كيف نعمل؟", authRequired: false },
-  { href: "/leaderboard", icon: "leaderboard", label: "المتصدرون", authRequired: true }, // ✅ محصور فقط للمسجلين
-] as const;
-
 export default function Navbar() {
-  const { platformName } = useSiteConfig();
-  const { socket } = useSocket();
-
   const {
+    platformName,
     pathname,
     isLoggedIn,
     isMounted,
     firstName,
-    userRole,
     user,
     isLogoOnlyPage,
     isMobileMenuOpen,
@@ -48,167 +32,25 @@ export default function Navbar() {
     isProfileDropdownOpen,
     setIsProfileDropdownOpen,
     handleLogout,
-  } = useNavbar();
-
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const profileButtonRef = useRef<HTMLButtonElement>(null);
-  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
-  const mobileMenuPanelRef = useRef<HTMLDivElement>(null);
-  const profileMenuId = useId();
-  const mobileMenuId = useId();
-  const [chatOpen, setChatOpen] = useState(false);
-  const [requestedConversationId, setRequestedConversationId] = useState<string | null>(null);
-  const [serverChatUnreadCount, setServerChatUnreadCount] = useState(0);
-
-  const isReadyForUserData = isMounted && isLoggedIn;
-  const isAdmin = isReadyForUserData
-    && (userRole === "admin" || userRole === "super_admin");
-  const userLevel = user?.gamification?.level ?? 1;
-  const userBadge = (user?.gamification as { badge?: string })?.badge ?? "🌱";
-  const chatUnreadCount = isReadyForUserData ? serverChatUnreadCount : 0;
-
-  const visibleLinks = useMemo(() => {
-    return NAV_LINKS.filter((link) => {
-      if (!link.authRequired) return true;
-      return isReadyForUserData;
-    });
-  }, [isReadyForUserData]);
-
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      return await getConversationUnreadCount();
-    } catch {
-      return 0;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isReadyForUserData) return;
-    let cancelled = false;
-    fetchUnreadCount()
-      .then((total) => {
-        if (cancelled) return;
-        setServerChatUnreadCount(total);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setServerChatUnreadCount(0);
-        let msg = "";
-        if (error && typeof error === "object") {
-          if ("message" in error) msg = (error as { message: string }).message;
-          else if ("code" in error) msg = (error as { code: string }).code;
-        }
-        if (msg !== "NOT_AUTHENTICATED" && msg !== "AUTH_INIT_TIMEOUT") {
-          console.error("fetch navbar unread count error", error);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [isReadyForUserData, fetchUnreadCount]);
-
-  useEffect(() => {
-    if (!socket || !isReadyForUserData) return;
-
-    const handleRefresh = () => {
-      fetchUnreadCount().then((total) => setServerChatUnreadCount(total));
-    };
-
-    const resyncAfterReconnect = () => {
-      if (!socket.recovered) handleRefresh();
-    };
-    socket.on(SOCKET_EVENTS.CONVERSATION_UPDATED, handleRefresh);
-    socket.on(SOCKET_EVENTS.MESSAGES_READ, handleRefresh);
-    socket.on("connect", resyncAfterReconnect);
-
-    return () => {
-      socket.off(SOCKET_EVENTS.CONVERSATION_UPDATED, handleRefresh);
-      socket.off(SOCKET_EVENTS.MESSAGES_READ, handleRefresh);
-      socket.off("connect", resyncAfterReconnect);
-    };
-  }, [socket, isReadyForUserData, fetchUnreadCount]);
-
-  useEffect(() => {
-    if (!isReadyForUserData) return;
-
-    const openRequestedConversation = (event: Event) => {
-      const conversationId = (event as CustomEvent<{ conversationId?: unknown }>).detail
-        ?.conversationId;
-      if (typeof conversationId !== "string" || !/^[a-f\d]{24}$/i.test(conversationId)) return;
-      setRequestedConversationId(conversationId);
-      setChatOpen(true);
-    };
-
-    window.addEventListener("aoun:open-conversation", openRequestedConversation);
-    return () => {
-      window.removeEventListener("aoun:open-conversation", openRequestedConversation);
-    };
-  }, [isReadyForUserData]);
-
-  const openChatInbox = () => {
-    setRequestedConversationId(null);
-    setChatOpen(true);
-  };
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsProfileDropdownOpen(false);
-      }
-    }
-    if (isProfileDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isProfileDropdownOpen, setIsProfileDropdownOpen]);
-
-  useEffect(() => {
-    if (!isProfileDropdownOpen) return;
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setIsProfileDropdownOpen(false);
-      profileButtonRef.current?.focus();
-    };
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [isProfileDropdownOpen, setIsProfileDropdownOpen]);
-
-  useEffect(() => {
-    if (!isMobileMenuOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-    const menuButton = mobileMenuButtonRef.current;
-    document.body.style.overflow = "hidden";
-
-    const frame = window.requestAnimationFrame(() => {
-      mobileMenuPanelRef.current
-        ?.querySelector<HTMLElement>("a[href], button:not([disabled])")
-        ?.focus({ preventScroll: true });
-    });
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setIsMobileMenuOpen(false);
-    };
-
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = previousOverflow;
-      menuButton?.focus({ preventScroll: true });
-    };
-  }, [isMobileMenuOpen, setIsMobileMenuOpen]);
-
-  const isNavLinkActive = (href: string) => {
-    if (href.startsWith("/#")) return false;
-    return pathname === href || pathname.startsWith(`${href}/`);
-  };
+    dropdownRef,
+    profileButtonRef,
+    mobileMenuButtonRef,
+    mobileMenuPanelRef,
+    profileMenuId,
+    mobileMenuId,
+    chatOpen,
+    requestedConversationId,
+    isReadyForUserData,
+    isAdmin,
+    userLevel,
+    userBadge,
+    chatUnreadCount,
+    visibleLinks,
+    isNavLinkActive,
+    openChatInbox,
+    closeChat,
+    setServerChatUnreadCount,
+  } = useNavbarController();
 
   if (isLogoOnlyPage) {
     return (
@@ -591,10 +433,7 @@ export default function Navbar() {
           <ConversationsDrawer
             isOpen={chatOpen}
             initialConversationId={requestedConversationId}
-            onClose={() => {
-              setChatOpen(false);
-              setRequestedConversationId(null);
-            }}
+            onClose={closeChat}
             onUnreadCountChange={setServerChatUnreadCount}
           />
         )}

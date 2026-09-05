@@ -5,8 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { CountdownTimer } from "./components/CountdownTimer";
+import { ItemActions } from "./components/ItemActions";
 import { useItemDetails } from "./hooks/useItemDetails";
-import LevelGate from "@/components/LevelGate";
 import ChatDrawer from "@/components/ChatDrawer";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeliveryConfirmation } from "@/hooks/useDeliveryConfirmation";
@@ -274,192 +274,28 @@ export default function ItemDetailsClient({
               </div>
             )}
 
-            {/* أزرار الحالات والعمليات */}
-            <div className="space-y-4">
-              {isRequestLinked && (
-                <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-center text-xs font-bold leading-6 text-primary">
-                  هذا الغرض مخصص لتلبية طلب تبرع مقبول، ولا يظهر في التصفح العام أو قوائم الانتظار.
-                </div>
-              )}
-
-              {message.text && (
-                <div
-                  className={`rounded-2xl border p-4 text-center text-xs font-bold ${
-                    message.type === "success"
-                      ? "border-emerald-100 bg-emerald-50 text-emerald-700"
-                      : "border-red-100 bg-red-50 text-red-700"
-                  }`}
-                >
-                  {message.text}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3">
-                {/* 🔒 1. إذا كان المستخدم غير مسجل دخول */}
-                {!isLoggedIn ? (
-                  item.status === "تم التسليم" ? (
-                    <div className="w-full rounded-2xl bg-emerald-50 py-4 text-center text-sm font-bold text-emerald-600">
-                      تم التسليم بنجاح ✅
-                    </div>
-                  ) : (
-                    <button
-                      onClick={redirectToLogin}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-sm font-black text-white shadow-md shadow-primary/20 transition-all hover:bg-[#004d44]"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">lock</span>
-                      {item.status === "محجوز"
-                        ? "سجل دخولك للانضمام لقائمة الانتظار"
-                        : "سجل دخولك لحجز هذا الغرض 🎁"}
-                    </button>
-                  )
-                ) : isAdmin && !isDonor && !isBooker ? (
-                  <div className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-4 text-center text-sm font-bold text-gray-600">
-                    عرض إداري فقط — لا يمكن حجز هذا الغرض أو دخول قائمة انتظاره.
-                  </div>
-                ) : isDonor ? (
-                  <div className="space-y-3">
-                    <div className="w-full rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-4 text-center text-sm font-bold text-gray-500">
-                      هذا التبرع مقدم منك 🎁
-                    </div>
-                    {item.status === "محجوز" && (
-                      <>
-                        <button
-                          onClick={delivery.confirmDelivery}
-                          disabled={delivery.isLoading || !isRecipientConfirmedActual}
-                          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-sm transition-all disabled:cursor-not-allowed ${
-                            isRecipientConfirmedActual
-                              ? "bg-primary text-white hover:bg-[#004d44]"
-                              : "border border-amber-200 bg-amber-50 text-amber-700"
-                          }`}
-                        >
-                          {delivery.isLoading ? (
-                            <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                          ) : isRecipientConfirmedActual ? (
-                            "تأكيد تسليم الغرض للمستلم 📦"
-                          ) : (
-                            "بانتظار تأكيد الاستلام من المستلم أولاً ⏳"
-                          )}
-                        </button>
-                        {!isRecipientConfirmedActual && !isRequestLinked && (
-                          <button
-                            onClick={handleCancelAction}
-                            disabled={actionLoading}
-                            className="w-full rounded-2xl border border-red-100 bg-red-50 py-3 text-xs font-bold text-red-600 transition-all hover:bg-red-100"
-                          >
-                            إلغاء حجز المستلم الحالي
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ) : item.status === "تم التسليم" ? (
-                  <div className="w-full rounded-2xl bg-emerald-50 py-4 text-center text-sm font-bold text-emerald-600">
-                    تم التسليم بنجاح ✅
-                  </div>
-                ) : isCancelledBefore ? (
-                  <div className="w-full rounded-2xl bg-gray-100 py-4 text-center text-sm font-bold text-gray-500">
-                    لا يمكنك حجز هذا الغرض مرة أخرى 🚫
-                  </div>
-                ) : isBooker ? (
-                  <div className="space-y-3 w-full">
-                    {item.status === "محجوز" && (
-                      <button
-                        onClick={delivery.confirmReceipt}
-                        disabled={delivery.isLoading || isRecipientConfirmedActual}
-                        className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-sm transition-all ${
-                          !isRecipientConfirmedActual
-                            ? "bg-[#005a8c] text-white hover:bg-[#004a75]"
-                            : "cursor-not-allowed border border-amber-200 bg-amber-50 text-amber-700"
-                        }`}
-                      >
-                        {delivery.isLoading ? (
-                          <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                        ) : isRecipientConfirmedActual ? (
-                          "تم تأكيد استلامك، بانتظار المتبرع... ⏳"
-                        ) : (
-                          "تأكيد استلام الغرض عيناً 👍"
-                        )}
-                      </button>
-                    )}
-                    {!isRecipientConfirmedActual && !isRequestLinked && (
-                      <button
-                        onClick={handleCancelAction}
-                        disabled={actionLoading}
-                        className="w-full rounded-2xl border border-red-200 bg-red-50 py-4 text-sm font-bold text-red-600 shadow-sm transition-all hover:bg-red-100"
-                      >
-                        {actionLoading ? (
-                          <div className="h-5 w-5 rounded-full border-2 border-red-600 border-t-transparent animate-spin mx-auto" />
-                        ) : (
-                          "إلغاء الحجز ⚠️"
-                        )}
-                      </button>
-                    )}
-                  </div>
-                ) : isWaitlisted ? (
-                  <button
-                    onClick={handleCancelAction}
-                    disabled={actionLoading}
-                    className="w-full rounded-2xl border border-orange-200 bg-orange-50 py-4 text-sm font-bold text-orange-600 transition-all hover:bg-orange-100"
-                  >
-                    {actionLoading ? (
-                      <div className="h-5 w-5 rounded-full border-2 border-orange-600 border-t-transparent animate-spin mx-auto" />
-                    ) : (
-                      "الانسحاب من الانتظار 🚶‍♂️"
-                    )}
-                  </button>
-                ) : item.status === "متاح" ? (
-                  <LevelGate>
-                    <button
-                      onClick={handleRequestItem}
-                      disabled={actionLoading}
-                      className="w-full rounded-2xl bg-primary py-4 text-sm font-black text-white shadow-md shadow-primary/20 transition-all hover:bg-[#004d44]"
-                    >
-                      {actionLoading ? (
-                        <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin mx-auto" />
-                      ) : (
-                        "احجز هذه القطعة الآن"
-                      )}
-                    </button>
-                  </LevelGate>
-                ) : (
-                  <LevelGate
-                    fallback={
-                      <div className="w-full rounded-2xl bg-gray-100 py-4 text-center text-sm font-bold text-gray-500">
-                        🔐 يجب رفع مستوى الثقة للانضمام لقائمة الانتظار
-                      </div>
-                    }
-                  >
-                    <button
-                      onClick={handleRequestItem}
-                      disabled={actionLoading}
-                      className="w-full rounded-2xl bg-[#005a8c] py-4 text-sm font-black text-white shadow-md transition-all hover:bg-[#004a75]"
-                    >
-                      {actionLoading ? (
-                        <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin mx-auto" />
-                      ) : (
-                        "انضم لقائمة الانتظار 🕒"
-                      )}
-                    </button>
-                  </LevelGate>
-                )}
-
-                {/* زر التواصل */}
-                {showChat && (
-                  <button
-                    onClick={handleOpenChatFlow}
-                    disabled={fetchingChat}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/10 disabled:opacity-50"
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      {fetchingChat ? "sync" : "chat"}
-                    </span>
-                    {fetchingChat
-                      ? "جاري تجهيز غرفة المحادثة..."
-                      : `تواصل مع ${isDonor ? "الحاجز" : "المتبرع"}`}
-                  </button>
-                )}
-              </div>
-            </div>
+            <ItemActions
+              item={item}
+              message={message}
+              isLoggedIn={isLoggedIn}
+              isAdmin={isAdmin}
+              isDonor={isDonor}
+              isBooker={isBooker}
+              isWaitlisted={isWaitlisted}
+              isCancelledBefore={isCancelledBefore}
+              isRequestLinked={isRequestLinked}
+              isRecipientConfirmed={isRecipientConfirmedActual}
+              actionLoading={actionLoading}
+              deliveryLoading={delivery.isLoading}
+              fetchingChat={fetchingChat}
+              showChat={showChat}
+              onLogin={redirectToLogin}
+              onRequest={handleRequestItem}
+              onCancel={handleCancelAction}
+              onConfirmDelivery={delivery.confirmDelivery}
+              onConfirmReceipt={delivery.confirmReceipt}
+              onOpenChat={handleOpenChatFlow}
+            />
           </div>
         </div>
       </div>

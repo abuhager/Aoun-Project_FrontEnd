@@ -68,7 +68,7 @@ test('الشاشات تعيد المزامنة فقط عندما يفشل Connec
     readSource('../src/app/(main)/(protected)/dashboard/hooks/useDashboard.ts'),
     readSource('../src/app/(main)/(protected)/leaderboard/hooks/useLeaderboard.ts'),
     readSource('../src/components/ConversationList/index.tsx'),
-    readSource('../src/components/Navbar/index.tsx'),
+    readSource('../src/components/Navbar/useNavbarController.ts'),
   ]);
 
   for (const source of sources) {

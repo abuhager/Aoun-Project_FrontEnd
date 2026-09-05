@@ -2,28 +2,14 @@
 import axiosInstance from './axiosInstance';
 import type {
   Item,
-  ItemsListResponse,
   MyItemsResponse,
   BookingResponse,
   DeliveryResponse,
-  ItemFilters,
   CreateItemPayload,
   UpdateItemPayload,
   CancelBookingResponse,
   LeaveWaitlistResponse,
 } from "@/types/item.types";
-
-// ── جلب الأغراض المتاحة ─────────────────────────────────────────────────────
-export const getItems = async (
-  filters: ItemFilters = {},
-  signal?: AbortSignal
-): Promise<ItemsListResponse> => {
-  const { data } = await axiosInstance.get<ItemsListResponse>("/api/items", {
-    params: filters,
-    signal,
-  });
-  return data;
-};
 
 // ── جلب أغراضي ──────────────────────────────────────────────────────────────
 export const getMyItems = async (signal?: AbortSignal): Promise<MyItemsResponse> => {

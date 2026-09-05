@@ -4,6 +4,15 @@ import { readFile } from 'node:fs/promises';
 
 const readSource = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
+const readDonationDetailsSource = async () => {
+  const sources = await Promise.all([
+    readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx'),
+    readSource('../src/app/(main)/donation-requests/[id]/hooks/useDonationRequestDetails.ts'),
+    readSource('../src/app/(main)/donation-requests/[id]/components/DonationRequestDetailsSections.tsx'),
+  ]);
+  return sources.join('\n');
+};
+
 test('Donation Request API يطابق مسارات القبول والرفض والسحب ويحافظ على FormData boundary', async () => {
   const source = await readSource('../src/lib/api/donationRequestApi.ts');
 
@@ -39,7 +48,7 @@ test('قائمتا الأغراض وطلبات التبرع تحفظان الص�
   const [browsePage, requestsPage, requestDetails] = await Promise.all([
     readSource('../src/app/(main)/browse/page.tsx'),
     readSource('../src/app/(main)/donation-requests/hooks/useDonationRequests.ts'),
-    readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx'),
+    readDonationDetailsSource(),
   ]);
 
   assert.match(browsePage, /normalizePage\(firstValue\(rawParams\.page\)\)/);
@@ -58,7 +67,7 @@ test('قائمتا الأغراض وطلبات التبرع تحفظان الص�
 });
 
 test('تفاصيل الطلب تستخدم AuthContext ولا تطلب auth\/me مرة ثانية', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx');
+  const source = await readDonationDetailsSource();
 
   assert.match(source, /useAuth\(\)/);
   assert.match(source, /request\.requester\?\._id !== currentUserId/);
@@ -68,34 +77,39 @@ test('تفاصيل الطلب تستخدم AuthContext ولا تطلب auth\/me 
 });
 
 test('صاحب الطلب يستطيع قبول أو رفض العرض والمتبرع يستطيع سحب عرضه المعلق', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx');
+  const source = await readDonationDetailsSource();
 
   assert.match(source, /acceptOffer\(id, offerId\)/);
   assert.match(source, /rejectOffer\(id, offerId\)/);
   assert.match(source, /withdrawOffer\(id, offerId\)/);
-  assert.match(source, /viewerOffer\.status === "pending"/);
+  assert.match(source, /offer\.status === "pending"/);
   assert.match(source, /cancelDonationRequest\(id\)/);
 });
 
 test('صاحب العرض المرفوض لا يرى تفاصيل أو رابط الغرض الفائز', async () => {
-  const source = await readSource('../src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx');
+  const source = await readDonationDetailsSource();
 
   assert.match(source, /viewerOffer\?\.status === "accepted"/);
   assert.match(source, /const respondedItem = canViewFulfilledItem/);
   assert.match(source, /تم اختيار عرض آخر/);
   assert.match(source, /لن تظهر لك بيانات الغرض أو المتبرع/);
-  assert.match(source, /isAccepted && respondedItem/);
+  assert.match(source, /details\.isAccepted && details\.respondedItem/);
 });
 
 test('صفحة الغرض المرتبط بالطلب تمنع دورة الحجز العامة وتبقي التسليم للطرفين', async () => {
-  const source = await readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx');
+  const source = (
+    await Promise.all([
+      readSource('../src/app/(main)/items/[id]/ItemDetailsClient.tsx'),
+      readSource('../src/app/(main)/items/[id]/components/ItemActions.tsx'),
+    ])
+  ).join('\n');
 
   assert.match(source, /const isRequestLinked = Boolean\(item\.linkedRequestId\)/);
   assert.match(source, /!isRequestLinked && item\.status === "محجوز"/);
-  assert.match(source, /!isRecipientConfirmedActual && !isRequestLinked/);
+  assert.match(source, /!isRecipientConfirmed && !isRequestLinked/);
   assert.match(source, /لا يظهر في التصفح العام أو قوائم الانتظار/);
-  assert.match(source, /delivery\.confirmReceipt/);
-  assert.match(source, /delivery\.confirmDelivery/);
+  assert.match(source, /onConfirmReceipt=\{delivery\.confirmReceipt\}/);
+  assert.match(source, /onConfirmDelivery=\{delivery\.confirmDelivery\}/);
 });
 
 test('صفحة العرض المخصصة تتحقق من الصورة وتعود للطلب بعد الإرسال', async () => {

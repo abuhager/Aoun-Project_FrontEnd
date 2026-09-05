@@ -13,14 +13,14 @@ export const REPORT_REASONS_FALLBACK: ReportReason[] = [
 export type ReportStatus = 'pending' | 'reviewed' | 'dismissed' | 'actioned';
 export type ReportDecision = Exclude<ReportStatus, 'pending'>;
 
-export interface ReportParty {
+interface ReportParty {
   _id: string;
   name: string;
   avatar?: string;
   isBanned?: boolean;
 }
 
-export interface ReportItemReference {
+interface ReportItemReference {
   _id: string;
   title: string;
 }

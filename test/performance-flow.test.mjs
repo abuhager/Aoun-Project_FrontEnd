@@ -24,15 +24,17 @@ test('المكونات الثقيلة لا تدخل حزمة الزائر وتُ
 });
 
 test('Navbar يطلب عداد المحادثات الخفيف ويركب جرساً واحداً فقط', async () => {
-  const [navbar, api] = await Promise.all([
+  const [navbarView, navbarController, api] = await Promise.all([
     readSource('../src/components/Navbar/index.tsx'),
+    readSource('../src/components/Navbar/useNavbarController.ts'),
     readSource('../src/lib/api/conversationApi.ts'),
   ]);
+  const navbar = `${navbarView}\n${navbarController}`;
 
   assert.match(navbar, /getConversationUnreadCount\(\)/);
   assert.doesNotMatch(navbar, /listConversations/);
-  assert.equal((navbar.match(/<NotificationBell\s*\/>/g) || []).length, 1);
-  assert.equal((navbar.match(/onClick=\{openChatInbox\}/g) || []).length, 1);
+  assert.equal((navbarView.match(/<NotificationBell\s*\/>/g) || []).length, 1);
+  assert.equal((navbarView.match(/onClick=\{openChatInbox\}/g) || []).length, 1);
 
   assert.match(api, /export async function getConversationUnreadCount/);
   assert.match(api, /['"]\/api\/conversations\/unread-count['"]/);

@@ -14,28 +14,3 @@ export interface ApiError {
   errors?:    string[];
   details?:   unknown;
 }
-
-
-// ── Pagination ─────────────────────────────────────────────
-export interface PaginationQuery {
-  page?:     number;
-  limit?:    number;
-  category?: string;
-  location?: string;
-  search?:   string;
-}
-
-
-export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  pages: number;
-  page:  number;
-}
-
-
-// ── Toast notification ───────────────────────────────────
-export interface ToastState {
-  msg:  string;
-  type: 'success' | 'error' | 'info';
-}

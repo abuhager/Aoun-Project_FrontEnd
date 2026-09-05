@@ -22,15 +22,17 @@ test('public profile consumes the backend donations/received/rating contract', a
 });
 
 test('profile password and avatar checks match the backend contract', async () => {
-  const [editPage, publicProfileHook] = await Promise.all([
+  const [editPage, editProfileHook, publicProfileHook] = await Promise.all([
     readSource('../src/app/(main)/(protected)/profile/edit/PageClient.tsx'),
+    readSource('../src/app/(main)/(protected)/profile/edit/hooks/useEditProfile.ts'),
     readSource('../src/app/(main)/(protected)/profile/[id]/hooks/usePublicProfile.ts'),
   ]);
-  assert.match(editPage, /isStrongPassword/);
-  assert.match(editPage, /PASSWORD_REQUIREMENTS_MESSAGE/);
+  const editProfile = `${editPage}\n${editProfileHook}`;
+  assert.match(editProfile, /isStrongPassword/);
+  assert.match(editProfile, /PASSWORD_REQUIREMENTS_MESSAGE/);
   assert.match(editPage, /image\/jpeg,image\/png,image\/webp/);
-  assert.match(editPage, /void logout\(\)/);
-  assert.doesNotMatch(editPage, /const PASSWORD_REGEX/);
+  assert.match(editProfile, /void logout\(\)/);
+  assert.doesNotMatch(editProfile, /const PASSWORD_REGEX/);
   assert.match(publicProfileHook, /return "\/placeholder\.svg"/);
   assert.doesNotMatch(publicProfileHook, /placeholder\.png/);
 });

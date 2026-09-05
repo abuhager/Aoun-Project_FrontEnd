@@ -88,32 +88,6 @@ export async function getAdminItems(
   return data;
 }
 
-interface AdminTableResponse {
-  pages?: number;
-  users?: unknown[];
-  items?: unknown[];
-  hubs?: unknown[];
-  reports?: unknown[];
-}
-
-export async function getAdminTableRows<T>(
-  endpoint: string,
-  params: Record<string, unknown>,
-  signal?: AbortSignal
-): Promise<{ rows: T[]; pages: number }> {
-  const { data } = await axiosInstance.get<AdminTableResponse | unknown[]>(endpoint, {
-    params,
-    signal,
-  });
-
-  if (Array.isArray(data)) return { rows: data as T[], pages: 1 };
-
-  return {
-    rows: (data.users ?? data.items ?? data.hubs ?? data.reports ?? []) as T[],
-    pages: data.pages ?? 1,
-  };
-}
-
 export async function deleteAdminItem(
   itemId: string,
   adminNote: string

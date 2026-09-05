@@ -1,6 +1,6 @@
-export type DonationRequestStatus  = 'active' | 'fulfilled' | 'expired' | 'cancelled';
+type DonationRequestStatus  = 'active' | 'fulfilled' | 'expired' | 'cancelled';
 
-export type DonationOfferStatus =
+type DonationOfferStatus =
   | 'pending'
   | 'accepted'
   | 'rejected'
@@ -8,7 +8,7 @@ export type DonationOfferStatus =
   | 'cancelled_by_requester'
   | 'request_expired';
 
-export interface DonationRequestUser {
+interface DonationRequestUser {
   _id:         string;
   name:        string;
   avatar:      string | null;
@@ -68,7 +68,7 @@ export interface DonationRequest {
   updatedAt:  string;
 }
 
-export interface QuotaInfo {
+interface QuotaInfo {
   used:      number;
   max:       number;
   remaining: number;

@@ -72,3 +72,25 @@ test("صفحات التفاصيل تجلب النسخة العامة على ال
   assert.match(hubsPage, /getPublicHubsServer/);
   assert.match(hubsClient, /^"use client"/);
 });
+
+test("الجزر العميلة الكبيرة تفصل منطق الحالة عن مكونات العرض", async () => {
+  const [requestClient, profileClient, itemClient, navbar] = await Promise.all([
+    read("src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx"),
+    read("src/app/(main)/(protected)/profile/edit/PageClient.tsx"),
+    read("src/app/(main)/items/[id]/ItemDetailsClient.tsx"),
+    read("src/components/Navbar/index.tsx"),
+  ]);
+
+  assert.match(requestClient, /useDonationRequestDetails/);
+  assert.match(requestClient, /DonationRequestDetailsSections/);
+  assert.doesNotMatch(requestClient, /getOffersByRequest|acceptOffer\(/);
+
+  assert.match(profileClient, /useEditProfile/);
+  assert.doesNotMatch(profileClient, /useState|updateMyProfile\(/);
+
+  assert.match(itemClient, /<ItemActions/);
+  assert.doesNotMatch(itemClient, /<LevelGate/);
+
+  assert.match(navbar, /useNavbarController/);
+  assert.doesNotMatch(navbar, /useEffect|useState|getConversationUnreadCount/);
+});

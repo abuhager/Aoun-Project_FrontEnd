@@ -11,11 +11,6 @@ import type {
   UpdateSettingsResponse,
 } from "@/types/settings.types";
 
-export {
-  getPublicSettings,
-  PUBLIC_SETTINGS_CACHE_KEY,
-} from "@/lib/api/publicSettingsApi";
-
 // ── قراءة الإعدادات الكاملة (Admin فقط) ────────────────────────────────────
 export const getAdminSettings = async (signal?: AbortSignal): Promise<SystemSettings> => {
   const { data } = await axiosInstance.get<SystemSettings>("/api/settings", { signal });

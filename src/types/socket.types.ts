@@ -35,7 +35,7 @@ export interface SendMessageAck {
   error?: string;
 }
 
-export interface MarkReadAck {
+interface MarkReadAck {
   ok: boolean;
   success: boolean;
   markedCount?: number;

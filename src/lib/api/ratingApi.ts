@@ -3,7 +3,6 @@ import axiosInstance from './axiosInstance';
 import type {
   SubmitRatingPayload,
   SubmitRatingResponse,
-  UserRating,
   PendingRatingResponse, // ✅ أضف هذا النوع
 } from '@/types/rating.types';
 
@@ -16,18 +15,6 @@ export const submitRating = async (
     payload
   );
   return data;
-};
-
-
-export const getUserRatings = async (
-  userId: string,
-  signal?: AbortSignal
-): Promise<UserRating[]> => {
-  const { data } = await axiosInstance.get<{ ratings: UserRating[] }>(
-    `/api/ratings/user/${userId}`,
-    { signal }
-  );
-  return data.ratings;
 };
 
 

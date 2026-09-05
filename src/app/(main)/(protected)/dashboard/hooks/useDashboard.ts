@@ -39,11 +39,6 @@ interface DeliveryState {
   waitingForDonor: boolean;
 }
 
-export function getBookedByName(val: DashboardItem["bookedBy"]): string {
-  if (!val) return "";
-  return val.name ?? "";
-}
-
 export function useDashboard() {
   const router = useRouter();
   // تفكيك الـ socket مباشرة من الـ context

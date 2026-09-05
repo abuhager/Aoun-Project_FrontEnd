@@ -119,11 +119,16 @@ test('Dashboard يطابق أحداث ومسارات دورة الحجز ويح�
 
 test('الإشعارات الجديدة لها fallback آمن ورابط داخلي فقط', async () => {
   const [bell, types] = await Promise.all([
-    readSource('../src/components/NotificationBell.tsx'),
+    Promise.all([
+      readSource('../src/components/NotificationBell.tsx'),
+      readSource('../src/components/notifications/NotificationPanel.tsx'),
+      readSource('../src/components/notifications/notificationPresentation.ts'),
+      readSource('../src/components/notifications/useNotificationBellController.ts'),
+    ]).then((parts) => parts.join('\n')),
     readSource('../src/types/notification.types.ts'),
   ]);
 
-  assert.match(bell, /ICONS\[n\.type\] \?\? "notifications"/);
+  assert.match(bell, /NOTIFICATION_ICONS\[notification\.type\] \?\? "notifications"/);
   assert.match(bell, /getSafeRedirectPath\(destination, ""\)/);
   assert.match(bell, /handleMarkOneRead/);
   assert.match(types, /metadata\?:/);

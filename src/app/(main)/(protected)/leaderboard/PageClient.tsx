@@ -1,158 +1,22 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useLeaderboard } from "./hooks/useLeaderboard";
-import { useSiteConfig } from "@/context/SiteConfigContext";
 import PageIntro from "@/components/ui/PageIntro";
-
-function medalColor(rank: number) {
-  if (rank === 1) return "text-yellow-500";
-  if (rank === 2) return "text-slate-400";
-  if (rank === 3) return "text-amber-600";
-  return "text-gray-300";
-}
-
-function rowBg(rank: number) {
-  if (rank === 1) return "border-yellow-200/80 bg-yellow-50/70";
-  if (rank === 2) return "border-slate-200 bg-slate-50/70";
-  if (rank === 3) return "border-amber-200 bg-amber-50/70";
-  return "border-black/[0.055] bg-white";
-}
-
-function topCardBg(rank: number) {
-  if (rank === 1) {
-    return "border-yellow-200 bg-[linear-gradient(180deg,#fffbea_0%,#fffdf7_100%)]";
-  }
-  if (rank === 2) {
-    return "border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)]";
-  }
-  return "border-amber-200 bg-[linear-gradient(180deg,#fff7ed_0%,#ffffff_100%)]";
-}
-
-function SkeletonRow() {
-  return (
-    <div className="flex items-center gap-4 border-b border-black/[0.06] bg-white p-4 last:border-b-0 animate-pulse">
-      <div className="h-6 w-8 rounded bg-gray-200" />
-      <div className="h-11 w-11 rounded-full bg-gray-200 shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="h-3.5 w-32 rounded bg-gray-200" />
-        <div className="h-2.5 w-24 rounded bg-gray-100" />
-      </div>
-      <div className="h-4 w-16 rounded bg-gray-200" />
-    </div>
-  );
-}
-
-function ProgressBar({ value }: { value: number }) {
-  return (
-    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[#ece8e1]">
-      <div
-        className="h-full rounded-full bg-primary transition-all duration-700"
-        style={{ width: `${Math.min(value, 100)}%` }}
-      />
-    </div>
-  );
-}
-
-function TopThreeCard({
-  rank,
-  name,
-  avatar,
-  badge,
-  title,
-  trustScore,
-  totalDonations,
-  profileHref,
-}: {
-  rank: number;
-  name: string;
-  avatar?: string;
-  badge?: string;
-  title?: string;
-  trustScore: number;
-  totalDonations: number;
-  profileHref: string;
-}) {
-  return (
-    <Link
-      href={profileHref}
-      className={`group relative overflow-hidden rounded-[20px] border p-5 shadow-[0_14px_35px_rgba(16,37,34,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(16,37,34,0.12)] ${
-        rank === 1 ? "md:-translate-y-3 md:hover:-translate-y-4" : ""
-      } ${topCardBg(
-        rank
-      )}`}
-    >
-      <span className="absolute -left-8 -top-10 font-headline text-[7rem] font-black leading-none text-black/[0.025]">
-        {rank}
-      </span>
-      <div className="flex items-start justify-between">
-        <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-black text-[#5f5952]">
-          <span
-            className={`material-symbols-outlined text-[16px] ${medalColor(rank)}`}
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            military_tech
-          </span>
-          المركز #{rank}
-        </div>
-
-        <div className="text-left">
-          <p className="text-lg font-black text-primary">{trustScore}</p>
-          <p className="text-[10px] text-gray-400">نقطة ثقة</p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center gap-3">
-        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-black/[0.06] bg-white">
-          {avatar ? (
-            <Image
-              src={avatar}
-              alt={name}
-              fill
-              sizes="56px"
-              className="object-cover"
-            />
-          ) : (
-            <span className="material-symbols-outlined absolute inset-0 flex items-center justify-center text-[42px] text-primary">
-              account_circle
-            </span>
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <p className="truncate text-sm font-black text-[#191c1d]">{name}</p>
-            {badge && <span className="shrink-0 text-sm">{badge}</span>}
-          </div>
-          <p className="mt-0.5 truncate text-[11px] font-medium text-[#8b847c]">
-            {title || "عضو نشط"}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/80 px-3 py-2">
-        <div>
-          <p className="text-[10px] font-bold text-gray-400">إجمالي التبرعات</p>
-          <p className="text-sm font-black text-[#1d2324]">{totalDonations}</p>
-        </div>
-
-        <div className="text-left">
-          <p className="text-[10px] font-bold text-gray-400">الحالة</p>
-          <p className="text-sm font-black text-primary">متصدر</p>
-        </div>
-      </div>
-    </Link>
-  );
-}
+import { useSiteConfig } from "@/context/SiteConfigContext";
+import { useLeaderboard } from "./hooks/useLeaderboard";
+import {
+  EligibilityNotice,
+  LeaderboardEmpty,
+  LeaderboardList,
+  MyRankCard,
+  TopContributors,
+} from "./components/LeaderboardSections";
 
 export default function LeaderboardClient() {
   const { platformName } = useSiteConfig();
-
   const { leaderboard, myRank, rankEligibility, loading } = useLeaderboard();
-
   const topThree = leaderboard.slice(0, 3);
-  const rest = leaderboard.slice(3);
+  const remainingEntries = leaderboard.slice(3);
 
   return (
     <div className="page-shell pb-20 pt-20 font-body" dir="rtl">
@@ -163,225 +27,21 @@ export default function LeaderboardClient() {
           description={`مساحة تقدير لأكثر أعضاء ${platformName} نشاطًا وثقةً، مبنية على عمليات التبرع المكتملة والتقييمات الموثوقة.`}
           icon="workspace_premium"
           tone="warm"
-          actions={
-            <Link
-              href="/dashboard"
-              className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-xs font-black text-white hover:bg-white/16"
-            >
-              عرض نشاطي
-            </Link>
-          }
+          actions={<Link href="/dashboard" className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-xs font-black text-white hover:bg-white/16">عرض نشاطي</Link>}
           meta={
             <>
-              <span className="data-chip">
-                <span className="material-symbols-outlined text-[15px]">groups</span>
-                {loading ? "جارٍ التحميل" : `${leaderboard.length} عضو في الترتيب`}
-              </span>
-              <span className="data-chip">
-                <span className="material-symbols-outlined text-[15px]">verified</span>
-                الترتيب حسب الثقة والعطاء
-              </span>
+              <span className="data-chip"><span className="material-symbols-outlined text-[15px]">groups</span>{loading ? "جارٍ التحميل" : `${leaderboard.length} عضو في الترتيب`}</span>
+              <span className="data-chip"><span className="material-symbols-outlined text-[15px]">verified</span>الترتيب حسب الثقة والعطاء</span>
               {myRank && <span className="data-chip">ترتيبك الحالي #{myRank.rank}</span>}
             </>
           }
         />
 
-        {/* ── My rank ── */}
-        {!loading && myRank && (
-          <section>
-            <div className="content-panel relative overflow-hidden p-4 md:p-5">
-              <span className="absolute inset-y-0 right-0 w-1.5 bg-primary" />
-              <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-primary/8">
-                  <span className="text-[10px] font-bold text-primary">
-                    رتبتي
-                  </span>
-                  <span className="text-xl font-black leading-none text-primary">
-                    #{myRank.rank}
-                  </span>
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                    <span className="text-base">{myRank.badge}</span>
-                    <span className="text-sm font-black">{myRank.title}</span>
-                    <span className="text-[10px] font-normal text-gray-400">
-                      · {myRank.trustScore} نقطة
-                    </span>
-                  </div>
-
-                  <ProgressBar value={myRank.progress} />
-
-                  <p className="mt-1 text-[10px] text-gray-400">
-                    {myRank.pointsToNext
-                      ? `${myRank.pointsToNext} نقطة للمستوى التالي`
-                      : "وصلت للمستوى الأعلى 👑"}
-                  </p>
-                </div>
-
-                <div className="shrink-0 rounded-xl bg-primary-softer px-5 py-3 text-center">
-                  <p className="text-xl font-black text-primary">
-                    {myRank.totalDonations}
-                  </p>
-                  <p className="text-[10px] text-gray-400">تبرع</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {!loading && rankEligibility === false && (
-          <section>
-            <div className="flex items-start gap-3 rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
-              <span className="material-symbols-outlined mt-0.5 text-[20px]">
-                info
-              </span>
-              <div>
-                <p className="text-sm font-black">حسابك غير مشمول في الترتيب</p>
-                <p className="mt-0.5 text-xs font-medium text-amber-700">
-                  يمكنك مشاهدة اللوحة، لكن الترتيب مخصص لحسابات المستخدمين المفعّلة وغير المحظورة.
-                </p>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── Top 3 ── */}
-        {!loading && topThree.length > 0 && (
-          <section className="pt-2">
-            <div className="mb-7 flex items-end justify-between">
-              <div>
-                <span className="section-kicker">TOP CONTRIBUTORS</span>
-                <h2 className="mt-1 text-xl font-black text-on-surface">
-                أصحاب المراكز الأولى
-                </h2>
-              </div>
-              <span className="text-[11px] font-bold text-gray-400">
-                أعلى 3 أعضاء
-              </span>
-            </div>
-
-            <div className="grid gap-4 pt-3 md:grid-cols-3">
-              {topThree.map((entry) => (
-                <TopThreeCard
-                  key={entry._id}
-                  rank={entry.rank}
-                  name={entry.name}
-                  avatar={entry.avatar}
-                  badge={entry.badge}
-                  title={entry.title}
-                  trustScore={entry.trustScore}
-                  totalDonations={entry.totalDonations}
-                  profileHref={`/profile/${entry._id}`}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── List ── */}
-        <section className="content-panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-4">
-            <div>
-              <span className="section-kicker">COMMUNITY RANKING</span>
-              <h2 className="mt-1 text-base font-black text-on-surface">بقية الترتيب</h2>
-            </div>
-            {!loading && (
-              <span className="rounded-lg bg-surface-container-low px-3 py-1.5 text-[11px] font-black text-on-surface-variant">
-                {leaderboard.length} عضو
-              </span>
-            )}
-          </div>
-
-          <div>
-            {loading
-              ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
-              : rest.map((entry) => (
-                  <Link
-                    key={entry._id}
-                    href={`/profile/${entry._id}`}
-                    className={`flex items-center gap-4 border-b p-4 transition-colors duration-200 last:border-b-0 hover:bg-primary-softer/70 ${rowBg(
-                      entry.rank
-                    )}`}
-                  >
-                    {/* Rank */}
-                    <div className="w-9 shrink-0 text-center">
-                      {entry.rank <= 3 ? (
-                        <span
-                          className={`material-symbols-outlined text-2xl ${medalColor(
-                            entry.rank
-                          )}`}
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          military_tech
-                        </span>
-                      ) : (
-                        <span className="text-sm font-black text-gray-400">
-                          #{entry.rank}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Avatar */}
-                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gray-100">
-                      {entry.avatar ? (
-                        <Image
-                          src={entry.avatar}
-                          alt={entry.name}
-                          fill
-                          sizes="44px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <span className="material-symbols-outlined absolute inset-0 flex items-center justify-center text-4xl text-primary">
-                          account_circle
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-0.5 flex items-center gap-1.5">
-                        <span className="truncate text-[13px] font-black">
-                          {entry.name}
-                        </span>
-                        <span className="shrink-0 text-sm">{entry.badge}</span>
-                        <span className="shrink-0 text-[10px] font-normal text-gray-400">
-                          {entry.title}
-                        </span>
-                      </div>
-                      <ProgressBar value={entry.progress} />
-                    </div>
-
-                    {/* Score */}
-                    <div className="shrink-0 text-left">
-                      <p className="text-sm font-black text-primary">
-                        {entry.trustScore}
-                        <span className="text-[10px] font-normal text-gray-400">
-                          {" "}
-                          نقطة
-                        </span>
-                      </p>
-                      <p className="text-[10px] text-gray-400">
-                        {entry.totalDonations} تبرع
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-          </div>
-        </section>
-
-        {/* Empty state */}
-        {!loading && leaderboard.length === 0 && (
-          <div className="content-panel py-20 text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm border border-black/[0.06]">
-              <span className="material-symbols-outlined text-3xl text-gray-300">
-                leaderboard
-              </span>
-            </div>
-            <p className="text-sm font-bold text-gray-500">لا يوجد بيانات بعد</p>
-          </div>
-        )}
+        {!loading && myRank && <MyRankCard rank={myRank} />}
+        {!loading && rankEligibility === false && <EligibilityNotice />}
+        {!loading && <TopContributors entries={topThree} />}
+        <LeaderboardList entries={remainingEntries} loading={loading} totalCount={leaderboard.length} />
+        {!loading && leaderboard.length === 0 && <LeaderboardEmpty />}
       </div>
     </div>
   );

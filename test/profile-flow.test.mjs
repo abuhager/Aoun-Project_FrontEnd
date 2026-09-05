@@ -41,7 +41,10 @@ test('profile password and avatar checks match the backend contract', async () =
 test('leaderboard reuses the authenticated shared socket', async () => {
   const [source, page, api, footer, routes] = await Promise.all([
     readSource('../src/app/(main)/(protected)/leaderboard/hooks/useLeaderboard.ts'),
-    readSource('../src/app/(main)/(protected)/leaderboard/PageClient.tsx'),
+    Promise.all([
+      readSource('../src/app/(main)/(protected)/leaderboard/PageClient.tsx'),
+      readSource('../src/app/(main)/(protected)/leaderboard/components/LeaderboardSections.tsx'),
+    ]).then((parts) => parts.join('\n')),
     readSource('../src/lib/api/axiosInstance.ts'),
     readSource('../src/components/Footer.tsx'),
     readSource('../src/config/routes.ts'),

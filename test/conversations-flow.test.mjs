@@ -19,10 +19,16 @@ test('واجهة فتح المحادثة ترسل itemId فقط وتترك تح�
 });
 
 test('ChatDrawer يقبل conversationId صريحاً ولا يرجع إلى itemId', async () => {
-  const source = await readSource('../src/components/ChatDrawer/index.tsx');
+  const source = (await Promise.all([
+    readSource('../src/components/ChatDrawer/index.tsx'),
+    readSource('../src/components/ChatDrawer/chatDrawer.types.ts'),
+    readSource('../src/components/ChatDrawer/useChatPanelController.ts'),
+    readSource('../src/components/ChatDrawer/ChatMessageList.tsx'),
+    readSource('../src/components/ChatDrawer/ChatComposer.tsx'),
+  ])).join('\n');
 
   assert.match(source, /conversationId:\s*string/);
-  assert.match(source, /useChatRoom\(\{ conversationId:/);
+  assert.match(source, /useChatRoom\(\{ conversationId \}\)/);
   assert.doesNotMatch(source, /finalConvId|itemId\?:|convId\?:/);
   assert.match(source, /maxLength=\{2_000\}/);
   assert.match(source, /هذه المحادثة للقراءة فقط لأن الحجز لم يعد قائماً/);
@@ -63,7 +69,11 @@ test('المحادثة المفتوحة تؤكد القراءة فور وصول 
 test('السجل يدعم تحميل الصفحات الأقدم دون تغيير آخر رسالة', async () => {
   const [hook, drawer, api] = await Promise.all([
     readSource('../src/hooks/useChatRoom.ts'),
-    readSource('../src/components/ChatDrawer/index.tsx'),
+    Promise.all([
+      readSource('../src/components/ChatDrawer/index.tsx'),
+      readSource('../src/components/ChatDrawer/ChatMessageList.tsx'),
+      readSource('../src/components/ChatDrawer/useChatPanelController.ts'),
+    ]).then((parts) => parts.join('\n')),
     readSource('../src/lib/api/conversationApi.ts'),
   ]);
 
@@ -89,7 +99,10 @@ test('قائمة المحادثات تستخدم عقد API typed وتحدّث �
 
 test('إشعار الرسالة يفتح المحادثة المطلوبة ويستخدم notification:new الموحد', async () => {
   const [bell, navbarView, navbarController, notifications] = await Promise.all([
-    readSource('../src/components/NotificationBell.tsx'),
+    Promise.all([
+      readSource('../src/components/NotificationBell.tsx'),
+      readSource('../src/components/notifications/useNotificationBellController.ts'),
+    ]).then((parts) => parts.join('\n')),
     readSource('../src/components/Navbar/index.tsx'),
     readSource('../src/components/Navbar/useNavbarController.ts'),
     readSource('../src/hooks/useNotifications.ts'),

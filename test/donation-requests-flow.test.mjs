@@ -146,7 +146,7 @@ test('القائمة والتفاصيل عامة بينما الإنشاء وا�
 test('أنواع العرض والإشعارات تغطي كل حالات دورة Flow 6', async () => {
   const [types, bell] = await Promise.all([
     readSource('../src/types/donationRequest.types.ts'),
-    readSource('../src/components/NotificationBell.tsx'),
+    readSource('../src/components/notifications/notificationPresentation.ts'),
   ]);
 
   assert.match(types, /\| 'withdrawn'/);

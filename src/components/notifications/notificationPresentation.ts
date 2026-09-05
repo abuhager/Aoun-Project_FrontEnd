@@ -1,0 +1,61 @@
+import type { Notification } from "@/types/notification.types";
+
+export const NOTIFICATION_ICONS: Partial<Record<Notification["type"], string>> = {
+  item_booked: "volunteer_activism",
+  booking_cancelled: "cancel",
+  waitlist_promoted: "notifications_active",
+  delivery_done: "check_circle",
+  delivery_completed: "check_circle",
+  recipient_confirmed: "inventory",
+  booking_transferred: "swap_horiz",
+  booking_expiry_reminder: "schedule",
+  matching_item: "redeem",
+  item_deleted: "delete",
+  item_deleted_by_admin: "delete_forever",
+  request_new_offer: "volunteer_activism",
+  request_cancelled_by_requester: "cancel",
+  request_expired: "event_busy",
+  offer_accepted: "handshake",
+  offer_rejected: "heart_broken",
+  offer_withdrawn: "undo",
+  new_rating: "star",
+  report_resolved: "gavel",
+  admin_warning: "warning",
+  admin_ban: "block",
+  account_suspended: "lock",
+  new_message: "chat",
+};
+
+export const NOTIFICATION_ICON_COLORS: Partial<Record<Notification["type"], string>> = {
+  item_booked: "bg-primary/10 text-primary",
+  booking_cancelled: "bg-red-50 text-red-500",
+  waitlist_promoted: "bg-amber-50 text-amber-500",
+  delivery_done: "bg-emerald-50 text-emerald-500",
+  delivery_completed: "bg-emerald-50 text-emerald-500",
+  recipient_confirmed: "bg-blue-50 text-blue-500",
+  booking_transferred: "bg-sky-50 text-sky-500",
+  booking_expiry_reminder: "bg-orange-50 text-orange-500",
+  matching_item: "bg-emerald-50 text-emerald-600",
+  item_deleted: "bg-red-50 text-red-500",
+  item_deleted_by_admin: "bg-red-50 text-red-600",
+  request_new_offer: "bg-emerald-50 text-emerald-600",
+  request_cancelled_by_requester: "bg-red-50 text-red-500",
+  request_expired: "bg-orange-50 text-orange-500",
+  offer_accepted: "bg-emerald-50 text-emerald-600",
+  offer_rejected: "bg-gray-100 text-gray-500",
+  offer_withdrawn: "bg-amber-50 text-amber-600",
+  new_rating: "bg-yellow-50 text-yellow-500",
+  report_resolved: "bg-purple-50 text-purple-500",
+  admin_warning: "bg-amber-50 text-amber-600",
+  admin_ban: "bg-red-50 text-red-600",
+  account_suspended: "bg-red-50 text-red-600",
+  new_message: "bg-sky-50 text-sky-500",
+};
+
+export const formatNotificationDate = (createdAt: string) =>
+  new Date(createdAt).toLocaleDateString("ar-JO", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });

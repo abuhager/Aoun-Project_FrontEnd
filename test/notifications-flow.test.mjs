@@ -49,7 +49,13 @@ test('Hook يمنع تكرار Socket ويحد القائمة ويتجاهل ا�
 });
 
 test('جرس الإشعارات يعرض فشل التحميل ويغلق بثبات ويحمي التنقل', async () => {
-  const bell = await readSource('../src/components/NotificationBell.tsx');
+  const bell = (await Promise.all([
+    readSource('../src/components/NotificationBell.tsx'),
+    readSource('../src/components/notifications/NotificationButton.tsx'),
+    readSource('../src/components/notifications/NotificationPanel.tsx'),
+    readSource('../src/components/notifications/notificationPresentation.ts'),
+    readSource('../src/components/notifications/useNotificationBellController.ts'),
+  ])).join('\n');
 
   assert.match(bell, /getSafeRedirectPath\(destination, ""\)/);
   assert.match(bell, /if \(isOpen\) close\(\)/);

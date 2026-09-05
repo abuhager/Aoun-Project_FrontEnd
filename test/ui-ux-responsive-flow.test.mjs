@@ -118,7 +118,12 @@ test("القائمة الرئيسية متاحة بالكيبورد ولا تب�
 });
 
 test("لوحة الإشعارات تناسب 320px وتخرج من شجرة الوصول عند الإغلاق", () => {
-  const bell = read("src/components/NotificationBell.tsx");
+  const bell = [
+    "src/components/NotificationBell.tsx",
+    "src/components/notifications/NotificationButton.tsx",
+    "src/components/notifications/NotificationPanel.tsx",
+    "src/components/notifications/useNotificationBellController.ts",
+  ].map(read).join("\n");
 
   assert.match(bell, /\{isOpen && \(/);
   assert.match(bell, /fixed left-2 right-2 top-20/);

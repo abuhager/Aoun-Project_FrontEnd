@@ -74,7 +74,7 @@ test("صفحات التفاصيل تجلب النسخة العامة على ال
 });
 
 test("الجزر العميلة الكبيرة تفصل منطق الحالة عن مكونات العرض", async () => {
-  const [requestClient, profileClient, itemClient, navbar, conversations, settings, itemsTable] = await Promise.all([
+  const [requestClient, profileClient, itemClient, navbar, conversations, settings, itemsTable, chatDrawer, notificationBell, leaderboard] = await Promise.all([
     read("src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx"),
     read("src/app/(main)/(protected)/profile/edit/PageClient.tsx"),
     read("src/app/(main)/items/[id]/ItemDetailsClient.tsx"),
@@ -82,6 +82,9 @@ test("الجزر العميلة الكبيرة تفصل منطق الحالة ع
     read("src/components/ConversationList/index.tsx"),
     read("src/app/(main)/(protected)/admin/settings/components/SettingsForm.tsx"),
     read("src/app/(main)/(protected)/dashboard/components/ItemsTable.tsx"),
+    read("src/components/ChatDrawer/index.tsx"),
+    read("src/components/NotificationBell.tsx"),
+    read("src/app/(main)/(protected)/leaderboard/PageClient.tsx"),
   ]);
 
   assert.match(requestClient, /useDonationRequestDetails/);
@@ -107,4 +110,10 @@ test("الجزر العميلة الكبيرة تفصل منطق الحالة ع
   assert.match(settings, /settingsFieldDefinitions/);
   assert.match(settings, /<NumericSection/);
   assert.match(itemsTable, /<DashboardItemCard/);
+  assert.match(chatDrawer, /useChatPanelController/);
+  assert.match(chatDrawer, /<ChatMessageList/);
+  assert.match(notificationBell, /useNotificationBellController/);
+  assert.match(notificationBell, /<NotificationPanel/);
+  assert.match(leaderboard, /<LeaderboardList/);
+  assert.doesNotMatch(leaderboard, /<Image/);
 });

@@ -65,7 +65,7 @@ test('عقد الأحداث typed يستخدم المصدر المركزي وي�
 test('الشاشات تعيد المزامنة فقط عندما يفشل Connection State Recovery', async () => {
   const sources = await Promise.all([
     readSource('../src/app/(main)/items/[id]/hooks/useItemDetails.ts'),
-    readSource('../src/app/(main)/(protected)/dashboard/hooks/useDashboard.ts'),
+    readSource('../src/app/(main)/(protected)/dashboard/hooks/useDashboardRealtime.ts'),
     readSource('../src/app/(main)/(protected)/leaderboard/hooks/useLeaderboard.ts'),
     readSource('../src/components/ConversationList/useConversationListController.ts'),
     readSource('../src/components/Navbar/useNavbarController.ts'),

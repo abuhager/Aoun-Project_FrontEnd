@@ -74,7 +74,7 @@ test("صفحات التفاصيل تجلب النسخة العامة على ال
 });
 
 test("الجزر العميلة الكبيرة تفصل منطق الحالة عن مكونات العرض", async () => {
-  const [requestClient, profileClient, itemClient, navbar, conversations, settings, itemsTable, chatDrawer, notificationBell, leaderboard] = await Promise.all([
+  const [requestClient, profileClient, itemClient, navbar, conversations, settings, itemsTable, dashboardHook, chatDrawer, notificationBell, leaderboard, addItem, editItem, register] = await Promise.all([
     read("src/app/(main)/donation-requests/[id]/DonationRequestDetailsClient.tsx"),
     read("src/app/(main)/(protected)/profile/edit/PageClient.tsx"),
     read("src/app/(main)/items/[id]/ItemDetailsClient.tsx"),
@@ -82,9 +82,13 @@ test("الجزر العميلة الكبيرة تفصل منطق الحالة ع
     read("src/components/ConversationList/index.tsx"),
     read("src/app/(main)/(protected)/admin/settings/components/SettingsForm.tsx"),
     read("src/app/(main)/(protected)/dashboard/components/ItemsTable.tsx"),
+    read("src/app/(main)/(protected)/dashboard/hooks/useDashboard.ts"),
     read("src/components/ChatDrawer/index.tsx"),
     read("src/components/NotificationBell.tsx"),
     read("src/app/(main)/(protected)/leaderboard/PageClient.tsx"),
+    read("src/app/(main)/(protected)/add-item/PageClient.tsx"),
+    read("src/app/(main)/(protected)/items/[id]/edit/PageClient.tsx"),
+    read("src/app/(auth)/register/PageClient.tsx"),
   ]);
 
   assert.match(requestClient, /useDonationRequestDetails/);
@@ -110,10 +114,18 @@ test("الجزر العميلة الكبيرة تفصل منطق الحالة ع
   assert.match(settings, /settingsFieldDefinitions/);
   assert.match(settings, /<NumericSection/);
   assert.match(itemsTable, /<DashboardItemCard/);
+  assert.match(dashboardHook, /useDashboardRealtime/);
   assert.match(chatDrawer, /useChatPanelController/);
   assert.match(chatDrawer, /<ChatMessageList/);
   assert.match(notificationBell, /useNotificationBellController/);
   assert.match(notificationBell, /<NotificationPanel/);
   assert.match(leaderboard, /<LeaderboardList/);
   assert.doesNotMatch(leaderboard, /<Image/);
+  assert.match(addItem, /<ItemEditorForm/);
+  assert.match(editItem, /<ItemEditorForm/);
+  assert.doesNotMatch(addItem, /<input|<select|<textarea/);
+  assert.doesNotMatch(editItem, /<input|<select|<textarea/);
+  assert.match(register, /useRegisterFormController/);
+  assert.match(register, /<RegisterForm/);
+  assert.doesNotMatch(register, /<input/);
 });

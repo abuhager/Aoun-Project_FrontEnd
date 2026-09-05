@@ -95,15 +95,17 @@ test('سياسة Safe Hub الديناميكية تطبق على الإضافة 
     readSource('../src/app/(main)/donation-requests/[id]/offer/PageClient.tsx'),
     readSource('../src/app/(main)/donation-requests/hooks/useDonationRequests.ts'),
     readSource('../src/lib/api/donationRequestApi.ts'),
+    readSource('../src/components/items/ItemEditorForm.tsx'),
   ]);
 
   assert.match(sources[0], /hubRequired && !formData\.hubId/);
-  assert.match(sources[1], /required=\{hubRequired\}/);
+  assert.match(sources[1], /hubRequired=\{hubRequired\}/);
   assert.match(sources[2], /hubRequired && !formData\.hubId/);
-  assert.match(sources[3], /required=\{hubRequired\}/);
+  assert.match(sources[3], /hubRequired=\{hubRequired\}/);
   assert.match(sources[4], /requireHubForBooking && !form\.safeHub/);
   assert.match(sources[5], /requireHubForBooking && !respondForm\.safeHub/);
   assert.match(sources[6], /if \(payload\.safeHub\) formData\.append/);
+  assert.match(sources[7], /required=\{hubRequired\}/);
 });
 
 test('لوحة البلاغات تعرض عدد البلاغات المعتمدة وسجل الإعدادات واضح للمشرف', async () => {

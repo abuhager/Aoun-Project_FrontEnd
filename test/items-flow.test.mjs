@@ -69,12 +69,13 @@ test('صفحة الغرض تعتمد حالة الانتظار من Backend وت
 });
 
 test('إضافة وتعديل الغرض يتحققان من الصورة والمركز والمسار القديم يحوّل للجديد', async () => {
-  const [addHook, addPage, editHook, editPage, legacyPage] = await Promise.all([
+  const [addHook, addPage, editHook, editPage, legacyPage, editorForm] = await Promise.all([
     readSource('../src/app/(main)/(protected)/add-item/hooks/useAddItem.ts'),
     readSource('../src/app/(main)/(protected)/add-item/PageClient.tsx'),
     readSource('../src/app/(main)/(protected)/items/[id]/edit/hooks/useEditItem.ts'),
     readSource('../src/app/(main)/(protected)/items/[id]/edit/PageClient.tsx'),
     readSource('../src/app/(main)/(protected)/edit-item/[id]/page.tsx'),
+    readSource('../src/components/items/ItemEditorForm.tsx'),
   ]);
 
   for (const source of [addHook, editHook]) {
@@ -85,17 +86,20 @@ test('إضافة وتعديل الغرض يتحققان من الصورة وال
   assert.match(addHook, /createItem\(/);
   assert.match(editHook, /updateItem\(itemId/);
   assert.match(editHook, /safeHub: formData\.hubId/);
-  assert.match(addPage, /<HubSelector[\s\S]*required/);
-  assert.match(editPage, /<HubSelector[\s\S]*required/);
+  assert.match(addPage, /<ItemEditorForm/);
+  assert.match(editPage, /<ItemEditorForm/);
+  assert.match(editorForm, /<HubSelector[\s\S]*required=\{hubRequired\}/);
   assert.match(legacyPage, /redirect\(`\/items\/\$\{id\}\/edit`\)/);
 });
 
 test('Dashboard يطابق أحداث ومسارات دورة الحجز ويحتفظ بحالة الترقية', async () => {
-  const [source, table, actions] = await Promise.all([
+  const [dashboardHook, realtimeHook, table, actions] = await Promise.all([
     readSource('../src/app/(main)/(protected)/dashboard/hooks/useDashboard.ts'),
+    readSource('../src/app/(main)/(protected)/dashboard/hooks/useDashboardRealtime.ts'),
     readSource('../src/app/(main)/(protected)/dashboard/components/ItemsTable.tsx'),
     readSource('../src/app/(main)/(protected)/dashboard/components/DashboardItemActions.tsx'),
   ]);
+  const source = `${dashboardHook}\n${realtimeHook}`;
   const dashboardView = `${table}\n${actions}`;
 
   assert.match(source, /deleteItem\(id\)/);

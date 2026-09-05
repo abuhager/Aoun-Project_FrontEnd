@@ -1,0 +1,21 @@
+"use client";
+
+import Link from "next/link";
+import type { RegisterFormController } from "../hooks/useRegisterFormController";
+import RegisterPasswordField from "./RegisterPasswordField";
+
+export default function RegisterForm({ formData, loading, phoneValid, phoneError, phoneBorderClass, showPassword, showConfirmPassword, handleChange, handleSubmit, togglePassword, toggleConfirmPassword }: RegisterFormController) {
+  return (
+    <form className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2" onSubmit={handleSubmit} dir="rtl" aria-label="نموذج إنشاء حساب جديد" noValidate>
+      <label className="block" htmlFor="reg-name"><span className="mb-2 block text-xs font-black text-on-surface-variant">الاسم الكامل</span><span className="relative block"><span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[19px] text-on-surface-soft">person</span><input id="reg-name" name="name" type="text" required autoComplete="name" value={formData.name} onChange={handleChange} placeholder="أدخل اسمك الكامل" className="field-control px-4 pr-11 text-sm font-bold placeholder:font-medium placeholder:text-on-surface-soft/70" /></span></label>
+      <label className="block" htmlFor="reg-email"><span className="mb-2 block text-xs font-black text-on-surface-variant">البريد الإلكتروني</span><span className="relative block"><span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[19px] text-on-surface-soft">mail</span><input id="reg-email" name="email" type="email" required dir="ltr" autoComplete="email" value={formData.email} onChange={handleChange} placeholder="name@example.com" className="field-control px-4 pr-11 text-left text-sm font-bold placeholder:font-medium placeholder:text-on-surface-soft/70" /></span></label>
+
+      <div className="sm:col-span-2"><label htmlFor="reg-phone" className="mb-2 block text-xs font-black text-on-surface-variant">رقم الهاتف للتواصل</label><div className="relative"><div className="pointer-events-none absolute right-2 top-1/2 z-10 flex -translate-y-1/2 select-none items-center gap-1.5 rounded-lg border border-outline-variant bg-surface-container-low px-2.5 py-1.5"><span aria-hidden="true" className="text-sm">🇯🇴</span><span className="text-sm font-black text-on-surface-variant" dir="ltr">+962</span><span aria-hidden="true" className="h-4 w-px bg-outline-variant" /></div><input id="reg-phone" name="phone" type="tel" required dir="ltr" inputMode="numeric" pattern="(77|78|79)[0-9]{7}" autoComplete="tel-national" value={formData.phone} onChange={handleChange} placeholder="791234567" maxLength={9} aria-describedby="phone-hint" aria-invalid={phoneError} className={`field-control px-4 pr-28 text-left text-sm font-bold placeholder:font-medium placeholder:text-on-surface-soft/70 ${phoneBorderClass}`} /></div><p id="phone-hint" className={`mt-1.5 text-[11px] font-bold ${phoneError ? "text-red-600" : phoneValid ? "text-green-700" : "text-on-surface-soft"}`}>{phoneError ? "الرقم يجب أن يتكون من 9 أرقام ويبدأ بـ 77 أو 78 أو 79" : phoneValid ? "✓ رقم الهاتف صحيح" : "أدخل الرقم المحلي دون الصفر الأول"}</p></div>
+
+      <RegisterPasswordField id="reg-password" name="password" label="كلمة المرور" value={formData.password} visible={showPassword} icon="lock" onChange={handleChange} onToggle={togglePassword} />
+      <RegisterPasswordField id="reg-confirm-password" name="confirmPassword" label="تأكيد كلمة المرور" value={formData.confirmPassword} visible={showConfirmPassword} icon="lock_reset" onChange={handleChange} onToggle={toggleConfirmPassword} />
+
+      <div className="mt-1 sm:col-span-2"><button type="submit" disabled={loading || !phoneValid} className="btn-primary w-full py-3.5">{loading ? <><span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />جاري إنشاء الحساب...</> : <>إنشاء الحساب<span aria-hidden="true" className="material-symbols-outlined text-[18px]">arrow_back</span></>}</button><p className="mt-5 border-t border-black/[0.06] pt-5 text-center text-sm text-on-surface-variant">لديك حساب بالفعل؟{" "}<Link href="/login" className="rounded font-black text-primary hover:text-primary-container hover:underline hover:underline-offset-4">تسجيل الدخول</Link></p></div>
+    </form>
+  );
+}

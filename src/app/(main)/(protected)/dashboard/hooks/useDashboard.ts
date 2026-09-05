@@ -10,39 +10,19 @@ import {
   getMyItems,
 } from "@/lib/api/itemApi";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
-import { useSocket } from '@/context/SocketContext';
-import { SOCKET_EVENTS } from '@/config/socket';
-import type { Item as DashboardItem, MyItemsResponse } from "@/types/item.types";
+import type { Item as DashboardItem } from "@/types/item.types";
+import type {
+  AppealModalState,
+  ConfirmModalState,
+  DashboardData,
+  DeliveryState,
+} from "./dashboard.types";
+import { useDashboardRealtime } from "./useDashboardRealtime";
 
 export type { DashboardItem as Item };
 
-interface DashboardData {
-  user: MyItemsResponse["user"];
-  myDonations: MyItemsResponse["myDonations"];
-  myRequests: MyItemsResponse["myRequests"];
-}
-
-interface ConfirmModalState {
-  open: boolean;
-  title: string;
-  message: string;
-  onConfirm: () => Promise<void>;
-}
-
-interface AppealModalState {
-  open: boolean;
-  reportId: string;
-}
-
-interface DeliveryState {
-  itemId: string | null;
-  waitingForDonor: boolean;
-}
-
 export function useDashboard() {
   const router = useRouter();
-  // تفكيك الـ socket مباشرة من الـ context
-  const { socket } = useSocket();
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,75 +117,7 @@ export function useDashboard() {
     timeoutIdsRef.current = [];
   }, []);
 
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleRecipientConfirmed = ({
-      itemId,
-      itemTitle,
-    }: {
-      itemId: string;
-      itemTitle?: string;
-    }) => {
-      showToast(`✅ ${itemTitle || "الغرض"} — المستلم أكّد الاستلام، يرجى تأكيد التسليم الآن`, "success");
-      setDeliveryState({ itemId, waitingForDonor: true });
-
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              myDonations: prev.myDonations.map((i) =>
-                i._id === itemId ? { ...i, recipientConfirmed: true } : i
-              ),
-            }
-          : prev
-      );
-    };
-
-    const handleDeliveryCompleted = ({ itemId }: { itemId: string }) => {
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              myDonations: prev.myDonations.map((i) =>
-                i._id === itemId ? { ...i, status: "تم التسليم" as const } : i
-              ),
-              myRequests: prev.myRequests.map((i) =>
-                i._id === itemId ? { ...i, status: "تم التسليم" as const } : i
-              ),
-            }
-          : prev
-      );
-
-      setDeliveryState({ itemId: null, waitingForDonor: false });
-      showToast("تم التسليم بنجاح! شكراً لعطائك 💚", "success");
-    };
-
-    const refreshLifecycle = () => {
-      void loadDashboard().catch(() => {});
-    };
-    const resyncAfterReconnect = () => {
-      if (!socket.recovered) refreshLifecycle();
-    };
-
-    socket.on(SOCKET_EVENTS.ITEM_RECIPIENT_CONFIRMED, handleRecipientConfirmed);
-    socket.on(SOCKET_EVENTS.ITEM_DELIVERED, handleDeliveryCompleted);
-    socket.on(SOCKET_EVENTS.ITEM_BOOKED, refreshLifecycle);
-    socket.on(SOCKET_EVENTS.ITEM_BOOKING_TRANSFERRED, refreshLifecycle);
-    socket.on(SOCKET_EVENTS.ITEM_BOOKING_CANCELLED, refreshLifecycle);
-    socket.on(SOCKET_EVENTS.ITEM_WAITLIST_PROMOTED, refreshLifecycle);
-    socket.on("connect", resyncAfterReconnect);
-
-    return () => {
-      socket.off(SOCKET_EVENTS.ITEM_RECIPIENT_CONFIRMED, handleRecipientConfirmed);
-      socket.off(SOCKET_EVENTS.ITEM_DELIVERED, handleDeliveryCompleted);
-      socket.off(SOCKET_EVENTS.ITEM_BOOKED, refreshLifecycle);
-      socket.off(SOCKET_EVENTS.ITEM_BOOKING_TRANSFERRED, refreshLifecycle);
-      socket.off(SOCKET_EVENTS.ITEM_BOOKING_CANCELLED, refreshLifecycle);
-      socket.off(SOCKET_EVENTS.ITEM_WAITLIST_PROMOTED, refreshLifecycle);
-      socket.off("connect", resyncAfterReconnect);
-    };
-  }, [loadDashboard, socket, showToast]);
+  useDashboardRealtime({ loadDashboard, setData, setDeliveryState, showToast });
 
   const handleRecipientConfirm = useCallback(
     async (itemId: string) => {

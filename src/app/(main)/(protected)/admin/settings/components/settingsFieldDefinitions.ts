@@ -1,6 +1,6 @@
 import type { SystemSettings } from "@/types/settings.types";
 
-export type NumericSettingKey = {
+type NumericSettingKey = {
   [Key in keyof SystemSettings]: SystemSettings[Key] extends number ? Key : never;
 }[keyof SystemSettings];
 
@@ -27,7 +27,7 @@ export const QUOTA_FIELDS = [
 ] as const satisfies readonly NumberFieldDefinition[];
 
 export const REQUEST_FIELDS = [
-  { key: "maxActiveRequestsPerMonth", label: "الحد الشهري لكل مستخدم", min: 1, max: 5, hint: "عدد الطلبات النشطة" },
+  { key: "maxActiveRequestsPerMonth", label: "الحد الشهري لكل مستخدم", min: 1, max: 5, hint: "يشمل كل الطلبات المنشأة خلال الشهر، حتى الملغاة" },
   { key: "requestExpiryDays", label: "مدة انتهاء الطلب (يوم)", min: 1, max: 180, hint: "تلقائياً من تاريخ النشر" },
 ] as const satisfies readonly NumberFieldDefinition[];
 

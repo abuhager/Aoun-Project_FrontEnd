@@ -18,15 +18,6 @@ export interface SubmitRatingResponse {
   };
 }
 
-export interface UserRating {
-  _id:       string;
-  score:     RatingScore;
-  comment:   string;
-  createdAt: string;
-  item:      { _id: string; title: string | null } | null;
-  rater:     { _id: string; name: string | null; avatar: string | null } | null;
-}
-
 export interface PendingRatingResponse {
   pendingRating: {
     _id: string;

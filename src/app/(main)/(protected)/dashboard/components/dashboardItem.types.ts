@@ -1,13 +1,9 @@
-import type { Item } from "../hooks/useDashboard";
+import type { Item } from "@/types/item.types";
 import type { BookedByUser } from "@/types/user.types";
+import type { DeliveryState } from "../hooks/dashboard.types";
 
 export type DashboardTab = "donations" | "requests";
 export type DashboardItem = Item & { reportId?: string | null };
-
-export interface DeliveryState {
-  itemId: string | null;
-  waitingForDonor: boolean;
-}
 
 export interface ItemsTableProps {
   items: DashboardItem[];

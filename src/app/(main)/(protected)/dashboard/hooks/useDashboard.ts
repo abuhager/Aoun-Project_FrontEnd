@@ -10,7 +10,6 @@ import {
   getMyItems,
 } from "@/lib/api/itemApi";
 import { extractErrorMsg } from "@/lib/api/extractErrorMsg";
-import type { Item as DashboardItem } from "@/types/item.types";
 import type {
   AppealModalState,
   ConfirmModalState,
@@ -18,8 +17,6 @@ import type {
   DeliveryState,
 } from "./dashboard.types";
 import { useDashboardRealtime } from "./useDashboardRealtime";
-
-export type { DashboardItem as Item };
 
 export function useDashboard() {
   const router = useRouter();

@@ -1,9 +1,13 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type Response } from "@playwright/test";
 
 const studentEmail = process.env.DEMO_STUDENT_EMAIL;
 const studentPassword = process.env.DEMO_STUDENT_PASSWORD;
 const donorEmail = process.env.DEMO_DONOR_EMAIL;
 const donorPassword = process.env.DEMO_DONOR_PASSWORD;
+
+const isMutationResponse = (response: Response, pathname: RegExp) =>
+  response.request().method() === "POST" &&
+  pathname.test(new URL(response.url()).pathname);
 
 test.describe.serial("QA04 donation flow", () => {
   let requestTitle = "";
@@ -46,45 +50,16 @@ test.describe.serial("QA04 donation flow", () => {
       .fill("طلب اختبار آلي مؤقت للتحقق من دورة التبرع.");
 
     const publishButton = page.getByRole("button", { name: "نشر الطلب" });
-    const formState = await page.locator("form").evaluate((form) => {
-      const fields = Array.from(
-        form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-          "input, select, textarea"
-        )
-      );
-
-      return fields.map((field) => ({
-        id: field.id,
-        name: field.name,
-        type: field.type,
-        value: field.value,
-        required: field.required,
-        disabled: field.disabled,
-        valid: field.checkValidity(),
-        validationMessage: field.validationMessage,
-      }));
-    });
-
-    console.log("DONATION REQUEST FORM STATE", formState);
     await expect(publishButton).toBeEnabled();
 
     const createResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/api/donation-requests")
+      (response) => isMutationResponse(response, /^\/api\/donation-requests\/?$/)
     );
 
     await publishButton.click();
 
     const createResponse = await createResponsePromise;
     const responseBody = await createResponse.text();
-
-    console.log("CREATE REQUEST RESPONSE", {
-      status: createResponse.status(),
-      statusText: createResponse.statusText(),
-      url: createResponse.url(),
-      body: responseBody,
-    });
 
     await expect(createResponse.ok(), responseBody).toBeTruthy();
     await expect(page).toHaveURL(/\/donation-requests/, { timeout: 10_000 });
@@ -108,40 +83,12 @@ test.describe.serial("QA04 donation flow", () => {
       await hubSelect.selectOption({ index: 1 });
     }
 
-    const postResponses: Promise<{
-      url: string;
-      status: number;
-      statusText: string;
-      body: string;
-    }>[] = [];
-
-    const capturePostResponse = (response: import("@playwright/test").Response) => {
-      if (response.request().method() !== "POST") return;
-
-      postResponses.push(
-        response.text().then((body) => ({
-          url: response.url(),
-          status: response.status(),
-          statusText: response.statusText(),
-          body,
-        }))
-      );
-    };
-
-    page.on("response", capturePostResponse);
-    await page.getByRole("button", { name: /تأكيد التبرع/i }).click();
-    await page.waitForTimeout(750);
-    page.off("response", capturePostResponse);
-
-    const offerResponses = await Promise.all(postResponses);
-    console.log("DONATION OFFER POST RESPONSES", offerResponses);
-
-    const offerResponse = offerResponses.find((response) =>
-      response.url.includes("/api/")
+    const offerResponsePromise = page.waitForResponse((response) =>
+      isMutationResponse(response, /^\/api\/donation-requests\/[a-f\d]{24}\/offer\/?$/i)
     );
-
-    expect(offerResponse, JSON.stringify(offerResponses)).toBeDefined();
-    expect(offerResponse!.status, offerResponse!.body).toBeLessThan(400);
+    await page.getByRole("button", { name: /تأكيد التبرع/i }).click();
+    const offerResponse = await offerResponsePromise;
+    expect(offerResponse.status(), await offerResponse.text()).toBe(201);
   });
 
   test("QA04-E2E-006: الطالب يرى العرض ويقبله", async ({ page }) => {
@@ -155,44 +102,14 @@ test.describe.serial("QA04 donation flow", () => {
 
     page.once("dialog", (dialog) => dialog.accept());
 
-    const mutationResponses: Promise<{
-      url: string;
-      method: string;
-      status: number;
-      statusText: string;
-      body: string;
-    }>[] = [];
-
-    const captureMutationResponse = (
-      response: import("@playwright/test").Response
-    ) => {
-      const method = response.request().method();
-      if (!["POST", "PATCH", "PUT", "DELETE"].includes(method)) return;
-
-      mutationResponses.push(
-        response.text().then((body) => ({
-          url: response.url(),
-          method,
-          status: response.status(),
-          statusText: response.statusText(),
-          body,
-        }))
-      );
-    };
-
-    page.on("response", captureMutationResponse);
-    await page.getByRole("button", { name: /قبول/i }).first().click();
-    await page.waitForTimeout(750);
-    page.off("response", captureMutationResponse);
-
-    const acceptanceResponses = await Promise.all(mutationResponses);
-    console.log("DONATION OFFER ACCEPTANCE RESPONSES", acceptanceResponses);
-
-    const acceptanceResponse = acceptanceResponses.find((response) =>
-      response.url.includes("/api/")
+    const acceptanceResponsePromise = page.waitForResponse((response) =>
+      isMutationResponse(
+        response,
+        /^\/api\/donation-requests\/[a-f\d]{24}\/offers\/[a-f\d]{24}\/accept\/?$/i
+      )
     );
-
-    expect(acceptanceResponse, JSON.stringify(acceptanceResponses)).toBeDefined();
-    expect(acceptanceResponse!.status, acceptanceResponse!.body).toBeLessThan(400);
+    await page.getByRole("button", { name: /قبول/i }).first().click();
+    const acceptanceResponse = await acceptanceResponsePromise;
+    expect(acceptanceResponse.status(), await acceptanceResponse.text()).toBe(200);
   });
 });

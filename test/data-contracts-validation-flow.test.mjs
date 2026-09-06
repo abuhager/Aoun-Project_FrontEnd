@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import ts from "typescript";
 
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -51,7 +52,24 @@ test("الأنواع تمثل القيم nullable التي يعيدها Backend"
 
   assert.match(donationTypes, /description:\s+string \| null/);
   assert.match(donationTypes, /safeHub:[\s\S]*\| null/);
-  assert.match(ratingTypes, /item:[\s\S]*\| null/);
+  // Check the contract actually consumed by ratingApi / GlobalRatingModal,
+  // instead of the unused UserRating declaration removed during cleanup.
+  const source = ts.createSourceFile("rating.types.ts", ratingTypes, ts.ScriptTarget.Latest, true);
+  const pending = source.statements.find(
+    (node) => ts.isInterfaceDeclaration(node) && node.name.text === "PendingRatingResponse"
+  );
+  assert.ok(pending, "PendingRatingResponse must remain defined");
+  const nullableObject = (type) => {
+    assert.ok(type && ts.isUnionTypeNode(type), "Expected an explicitly nullable union");
+    assert.ok(type.types.some((node) => ts.isLiteralTypeNode(node) && node.literal.kind === ts.SyntaxKind.NullKeyword));
+    const object = type.types.find(ts.isTypeLiteralNode);
+    assert.ok(object, "Expected object data alongside null");
+    return object;
+  };
+  const pendingItem = nullableObject(pending.members.find((member) => member.name.getText(source) === "pendingRating")?.type);
+  for (const field of ["donor", "bookedBy"]) {
+    nullableObject(pendingItem.members.find((member) => member.name.getText(source) === field)?.type);
+  }
   assert.match(apiTypes, /requestId\?: string/);
   assert.match(apiTypes, /message\?:\s+string/);
 });

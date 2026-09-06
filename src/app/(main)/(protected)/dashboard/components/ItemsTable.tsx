@@ -36,5 +36,3 @@ function EmptyState({ activeTab }: { activeTab: DashboardTab }) {
     </div>
   );
 }
-
-export type { DashboardItem, DeliveryState, ItemsTableProps } from "./dashboardItem.types";

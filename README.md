@@ -1,12 +1,23 @@
 # عون — Aoun
 
+[![Frontend CI](https://github.com/abuhager/Aoun-Project_FrontEnd/actions/workflows/ci.yml/badge.svg)](https://github.com/abuhager/Aoun-Project_FrontEnd/actions/workflows/ci.yml)
+[![Vercel](https://img.shields.io/badge/deployed-Vercel-000000?logo=vercel)](https://aoun-project-theta.vercel.app/)
+
 منصة عربية لتنظيم التبرعات العينية: يستطيع المستخدم عرض غرض، أو نشر طلب احتياج، ثم تنسيق الحجز والتسليم بأدوار وصلاحيات وإشعارات ومحادثات مرتبطة بالمعاملة.
 
-- النسخة المنشورة: https://aoun-project-theta.vercel.app/
-- مستودع الخلفية: https://github.com/abuhager/Aoun-Project_BackEnd
-- الدعم: aoun.help.center@gmail.com
+- **Live demo:** https://aoun-project-theta.vercel.app/
+- **Backend repository:** https://github.com/abuhager/Aoun-Project_BackEnd
+- **Support:** aoun.help.center@gmail.com
 
-> حالة المشروع: MVP يعمل ويخضع لإطلاق تجريبي محدود. بيانات Demo ونقاط التسليم الظاهرة للاختبار والعرض، ولا تمثل شراكة مؤسسية إلا إذا أُعلن عنها صراحة.
+> حالة المشروع: MVP منشور، واجتاز فحوصات CI والنشر، وجاهز لتجربة Pilot محدودة. بيانات Demo ونقاط التسليم الظاهرة للاختبار والعرض، ولا تمثل شراكة مؤسسية إلا إذا أُعلن عنها صراحة.
+
+## رحلة الاستخدام
+
+1. ينشئ المتبرع غرضًا أو ينشر المستفيد طلب احتياج.
+2. تتم المطابقة عبر الحجز أو تقديم عرض، مع قائمة انتظار عند الحاجة.
+3. يتواصل الطرفان داخل محادثة مرتبطة بالمعاملة وينسقان نقطة التسليم.
+4. يؤكد الطرفان التسليم، ثم يصبح التقييم متاحًا وتُحدّث حالة الطلب تلقائيًا.
+5. تعالج لوحة الإدارة البلاغات والاعتراضات والسياسات التشغيلية دون تعديل الكود.
 
 ## أبرز الوظائف
 

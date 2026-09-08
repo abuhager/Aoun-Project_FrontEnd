@@ -10,7 +10,7 @@ export default function EditItemClient() {
   const router = useRouter();
   const params = useParams();
   const itemId = params.id as string;
-  const { settings, categories, isLoading: settingsLoading } = useSettings();
+  const { settings, categories, locations, isLoading: settingsLoading } = useSettings();
   const hubRequired = settings?.requireHubForBooking ?? false;
   const editor = useEditItem(itemId, hubRequired);
 
@@ -35,6 +35,7 @@ export default function EditItemClient() {
           formData={editor.formData}
           preview={editor.preview}
           categories={categories}
+          locations={locations}
           settingsLoading={settingsLoading}
           hubRequired={hubRequired}
           loading={editor.loading}

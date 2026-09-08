@@ -48,12 +48,12 @@ export async function openConversation(itemId: string) {
 
 export async function getConversationMessages(
   conversationId: string,
-  page: number,
+  cursor: string,
   signal?: AbortSignal
 ) {
   const response = await axiosInstance.get<MessagesEnvelope>(
     `/api/conversations/${conversationId}/messages`,
-    { params: { page }, signal }
+    { params: { cursor }, signal }
   );
   return response.data;
 }

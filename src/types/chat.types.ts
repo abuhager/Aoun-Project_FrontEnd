@@ -39,4 +39,6 @@ export interface ConversationMessagesPage {
   total: number;
   page: number;
   totalPages: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 }

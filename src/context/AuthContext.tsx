@@ -17,6 +17,14 @@ import { requestLogout, requestRefreshSession } from "@/lib/api/authApi";
 import { normalizeApiError } from "@/lib/api/apiError";
 import { clearSessionCookie, setSessionCookie } from "@/lib/utils/cookieUtils";
 import type { AuthUser } from "@/types/user.types";
+import { classifyRefreshFailure } from "@/lib/auth/refreshFailure";
+import { withCrossTabRefreshLock } from "@/lib/auth/crossTabRefreshLock";
+
+export type AuthStatus =
+  | "initializing"
+  | "authenticated"
+  | "anonymous"
+  | "offline-refresh-failed";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -24,6 +32,7 @@ interface AuthContextType {
   isLoading: boolean;
   isLoggedIn: boolean;
   isAuthenticated: boolean;
+  authStatus: AuthStatus;
   setUser: (user: AuthUser | null) => void;
   refreshSession: () => Promise<boolean>;
   invalidateSession: (reason?: SessionEndReason) => void;
@@ -41,6 +50,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("initializing");
   const initialized = useRef(false);
   const refreshing = useRef<Promise<boolean> | null>(null);
   const isLoggingOut = useRef(false);
@@ -52,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userRef.current = nextUser;
     setUserState(nextUser);
     setInitialized(Boolean(nextUser));
+    setAuthStatus(nextUser ? "authenticated" : "anonymous");
   }, []);
 
   const clearLocalSession = useCallback(() => {
@@ -60,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSessionCookie();
     userRef.current = null;
     setUserState(null);
+    setAuthStatus("anonymous");
   }, []);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
@@ -69,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const refreshRevision = authRevision.current;
     refreshing.current = (async () => {
       try {
-        const data = await requestRefreshSession();
+        const data = await withCrossTabRefreshLock(requestRefreshSession);
 
         if (!data.accessToken || !data.user?._id) {
           throw new Error("INVALID_REFRESH_RESPONSE");
@@ -84,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserState(data.user);
         setSessionCookie();
         setInitialized(true);
+        setAuthStatus("authenticated");
         return true;
       } catch (error) {
         if (refreshRevision !== authRevision.current) {
@@ -91,15 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return Boolean(userRef.current);
         }
 
-        const apiError = normalizeApiError(error);
-        const isNetworkError = apiError.isNetworkError;
-        const status = apiError.status;
-
-        if (!isNetworkError || status === 401 || status === 403) {
+        if (classifyRefreshFailure(error) === "invalid-session") {
           clearLocalSession();
+        } else {
+          setInitialized(Boolean(userRef.current));
+          setAuthStatus("offline-refresh-failed");
         }
-
-        setInitialized(false);
         return false;
       } finally {
         refreshing.current = null;
@@ -149,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const safetyTimer = window.setTimeout(() => {
       setInitialized(false);
+      setAuthStatus("offline-refresh-failed");
       setIsLoading(false);
     }, SAFETY_TIMEOUT_MS);
 
@@ -168,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isLoggedIn: Boolean(user),
         isAuthenticated: Boolean(user),
+        authStatus,
         setUser,
         refreshSession,
         invalidateSession,

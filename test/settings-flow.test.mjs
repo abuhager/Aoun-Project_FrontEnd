@@ -41,6 +41,9 @@ test('صفحة الإدارة ترسل الحقول المتغيرة فقط وت
   assert.doesNotMatch(page, /getAdminSettings\(|updateAdminSettings\(/);
   assert.match(hook, /const changedFields = useMemo/);
   assert.match(hook, /Object\.fromEntries\([\s\S]*changedFields/);
+  assert.match(hook, /normalizeLegacyStringList/);
+  assert.match(hook, /setSettings\(normalizeSettingsLists\(data\)\)/);
+  assert.match(hook, /setSavedSettings\(data\)/);
   assert.match(hook, /user\?\.role === "super_admin"/);
   assert.match(form, /disabled=\{!canEdit \|\| saving\}/);
   assert.match(hook, /window\.confirm/);

@@ -162,6 +162,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         reconnectionDelayMax: 10_000,
         randomizationFactor: 0.5,
         timeout: 10_000,
+        transports: ["websocket"],
       }) as AounSocket;
 
       const onConnect = () => {

@@ -9,7 +9,21 @@ import type {
   UpdateItemPayload,
   CancelBookingResponse,
   LeaveWaitlistResponse,
+  ItemsListResponse,
+  ItemFilters,
 } from "@/types/item.types";
+
+// ── جلب قائمة الأغراض العامة ────────────────────────────────────────────────
+export const getItems = async (
+  filters: ItemFilters = {},
+  signal?: AbortSignal
+): Promise<ItemsListResponse> => {
+  const { data } = await axiosInstance.get<ItemsListResponse>("/api/items", {
+    params: filters,
+    signal,
+  });
+  return data;
+};
 
 // ── جلب أغراضي ──────────────────────────────────────────────────────────────
 export const getMyItems = async (signal?: AbortSignal): Promise<MyItemsResponse> => {

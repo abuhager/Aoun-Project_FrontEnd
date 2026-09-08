@@ -27,6 +27,11 @@ import type {
   DonationRequest,
   DonationRequestsListResponse,
 } from "@/types/donationRequest.types";
+import {
+  buildDonationRequestListUrl,
+  readDonationRequestListState,
+  type DonationRequestListState,
+} from "@/lib/navigation/donationRequestListUrl";
 
 const DEFAULT_CATEGORIES = ["كتب", "إلكترونيات", "أثاث", "ملابس", "أخرى"];
 const DEFAULT_LOCATIONS = ["عمان", "الزرقاء", "إربد", "العقبة", "السلط", "مادبا"];
@@ -55,17 +60,12 @@ const EMPTY_OFFER_FORM: DonationOfferForm = {
   imageFile: null,
 };
 
-const normalizePage = (value: string | null): number => {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
-};
-
 export function useDonationRequests(
   initialData: DonationRequestsListResponse | null
 ) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const mineFromUrl = searchParams.get("mine") === "true";
+  const urlState = readDonationRequestListState(searchParams);
   const { user, isLoading: authLoading } = useAuth();
   const currentUserId = user?._id;
   const { requireHubForBooking } = useSiteConfig();
@@ -79,7 +79,7 @@ export function useDonationRequests(
     ? publicSettings.locations
     : DEFAULT_LOCATIONS;
 
-  const [myOnly, setMyOnly] = useState(() => mineFromUrl);
+  const [myOnly, setMyOnly] = useState(() => urlState.mine);
   const [mounted, setMounted] = useState(false);
   const [requests, setRequests] = useState<DonationRequest[]>(
     () => initialData?.requests ?? []
@@ -89,11 +89,11 @@ export function useDonationRequests(
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState>(null);
   const [page, setPage] = useState(
-    () => initialData?.page ?? normalizePage(searchParams.get("page"))
+    () => initialData?.page ?? urlState.page
   );
   const [pages, setPages] = useState(() => initialData?.pages ?? 1);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(() => urlState.category);
+  const [selectedLocation, setSelectedLocation] = useState(() => urlState.location);
   const [respondingTo, setRespondingTo] = useState<DonationRequest | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [respondForm, setRespondForm] = useState<DonationOfferForm>(EMPTY_OFFER_FORM);
@@ -104,10 +104,12 @@ export function useDonationRequests(
   const filtersKeyRef = useRef(`${myOnly}|${selectedCategory}|${selectedLocation}`);
   const consumedInitialDataRef = useRef(false);
 
-  const listQuery = searchParams.toString();
-  const listReturnTo = listQuery
-    ? `/donation-requests?${listQuery}`
-    : "/donation-requests";
+  const listReturnTo = buildDonationRequestListUrl({
+    mine: myOnly,
+    category: selectedCategory,
+    location: selectedLocation,
+    page,
+  });
 
   const requestDetailsHref = useCallback(
     (requestId: string) =>
@@ -115,21 +117,32 @@ export function useDonationRequests(
     [listReturnTo]
   );
 
-  const writePageToHistory = useCallback(
-    (nextPage: number, mode: "push" | "replace" = "push") => {
-      const safePage = Math.max(1, Math.floor(nextPage));
-      const params = new URLSearchParams(window.location.search);
-
-      if (safePage === 1) params.delete("page");
-      else params.set("page", String(safePage));
-
-      const query = params.toString();
-      const href = query ? `/donation-requests?${query}` : "/donation-requests";
+  const writeListStateToHistory = useCallback(
+    (
+      patch: Partial<DonationRequestListState>,
+      mode: "push" | "replace" = "push"
+    ) => {
+      const normalized: DonationRequestListState = {
+        mine: patch.mine ?? stateRef.current.myOnly,
+        category: patch.category ?? stateRef.current.selectedCategory,
+        location: patch.location ?? stateRef.current.selectedLocation,
+        page: Math.max(1, Math.floor(patch.page ?? stateRef.current.page)),
+      };
+      const href = buildDonationRequestListUrl(normalized);
       if (mode === "replace") window.history.replaceState(null, "", href);
       else window.history.pushState(null, "", href);
-      setPage(safePage);
+      setMyOnly(normalized.mine);
+      setSelectedCategory(normalized.category);
+      setSelectedLocation(normalized.location);
+      setPage(normalized.page);
     },
     []
+  );
+
+  const writePageToHistory = useCallback(
+    (nextPage: number, mode: "push" | "replace" = "push") =>
+      writeListStateToHistory({ page: nextPage }, mode),
+    [writeListStateToHistory]
   );
 
   const load = useCallback(
@@ -274,25 +287,23 @@ export function useDonationRequests(
       router.push("/login?redirect=/donation-requests?mine=true");
       return;
     }
-    setMyOnly(true);
+    writeListStateToHistory({ mine: true, page: 1 });
   };
 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    setMyOnly(mineFromUrl);
-  }, [mineFromUrl]);
+    const next = readDonationRequestListState(searchParams);
+    setMyOnly(next.mine);
+    setSelectedCategory(next.category);
+    setSelectedLocation(next.location);
+    setPage(next.page);
+  }, [searchParams]);
 
   useEffect(() => {
     if (authLoading || user || !myOnly) return;
-    setMyOnly(false);
-    router.replace("/donation-requests");
-  }, [authLoading, myOnly, router, user]);
-
-  useEffect(() => {
-    const urlPage = normalizePage(searchParams.get("page"));
-    setPage((current) => (current === urlPage ? current : urlPage));
-  }, [searchParams]);
+    writeListStateToHistory({ mine: false, page: 1 }, "replace");
+  }, [authLoading, myOnly, user, writeListStateToHistory]);
 
   useEffect(() => {
     stateRef.current = { myOnly, selectedCategory, selectedLocation, page };
@@ -383,9 +394,11 @@ export function useDonationRequests(
     retry: () => void load(stateRef.current.page),
     selectedCategory,
     selectedLocation,
-    setSelectedCategory,
-    setSelectedLocation,
-    showAll: () => setMyOnly(false),
+    setSelectedCategory: (category: string) =>
+      writeListStateToHistory({ category, page: 1 }),
+    setSelectedLocation: (location: string) =>
+      writeListStateToHistory({ location, page: 1 }),
+    showAll: () => writeListStateToHistory({ mine: false, page: 1 }),
     showMine,
     submitOffer,
     submitting,

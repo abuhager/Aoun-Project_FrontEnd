@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 export function SectionCard({
   icon,
@@ -83,12 +83,22 @@ export function TagListEditor({
   placeholder: string;
 }) {
   const [input, setInput] = useState("");
+  const [inputError, setInputError] = useState("");
+  const inputErrorId = useId();
 
   const add = () => {
     const value = input.trim();
-    if (!value || items.includes(value)) return;
+    if (value.length < 2) {
+      setInputError("أدخل حرفين على الأقل");
+      return;
+    }
+    if (items.some((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase())) {
+      setInputError("هذه القيمة مضافة مسبقًا");
+      return;
+    }
     onChange([...items, value]);
     setInput("");
+    setInputError("");
   };
 
   const remove = (item: string) => onChange(items.filter((value) => value !== item));
@@ -99,7 +109,10 @@ export function TagListEditor({
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           value={input}
-          onChange={(event) => setInput(event.target.value)}
+          onChange={(event) => {
+            setInput(event.target.value);
+            if (inputError) setInputError("");
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
@@ -107,6 +120,8 @@ export function TagListEditor({
             }
           }}
           placeholder={placeholder}
+          aria-invalid={Boolean(inputError)}
+          aria-describedby={inputError ? inputErrorId : undefined}
           className="flex-1 rounded-2xl border border-[#e7e1d8] bg-white px-4 py-3 text-sm text-[#24302f] outline-none transition-all placeholder:text-[#b3aba1] focus:border-primary focus:shadow-[0_0_0_4px_rgba(1,105,111,0.08)]"
         />
         <button
@@ -117,6 +132,11 @@ export function TagListEditor({
           إضافة
         </button>
       </div>
+      {inputError && (
+        <p id={inputErrorId} className="text-xs font-bold text-red-600" role="alert">
+          {inputError}
+        </p>
+      )}
 
       <div className="flex min-h-[44px] flex-wrap gap-2">
         {items.map((item) => (

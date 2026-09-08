@@ -16,6 +16,7 @@ export function useSettings() {
   return {
     settings: data ?? null,
     categories: data?.categories ?? [],
+    locations: data?.locations ?? [],
     reportReasons: data?.reportReasons ?? [],
     isLoading,
     isError: Boolean(error),

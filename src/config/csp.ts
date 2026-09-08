@@ -15,9 +15,9 @@ export const buildContentSecurityPolicy = (nonce: string) => {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ''} https://www.gstatic.com https://www.recaptcha.net https://recaptchaenterprise.googleapis.com https://www.google.com`,
-    `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
+    `style-src 'self' 'nonce-${nonce}'`,
     "img-src 'self' blob: data: https://res.cloudinary.com https://images.unsplash.com https://*.googleusercontent.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "font-src 'self'",
     `connect-src 'self' ${getPublicApiSources().join(' ')} https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://recaptchaenterprise.googleapis.com https://www.recaptcha.net https://www.google.com https://*.firebase.com https://*.firebaseio.com`,
     "frame-src https://www.recaptcha.net https://recaptchaenterprise.googleapis.com https://www.google.com",
     "worker-src 'self' blob:",

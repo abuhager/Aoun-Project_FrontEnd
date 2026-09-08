@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { HubSelector } from "@/components/HubSelector";
-import { ITEM_CITIES, ITEM_CONDITIONS } from "./itemEditorOptions";
+import { ITEM_CONDITIONS } from "./itemEditorOptions";
 import type {
   ItemEditorMessage,
   ItemEditorValues,
@@ -16,6 +16,7 @@ interface ItemEditorFormProps {
   formData: ItemEditorValues;
   preview: string | null;
   categories: string[];
+  locations: string[];
   settingsLoading: boolean;
   hubRequired: boolean;
   loading: boolean;
@@ -32,6 +33,7 @@ export default function ItemEditorForm({
   formData,
   preview,
   categories,
+  locations,
   settingsLoading,
   hubRequired,
   loading,
@@ -44,6 +46,12 @@ export default function ItemEditorForm({
 }: ItemEditorFormProps) {
   const isCreate = mode === "create";
   const prefix = isCreate ? "item" : "edit-item";
+  const categoryOptions = formData.category && !categories.includes(formData.category)
+    ? [formData.category, ...categories]
+    : categories;
+  const locationOptions = formData.location && !locations.includes(formData.location)
+    ? [formData.location, ...locations]
+    : locations;
 
   return (
     <div className={`content-panel overflow-hidden ${isCreate ? "p-5 sm:p-7 md:p-9" : "mx-auto max-w-4xl"}`}>
@@ -73,8 +81,8 @@ export default function ItemEditorForm({
         <div className={`grid grid-cols-1 gap-5 md:gap-6 ${isCreate ? "" : "px-6 md:px-8"}`}>
           <div className="space-y-2"><label htmlFor={`${prefix}-title`} className="block text-xs font-black text-on-surface-variant md:text-sm">اسم الغرض</label><input id={`${prefix}-title`} required name="title" type="text" value={formData.title} onChange={onChange} placeholder="مثال: لابتوب ديل مستعمل" className="field-control px-4 py-3 text-sm font-bold placeholder:font-medium placeholder:text-on-surface-soft/70 md:px-5 md:text-base" /></div>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
-            <div className="space-y-2"><label htmlFor={`${prefix}-category`} className="block text-xs font-black text-on-surface-variant md:text-sm">التصنيف</label><div className="relative"><select id={`${prefix}-category`} required name="category" value={formData.category} onChange={onChange} disabled={settingsLoading || categories.length === 0} className="field-control w-full appearance-none px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60 md:px-5 md:text-base"><option value="" disabled>{settingsLoading ? "جاري تحميل التصنيفات..." : "اختر التصنيف"}</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-outline">expand_more</span></div>{!settingsLoading && categories.length === 0 && <p className="text-xs font-medium text-red-600">لا توجد تصنيفات متاحة حالياً من لوحة الإدارة.</p>}</div>
-            <div className="space-y-2"><label htmlFor={`${prefix}-location`} className="block text-xs font-black text-on-surface-variant md:text-sm">المدينة</label><div className="relative"><select id={`${prefix}-location`} required name="location" value={formData.location} onChange={onChange} className="field-control w-full appearance-none px-4 py-3 text-sm font-bold md:px-5 md:text-base"><option value="" disabled>اختر المدينة</option>{ITEM_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}</select><span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-outline">location_on</span></div></div>
+            <div className="space-y-2"><label htmlFor={`${prefix}-category`} className="block text-xs font-black text-on-surface-variant md:text-sm">التصنيف</label><div className="relative"><select id={`${prefix}-category`} required name="category" value={formData.category} onChange={onChange} disabled={settingsLoading || categoryOptions.length === 0} className="field-control w-full appearance-none px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60 md:px-5 md:text-base"><option value="" disabled>{settingsLoading ? "جاري تحميل التصنيفات..." : "اختر التصنيف"}</option>{categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select><span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-outline">expand_more</span></div>{!settingsLoading && categoryOptions.length === 0 && <p className="text-xs font-medium text-red-600">لا توجد تصنيفات متاحة حالياً من لوحة الإدارة.</p>}</div>
+            <div className="space-y-2"><label htmlFor={`${prefix}-location`} className="block text-xs font-black text-on-surface-variant md:text-sm">المنطقة</label><div className="relative"><select id={`${prefix}-location`} required name="location" value={formData.location} onChange={onChange} disabled={settingsLoading || locationOptions.length === 0} className="field-control w-full appearance-none px-4 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60 md:px-5 md:text-base"><option value="" disabled>{settingsLoading ? "جاري تحميل المناطق..." : "اختر المنطقة"}</option>{locationOptions.map((location) => <option key={location} value={location}>{location}</option>)}</select><span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-outline">location_on</span></div>{!settingsLoading && locationOptions.length === 0 && <p className="text-xs font-medium text-red-600">لا توجد مناطق متاحة حالياً من لوحة الإدارة.</p>}</div>
           </div>
           <div className="space-y-2"><span className="block text-xs font-black text-on-surface-variant md:text-sm">حالة الغرض</span><div className="flex flex-wrap gap-2 md:gap-3">{ITEM_CONDITIONS.map((condition) => <label key={condition} className="min-w-25 flex-1 cursor-pointer"><input type="radio" name="condition" value={condition} onChange={onChange} checked={formData.condition === condition} className="peer sr-only" /><div className="rounded-xl border border-transparent bg-surface-container-low px-3 py-2.5 text-center text-xs font-bold text-on-surface-variant transition-all hover:bg-surface-container-high peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30 peer-checked:border-primary/20 peer-checked:bg-primary-soft peer-checked:text-primary-container md:px-4 md:py-3 md:text-sm">{condition}</div></label>)}</div></div>
           <div className="space-y-2"><label htmlFor={`${prefix}-description`} className="block text-xs font-black text-on-surface-variant md:text-sm">الوصف التفصيلي</label><textarea id={`${prefix}-description`} required name="description" value={formData.description} onChange={onChange} placeholder="اكتب تفاصيل إضافية عن القطعة..." rows={4} className="field-control min-h-32 resize-none px-4 py-3 text-sm font-bold placeholder:font-medium placeholder:text-on-surface-soft/70 md:px-5 md:text-base" /></div>
@@ -83,7 +91,7 @@ export default function ItemEditorForm({
         <div className={isCreate ? "" : "px-6 md:px-8"}><HubSelector value={formData.hubId} onChange={onHubChange} required={hubRequired} /></div>
         {message.text && <div role={message.type === "success" ? "status" : "alert"} aria-live={message.type === "success" ? "polite" : "assertive"} className={`${isCreate ? "" : "mx-6 md:mx-8"} rounded-xl p-4 text-center text-sm font-bold md:text-base ${message.type === "success" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{message.text}</div>}
         <div className={`flex flex-col gap-3 sm:flex-row-reverse md:gap-4 ${isCreate ? "pt-2 md:pt-4" : "border-t border-black/[0.06] bg-surface-container-low/60 p-6 md:p-8"}`}>
-          <button type="submit" disabled={loading || settingsLoading || categories.length === 0} className={`btn-primary flex-1 text-sm md:text-base ${isCreate ? "py-3.5" : "rounded-xl px-6 py-3 md:px-8 md:py-4"}`}><span>{loading ? (isCreate ? "جاري النشر..." : "جاري الحفظ...") : (isCreate ? "انشر التبرع الآن" : "حفظ التعديلات")}</span><span className="material-symbols-outlined text-lg md:text-xl">{isCreate ? "send" : "save"}</span></button>
+          <button type="submit" disabled={loading || settingsLoading || categoryOptions.length === 0 || locationOptions.length === 0} className={`btn-primary flex-1 text-sm md:text-base ${isCreate ? "py-3.5" : "rounded-xl px-6 py-3 md:px-8 md:py-4"}`}><span>{loading ? (isCreate ? "جاري النشر..." : "جاري الحفظ...") : (isCreate ? "انشر التبرع الآن" : "حفظ التعديلات")}</span><span className="material-symbols-outlined text-lg md:text-xl">{isCreate ? "send" : "save"}</span></button>
           <button type="button" onClick={onCancel} className={`btn-secondary flex-1 text-sm md:text-base ${isCreate ? "py-3.5" : "rounded-xl px-6 py-3 md:px-8 md:py-4"}`}>إلغاء</button>
         </div>
       </form>

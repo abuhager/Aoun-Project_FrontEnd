@@ -66,7 +66,7 @@ test('المحادثة المفتوحة تؤكد القراءة فور وصول 
   assert.match(socketTypes, /readBy:\s*string/);
 });
 
-test('السجل يدعم تحميل الصفحات الأقدم دون تغيير آخر رسالة', async () => {
+test('السجل يحمل الرسائل الأقدم بمؤشر ثابت دون تغيير آخر رسالة', async () => {
   const [hook, drawer, api] = await Promise.all([
     readSource('../src/hooks/useChatRoom.ts'),
     Promise.all([
@@ -77,10 +77,11 @@ test('السجل يدعم تحميل الصفحات الأقدم دون تغيي
     readSource('../src/lib/api/conversationApi.ts'),
   ]);
 
-  assert.match(hook, /getConversationMessages\(conversationId, nextPage/);
+  assert.match(hook, /getConversationMessages\(conversationId, cursor/);
+  assert.match(hook, /hasOlder = isCurrentRoom && room\.hasMore/);
   assert.match(hook, /mergeMessages\(response\.messages, current\.messages\)/);
   assert.match(drawer, /تحميل رسائل أقدم/);
-  assert.match(api, /params:\s*\{ page \}/);
+  assert.match(api, /params:\s*\{ cursor \}/);
 });
 
 test('قائمة المحادثات تستخدم عقد API typed وتحدّث العداد بعد أحداث Socket', async () => {

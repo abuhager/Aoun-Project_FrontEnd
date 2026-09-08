@@ -5,5 +5,3 @@ export const ITEM_CONDITIONS: readonly ItemCondition[] = [
   "مستعمل ممتاز",
   "مستعمل جيد",
 ];
-
-export const ITEM_CITIES = ["عمان", "إربد", "الزرقاء", "العقبة"] as const;

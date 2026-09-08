@@ -1,8 +1,7 @@
-/* eslint-disable @next/next/no-page-custom-font, @next/next/google-font-display -- Material Symbols use a blocking first paint so ligature names never distort the layout. */
-
 import type { Metadata, Viewport } from "next";
-import { Tajawal, Cairo } from "next/font/google";
 import { connection } from "next/server";
+import "material-symbols/outlined.css";
+import "@/assets/fonts/fonts.css";
 import "./globals.css";
 
 import { AuthProvider }       from "@/context/AuthContext";
@@ -20,21 +19,6 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: "#006155",
 };
-
-// ── الخطوط ─────────────────────────────────────────────────────
-const tajawal = Tajawal({
-  subsets:  ["arabic"],
-  weight:   ["400", "500", "700", "800", "900"],
-  variable: "--font-tajawal",
-  display:  "swap",
-});
-
-const cairo = Cairo({
-  subsets:  ["arabic"],
-  weight:   ["400", "500", "600", "700", "800", "900"],
-  variable: "--font-cairo",
-  display:  "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -57,21 +41,8 @@ export default async function RootLayout({
       lang="ar"
       dir="rtl"
       data-scroll-behavior="smooth"
-      className={`${cairo.variable} ${tajawal.variable}`}
+      className="font-loaded"
     >
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
-          rel="stylesheet"
-        />
-      </head>
-
       {/* body: flex column لضمان توزيع العناصر بشكل مرن */}
       <body className="flex min-h-dvh flex-col overflow-x-clip bg-surface text-on-surface antialiased">
         <ApiStateProvider initialPublicSettings={null}>

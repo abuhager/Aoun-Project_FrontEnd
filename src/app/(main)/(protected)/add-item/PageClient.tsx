@@ -8,7 +8,7 @@ import { useAddItem } from "./hooks/useAddItem";
 
 export default function AddItemClient() {
   const router = useRouter();
-  const { settings, categories, isLoading: settingsLoading } = useSettings();
+  const { settings, categories, locations, isLoading: settingsLoading } = useSettings();
   const hubRequired = settings?.requireHubForBooking ?? false;
   const editor = useAddItem(hubRequired);
 
@@ -27,6 +27,7 @@ export default function AddItemClient() {
           formData={editor.formData}
           preview={editor.preview}
           categories={categories}
+          locations={locations}
           settingsLoading={settingsLoading}
           hubRequired={hubRequired}
           loading={editor.loading}

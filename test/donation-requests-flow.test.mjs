@@ -45,16 +45,19 @@ test('قائمة الطلبات تمنع التبرع للطلب الشخصي و
 });
 
 test('قائمتا الأغراض وطلبات التبرع تحفظان الصفحة في URL عند الرجوع من التفاصيل', async () => {
-  const [browsePage, requestsPage, requestDetails] = await Promise.all([
+  const [browsePage, browseExperience, browseHook, requestsPage, requestDetails] = await Promise.all([
     readSource('../src/app/(main)/browse/page.tsx'),
+    readSource('../src/components/browse/BrowseExperience.tsx'),
+    readSource('../src/components/browse/useBrowseExperience.ts'),
     readSource('../src/app/(main)/donation-requests/hooks/useDonationRequests.ts'),
     readDonationDetailsSource(),
   ]);
 
   assert.match(browsePage, /normalizePage\(firstValue\(rawParams\.page\)\)/);
-  assert.match(browsePage, /buildBrowseHref\(values, \{ page:/);
-  assert.match(browsePage, /returnTo=\{browseReturnTo\}/);
-  assert.match(requestsPage, /searchParams\.get\("page"\)/);
+  assert.match(browseHook, /buildBrowseHref\(requestValues\)/);
+  assert.match(browseHook, /window\.history\.replaceState/);
+  assert.match(browseExperience, /returnTo=\{browse\.browseReturnTo\}/);
+  assert.match(requestsPage, /readDonationRequestListState\(searchParams\)/);
   assert.match(requestsPage, /window\.history\.pushState/);
   assert.match(requestsPage, /window\.history\.replaceState/);
 

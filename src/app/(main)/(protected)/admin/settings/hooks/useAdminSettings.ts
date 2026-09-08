@@ -57,6 +57,25 @@ const EDITABLE_FIELDS: (keyof SystemSettings)[] = [
 const valuesEqual = (left: unknown, right: unknown) =>
   JSON.stringify(left) === JSON.stringify(right);
 
+const normalizeLegacyStringList = (values: unknown): string[] => {
+  if (!Array.isArray(values)) return [];
+
+  const normalized = values
+    .map((value) => String(value).trim())
+    .filter((value) => value.length >= 2);
+
+  return [...new Map(
+    normalized.map((value) => [value.toLocaleLowerCase(), value])
+  ).values()];
+};
+
+const normalizeSettingsLists = (settings: SystemSettings): SystemSettings => ({
+  ...settings,
+  categories: normalizeLegacyStringList(settings.categories),
+  locations: normalizeLegacyStringList(settings.locations),
+  reportReasons: normalizeLegacyStringList(settings.reportReasons),
+});
+
 const validateSettingsDraft = (settings: SystemSettings): string | null => {
   if (!(
     settings.ratingThresholdExcellent > settings.ratingThresholdGood &&
@@ -71,6 +90,15 @@ const validateSettingsDraft = (settings: SystemSettings): string | null => {
   if (settings.categories.length === 0) return "يجب إضافة تصنيف واحد على الأقل";
   if (settings.locations.length === 0) return "يجب إضافة منطقة واحدة على الأقل";
   if (settings.reportReasons.length === 0) return "يجب إضافة سبب بلاغ واحد على الأقل";
+  if (settings.categories.some((value) => value.trim().length < 2)) {
+    return "يجب ألا يقل اسم التصنيف عن حرفين";
+  }
+  if (settings.locations.some((value) => value.trim().length < 2)) {
+    return "يجب ألا يقل اسم المنطقة عن حرفين";
+  }
+  if (settings.reportReasons.some((value) => value.trim().length < 2)) {
+    return "يجب ألا يقل سبب البلاغ عن حرفين";
+  }
   return null;
 };
 
@@ -105,7 +133,9 @@ export function useAdminSettings(showToast: ShowToast) {
     try {
       const data = await getAdminSettings(signal);
       if (!signal?.aborted) {
-        setSettings(data);
+        // Keep the raw server snapshot so cleaned legacy values are included in
+        // the next PATCH, even when the admin only edits another settings field.
+        setSettings(normalizeSettingsLists(data));
         setSavedSettings(data);
       }
     } catch {
@@ -147,17 +177,32 @@ export function useAdminSettings(showToast: ShowToast) {
     setSaving(true);
     try {
       const payload = Object.fromEntries(
-        changedFields.map((key) => [key, settings[key]])
+        [
+          ["expectedVersion", savedSettings.version],
+          ...changedFields.map((key) => [key, settings[key]]),
+        ]
       ) as UpdateSettingsPayload;
       const result = await updateAdminSettings(payload);
-      setSettings(result.settings);
-      setSavedSettings(result.settings);
+      const normalizedSettings = normalizeSettingsLists(result.settings);
+      setSettings(normalizedSettings);
+      setSavedSettings(normalizedSettings);
       applyPublicSettings(result.publicSettings);
       await mutate(PUBLIC_SETTINGS_CACHE_KEY, result.publicSettings, {
         revalidate: false,
       });
       showToast("✅ تم حفظ الإعدادات بنجاح", true);
     } catch (error: unknown) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        (error as { response?: { data?: { code?: string } } }).response?.data?.code ===
+          "SETTINGS_VERSION_CONFLICT"
+      ) {
+        await fetchSettings();
+        showToast("تغيّرت الإعدادات في جلسة أخرى؛ أعدنا تحميل أحدث نسخة", false);
+        return;
+      }
       showToast(extractErrorMsg(error, "حدث خطأ أثناء حفظ الإعدادات"), false);
     } finally {
       setSaving(false);

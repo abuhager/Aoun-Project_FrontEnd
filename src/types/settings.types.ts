@@ -15,6 +15,7 @@ export interface PublicSettings {
 
 export interface SystemSettings {
   _id: string;
+  version: number;
 
   // ─── حصص المستخدمين ──────────────────────────────────────────────────
   // ✅ [NAME-MISMATCH-01]: defaultUserQuota بدل defaultQuota
@@ -88,8 +89,10 @@ export interface SystemSettings {
   updatedAt:            string;
 }
 
-export type UpdateSettingsPayload = Partial<
-  Omit<SystemSettings, '_id' | 'createdAt' | 'updatedAt'>
+export type UpdateSettingsPayload = {
+  expectedVersion: number;
+} & Partial<
+  Omit<SystemSettings, '_id' | 'version' | 'createdAt' | 'updatedAt'>
 >;
 
 export interface UpdateSettingsResponse {

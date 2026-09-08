@@ -50,13 +50,13 @@ export default function Navbar() {
   if (isLogoOnlyPage) {
     return (
       <nav
-        className="fixed inset-x-0 top-0 z-50 h-16 border-b border-black/[0.06] bg-white/92 shadow-[0_1px_0_rgba(23,33,31,0.02)] backdrop-blur-xl md:h-20"
+        className="fixed inset-x-0 top-0 z-50 h-16 border-b border-black/[0.06] bg-white/95 shadow-[0_1px_0_rgba(23,33,31,0.02)] backdrop-blur-xl"
         dir="rtl"
         aria-label="التنقل الرئيسي"
       >
         <div className="site-container flex h-full items-center">
           <Link href="/" aria-label={`العودة إلى الرئيسية — ${platformName}`} className="rounded-xl">
-            <BrandMark name={platformName} tagline="عطاء يصل لمن يحتاجه" />
+            <BrandMark name={platformName} compact />
           </Link>
         </div>
       </nav>

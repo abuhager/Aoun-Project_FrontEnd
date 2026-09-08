@@ -17,8 +17,8 @@ type RoomStatus = "idle" | "joining" | "ready" | "error";
 interface RoomState {
   conversationId: string | null;
   messages: ChatMessage[];
-  page: number;
-  totalPages: number;
+  nextCursor: string | null;
+  hasMore: boolean;
   canSend: boolean;
   status: RoomStatus;
   error: string | null;
@@ -59,8 +59,8 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
   const [room, setRoom] = useState<RoomState>({
     conversationId: null,
     messages: [],
-    page: 1,
-    totalPages: 1,
+    nextCursor: null,
+    hasMore: false,
     canSend: false,
     status: "idle",
     error: null,
@@ -86,7 +86,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
   );
   const canSendMessages = isJoined && room.canSend;
   const error = isCurrentRoom ? room.error : null;
-  const hasOlder = isCurrentRoom && room.page < room.totalPages;
+  const hasOlder = isCurrentRoom && room.hasMore && Boolean(room.nextCursor);
 
   const settlePending = useCallback((correlationId: string, sent: boolean) => {
     const pending = pendingRef.current.get(correlationId);
@@ -138,8 +138,8 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
           : {
               conversationId,
               messages: [],
-              page: 1,
-              totalPages: 1,
+              nextCursor: null,
+              hasMore: false,
               canSend: false,
               status: "joining",
               error: null,
@@ -170,8 +170,8 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
             current.conversationId === conversationId ? current.messages : [],
             mergeMessages(history, buffered)
           ),
-          page: response.page || 1,
-          totalPages: response.totalPages || 1,
+          nextCursor: response.nextCursor ?? null,
+          hasMore: response.hasMore === true,
           canSend: response.canSend !== false,
           status: "ready",
           error: null,
@@ -380,21 +380,22 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
 
   const loadOlder = useCallback(async () => {
     if (!conversationId || !hasOlder || loadingOlder) return;
-    const nextPage = room.page + 1;
+    const cursor = room.nextCursor;
+    if (!cursor) return;
     olderRequestRef.current?.abort();
     const controller = new AbortController();
     olderRequestRef.current = controller;
     setLoadingOlder(true);
 
     try {
-      const response = await getConversationMessages(conversationId, nextPage, controller.signal);
+      const response = await getConversationMessages(conversationId, cursor, controller.signal);
       setRoom((current) => (
         current.conversationId === conversationId
           ? {
               ...current,
               messages: mergeMessages(response.messages, current.messages),
-              page: response.page,
-              totalPages: response.totalPages,
+              nextCursor: response.nextCursor,
+              hasMore: response.hasMore,
               error: null,
             }
           : current
@@ -411,7 +412,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
     } finally {
       if (!controller.signal.aborted) setLoadingOlder(false);
     }
-  }, [conversationId, hasOlder, loadingOlder, room.page]);
+  }, [conversationId, hasOlder, loadingOlder, room.nextCursor]);
 
   return {
     messages,

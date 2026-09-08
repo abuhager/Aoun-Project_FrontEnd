@@ -30,34 +30,25 @@ export default function LoginClient({ demoAccounts }: LoginClientProps) {
       platformName={platformName}
       eyebrow="مرحباً بعودتك"
       icon="login"
-      title="تسجيل الدخول"
-      description="ادخل إلى حسابك لمتابعة التبرعات والطلبات والمحادثات من مكان واحد."
+      title="مرحباً بك مجدداً"
+      description="سجّل دخولك لمتابعة تبرعاتك وطلباتك ومحادثاتك بأمان."
+      variant="login-split"
     >
       {demoAccounts.length > 0 && (
         <section
           aria-labelledby="demo-accounts-title"
-          className="rounded-2xl border border-primary/10 bg-primary-softer p-4"
+          className="rounded-2xl border border-primary/10 bg-primary-softer/70 px-3.5 py-3"
         >
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h2 id="demo-accounts-title" className="text-sm font-black text-on-surface">
-                حسابات تجريبية
-              </h2>
-              <p className="mt-1 text-xs text-on-surface-soft">
-                اختر نوع الحساب لتعبئة البيانات تلقائياً.
-              </p>
-            </div>
-            <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-primary shadow-sm">
-              للتجربة فقط
-            </span>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <h2 id="demo-accounts-title" className="text-center text-[11px] font-black text-on-surface-variant">
+            دخول سريع بحساب تجريبي
+          </h2>
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
             {demoAccounts.map((account) => (
               <button
                 key={account.id}
                 type="button"
                 onClick={() => fillDemoCredentials(account.email, account.password)}
-                className={`min-h-10 rounded-xl px-2 py-2 text-[11px] font-black sm:text-xs ${account.buttonClassName}`}
+                className={`min-h-9 rounded-full border border-white/80 px-2 py-1.5 text-[10px] font-black shadow-sm sm:text-[11px] ${account.buttonClassName}`}
               >
                 <span aria-hidden="true">{account.icon}</span> {account.label}
               </button>
@@ -70,7 +61,7 @@ export default function LoginClient({ demoAccounts }: LoginClientProps) {
         <div
           role="alert"
           aria-live="polite"
-          className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700"
+          className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700"
         >
           {error}
         </div>
@@ -78,7 +69,7 @@ export default function LoginClient({ demoAccounts }: LoginClientProps) {
 
       <form
         onSubmit={handleSubmit}
-        className="mt-6 space-y-4"
+        className="mt-5 space-y-4"
         aria-label="نموذج تسجيل الدخول"
         noValidate
       >
@@ -103,7 +94,7 @@ export default function LoginClient({ demoAccounts }: LoginClientProps) {
               dir="ltr"
               autoComplete="email"
               placeholder="name@example.com"
-              className="field-control px-4 pr-11 text-left text-sm font-bold placeholder:font-medium placeholder:text-on-surface-soft/70"
+              className="field-control border-transparent bg-[#f0f5f8] px-4 pr-11 text-left text-sm font-bold shadow-inner shadow-black/[0.02] placeholder:font-medium placeholder:text-on-surface-soft/70"
             />
           </span>
         </label>
@@ -137,7 +128,7 @@ export default function LoginClient({ demoAccounts }: LoginClientProps) {
               dir="ltr"
               autoComplete="current-password"
               placeholder="••••••••"
-              className="field-control px-11 text-left text-sm font-bold placeholder:text-on-surface-soft/70"
+              className="field-control border-transparent bg-[#f0f5f8] px-11 text-left text-sm font-bold shadow-inner shadow-black/[0.02] placeholder:text-on-surface-soft/70"
             />
             <button
               type="button"
@@ -153,7 +144,7 @@ export default function LoginClient({ demoAccounts }: LoginClientProps) {
           </span>
         </div>
 
-        <button type="submit" disabled={loading} className="btn-primary w-full py-3.5">
+        <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 shadow-[0_12px_28px_rgba(0,117,107,0.22)]">
           {loading ? (
             <>
               <span
@@ -173,7 +164,7 @@ export default function LoginClient({ demoAccounts }: LoginClientProps) {
         </button>
       </form>
 
-      <p className="mt-6 border-t border-black/[0.06] pt-5 text-center text-sm text-on-surface-variant">
+      <p className="mt-5 border-t border-black/[0.06] pt-5 text-center text-sm text-on-surface-variant">
         ليس لديك حساب؟{" "}
         <Link
           href="/register"

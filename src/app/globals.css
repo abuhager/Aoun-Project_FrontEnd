@@ -50,8 +50,8 @@
   --color-info-bg: #eef4ff;
 
   /* Typography */
-  --font-body: var(--font-cairo), "Cairo", sans-serif;
-  --font-headline: var(--font-tajawal), "Tajawal", sans-serif;
+  --font-body: "Cairo Local", "Cairo", sans-serif;
+  --font-headline: "Tajawal Local", "Tajawal", sans-serif;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;

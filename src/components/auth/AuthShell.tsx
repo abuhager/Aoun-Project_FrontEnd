@@ -9,6 +9,7 @@ interface AuthShellProps {
   description: string;
   children: ReactNode;
   size?: "default" | "wide";
+  variant?: "default" | "login-split";
 }
 
 export default function AuthShell({
@@ -19,7 +20,77 @@ export default function AuthShell({
   description,
   children,
   size = "default",
+  variant = "default",
 }: AuthShellProps) {
+  if (variant === "login-split") {
+    return (
+      <div
+        className="min-h-[calc(100dvh-4rem)] bg-white"
+        dir="rtl"
+      >
+        <div className="grid min-h-[calc(100dvh-4rem)] w-full bg-white lg:grid-cols-2">
+          <aside
+            data-testid="login-visual"
+            className="relative hidden min-h-full overflow-hidden bg-[#006b5e] bg-[url('/Volunteer-Background.png')] bg-cover bg-center bg-no-repeat text-white lg:col-start-2 lg:row-start-1 lg:block"
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(0,75,66,0.58),rgba(0,90,79,0.72)_50%,rgba(0,52,47,0.84))] mix-blend-multiply"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.11),transparent_32%),linear-gradient(to_bottom,rgba(0,38,34,0.05),rgba(0,38,34,0.42))]"
+            />
+
+            <div className="relative flex min-h-[calc(100dvh-4rem)] items-center justify-center px-10 py-12 xl:px-16">
+              <div className="w-full max-w-[34rem] rounded-[1.5rem] border border-white/20 bg-[#003f39]/45 p-8 shadow-[0_28px_70px_rgba(0,35,31,0.28)] backdrop-blur-[5px] xl:p-10">
+                <div className="text-center">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-[11px] font-black text-[#f5d18b]">
+                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#f3bd55] shadow-[0_0_0_4px_rgba(243,189,85,0.12)]" />
+                    رسالة عون
+                  </span>
+                  <blockquote className="mt-6 font-headline text-[1.8rem] font-black leading-[1.8] text-white drop-shadow-sm xl:text-[2rem]">
+                    نحن هنا لنكون عوناً لبعضنا البعض، خطوة واحدة يمكنها تغيير حياة الكثيرين.
+                  </blockquote>
+                  <div className="mt-7 flex items-center justify-center gap-3 border-t border-white/15 pt-6 text-xs font-bold text-white/75">
+                    <span className="h-px w-8 bg-[#efc36c]" />
+                    اعرض غرضاً، قدّم طلباً، وتابع التسليم من مكان واحد
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <section className="flex min-h-[calc(100dvh-4rem)] bg-[#fbfcfc] px-5 py-8 sm:px-10 lg:col-start-1 lg:row-start-1 lg:px-12 lg:py-10">
+            <div className="m-auto w-full max-w-[27rem]">
+              <div className="text-center">
+                <p className="font-headline text-3xl font-black tracking-[-0.05em] text-primary">
+                  {platformName}
+                </p>
+                <p className="mt-3 text-[11px] font-black tracking-[0.08em] text-primary/75">{eyebrow}</p>
+                <h1 className="mt-2 text-[2rem] font-black leading-tight tracking-tight text-on-surface sm:text-[2.25rem]">
+                  {title}
+                </h1>
+                <p className="mx-auto mt-2 max-w-sm text-xs font-semibold leading-6 text-on-surface-soft sm:text-sm sm:leading-7">
+                  {description}
+                </p>
+              </div>
+
+              <div className="mt-7">{children}</div>
+
+              <p className="mt-5 flex items-center justify-center gap-2 text-center text-[10px] font-bold text-on-surface-soft sm:text-[11px]">
+                <span aria-hidden="true" className="material-symbols-outlined text-[14px] text-primary">
+                  lock
+                </span>
+                جلسة دخول محمية دون حفظ كلمة المرور في المتصفح
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   const widthClass = size === "wide" ? "max-w-[48rem]" : "max-w-[38rem]";
 
   return (

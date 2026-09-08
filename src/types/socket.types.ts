@@ -21,6 +21,8 @@ export interface JoinRoomAck {
   messages?: ChatMessage[];
   page?: number;
   totalPages?: number;
+  hasMore?: boolean;
+  nextCursor?: string | null;
   canSend?: boolean;
   code?: string;
   error?: string;

@@ -2,6 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { isProtectedPath, isAuthOnlyPath, isAuthSafeUrl } from "@/config/routes";
 import { setSessionCookie, clearSessionCookie } from "@/lib/utils/cookieUtils";
 import type { RefreshResponse } from "@/types/auth.types";
+import { classifyRefreshFailure } from "@/lib/auth/refreshFailure";
+import { withCrossTabRefreshLock } from "@/lib/auth/crossTabRefreshLock";
 
 let accessToken: string | null = null;
 let isRefreshing = false;
@@ -240,10 +242,12 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axiosInstance.post<RefreshResponse>(
-          "/api/auth/refresh",
-          {},
-          { withCredentials: true }
+        const { data } = await withCrossTabRefreshLock(() =>
+          axiosInstance.post<RefreshResponse>(
+            "/api/auth/refresh",
+            {},
+            { withCredentials: true }
+          )
         );
 
         const newToken = data.accessToken;
@@ -260,13 +264,16 @@ axiosInstance.interceptors.response.use(
         const finalError =
           refreshError instanceof Error ? refreshError : new Error("REFRESH_FAILED");
 
-        setAccessToken(null);
-        clearSessionCookie();
+        const invalidSession = classifyRefreshFailure(refreshError) === "invalid-session";
+        if (invalidSession) {
+          setAccessToken(null);
+          clearSessionCookie();
+        }
 
         isRefreshing = false;
         processRefreshQueue(finalError, null);
 
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && invalidSession) {
           const currentPath = window.location.pathname;
           const isProtected = isProtectedPath(currentPath);
           const notOnAuthPage = !isAuthOnlyPath(currentPath);

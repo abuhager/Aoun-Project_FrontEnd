@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import {
+  getBrowseSearchRequestValue,
+  isBrowseSearchReady,
+  needsMoreBrowseSearchCharacters,
+} from '../src/lib/navigation/browseSearch.ts';
 
 const readSource = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
@@ -15,6 +20,9 @@ const readItemDetailsSource = async () => {
 test('Item API يستخدم مسارات Backend الفعلية ويترك FormData يحدد boundary', async () => {
   const source = await readSource('../src/lib/api/itemApi.ts');
 
+  assert.match(source, /get<ItemsListResponse>\("\/api\/items"/);
+  assert.match(source, /params: filters/);
+  assert.match(source, /signal/);
   assert.match(source, /delete<\{ msg: string \}>\(\s*`\/api\/items\/\$\{id\}`/);
   assert.match(source, /`\/api\/items\/\$\{id\}\/confirm-delivery`/);
   assert.match(source, /`\/api\/items\/\$\{id\}\/confirm-receipt`/);
@@ -24,27 +32,63 @@ test('Item API يستخدم مسارات Backend الفعلية ويترك FormD
   assert.doesNotMatch(source, /multipart\/form-data/);
 });
 
-test('Browse يرسل الفلاتر والصفحة إلى السيرفر ولا يرشح الصفحة الأولى محلياً', async () => {
-  const [page, card, details] = await Promise.all([
+test('Browse يبدأ من SSR ثم يحدّث النتائج مباشرة أثناء الكتابة بدون تنقّل Server جديد', async () => {
+  const [page, experience, browseHook, results, filterSelect, liveSearch, card, details] = await Promise.all([
     readSource('../src/app/(main)/browse/page.tsx'),
+    readSource('../src/components/browse/BrowseExperience.tsx'),
+    readSource('../src/components/browse/useBrowseExperience.ts'),
+    readSource('../src/components/browse/BrowseResults.tsx'),
+    readSource('../src/components/browse/BrowseFilterSelect.tsx'),
+    readSource('../src/components/browse/BrowseLiveSearchInput.tsx'),
     readSource('../src/components/ui/ItemCard.tsx'),
     readItemDetailsSource(),
   ]);
 
   assert.match(page, /getPublicItemsServer\(/);
   assert.match(page, /page: values\.page/);
-  assert.match(page, /search: values\.search/);
+  assert.match(page, /search: requestSearch \|\| undefined/);
   assert.match(page, /location: values\.location/);
   assert.match(page, /category: values\.category/);
   assert.match(page, /searchParams: Promise<BrowseSearchParams>/);
-  assert.match(page, /<form action="\/browse" method="get"/);
-  assert.match(page, /buildBrowseHref/);
-  assert.doesNotMatch(page, /\.filter\(/);
-  assert.match(page, /صفحة \{currentPage\} من \{totalPages\}/);
-  assert.match(page, /returnTo=\{browseReturnTo\}/);
+  assert.match(page, /getBrowseSearchRequestValue\(values\.search\)/);
+  assert.match(page, /<BrowseExperience/);
+  assert.match(page, /initialResult=\{result\}/);
+  assert.match(page, /initialValues=\{values\}/);
+  assert.match(experience, /useBrowseExperience/);
+  assert.match(experience, /<BrowseFilters/);
+  assert.match(experience, /<BrowseResults/);
+  assert.match(browseHook, /SEARCH_DELAY_MS = 300/);
+  assert.match(browseHook, /getBrowseSearchRequestValue\(searchQuery\)/);
+  assert.match(browseHook, /getItems\(/);
+  assert.match(browseHook, /new AbortController\(\)/);
+  assert.match(browseHook, /controller\.abort\(\)/);
+  assert.match(browseHook, /window\.history\.replaceState/);
+  assert.doesNotMatch(browseHook, /router\.replace\(/);
+  assert.match(browseHook, /page: requestValues\.page/);
+  assert.match(browseHook, /search: requestValues\.search/);
+  assert.match(browseHook, /location: requestValues\.location/);
+  assert.match(browseHook, /category: requestValues\.category/);
+  assert.doesNotMatch(browseHook, /\.filter\(/);
+  assert.match(results, /صفحة \{currentPage\} من \{totalPages\}/);
+  assert.match(experience, /returnTo=\{browse\.browseReturnTo\}/);
+  assert.match(results, /SkeletonCard/);
+  assert.match(filterSelect, /onValueChange\(event\.target\.value\)/);
+  assert.match(liveSearch, /onValueChange\(event\.target\.value\)/);
+  assert.match(liveSearch, /اكتب حرفًا إضافيًا لبدء البحث/);
+  assert.doesNotMatch(`${experience}\n${results}`, />\s*بحث\s*<\/button>/);
   assert.match(card, /returnTo=\$\{encodeURIComponent\(returnTo\)\}/);
   assert.match(details, /requestedReturnTo\?\.startsWith\("\/browse\?"\)/);
-  assert.match(page, /إعادة المحاولة/);
+  assert.match(results, /إعادة المحاولة/);
+});
+
+test('Browse ينتظر حرفين قبل البحث ويحافظ على النتائج عند الحرف الأول', () => {
+  assert.equal(getBrowseSearchRequestValue(' ك '), '');
+  assert.equal(getBrowseSearchRequestValue(' كت '), 'كت');
+  assert.equal(isBrowseSearchReady('ك'), false);
+  assert.equal(isBrowseSearchReady('كتاب'), true);
+  assert.equal(needsMoreBrowseSearchCharacters('ك'), true);
+  assert.equal(needsMoreBrowseSearchCharacters('كت'), false);
+  assert.equal(needsMoreBrowseSearchCharacters(''), false);
 });
 
 test('صفحة الغرض تعتمد حالة الانتظار من Backend وتنتظر تهيئة الهوية', async () => {
@@ -88,6 +132,10 @@ test('إضافة وتعديل الغرض يتحققان من الصورة وال
   assert.match(editHook, /safeHub: formData\.hubId/);
   assert.match(addPage, /<ItemEditorForm/);
   assert.match(editPage, /<ItemEditorForm/);
+  assert.match(addPage, /locations=\{locations\}/);
+  assert.match(editPage, /locations=\{locations\}/);
+  assert.match(editorForm, /locationOptions\.map/);
+  assert.doesNotMatch(editorForm, /ITEM_CITIES/);
   assert.match(editorForm, /<HubSelector[\s\S]*required=\{hubRequired\}/);
   assert.match(legacyPage, /redirect\(`\/items\/\$\{id\}\/edit`\)/);
 });

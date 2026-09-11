@@ -1,15 +1,34 @@
-# عون — Aoun
+# عون — Aoun Frontend
+
+**واجهة منصة عون لطلب وتنسيق التبرعات العينية**
+
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-149ECA?style=for-the-badge&logo=react&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-010101?style=for-the-badge&logo=socketdotio&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
 
 [![Frontend CI](https://github.com/abuhager/Aoun-Project_FrontEnd/actions/workflows/ci.yml/badge.svg)](https://github.com/abuhager/Aoun-Project_FrontEnd/actions/workflows/ci.yml)
-[![Vercel](https://img.shields.io/badge/deployed-Vercel-000000?logo=vercel)](https://aoun-project-theta.vercel.app/)
 
 منصة عربية لتنظيم التبرعات العينية: يستطيع المستخدم عرض غرض، أو نشر طلب احتياج، ثم تنسيق الحجز والتسليم بأدوار وصلاحيات وإشعارات ومحادثات مرتبطة بالمعاملة.
 
-- **Live demo:** https://aoun-project-theta.vercel.app/
-- **Backend repository:** https://github.com/abuhager/Aoun-Project_BackEnd
-- **Support:** aoun.help.center@gmail.com
+[تجربة المنصة](https://aoun-project-theta.vercel.app/) · [مستودع الخادم](https://github.com/abuhager/Aoun-Project_BackEnd) · [التواصل والدعم](mailto:aoun.help.center@gmail.com)
 
-> حالة المشروع: MVP منشور، واجتاز فحوصات CI والنشر، وجاهز لتجربة Pilot محدودة. بيانات Demo ونقاط التسليم الظاهرة للاختبار والعرض، ولا تمثل شراكة مؤسسية إلا إذا أُعلن عنها صراحة.
+> حالة المشروع: MVP منشور يستهدف تجربة Pilot محدودة. تعرض شارة CI أعلاه حالة سير العمل؛ وتبقى اختبارات المتصفح والتحقق التشغيلي جزءًا من تجهيز التجربة. بيانات Demo ونقاط التسليم الظاهرة للاختبار والعرض، ولا تمثل شراكة مؤسسية إلا إذا أُعلن عنها صراحة.
+
+## المشكلة والحل
+
+عندما تتوزع عروض التبرع وطلبات الاحتياج بين منشورات ومحادثات منفصلة، يصبح تتبع توفر الغرض والحجز والتسليم أصعب على الأطراف والجهات المشرفة.
+
+تجمع **عون** هذه الخطوات في رحلة واحدة: عرض أو طلب، ثم حجز وتواصل وتسليم وتقييم، مع صلاحيات واضحة وإشراف إداري. تركز المنصة على **التبرعات العينية**، ولا تجمع تبرعات مالية أو تنفذ عمليات دفع.
+
+| الطرف | القيمة التي تقدمها عون |
+| --- | --- |
+| المتبرع | عرض الأغراض ومتابعة الحجز والتواصل حتى التسليم |
+| طالب الاحتياج | تصفح الأغراض أو نشر طلب ومتابعة الاستجابة |
+| الجهة المشرفة | إدارة البلاغات والإعدادات ومراجعة النشاط من لوحة موحدة |
 
 ## رحلة الاستخدام
 
@@ -29,6 +48,29 @@
 - بلاغات واعتراضات وإشراف وسجل إداري.
 - إعدادات تشغيل وصيانة وسياسة نقاط التسليم.
 - تصميم عربي متجاوب ودعم وصول أساسي.
+
+## لقطات الشاشة
+
+مساحة جاهزة لإضافة صور فعلية من بيئة العرض. أضف الصور إلى `docs/screenshots/` في هذا المستودع، أو استبدل المسارات بروابط الصور.
+
+| اللقطة | ما الذي توضحه؟ | المسار المقترح |
+| --- | --- | --- |
+| استكشاف الأغراض | التصفح والبحث والتصفية | `docs/screenshots/browse.png` |
+| تفاصيل الغرض والحجز | حالة الغرض وإجراء الحجز | `docs/screenshots/booking.png` |
+| المحادثة | تنسيق التسليم بين الطرفين | `docs/screenshots/chat.png` |
+| لوحة المتبرع | متابعة الأغراض والحجوزات | `docs/screenshots/donor-dashboard.png` |
+| لوحة الإدارة | الإشراف والبلاغات والإعدادات | `docs/screenshots/admin-dashboard.png` |
+
+<!--
+بعد رفع الصور، أخرج أسطر الصور المطلوبة من هذا التعليق لتظهر في GitHub.
+استخدم بيانات عرض خالية من معلومات المستخدمين الشخصية.
+
+![استكشاف الأغراض في منصة عون](docs/screenshots/browse.png)
+![تفاصيل الغرض والحجز](docs/screenshots/booking.png)
+![محادثة لتنسيق التسليم](docs/screenshots/chat.png)
+![لوحة المتبرع ومتابعة الحجوزات](docs/screenshots/donor-dashboard.png)
+![لوحة الإدارة والإشراف](docs/screenshots/admin-dashboard.png)
+-->
 
 ## التقنيات
 
@@ -105,3 +147,7 @@ docs/             خطط ونتائج QA ومقترح Pilot
 ## تجربة مؤسسية محدودة
 
 يوجد مقترح جاهز في `docs/PILOT-PROPOSAL.md` لتجربة من 4 إلى 6 أسابيع مع 30 إلى 50 مستخدمًا، وقياس عدد الطلبات والتسليمات ورضا المشاركين قبل التوسع.
+
+## التطوير والتواصل
+
+طوّر المشروع [أدهم أبو حجر — Adham Abu Hager](https://github.com/abuhager). للاستفسار عن تجربة المنصة أو التعاون المؤسسي: [aoun.help.center@gmail.com](mailto:aoun.help.center@gmail.com).

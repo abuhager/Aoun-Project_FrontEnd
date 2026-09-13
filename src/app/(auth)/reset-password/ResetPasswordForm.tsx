@@ -5,8 +5,7 @@ import { useState } from "react";
 import { useResetPassword } from "./hooks/useResetPassword";
 
 export default function ResetPasswordForm() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
   const {
     password,
     setPassword,
@@ -79,19 +78,14 @@ export default function ResetPasswordForm() {
                 </span>
                 <input
                   id="reset-password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPasswords ? "text" : "password"}
                   required
                   dir="ltr"
                   autoComplete="new-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="field-control py-3 pl-12 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
-                />
-                <PasswordVisibilityButton
-                  visible={showPassword}
-                  label="كلمة المرور الجديدة"
-                  onToggle={() => setShowPassword((visible) => !visible)}
+                  className="field-control py-3 pl-4 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
                 />
               </div>
             </div>
@@ -104,29 +98,39 @@ export default function ResetPasswordForm() {
                 <span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 z-10 -translate-y-1/2 text-xl text-outline transition-colors group-focus-within:text-primary">
                   lock
                 </span>
-                {passwordsMatch && (
-                  <span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute left-12 top-1/2 z-10 -translate-y-1/2 text-xl text-green-500">
-                    check_circle
-                  </span>
-                )}
                 <input
                   id="reset-password-confirmation"
-                  type={showConfirmation ? "text" : "password"}
+                  type={showPasswords ? "text" : "password"}
                   required
                   dir="ltr"
                   autoComplete="new-password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  className="field-control py-3 pl-20 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
-                />
-                <PasswordVisibilityButton
-                  visible={showConfirmation}
-                  label="تأكيد كلمة المرور"
-                  onToggle={() => setShowConfirmation((visible) => !visible)}
+                  className="field-control py-3 pl-4 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
                 />
               </div>
+              {confirmPassword && (
+                <p className={`flex items-center justify-start gap-1 text-xs font-bold ${passwordsMatch ? "text-green-600" : "text-red-600"}`}>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[17px]">
+                    {passwordsMatch ? "check_circle" : "error"}
+                  </span>
+                  {passwordsMatch ? "كلمتا المرور متطابقتان" : "كلمتا المرور غير متطابقتين"}
+                </p>
+              )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPasswords((visible) => !visible)}
+              aria-pressed={showPasswords}
+              className="-mt-2 inline-flex min-h-10 items-center gap-2 rounded-xl px-2 text-xs font-bold text-on-surface-variant transition-colors hover:bg-primary-soft hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined text-[19px]">
+                {showPasswords ? "visibility_off" : "visibility"}
+              </span>
+              {showPasswords ? "إخفاء كلمتي المرور" : "إظهار كلمتي المرور"}
+            </button>
 
             <button
               type="submit"
@@ -157,29 +161,5 @@ export default function ResetPasswordForm() {
         )}
       </section>
     </div>
-  );
-}
-
-function PasswordVisibilityButton({
-  visible,
-  label,
-  onToggle,
-}: {
-  visible: boolean;
-  label: string;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={visible ? `إخفاء ${label}` : `إظهار ${label}`}
-      aria-pressed={visible}
-      className="absolute left-1 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-on-surface-soft transition-colors hover:bg-primary-soft hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-    >
-      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-        {visible ? "visibility_off" : "visibility"}
-      </span>
-    </button>
   );
 }

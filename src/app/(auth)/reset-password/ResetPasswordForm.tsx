@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useResetPassword } from "./hooks/useResetPassword";
 
 export default function ResetPasswordForm() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const {
     password,
     setPassword,
@@ -67,48 +70,60 @@ export default function ResetPasswordForm() {
         {!isSuccess && (
           <form onSubmit={handleSubmit} className="space-y-6 text-right">
             <div className="space-y-2">
-              <label htmlFor="reset-password" className="block text-xs font-black text-on-surface-variant">
+              <label htmlFor="reset-password" className="block w-full text-right text-xs font-black leading-5 text-on-surface-variant">
                 كلمة المرور الجديدة
               </label>
               <div className="group relative">
-                <span className="material-symbols-outlined absolute right-4 top-1/2 z-10 -translate-y-1/2 text-xl text-outline transition-colors group-focus-within:text-primary">
+                <span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 z-10 -translate-y-1/2 text-xl text-outline transition-colors group-focus-within:text-primary">
                   lock
                 </span>
                 <input
                   id="reset-password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
+                  dir="ltr"
                   autoComplete="new-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="field-control py-3 pl-4 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
+                  className="field-control py-3 pl-12 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
+                />
+                <PasswordVisibilityButton
+                  visible={showPassword}
+                  label="كلمة المرور الجديدة"
+                  onToggle={() => setShowPassword((visible) => !visible)}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="reset-password-confirmation" className="block text-xs font-black text-on-surface-variant">
+              <label htmlFor="reset-password-confirmation" className="block w-full text-right text-xs font-black leading-5 text-on-surface-variant">
                 تأكيد كلمة المرور
               </label>
               <div className="group relative">
-                <span className="material-symbols-outlined absolute right-4 top-1/2 z-10 -translate-y-1/2 text-xl text-outline transition-colors group-focus-within:text-primary">
+                <span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 z-10 -translate-y-1/2 text-xl text-outline transition-colors group-focus-within:text-primary">
                   lock
                 </span>
                 {passwordsMatch && (
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 z-10 -translate-y-1/2 text-xl text-green-500">
+                  <span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute left-12 top-1/2 z-10 -translate-y-1/2 text-xl text-green-500">
                     check_circle
                   </span>
                 )}
                 <input
                   id="reset-password-confirmation"
-                  type="password"
+                  type={showConfirmation ? "text" : "password"}
                   required
+                  dir="ltr"
                   autoComplete="new-password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  className="field-control py-3 pl-12 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
+                  className="field-control py-3 pl-20 pr-12 text-left text-sm font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
+                />
+                <PasswordVisibilityButton
+                  visible={showConfirmation}
+                  label="تأكيد كلمة المرور"
+                  onToggle={() => setShowConfirmation((visible) => !visible)}
                 />
               </div>
             </div>
@@ -142,5 +157,29 @@ export default function ResetPasswordForm() {
         )}
       </section>
     </div>
+  );
+}
+
+function PasswordVisibilityButton({
+  visible,
+  label,
+  onToggle,
+}: {
+  visible: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={visible ? `إخفاء ${label}` : `إظهار ${label}`}
+      aria-pressed={visible}
+      className="absolute left-1 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-on-surface-soft transition-colors hover:bg-primary-soft hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+    >
+      <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
+        {visible ? "visibility_off" : "visibility"}
+      </span>
+    </button>
   );
 }

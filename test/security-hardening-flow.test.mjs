@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 process.env.NODE_ENV = "production";
 process.env.NEXT_PUBLIC_API_URL = "https://api.aoun.example";
@@ -9,6 +11,14 @@ process.env.BACKEND_URL = "https://internal-api.aoun.example";
 const configModule = await import(`../next.config.ts?flow14=${Date.now()}`);
 const routeModule = await import("../src/config/routes.ts");
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const projectRoot = fileURLToPath(new URL("..", import.meta.url));
+
+const collectRuntimeSources = (directory) => fs.readdirSync(directory, { withFileTypes: true })
+  .flatMap((entry) => {
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return collectRuntimeSources(absolutePath);
+    return /\.(?:js|jsx|ts|tsx)$/.test(entry.name) ? [absolutePath] : [];
+  });
 
 test("إعداد production يرفض API عبر HTTP ويضيف isolation headers", async () => {
   assert.throws(
@@ -63,4 +73,38 @@ test("session marker يبقى SameSite=Lax في production", () => {
   const cookieUtils = read("src/lib/utils/cookieUtils.ts");
   assert.match(cookieUtils, /SameSite=Lax/);
   assert.doesNotMatch(cookieUtils, /SameSite=None/);
+});
+
+test("مصادر الواجهة لا تضيف HTML أو JavaScript sinks قابلة لتجاوز React", () => {
+  const forbiddenSinks = [
+    ["dangerouslySetInnerHTML", /\bdangerouslySetInnerHTML\b/],
+    ["innerHTML assignment", /\.(?:innerHTML|outerHTML)\s*=/],
+    ["insertAdjacentHTML", /\.insertAdjacentHTML\s*\(/],
+    ["document.write", /\bdocument\.write(?:ln)?\s*\(/],
+    ["dynamic JavaScript evaluation", /\b(?:eval|Function)\s*\(/],
+    ["srcDoc", /\bsrcDoc\s*=/],
+  ];
+
+  const violations = [];
+  for (const sourcePath of collectRuntimeSources(path.join(projectRoot, "src"))) {
+    const source = fs.readFileSync(sourcePath, "utf8");
+    for (const [label, pattern] of forbiddenSinks) {
+      if (pattern.test(source)) {
+        violations.push(`${path.relative(projectRoot, sourcePath)}: ${label}`);
+      }
+    }
+  }
+
+  assert.deepEqual(violations, []);
+});
+
+test("CSP الإنتاج تمنع السكربتات المضمنة غير المصرح بها", async () => {
+  const { buildContentSecurityPolicy } = await import("../src/config/csp.ts");
+  const policy = buildContentSecurityPolicy("test-nonce");
+
+  assert.match(policy, /script-src[^;]*'nonce-test-nonce'/);
+  assert.match(policy, /script-src[^;]*'strict-dynamic'/);
+  assert.doesNotMatch(policy, /script-src[^;]*'unsafe-inline'/);
+  assert.match(policy, /object-src 'none'/);
+  assert.match(policy, /base-uri 'self'/);
 });

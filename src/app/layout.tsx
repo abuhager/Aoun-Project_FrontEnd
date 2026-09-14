@@ -13,6 +13,8 @@ import MaintenanceGate       from "@/components/MaintenanceGate";
 import SettingsSync          from "@/components/SettingsSync";
 import ApiStateProvider      from "@/components/ApiStateProvider";
 
+const siteUrl = "https://www.aoun.website";
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -21,15 +23,86 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
-    default: "عون | Aoun",
+    default: "عون | منصة للتبرعات العينية",
     template: `%s | ${siteConfig.name}`,
   },
-  description: siteConfig.description,
+  description:
+    "عون منصة عربية لتنسيق التبرعات العينية، تساعد المتبرعين والمستفيدين على عرض الأغراض وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم بأمان ووضوح.",
+  applicationName: "عون | Aoun",
+  keywords: [
+    "عون",
+    "Aoun",
+    "منصة عون",
+    "التبرعات العينية",
+    "تبرع",
+    "تبرعات",
+    "تبرع بالأغراض",
+    "طلبات الاحتياج",
+    "منصة تبرعات",
+    "تبرعات الأردن",
+    "العمل الخيري",
+  ],
+  alternates: {
+    canonical: siteUrl,
+  },
+  openGraph: {
+    type: "website",
+    locale: "ar_JO",
+    url: siteUrl,
+    siteName: "عون | Aoun",
+    title: "عون | منصة للتبرعات العينية",
+    description:
+      "منصة عربية لتنظيم التبرعات العينية وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "عون | منصة للتبرعات العينية",
+    description:
+      "منصة عربية لتنظيم التبرعات العينية وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: "/icon.svg",
   },
+};
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      url: siteUrl,
+      name: "عون",
+      alternateName: ["Aoun", "منصة عون"],
+      inLanguage: "ar",
+      description:
+        "منصة عربية لتنسيق التبرعات العينية وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم.",
+    },
+    {
+      "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
+      name: "عون",
+      alternateName: "Aoun",
+      url: siteUrl,
+      email: siteConfig.contactEmail,
+      description:
+        "منصة مجتمعية لتنظيم التبرعات العينية وطلبات الاحتياج وتنسيق التسليم.",
+    },
+  ],
 };
 
 // ── Layout الرئيسي ─────────────────────────────────────────────
@@ -47,19 +120,16 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       className="font-loaded"
     >
-      {/* body: flex column لضمان توزيع العناصر بشكل مرن */}
       <body className="flex min-h-dvh flex-col overflow-x-clip bg-surface text-on-surface antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+          }}
+        />
         <ApiStateProvider initialPublicSettings={null}>
           <SiteConfigProvider settings={null}>
             <AuthProvider>
-              {/*
-                ✅ ARCH-01: الترتيب الصحيح للـ Providers (من الخارج للداخل):
-                SiteConfigProvider → AuthProvider → SocketProvider → [Modal + Children]
-
-                القاعدة: كل Provider يعتمد على من يسبقه من الخارج
-                - SocketProvider داخل AuthProvider: لأنه يحتاج بيانات المستخدم للاتصال
-                - GlobalRatingModal داخل SocketProvider: لأنها قد تستمع لـ Socket events
-              */}
               <SocketProvider>
                 <SettingsSync />
                 <MaintenanceGate>

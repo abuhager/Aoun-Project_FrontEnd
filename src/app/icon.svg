@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#008b7f"/>
+      <stop offset="1" stop-color="#06433e"/>
+    </linearGradient>
+  </defs>
+  <path d="M12 4h36c6.627 0 12 5.373 12 12v36c0 4.418-3.582 8-8 8H12C5.373 60 0 54.627 0 48V16C0 9.373 5.373 4 12 4Z" fill="url(#g)"/>
+  <circle cx="15" cy="15" r="3.5" fill="#f3c36f"/>
+  <text x="32" y="42" text-anchor="middle" font-size="35" font-family="Arial, 'Noto Sans Arabic', sans-serif" font-weight="700" fill="#fff">ع</text>
+</svg>

@@ -1,6 +1,33 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import DonationRequestsClient from "./DonationRequestsClient";
 import { getPublicDonationRequestsServer } from "@/lib/api/publicApiServer";
+
+const siteUrl = "https://www.aoun.website";
+
+export const metadata: Metadata = {
+  title: "طلبات احتياج وتبرعات عينية في الأردن",
+  description:
+    "استعرض طلبات الاحتياج المنشورة عبر منصة عون في الأردن وساهم بتقديم أغراض عينية مناسبة مع تنسيق واضح للتواصل والتسليم.",
+  alternates: {
+    canonical: `${siteUrl}/donation-requests`,
+  },
+  openGraph: {
+    type: "website",
+    locale: "ar_JO",
+    url: `${siteUrl}/donation-requests`,
+    siteName: "عون | Aoun",
+    title: "طلبات احتياج وتبرعات عينية في الأردن | عون",
+    description:
+      "تصفح طلبات الاحتياج وساهم بالتبرع بالأغراض عبر منصة عون في الأردن.",
+  },
+  twitter: {
+    card: "summary",
+    title: "طلبات احتياج وتبرعات عينية في الأردن | عون",
+    description:
+      "تصفح طلبات الاحتياج وساهم بالتبرع بالأغراض عبر منصة عون في الأردن.",
+  },
+};
 
 function RequestsPageSkeleton() {
   return (
@@ -9,14 +36,12 @@ function RequestsPageSkeleton() {
       dir="rtl"
     >
       <div className="mx-auto max-w-6xl px-4 pt-20 md:px-8 md:pt-24">
-        {/* Header skeleton */}
         <section className="mb-8">
           <div className="h-3 w-28 animate-pulse rounded-full bg-[#e9e4dc]" />
           <div className="mt-4 h-8 w-56 animate-pulse rounded-2xl bg-[#e3ddd4]" />
           <div className="mt-3 h-4 w-80 max-w-full animate-pulse rounded-full bg-[#eee9e1]" />
         </section>
 
-        {/* Controls skeleton */}
         <section className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex gap-2">
             <div className="h-10 w-28 animate-pulse rounded-full bg-white shadow-sm" />
@@ -27,7 +52,6 @@ function RequestsPageSkeleton() {
           <div className="h-10 w-full max-w-xs animate-pulse rounded-2xl bg-white shadow-sm" />
         </section>
 
-        {/* Bento / cards skeleton */}
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div

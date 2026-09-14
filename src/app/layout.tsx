@@ -14,6 +14,9 @@ import SettingsSync          from "@/components/SettingsSync";
 import ApiStateProvider      from "@/components/ApiStateProvider";
 
 const siteUrl = "https://www.aoun.website";
+const seoTitle = "منصة عون | تبرعات عينية في الأردن";
+const seoDescription =
+  "منصة عون للتبرعات العينية في الأردن، تربط المتبرعين بالمستفيدين لعرض الأغراض وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم بطريقة واضحة وآمنة.";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -25,24 +28,32 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "عون | منصة للتبرعات العينية",
+    default: seoTitle,
     template: `%s | ${siteConfig.name}`,
   },
-  description:
-    "عون منصة عربية لتنسيق التبرعات العينية، تساعد المتبرعين والمستفيدين على عرض الأغراض وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم بأمان ووضوح.",
+  description: seoDescription,
   applicationName: "عون | Aoun",
+  authors: [{ name: "منصة عون" }],
+  creator: "منصة عون",
+  publisher: "منصة عون",
+  category: "Charity",
   keywords: [
     "عون",
     "Aoun",
     "منصة عون",
+    "منصة عون للتبرعات",
+    "عون للتبرعات العينية",
     "التبرعات العينية",
-    "تبرع",
-    "تبرعات",
-    "تبرع بالأغراض",
-    "طلبات الاحتياج",
-    "منصة تبرعات",
+    "التبرعات العينية في الأردن",
     "تبرعات الأردن",
-    "العمل الخيري",
+    "تبرع في الأردن",
+    "تبرع بالأغراض",
+    "تبرع بأثاث",
+    "تبرع بملابس",
+    "أغراض للتبرع",
+    "طلبات احتياج",
+    "منصة تبرعات",
+    "العمل الخيري في الأردن",
   ],
   alternates: {
     canonical: siteUrl,
@@ -51,16 +62,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ar_JO",
     url: siteUrl,
-    siteName: "عون | Aoun",
-    title: "عون | منصة للتبرعات العينية",
-    description:
-      "منصة عربية لتنظيم التبرعات العينية وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم.",
+    siteName: "منصة عون | Aoun",
+    title: seoTitle,
+    description: seoDescription,
   },
   twitter: {
     card: "summary_large_image",
-    title: "عون | منصة للتبرعات العينية",
-    description:
-      "منصة عربية لتنظيم التبرعات العينية وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم.",
+    title: seoTitle,
+    description: seoDescription,
   },
   robots: {
     index: true,
@@ -86,31 +95,32 @@ const structuredData = {
       "@type": "WebSite",
       "@id": `${siteUrl}/#website`,
       url: siteUrl,
-      name: "عون",
-      alternateName: ["Aoun", "منصة عون"],
-      inLanguage: "ar",
-      description:
-        "منصة عربية لتنسيق التبرعات العينية وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم.",
+      name: "منصة عون",
+      alternateName: ["عون", "Aoun", "Aoun Platform"],
+      inLanguage: "ar-JO",
+      description: seoDescription,
+      publisher: { "@id": `${siteUrl}/#organization` },
     },
     {
       "@type": "Organization",
       "@id": `${siteUrl}/#organization`,
-      name: "عون",
-      alternateName: "Aoun",
+      name: "منصة عون",
+      alternateName: ["عون", "Aoun"],
       url: siteUrl,
       email: siteConfig.contactEmail,
-      description:
-        "منصة مجتمعية لتنظيم التبرعات العينية وطلبات الاحتياج وتنسيق التسليم.",
+      logo: `${siteUrl}/icon.svg`,
+      areaServed: {
+        "@type": "Country",
+        name: "Jordan",
+      },
+      description: seoDescription,
     },
   ],
 };
 
-// ── Layout الرئيسي ─────────────────────────────────────────────
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  // The per-request CSP nonce is created in proxy.ts. Static HTML is generated
-  // before that nonce exists, so it would ship blocked inline Next.js scripts.
   await connection();
 
   return (

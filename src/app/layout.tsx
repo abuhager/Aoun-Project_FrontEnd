@@ -22,10 +22,14 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: siteConfig.name,
+    default: "عون | Aoun",
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: "/icon.svg",
+  },
 };
 
 // ── Layout الرئيسي ─────────────────────────────────────────────

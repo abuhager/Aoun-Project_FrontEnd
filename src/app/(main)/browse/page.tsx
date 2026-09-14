@@ -9,9 +9,30 @@ import {
   normalizeBrowseSearchInput,
 } from "@/lib/navigation/browseSearch";
 
+const siteUrl = "https://www.aoun.website";
+
 export const metadata: Metadata = {
-  title: "تصفح التبرعات",
-  description: "استعرض الأغراض المتاحة للتبرع وابحث حسب المدينة والتصنيف.",
+  title: "تبرعات عينية متاحة في الأردن",
+  description:
+    "تصفح التبرعات العينية المتاحة عبر منصة عون في الأردن، وابحث عن الأغراض حسب المدينة والتصنيف والحالة ثم نسّق الحجز والتسليم بسهولة.",
+  alternates: {
+    canonical: `${siteUrl}/browse`,
+  },
+  openGraph: {
+    type: "website",
+    locale: "ar_JO",
+    url: `${siteUrl}/browse`,
+    siteName: "عون | Aoun",
+    title: "تبرعات عينية متاحة في الأردن | عون",
+    description:
+      "اكتشف أغراضًا متاحة للتبرع في الأردن وابحث حسب المدينة والتصنيف عبر منصة عون.",
+  },
+  twitter: {
+    card: "summary",
+    title: "تبرعات عينية متاحة في الأردن | عون",
+    description:
+      "اكتشف أغراضًا متاحة للتبرع في الأردن وابحث حسب المدينة والتصنيف عبر منصة عون.",
+  },
 };
 
 type BrowseSearchParams = Record<string, string | string[] | undefined>;
@@ -57,8 +78,8 @@ export default async function BrowsePage({
     <div className="page-shell pb-20 pt-20" dir="rtl">
       <div className="site-container space-y-6 md:pt-4">
         <PageIntro
-          eyebrow="سوق مجتمعي بلا مقابل"
-          title="اكتشف التبرعات المتاحة"
+          eyebrow="تبرعات عينية في الأردن"
+          title="اكتشف التبرعات المتاحة عبر منصة عون"
           description="ابحث بالاسم أو المدينة أو التصنيف، ثم راجع حالة الغرض وخيار التسليم قبل إرسال طلب الحجز."
           icon="travel_explore"
           actions={

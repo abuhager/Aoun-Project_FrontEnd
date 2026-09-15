@@ -90,6 +90,22 @@ const nextConfig: NextConfig = {
   // هذا الخيار يخص `next dev` فقط ولا ينشئ نسخة هاتف منفصلة ولا يؤثر على Vercel.
   allowedDevOrigins: ['192.168.100.118'],
 
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'aoun-project-theta.vercel.app',
+          },
+        ],
+        destination: 'https://www.aoun.website/:path*',
+        permanent: true,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {

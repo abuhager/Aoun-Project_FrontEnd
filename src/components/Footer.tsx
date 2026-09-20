@@ -156,7 +156,7 @@ export default function Footer() {
               href="https://www.adhamabuhagerdev.site/"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="تطوير أدهم أبو هاجر — زيارة موقع المطوّر"
+              aria-label="تطوير أدهم أبو حجر — زيارة موقع المطوّر"
               className="inline-flex items-center gap-1.5 rounded-md text-white/65 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               <Image
@@ -166,7 +166,7 @@ export default function Footer() {
                 height={20}
                 className="h-5 w-auto shrink-0"
               />
-              <span>تطوير أدهم أبو هاجر</span>
+              <span>تطوير أدهم أبو حجر</span>
             </a>
           </nav>
         </div>

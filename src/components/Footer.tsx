@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -141,7 +142,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="safe-area-bottom flex flex-col gap-3 pt-6 text-[11px] font-bold text-white/35 sm:flex-row sm:items-center sm:justify-between">
+        <div className="safe-area-bottom flex flex-col gap-3 pt-6 text-[11px] font-bold text-white/35 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} {platformName}. جميع الحقوق محفوظة.</p>
           <nav aria-label="الروابط القانونية" className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/privacy" className="hover:text-white">
@@ -151,6 +152,22 @@ export default function Footer() {
               شروط الاستخدام
             </Link>
             <span>صُممت لتجعل مشاركة الخير أوضح وأكثر كرامة.</span>
+            <a
+              href="https://www.adhamabuhagerdev.site/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="تطوير أدهم أبو هاجر — زيارة موقع المطوّر"
+              className="inline-flex items-center gap-1.5 rounded-md text-white/65 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <Image
+                src="/developer/ah-logo.svg"
+                alt=""
+                width={30}
+                height={20}
+                className="h-5 w-auto shrink-0"
+              />
+              <span>تطوير أدهم أبو هاجر</span>
+            </a>
           </nav>
         </div>
       </div>

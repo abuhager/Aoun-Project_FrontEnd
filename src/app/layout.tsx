@@ -14,7 +14,7 @@ import SettingsSync          from "@/components/SettingsSync";
 import ApiStateProvider      from "@/components/ApiStateProvider";
 
 const siteUrl = "https://www.aoun.website";
-const seoTitle = "منصة عون | تبرعات عينية في الأردن";
+const seoTitle = "عون | تبرعات عينية في الأردن";
 const seoDescription =
   "منصة عون للتبرعات العينية في الأردن، تربط المتبرعين بالمستفيدين لعرض الأغراض وطلبات الاحتياج والحجز والتواصل وتنسيق التسليم بطريقة واضحة وآمنة.";
 
@@ -32,10 +32,10 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: seoDescription,
-  applicationName: "عون | Aoun",
-  authors: [{ name: "منصة عون" }],
-  creator: "منصة عون",
-  publisher: "منصة عون",
+  applicationName: "عون",
+  authors: [{ name: "عون" }],
+  creator: "عون",
+  publisher: "عون",
   category: "Charity",
   keywords: [
     "عون",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ar_JO",
     url: siteUrl,
-    siteName: "منصة عون | Aoun",
+    siteName: "عون | Aoun",
     title: seoTitle,
     description: seoDescription,
   },
@@ -95,8 +95,8 @@ const structuredData = {
       "@type": "WebSite",
       "@id": `${siteUrl}/#website`,
       url: siteUrl,
-      name: "منصة عون",
-      alternateName: ["عون", "Aoun", "Aoun Platform"],
+      name: "عون",
+      alternateName: ["منصة عون", "Aoun", "Aoun Platform"],
       inLanguage: "ar-JO",
       description: seoDescription,
       publisher: { "@id": `${siteUrl}/#organization` },
@@ -104,8 +104,8 @@ const structuredData = {
     {
       "@type": "Organization",
       "@id": `${siteUrl}/#organization`,
-      name: "منصة عون",
-      alternateName: ["عون", "Aoun"],
+      name: "عون",
+      alternateName: ["منصة عون", "Aoun"],
       url: siteUrl,
       email: siteConfig.contactEmail,
       logo: `${siteUrl}/icon.svg`,

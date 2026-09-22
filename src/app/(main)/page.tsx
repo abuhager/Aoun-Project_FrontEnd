@@ -64,7 +64,7 @@ export default function HomePage() {
               </div>
 
               <h1 className="max-w-2xl text-[2.45rem] font-black leading-[1.12] tracking-[-0.04em] text-white sm:text-5xl lg:text-[3.7rem]">
-                ما لا تحتاجه اليوم
+                عون — ما لا تحتاجه اليوم
                 <span className="mt-1 block text-[#f0c77f]">قد يصنع فرقًا غدًا</span>
               </h1>
 

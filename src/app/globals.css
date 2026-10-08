@@ -243,6 +243,11 @@
     color: var(--color-on-surface);
   }
 
+  .navbar-container {
+    width: min(100% - 2rem, 96rem);
+    margin-inline: auto;
+  }
+
   .site-container {
     width: min(100% - 2rem, 76rem);
     margin-inline: auto;

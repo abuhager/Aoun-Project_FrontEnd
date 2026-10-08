@@ -46,7 +46,7 @@ export function NavbarMobileMenu(props: NavbarMobileMenuProps) {
   const closeMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <div id={mobileMenuId} className="lg:hidden">
+    <div id={mobileMenuId} className="2xl:hidden">
       <button
         type="button"
         aria-label="إغلاق القائمة"

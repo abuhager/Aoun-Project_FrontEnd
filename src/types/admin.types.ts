@@ -54,6 +54,8 @@ export interface AdminBanUserPayload {
 export interface AdminItem {
   bookedBy?: { _id: string; name: string | null } | null;
   bookedAt?: string | null;
+  bookingExpiresAt?: string | null;
+  recipientConfirmed?: boolean;
   waitlist?: Array<{ position: number; user: { _id: string; name: string | null } | null; joinedAt: string | null }>;
 
   _id:       string;

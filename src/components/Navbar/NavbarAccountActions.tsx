@@ -54,13 +54,13 @@ export function NavbarAccountActions(props: NavbarAccountActionsProps) {
 
   if (!isMounted) {
     return (
-      <div className="hidden h-10 w-28 animate-pulse rounded-2xl bg-surface-container-high lg:block" />
+      <div className="hidden h-10 w-28 animate-pulse rounded-2xl bg-surface-container-high 2xl:block" />
     );
   }
 
   if (!isLoggedIn) {
     return (
-      <div className="hidden items-center gap-1.5 lg:flex">
+      <div className="hidden items-center gap-1.5 2xl:flex">
         <Link
           href="/login"
           className="rounded-xl px-3 py-2 text-sm font-bold text-[#6f6a63] transition-colors duration-200 hover:bg-[#f5f2ec] hover:text-[#191919]"
@@ -78,12 +78,12 @@ export function NavbarAccountActions(props: NavbarAccountActionsProps) {
   }
 
   return (
-    <div className="flex items-center gap-1 lg:rounded-[16px] lg:border lg:border-black/[0.06] lg:bg-surface-container-lowest lg:p-1 lg:shadow-sm">
+    <div data-testid="navbar-actions" className="flex shrink-0 items-center gap-1 2xl:rounded-[16px] 2xl:border 2xl:border-black/[0.06] 2xl:bg-surface-container-lowest 2xl:p-1 2xl:shadow-sm">
       {isAdmin && (
         <Link
           href="/admin"
           aria-current={pathname.startsWith("/admin") ? "page" : undefined}
-          className={`hidden h-9 items-center gap-1.5 rounded-xl px-3 text-[13px] font-black transition-all duration-300 lg:inline-flex ${
+          className={`hidden h-9 items-center gap-1.5 rounded-xl px-3 text-[13px] font-black transition-all duration-300 2xl:inline-flex ${
             pathname.startsWith("/admin")
               ? "bg-red-500 text-white shadow-sm"
               : "bg-red-50 text-red-600 hover:bg-red-500 hover:text-white"
@@ -99,7 +99,7 @@ export function NavbarAccountActions(props: NavbarAccountActionsProps) {
       {pathname !== "/add-item" && (
         <Link
           href="/add-item"
-          className="group hidden h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-black text-white shadow-[0_8px_18px_rgba(1,105,111,0.18)] transition-all duration-300 hover:bg-primary/95 hover:shadow-[0_12px_24px_rgba(1,105,111,0.24)] active:scale-[0.98] lg:inline-flex"
+          className="group hidden h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-black text-white shadow-[0_8px_18px_rgba(1,105,111,0.18)] transition-all duration-300 hover:bg-primary/95 hover:shadow-[0_12px_24px_rgba(1,105,111,0.24)] active:scale-[0.98] 2xl:inline-flex"
         >
           <span
             className="material-symbols-outlined text-[18px] transition-transform duration-300 group-hover:rotate-90"
@@ -113,7 +113,7 @@ export function NavbarAccountActions(props: NavbarAccountActionsProps) {
 
       <button
         onClick={openChatInbox}
-        className="touch-target relative flex h-10 w-10 items-center justify-center rounded-xl text-[#77716a] transition-all duration-300 hover:bg-[#f5f2ec] hover:text-[#181818] lg:h-9 lg:w-9 lg:hover:bg-white"
+        className="touch-target relative flex h-10 w-10 items-center justify-center rounded-xl text-[#77716a] transition-all duration-300 hover:bg-[#f5f2ec] hover:text-[#181818] 2xl:h-9 2xl:w-9 2xl:hover:bg-white"
         aria-label="الرسائل"
         type="button"
       >
@@ -125,11 +125,11 @@ export function NavbarAccountActions(props: NavbarAccountActionsProps) {
         )}
       </button>
 
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl lg:h-9 lg:w-9">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl 2xl:h-9 2xl:w-9">
         <NotificationBell />
       </div>
 
-      <div className="relative hidden lg:block" ref={dropdownRef}>
+      <div className="relative hidden 2xl:block" ref={dropdownRef}>
         <button
           ref={profileButtonRef}
           onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}

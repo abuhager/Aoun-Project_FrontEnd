@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { getBookingDeadlineState } from "@/lib/utils/bookingDeadline";
 import AdminContact from "@/components/admin/AdminContact";
 import Image from "next/image";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
@@ -139,7 +143,7 @@ export default function AdminItemsTable({
                     </td>
 
                     <td className="p-4 min-w-64">
-                      {item.bookedBy ? <><AdminContact userId={item.bookedBy._id} name={item.bookedBy.name} /><p className="my-2 text-xs text-gray-500">الحجز: {item.bookedAt ? new Date(item.bookedAt).toLocaleString("ar-JO") : "—"}</p></> : <p>غير محجوز</p>}
+                      {item.bookedBy ? <><AdminContact userId={item.bookedBy._id} name={item.bookedBy.name} /><p className="my-2 text-xs text-gray-500">الحجز: {item.bookedAt ? new Date(item.bookedAt).toLocaleString("ar-JO") : "—"}</p><BookingDeadline expiresAt={item.bookingExpiresAt} recipientConfirmed={item.recipientConfirmed} /></> : <p>غير محجوز</p>}
                       <details className="mt-3"><summary className="cursor-pointer font-bold">طابور الانتظار ({item.waitlist?.length ?? 0})</summary>
                         <ol className="mt-2 space-y-3">{item.waitlist?.map((entry) => <li key={entry.position}><span>#{entry.position} </span><AdminContact userId={entry.user?._id} name={entry.user?.name} /><time className="text-xs text-gray-500">{entry.joinedAt ? new Date(entry.joinedAt).toLocaleString("ar-JO") : ""}</time></li>)}</ol>
                         {!item.waitlist?.length && <p className="mt-2 text-xs">لا يوجد مستخدمون في الانتظار.</p>}
@@ -187,5 +191,29 @@ export default function AdminItemsTable({
         </table>
       </ResponsiveTable>
     </section>
+  );
+}
+
+function BookingDeadline({ expiresAt, recipientConfirmed }: {
+  expiresAt?: string | null;
+  recipientConfirmed?: boolean;
+}) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const update = () => setNow(Date.now());
+    update();
+    const timer = window.setInterval(update, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  if (recipientConfirmed) {
+    return <p className="text-xs font-bold text-emerald-700">الاستلام مؤكّد؛ بانتظار تأكيد المتبرع</p>;
+  }
+  if (!expiresAt || !Number.isFinite(Date.parse(expiresAt))) return null;
+  const expired = now !== null && getBookingDeadlineState(expiresAt, now) === "expired";
+  return (
+    <div className="space-y-1 text-xs">
+      <p className="text-gray-500">ينتهي: <time dateTime={expiresAt}>{new Date(expiresAt).toLocaleString("ar-JO")}</time></p>
+      {expired && <p className="font-bold text-amber-700">انتهت المهلة — بانتظار المعالجة التلقائية</p>}
+    </div>
   );
 }

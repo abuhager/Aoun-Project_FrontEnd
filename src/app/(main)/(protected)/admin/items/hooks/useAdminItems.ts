@@ -30,8 +30,8 @@ export function useAdminItems() {
   }, []);
 
   const loadItems = useCallback(
-    async (signal?: AbortSignal) => {
-      setLoading(true);
+    async (signal?: AbortSignal, background = false) => {
+      if (!background) setLoading(true);
       try {
         const data = await getAdminItems(page, signal);
         if (!signal?.aborted) {
@@ -39,7 +39,7 @@ export function useAdminItems() {
           setPages(data.pages);
         }
       } catch {
-        if (!signal?.aborted) showToast("تعذر تحميل الأغراض", false);
+        if (!signal?.aborted && !background) showToast("تعذر تحميل الأغراض", false);
       } finally {
         if (!signal?.aborted) setLoading(false);
       }
@@ -50,7 +50,16 @@ export function useAdminItems() {
   useEffect(() => {
     const controller = new AbortController();
     void loadItems(controller.signal);
-    return () => controller.abort();
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadItems(controller.signal, true);
+    };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
   }, [loadItems]);
 
   const openDelete = (item: AdminItem) => {

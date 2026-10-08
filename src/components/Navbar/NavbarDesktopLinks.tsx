@@ -27,6 +27,7 @@ export function NavbarDesktopLinks({
               }`}
             >
               <span
+                aria-hidden="true"
                 className="material-symbols-outlined text-[17px] transition-transform duration-300 group-hover:scale-110"
                 style={{
                   fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0",

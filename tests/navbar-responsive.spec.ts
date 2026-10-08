@@ -19,12 +19,12 @@ for (const width of [390, 1024, 1280, 1536, 1907]) {
     await page.goto("/browse");
     const nav = page.getByRole("navigation", { name: "التنقل الرئيسي", exact: true });
     await expect(nav.getByRole("button", { name: "الرسائل", exact: true })).toBeVisible();
-    const links = page.getByTestId("navbar-links");
+    const links = nav.getByTestId("navbar-links");
     if (width >= 1536) {
       await expect(nav.getByRole("button", { name: "قائمة الحساب" })).toBeVisible();
       await expect(links).toBeVisible();
       const brand = await nav.getByRole("link", { name: /العودة إلى الرئيسية/ }).boundingBox();
-      const actions = await page.getByTestId("navbar-actions").boundingBox();
+      const actions = await nav.getByTestId("navbar-actions").boundingBox();
       const linkBoxes = await links.getByRole("link").all();
       for (const link of linkBoxes) {
         const box = await link.boundingBox();

@@ -112,7 +112,8 @@ export default function ItemDetailsClient({
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const imageUrl = item.imageUrl ?? "/placeholder.svg";
   const showCountdown =
-    !isRequestLinked && item.status === "محجوز" && (isBooker || isDonor);
+    !isRequestLinked && item.status === "محجوز"
+    && !(item.recipientConfirmed && item.donorConfirmed) && (isBooker || isDonor);
   const showChat = (isDonor || isBooker) && item.status === "محجوز";
 
   const isRecipientConfirmedActual = item.recipientConfirmed || delivery.isRecipientConfirmed;

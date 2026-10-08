@@ -46,7 +46,7 @@ export function NavbarMobileMenu(props: NavbarMobileMenuProps) {
   const closeMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <div id={mobileMenuId} className="lg:hidden">
+    <div id={mobileMenuId} className="2xl:hidden">
       <button
         type="button"
         aria-label="إغلاق القائمة"
@@ -66,7 +66,7 @@ export function NavbarMobileMenu(props: NavbarMobileMenuProps) {
                   {user?.avatar ? (
                     <Image src={user.avatar} alt={firstName} fill sizes="40px" className="object-cover" />
                   ) : (
-                    <span className="material-symbols-outlined text-[21px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[21px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
                       account_circle
                     </span>
                   )}
@@ -142,7 +142,7 @@ function AuthenticatedMobileLinks({
       )}
       <div className="my-3 h-px bg-black/[0.06]" />
       <button onClick={handleLogout} className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-red-500 transition-colors duration-200 hover:bg-red-50/80" type="button">
-        <span className="material-symbols-outlined text-[19px]">logout</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-[19px]">logout</span>
         تسجيل الخروج
       </button>
     </>
@@ -180,7 +180,7 @@ function MobileLink({
 
   return (
     <Link href={href} aria-current={active ? "page" : undefined} onClick={onClick} className={`mt-1 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors duration-200 ${colorClass}`}>
-      <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: filled || active ? "'FILL' 1" : "'FILL' 0" }}>
+      <span aria-hidden="true" className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: filled || active ? "'FILL' 1" : "'FILL' 0" }}>
         {icon}
       </span>
       {label}

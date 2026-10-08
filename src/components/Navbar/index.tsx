@@ -69,7 +69,7 @@ export default function Navbar() {
       dir="rtl"
       aria-label="التنقل الرئيسي"
     >
-      <div className="site-container flex h-16 items-center justify-between lg:h-[68px]">
+      <div className="navbar-container flex h-16 items-center justify-between gap-3 2xl:h-[68px]">
         <div className="flex shrink-0 items-center">
           <Link href="/" aria-label={`العودة إلى الرئيسية — ${platformName}`} className="rounded-xl">
             <BrandMark name={platformName} compact />
@@ -106,7 +106,7 @@ export default function Navbar() {
             aria-expanded={isMobileMenuOpen}
             aria-controls={mobileMenuId}
             aria-label={isMobileMenuOpen ? "إغلاق القائمة" : "فتح القائمة"}
-            className={`touch-target flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 lg:hidden ${
+            className={`touch-target flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 2xl:hidden ${
               isMobileMenuOpen
                 ? "bg-primary/[0.08] text-primary"
                 : "text-[#6b665f] hover:bg-[#f5f2ec] hover:text-[#191919]"

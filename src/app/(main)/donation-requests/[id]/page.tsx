@@ -1,3 +1,4 @@
+import StructuredData from "@/components/StructuredData";
 import type { Metadata } from "next";
 import DonationRequestDetailsClient from "./DonationRequestDetailsClient";
 import { getPublicDonationRequestServer } from "@/lib/api/publicApiServer";
@@ -89,12 +90,7 @@ export default async function DonationRequestDetailPage({
   return (
     <>
       {breadcrumbData ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(breadcrumbData).replace(/</g, "\\u003c"),
-          }}
-        />
+        <StructuredData data={breadcrumbData} />
       ) : null}
       <DonationRequestDetailsClient id={id} initialRequest={request} />
     </>

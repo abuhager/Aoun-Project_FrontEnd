@@ -38,6 +38,7 @@ export function getOtherParticipant(
   conversation: ConversationListItem,
   userId?: string
 ): ChatParticipant | null {
+  if (userId && conversation.kind === "support" && conversation.owner?._id === userId && conversation.requester?._id === userId) return { _id: userId, name: "خدمة الدعم — بانتظار الاستلام" };
   return (
     conversation.participants?.find((participant) => participant._id !== userId) ||
     conversation.owner ||

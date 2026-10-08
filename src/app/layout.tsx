@@ -1,3 +1,4 @@
+import StructuredData from "@/components/StructuredData";
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import "material-symbols/outlined.css";
@@ -131,12 +132,7 @@ export default async function RootLayout({
       className="font-loaded"
     >
       <body className="flex min-h-dvh flex-col overflow-x-clip bg-surface text-on-surface antialiased">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
-          }}
-        />
+        <StructuredData data={structuredData} />
         <ApiStateProvider initialPublicSettings={null}>
           <SiteConfigProvider settings={null}>
             <AuthProvider>

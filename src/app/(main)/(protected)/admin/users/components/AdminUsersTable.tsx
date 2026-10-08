@@ -1,3 +1,4 @@
+import AdminContact from "@/components/admin/AdminContact";
 import Image from "next/image";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
 import type { AdminUser } from "@/types/admin.types";
@@ -105,6 +106,7 @@ export default function AdminUsersTable({
                           <p className="truncate text-sm font-black text-[#223433]">
                             {u.name}
                           </p>
+<AdminContact userId={u._id} name="عرض الحساب" />
                           <p className="mt-0.5 truncate text-xs text-[#9b948c]">
                             {u.email}
                           </p>

@@ -8,6 +8,7 @@ export function GeneralSettings({ settings, update }: { settings: SystemSettings
   return (
     <SectionCard icon="build" title="إعدادات عامة للمنصة" subtitle="التحكم بالهوية العامة، وضع الصيانة، وسياسات التشغيل الأساسية." iconTone="bg-[#f6f2eb] text-[#7a6652]">
       <div className="space-y-4">
+        <ToggleField title="طلبات التبرع" description="إيقاف قسم طلبات التبرع وجميع عملياته مؤقتاً مع الاحتفاظ بالبيانات. لا يؤثر على الأغراض والحجوزات." checked={settings.donationRequestsEnabled !== false} onChange={() => update("donationRequestsEnabled", settings.donationRequestsEnabled === false)} />
         <ToggleField title="وضع الصيانة" description="يمنع المستخدمين من استخدام المنصة مؤقتًا أثناء التحديث أو الصيانة." checked={settings.maintenanceMode} onChange={() => update("maintenanceMode", !settings.maintenanceMode)} danger />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <TextField id="platform-name" label="اسم المنصة" value={settings.platformName || ""} onChange={(value) => update("platformName", value)} />

@@ -22,6 +22,9 @@ interface ConversationItem {
 }
 
 export interface ConversationListItem {
+  kind?: "booking" | "admin" | "support";
+  subject?: string | null;
+  supportStatus?: "open" | "in_progress" | "resolved" | null;
   _id: string;
   item: ConversationItem | null;
   owner: ChatParticipant | null;

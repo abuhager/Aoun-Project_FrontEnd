@@ -52,7 +52,7 @@ export function useConversationListController({
 
     return conversations.filter((conversation) => {
       const other = getOtherParticipant(conversation, user?._id);
-      return [conversation.item?.title, other?.name, conversation.lastMessage]
+      return [conversation.subject, conversation.item?.title, other?.name, conversation.lastMessage]
         .filter(Boolean)
         .some((value) => value?.toLocaleLowerCase("ar").includes(query));
     });
@@ -88,7 +88,7 @@ export function useConversationListController({
       if (!secureId) return;
       setSelectedId(secureId);
 
-      if ((conversation.unreadCount || 0) === 0) return;
+      if (user?.isDemo || (conversation.unreadCount || 0) === 0) return;
       const snapshot = conversations;
       await mutate(
         (current) =>
@@ -104,7 +104,7 @@ export function useConversationListController({
         await mutate(snapshot, { revalidate: true });
       }
     },
-    [conversations, mutate]
+    [conversations, mutate, user?.isDemo]
   );
 
   const returnToInbox = useCallback(() => {

@@ -10,7 +10,7 @@ import { useChatPanelController } from "./useChatPanelController";
 export function ChatPanel({
   conversationId,
   itemTitle,
-  participantName = "محادثة التسليم",
+  participantName = "محادثة خاصة",
   participantAvatar,
   onClose,
   onBack,

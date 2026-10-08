@@ -20,7 +20,7 @@
     "axios": "^1.20.0",
     "firebase": "^12.18.0",
     "material-symbols": "0.47.1",
-    "next": "16.3.4",
+    "next": "16.4.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
@@ -41,5 +41,9 @@
   },
   "engines": {
     "node": ">=20.19.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.5",
+    "eslint-plugin-react-hooks": "7.0.1"
   }
 }

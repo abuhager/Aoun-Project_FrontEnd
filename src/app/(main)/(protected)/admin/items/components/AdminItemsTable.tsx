@@ -1,3 +1,4 @@
+import AdminContact from "@/components/admin/AdminContact";
 import Image from "next/image";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
 import type { AdminItem } from "@/types/admin.types";
@@ -43,6 +44,7 @@ export default function AdminItemsTable({
               <th className="p-4 text-right">الغرض</th>
               <th className="p-4 text-right">التصنيف</th>
               <th className="p-4 text-right">المتبرع</th>
+              <th className="p-4 text-right">الحاجز والطابور</th>
               <th className="p-4 text-right">الحالة</th>
               <th className="p-4 text-right">التاريخ</th>
               <th className="p-4 text-right">إجراء</th>
@@ -53,7 +55,7 @@ export default function AdminItemsTable({
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i} className="border-b border-[#f5f1eb]">
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <td key={j} className="p-4">
                       <div className="h-4 animate-pulse rounded-full bg-[#f1ece5]" />
                     </td>
@@ -62,7 +64,7 @@ export default function AdminItemsTable({
               ))
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-20 text-center">
+                <td colSpan={7} className="py-20 text-center">
                   <div className="flex flex-col items-center justify-center text-[#b3aba1]">
                     <span className="material-symbols-outlined mb-3 text-5xl">
                       inventory_2
@@ -136,6 +138,13 @@ export default function AdminItemsTable({
                       </div>
                     </td>
 
+                    <td className="p-4 min-w-64">
+                      {item.bookedBy ? <><AdminContact userId={item.bookedBy._id} name={item.bookedBy.name} /><p className="my-2 text-xs text-gray-500">الحجز: {item.bookedAt ? new Date(item.bookedAt).toLocaleString("ar-JO") : "—"}</p></> : <p>غير محجوز</p>}
+                      <details className="mt-3"><summary className="cursor-pointer font-bold">طابور الانتظار ({item.waitlist?.length ?? 0})</summary>
+                        <ol className="mt-2 space-y-3">{item.waitlist?.map((entry) => <li key={entry.position}><span>#{entry.position} </span><AdminContact userId={entry.user?._id} name={entry.user?.name} /><time className="text-xs text-gray-500">{entry.joinedAt ? new Date(entry.joinedAt).toLocaleString("ar-JO") : ""}</time></li>)}</ol>
+                        {!item.waitlist?.length && <p className="mt-2 text-xs">لا يوجد مستخدمون في الانتظار.</p>}
+                      </details>
+                    </td>
                     {/* Status */}
                     <td className="p-4">
                       <span

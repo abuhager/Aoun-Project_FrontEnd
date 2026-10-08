@@ -44,7 +44,7 @@ export default function ConversationList({
             <ChatPanel
               key={controller.selected._id}
               conversationId={controller.selected._id}
-              itemTitle={controller.selected.item?.title || "الغرض"}
+              itemTitle={controller.selected.subject || controller.selected.item?.title || "الغرض"}
               participantName={controller.selectedParticipant?.name || "مستخدم عون"}
               participantAvatar={controller.selectedParticipant?.avatar}
               onBack={controller.returnToInbox}

@@ -9,6 +9,7 @@ export interface PublicSettings {
   reportReasons: string[];
   maxAvatarSizeMb: number;
   requireHubForBooking: boolean;
+  donationRequestsEnabled?: boolean;
   maintenanceMode: boolean;
   updatedAt: string | null;
 }
@@ -82,6 +83,7 @@ export interface SystemSettings {
   // ─── إعدادات النظام العامة ────────────────────────────────────────────
   quotaResetDayOfMonth: number;
   requireHubForBooking: boolean;
+  donationRequestsEnabled?: boolean;
   maintenanceMode:      boolean;
   platformName:         string;
   contactEmail:         string;

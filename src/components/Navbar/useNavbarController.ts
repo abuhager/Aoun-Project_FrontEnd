@@ -5,6 +5,7 @@ import { SOCKET_EVENTS } from "@/config/socket";
 import { useSiteConfig } from "@/context/SiteConfigContext";
 import { useSocket } from "@/context/SocketContext";
 import { getConversationUnreadCount } from "@/lib/api/conversationApi";
+import { useSettings } from "@/hooks/useSettings";
 import { useNavbar } from "./useNavbar";
 
 const NAV_LINKS = [
@@ -12,10 +13,12 @@ const NAV_LINKS = [
   { href: "/donation-requests", icon: "volunteer_activism", label: "طلبات التبرع", authRequired: false },
   { href: "/hubs", icon: "warehouse", label: "مراكز التسليم", authRequired: false },
   { href: "/#how-it-works", icon: "help", label: "كيف نعمل؟", authRequired: false },
+  { href: "/support", icon: "support_agent", label: "الدعم", authRequired: true },
   { href: "/leaderboard", icon: "leaderboard", label: "المتصدرون", authRequired: true },
 ] as const;
 
 export function useNavbarController() {
+  const { settings } = useSettings();
   const { platformName } = useSiteConfig();
   const { socket } = useSocket();
   const navbar = useNavbar();
@@ -48,8 +51,8 @@ export function useNavbarController() {
   const userBadge = (user?.gamification as { badge?: string })?.badge ?? "🌱";
   const chatUnreadCount = isReadyForUserData ? serverChatUnreadCount : 0;
   const visibleLinks = useMemo(
-    () => NAV_LINKS.filter((link) => !link.authRequired || isReadyForUserData),
-    [isReadyForUserData]
+    () => NAV_LINKS.filter((link) => (!link.authRequired || isReadyForUserData) && (link.href !== "/donation-requests" || settings?.donationRequestsEnabled !== false)),
+    [isReadyForUserData, settings?.donationRequestsEnabled]
   );
 
   const fetchUnreadCount = useCallback(async () => {

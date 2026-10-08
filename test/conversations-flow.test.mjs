@@ -31,7 +31,7 @@ test('ChatDrawer يقبل conversationId صريحاً ولا يرجع إلى ite
   assert.match(source, /useChatRoom\(\{ conversationId \}\)/);
   assert.doesNotMatch(source, /finalConvId|itemId\?:|convId\?:/);
   assert.match(source, /maxLength=\{2_000\}/);
-  assert.match(source, /هذه المحادثة للقراءة فقط لأن الحجز لم يعد قائماً/);
+  assert.match(source, /هذه المحادثة للقراءة فقط: تم إغلاقها أو أن الحساب في وضع العرض التجريبي/);
 });
 
 test('Hook المحادثة يعاود الانضمام بعد reconnect ويعتمد ACK موحداً', async () => {

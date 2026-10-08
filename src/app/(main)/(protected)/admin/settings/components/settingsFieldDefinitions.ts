@@ -1,7 +1,7 @@
 import type { SystemSettings } from "@/types/settings.types";
 
 type NumericSettingKey = {
-  [Key in keyof SystemSettings]: SystemSettings[Key] extends number ? Key : never;
+  [Key in keyof SystemSettings]-?: SystemSettings[Key] extends number ? Key : never;
 }[keyof SystemSettings];
 
 export type NumberFieldDefinition = {

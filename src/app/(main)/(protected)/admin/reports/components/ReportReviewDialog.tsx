@@ -1,3 +1,4 @@
+import AdminContact from "@/components/admin/AdminContact";
 import AccessibleDialog from "@/components/ui/AccessibleDialog";
 import type {
   ModerationReport,
@@ -94,12 +95,14 @@ export default function ReportReviewDialog({
             <p className="text-sm font-black text-[#223433]">
               {getReportUserName(report.reporter?.name)}
             </p>
+<AdminContact userId={report.reporter?._id} name="عرض الحساب" />
           </div>
           <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
             <p className="mb-1 text-xs font-bold text-[#b88a8a]">المُبلَّغ عنه</p>
             <p className="text-sm font-black text-red-700">
               {getReportUserName(report.reportedUser?.name)}
             </p>
+<AdminContact userId={report.reportedUser?._id} name="عرض الحساب" />
             {report.reportedUser?.isBanned && (
               <span className="mt-1 inline-block text-xs font-bold text-red-500">
                 محظور حالياً

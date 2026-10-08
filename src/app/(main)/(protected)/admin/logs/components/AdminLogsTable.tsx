@@ -5,6 +5,9 @@ import type {
 } from "@/types/admin.types";
 
 const ACTION_MAP: Record<string, { label: string; color: string; icon: string }> = {
+  ADMIN_CHAT_OPEN: { label: "فتح محادثة إدارية", color: "bg-teal-50 text-teal-700", icon: "chat" },
+  SUPPORT_CLAIM: { label: "استلام طلب دعم", color: "bg-blue-50 text-blue-700", icon: "support_agent" },
+  SUPPORT_RESOLVE: { label: "حل طلب دعم", color: "bg-green-50 text-green-700", icon: "task_alt" },
   BAN: {
     label: "حظر مستخدم",
     color: "text-red-600 bg-red-50 border-red-100",

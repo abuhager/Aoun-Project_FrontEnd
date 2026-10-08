@@ -1,3 +1,4 @@
+import StructuredData from "@/components/StructuredData";
 import type { Metadata } from "next";
 import ItemDetailsClient from "./ItemDetailsClient";
 import {
@@ -89,12 +90,7 @@ export default async function ItemDetailsPage({ params }: ItemPageProps) {
   return (
     <>
       {breadcrumbData ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(breadcrumbData).replace(/</g, "\\u003c"),
-          }}
-        />
+        <StructuredData data={breadcrumbData} />
       ) : null}
       <ItemDetailsClient itemId={id} initialItem={item} />
     </>

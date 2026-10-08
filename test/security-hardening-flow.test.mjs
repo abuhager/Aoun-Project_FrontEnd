@@ -89,6 +89,14 @@ test("مصادر الواجهة لا تضيف HTML أو JavaScript sinks قاب�
   for (const sourcePath of collectRuntimeSources(path.join(projectRoot, "src"))) {
     const source = fs.readFileSync(sourcePath, "utf8");
     for (const [label, pattern] of forbiddenSinks) {
+      // Only the reviewed JSON-LD component may use this sink. Its serializer
+      // is exercised with closing-script payloads below; all other sinks remain forbidden.
+      if (label === "dangerouslySetInnerHTML" && path.relative(projectRoot, sourcePath) === "src/components/StructuredData.tsx") {
+        assert.equal((source.match(new RegExp(pattern.source, "g")) || []).length, 1);
+        assert.match(source, /type="application\/ld\+json"/);
+        assert.match(source, /__html: serializeStructuredData\(data\)/);
+        continue;
+      }
       if (pattern.test(source)) {
         violations.push(`${path.relative(projectRoot, sourcePath)}: ${label}`);
       }
@@ -107,4 +115,14 @@ test("CSP الإنتاج تمنع السكربتات المضمنة غير ال�
   assert.doesNotMatch(policy, /script-src[^;]*'unsafe-inline'/);
   assert.match(policy, /object-src 'none'/);
   assert.match(policy, /base-uri 'self'/);
+});
+
+
+test("JSON-LD preserves values without allowing a closing script tag or HTML", async () => {
+  const { serializeStructuredData } = await import("../src/lib/structuredData.ts");
+  const value = { name: '</script><script>alert("xss")</script>', text: '<!-- & >', separators: '\u2028\u2029' };
+  const serialized = serializeStructuredData(value);
+  assert.doesNotMatch(serialized, /[<>&\u2028\u2029]/);
+  assert.deepEqual(JSON.parse(serialized), value);
+  assert.throws(() => serializeStructuredData(undefined), /JSON serializable/);
 });

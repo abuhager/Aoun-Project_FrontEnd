@@ -16,6 +16,7 @@ interface Gamification {
 }
 
 export interface AuthUser {
+  isDemo?: boolean;
   _id:               string;
   name:              string;
   email:             string;

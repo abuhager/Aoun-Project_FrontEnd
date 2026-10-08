@@ -2,6 +2,7 @@
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
+  '/support',
   '/profile',
   '/add-item',
   '/admin',

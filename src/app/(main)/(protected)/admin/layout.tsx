@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -8,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/admin/users", label: "المستخدمون", icon: "group", group: "الإدارة" },
   { href: "/admin/items", label: "الأغراض", icon: "inventory_2", group: "الإدارة" },
   { href: "/admin/reports", label: "البلاغات", icon: "flag", group: "المتابعة" },
+  { href: "/admin/support", label: "طلبات الدعم", icon: "support_agent", group: "المتابعة" },
   { href: "/admin/logs", label: "سجل العمليات", icon: "history", group: "المتابعة" },
   { href: "/admin/settings", label: "الإعدادات", icon: "tune", group: "النظام" },
   { href: "/admin/hubs", label: "مراكز التسليم", icon: "warehouse", group: "النظام" },
@@ -17,6 +19,7 @@ const GROUPS = ["الرئيسية", "الإدارة", "المتابعة", "ال�
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const isItemActive = (href: string) =>
     pathname === href || (href !== "/admin" && pathname.startsWith(href));
@@ -101,7 +104,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <div className="min-w-0 pt-16 lg:mr-[268px] lg:pt-[68px]">
         <div className="min-w-0 px-4 pb-28 pt-5 sm:px-5 md:px-6 lg:px-8 lg:pb-10 lg:pt-7 xl:px-10">
-          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+          <div className="mx-auto w-full max-w-[1400px]">{user?.isDemo && <div role="status" className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><strong>وضع العرض التجريبي</strong><p>استكشف صلاحيات الإدارة والنماذج. الحفظ والحذف والحظر وإرسال الرسائل ممنوعة من السيرفر، ولن تتغير بيانات المنصة.</p></div>}{children}</div>
         </div>
       </div>
 

@@ -186,7 +186,7 @@ function ConversationRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className={`min-w-0 flex-1 truncate text-[12px] ${hasUnread ? "font-black text-on-surface" : "font-extrabold text-on-surface-variant"}`}>
-            {conversation.item?.title || "غرض غير متاح"}
+            {conversation.subject || conversation.item?.title || "غرض غير متاح"}
           </p>
           <time className="shrink-0 text-[9px] font-bold text-on-surface-soft">
             {formatTimestamp(conversation.lastMessageAt || conversation.updatedAt)}

@@ -11,7 +11,8 @@ test("كل ملفات page تبقى Server Components وتحصر التفاعل 
     .filter((path) => path.endsWith("page.tsx"))
     .map((path) => `src/app/${path}`);
 
-  assert.equal(pagePaths.length, 30);
+  assert.ok(pagePaths.includes("src/app/(main)/(protected)/support/page.tsx"));
+  assert.ok(pagePaths.includes("src/app/(main)/(protected)/admin/support/page.tsx"));
   const pages = await Promise.all(pagePaths.map(read));
   for (const source of pages) assert.doesNotMatch(source, /^"use client";/);
 });

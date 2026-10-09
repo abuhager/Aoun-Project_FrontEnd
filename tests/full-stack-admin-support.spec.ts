@@ -12,7 +12,7 @@ test.describe('@fullstack admin settings, support, privacy and demo', () => {
   async function login(page: Page, account: string) {
     await page.goto('/login');
     await page.getByLabel(/البريد الإلكتروني/).fill(`${account}@aoun.invalid`);
-    await page.getByLabel(/كلمة المرور/, { exact: true }).fill(password);
+    await page.getByLabel('كلمة المرور', { exact: true }).fill(password);
     await page.getByRole('button', { name: /^دخول$|تسجيل الدخول/ }).click();
     await expect.poll(async () => new URL(page.url()).pathname).not.toBe('/login');
   }

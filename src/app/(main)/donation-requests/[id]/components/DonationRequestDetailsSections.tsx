@@ -343,6 +343,7 @@ function offerStatusLabel(status: DonationOffer["status"]) {
     accepted: "تم القبول",
     rejected: "مرفوض",
     withdrawn: "تم سحبه",
+    cancelled_by_admin: "أُلغيت عملية التبادل من الإدارة.",
     cancelled_by_requester: "الطلب ملغي",
     request_expired: "انتهت مدة الطلب",
   };
@@ -355,6 +356,7 @@ function offerStatusDescription(status: DonationOffer["status"]) {
     accepted: "تم اختيار عرضك. يمكنك متابعة الغرض وإجراءات التسليم من هذه الصفحة.",
     rejected: "تم اختيار عرض آخر. حفاظاً على الخصوصية لن تظهر لك بيانات الغرض أو المتبرع الذي تم اختياره.",
     withdrawn: "سحبت عرضك لهذا الطلب، ولن تظهر لك بيانات أي عرض يتم اختياره.",
+    cancelled_by_admin: "أُلغيت عملية التبادل من الإدارة.",
     cancelled_by_requester: "ألغى صاحب الطلب طلبه، لذلك أُغلق عرضك تلقائياً.",
     request_expired: "انتهت مدة الطلب قبل اختيار عرضك.",
   };

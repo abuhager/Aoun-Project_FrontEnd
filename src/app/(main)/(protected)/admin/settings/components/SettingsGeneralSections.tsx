@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import type { SystemSettings } from "@/types/settings.types";
 import type { UpdateSetting } from "../hooks/useAdminSettings";
 import { FieldShell, SectionCard, Toggle } from "./SettingsControls";
@@ -44,14 +45,15 @@ export function QuickSummary({ settings }: { settings: SystemSettings }) {
 }
 
 function ToggleField({ title, description, checked, onChange, danger = false }: { title: string; description: string; checked: boolean; onChange: () => void; danger?: boolean }) {
+  const descriptionId = useId();
   return (
     <FieldShell>
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-black text-[#1f312f]">{title}</p>
-          <p className="mt-1 text-xs leading-6 text-[#8f877f]">{description}</p>
+          <p id={descriptionId} className="mt-1 text-xs leading-6 text-[#8f877f]">{description}</p>
         </div>
-        <Toggle checked={checked} onChange={onChange} activeColor={danger ? "bg-red-500" : undefined} />
+        <Toggle label={title} describedBy={descriptionId} checked={checked} onChange={onChange} activeColor={danger ? "bg-red-500" : undefined} />
       </div>
     </FieldShell>
   );

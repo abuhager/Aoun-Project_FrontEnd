@@ -18,6 +18,10 @@ export function useDashboardRealtime({ loadDashboard, setData, setDeliveryState,
   useEffect(() => {
     if (!socket) return;
 
+    const refreshLifecycle = () => void loadDashboard().catch(() => {
+      setData((current) => current ? { ...current, usage: undefined } : current);
+    });
+
     const handleRecipientConfirmed = ({ itemId, itemTitle }: { itemId: string; itemTitle?: string }) => {
       showToast(`✅ ${itemTitle || "الغرض"} — المستلم أكّد الاستلام، يرجى تأكيد التسليم الآن`, "success");
       setDeliveryState({ itemId, waitingForDonor: true });
@@ -41,9 +45,9 @@ export function useDashboardRealtime({ loadDashboard, setData, setDeliveryState,
       } : current);
       setDeliveryState({ itemId: null, waitingForDonor: false });
       showToast("تم التسليم بنجاح! شكراً لعطائك 💚", "success");
+      refreshLifecycle();
     };
 
-    const refreshLifecycle = () => void loadDashboard().catch(() => {});
     const resyncAfterReconnect = () => {
       if (!socket.recovered) refreshLifecycle();
     };

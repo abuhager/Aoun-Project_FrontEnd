@@ -68,11 +68,21 @@ test('root layout declares its smooth-scroll behavior for Next navigation', asyn
   assert.match(source, /data-scroll-behavior="smooth"/);
 });
 
-test('dashboard renders the remaining quota directly', async () => {
-  const source = await readSource('../src/app/(main)/(protected)/dashboard/components/StatsGrid.tsx');
-  assert.match(source, /availableRequests = Math\.max\(0, quota\)/);
-  assert.match(source, /رصيد الطلبات المتاح/);
-  assert.doesNotMatch(source, /2 - quotaUsed/);
+test('dashboard renders actual booking and monthly request limits', async () => {
+  const React = await import('react');
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const { StatsGrid } = await import('../src/app/(main)/(protected)/dashboard/components/StatsGrid.tsx');
+  const html = renderToStaticMarkup(React.createElement(StatsGrid, { trustScore: 70, donationsCount: 2, usage: {
+    bookings: { used: 3, limit: 3, remaining: 0, eligible: true },
+    requests: { used: 1, limit: 1, remaining: 0, eligible: true, enabled: true, month: '2026-10' },
+    donationsTotal: 205,
+  } }));
+  assert.match(html, /3 \/ 3/);
+  assert.match(html, /1 \/ 1/);
+  assert.match(html, /205/);
+  assert.match(html, /الحجوزات النشطة/);
+  assert.match(html, /طلبات الاحتياج هذا الشهر/);
+  assert.doesNotMatch(html, /رصيد الطلبات المتاح/);
 });
 
 test('login keeps the complete backend user DTO', async () => {

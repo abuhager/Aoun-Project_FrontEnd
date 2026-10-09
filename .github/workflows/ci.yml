@@ -33,7 +33,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.19.0
+          node-version-file: .node-version
           cache: npm
 
       - name: Install dependencies
@@ -66,5 +66,114 @@ jobs:
             sbom.cdx.json
             playwright-report/
             test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  full-stack-regressions:
+    name: Full stack admin and support
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      CI: "true"
+      MONGO_URI: mongodb://127.0.0.1:27017/aoun_review_e2e?replicaSet=rs0
+      REDIS_URL: redis://127.0.0.1:6379
+      REDIS_REQUIRED: "true"
+      RUNTIME_TOPOLOGY: single
+      JWT_SECRET: e2e-access-secret-synthetic
+      JWT_REFRESH_SECRET: e2e-refresh-secret-synthetic
+      JWT_ACCESS_EXPIRE: 15m
+      JWT_REFRESH_EXPIRE: 7d
+      COOKIE_SECRET: e2e-cookie-secret-synthetic
+      CLOUDINARY_CLOUD_NAME: ci-cloud
+      CLOUDINARY_API_KEY: ci-key
+      CLOUDINARY_API_SECRET: ci-secret
+      LOGIN_ALERT_EMAIL_ENABLED: "false"
+      OUTBOX_WORKER_ENABLED: "false"
+      PHONE_VERIFICATION_ENABLED: "false"
+      MONGO_INDEXES_REQUIRED: "true"
+      ALLOWED_ORIGINS: http://127.0.0.1:3000
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+      BACKEND_URL: http://127.0.0.1:3001
+      E2E_BACKEND_URL: http://127.0.0.1:3001
+      E2E_FULL_STACK: "true"
+      SERVER_API_TIMEOUT_MS: "5000"
+    steps:
+      - name: Checkout frontend
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: frontend
+      - name: Checkout paired backend
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: abuhager/Aoun-Project_BackEnd
+          ref: main
+          path: backend
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: frontend/.node-version
+      - name: Start isolated MongoDB replica set
+        run: |
+          docker run --detach --name aoun-e2e-mongo --publish 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+          mongo_ready=false
+          for attempt in {1..30}; do
+            if [ "$(docker inspect --format '{{.State.Running}}' aoun-e2e-mongo)" != true ]; then
+              docker logs aoun-e2e-mongo
+              docker inspect --format '{{json .State}}' aoun-e2e-mongo
+              exit 1
+            fi
+            if docker exec aoun-e2e-mongo mongosh --quiet --eval "db.adminCommand('ping').ok" | grep -q 1; then mongo_ready=true; break; fi
+            sleep 1
+          done
+          if [ "$mongo_ready" != true ]; then docker logs aoun-e2e-mongo; exit 1; fi
+          docker exec aoun-e2e-mongo mongosh --quiet --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]})"
+          mongo_primary=false
+          for attempt in {1..30}; do
+            if docker exec aoun-e2e-mongo mongosh --quiet --eval "rs.status().myState" | grep -q 1; then mongo_primary=true; break; fi
+            sleep 1
+          done
+          if [ "$mongo_primary" != true ]; then docker logs aoun-e2e-mongo; exit 1; fi
+      - name: Build backend and seed synthetic fixtures
+        run: |
+          npm --prefix backend ci
+          npm --prefix backend run build
+          NODE_ENV=test npm --prefix backend run test:seed:e2e
+      - name: Start backend
+        run: |
+          NODE_ENV=test PORT=3001 node backend/dist/server.js > backend-e2e.log 2>&1 &
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3001/health/ready >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat backend-e2e.log
+          exit 1
+      - name: Install and build frontend
+        run: |
+          npm --prefix frontend ci
+          npm --prefix frontend run build
+      - name: Install browser and run real full-stack UI tests
+        working-directory: frontend
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e -- --grep @fullstack
+      - name: Upload full-stack traces
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: full-stack-regression-${{ github.run_id }}
+          path: |
+            backend-e2e.log
+            frontend/playwright-report/
+            frontend/test-results/
           if-no-files-found: ignore
           retention-days: 14

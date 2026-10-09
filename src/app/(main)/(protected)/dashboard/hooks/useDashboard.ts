@@ -75,7 +75,7 @@ export function useDashboard() {
 
     const myDonations = response.myDonations ?? [];
     const myRequests = response.myRequests ?? [];
-    setData({ user: response.user, myDonations, myRequests });
+    setData({ user: response.user, myDonations, myRequests, usage: response.usage });
     setError(null);
 
     const waitingItem = myDonations.find(
@@ -86,6 +86,14 @@ export function useDashboard() {
       waitingForDonor: Boolean(waitingItem),
     });
   }, []);
+
+  const refreshAfterAction = useCallback(async () => {
+    try {
+      await loadDashboard();
+    } catch {
+      setData((current) => current ? { ...current, usage: undefined } : current);
+    }
+  }, [loadDashboard]);
 
   useEffect(() => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -150,7 +158,7 @@ export function useDashboard() {
 
       try {
         const { msg } = await confirmDelivery(itemId);
-        await loadDashboard();
+        await refreshAfterAction();
 
         setDeliveryState({ itemId: null, waitingForDonor: false });
         showToast(msg || "تم التسليم بنجاح واكتملت العملية! 💚", "success");
@@ -160,7 +168,7 @@ export function useDashboard() {
         endDeliveryRequest(itemId);
       }
     },
-    [beginDeliveryRequest, endDeliveryRequest, loadDashboard, showToast]
+    [beginDeliveryRequest, endDeliveryRequest, refreshAfterAction, showToast]
   );
 
   const handleDelete = useCallback(
@@ -185,6 +193,7 @@ export function useDashboard() {
                 ? { ...prev, myDonations: prev.myDonations.filter((i) => i._id !== id) }
                 : prev
             );
+            await refreshAfterAction();
             showToast("تم حذف الغرض بنجاح", "success");
           } catch (requestError) {
             showToast(extractErrorMsg(requestError, "تعذّر حذف الغرض"), "error");
@@ -194,7 +203,7 @@ export function useDashboard() {
         },
       });
     },
-    [showToast]
+    [refreshAfterAction, showToast]
   );
 
   const handleCancelBooking = useCallback(
@@ -211,6 +220,7 @@ export function useDashboard() {
                 ? { ...prev, myRequests: prev.myRequests.filter((i) => i._id !== id) }
                 : prev
             );
+            await refreshAfterAction();
             showToast(response.msg, "success");
           } catch (requestError) {
             showToast(extractErrorMsg(requestError, "تعذّر إلغاء الحجز"), "error");
@@ -220,7 +230,7 @@ export function useDashboard() {
         },
       });
     },
-    [showToast]
+    [refreshAfterAction, showToast]
   );
 
   const handleDonorCancelBooking = useCallback(
@@ -250,6 +260,7 @@ export function useDashboard() {
                   }
                 : prev
             );
+            await refreshAfterAction();
             showToast(response.msg, "success");
           } catch (requestError) {
             showToast(extractErrorMsg(requestError, "تعذّر فك الحجز"), "error");
@@ -259,7 +270,7 @@ export function useDashboard() {
         },
       });
     },
-    [showToast]
+    [refreshAfterAction, showToast]
   );
 
   const handleEdit = useCallback((id: string) => {

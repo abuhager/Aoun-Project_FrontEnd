@@ -5,6 +5,7 @@ type DonationOfferStatus =
   | 'accepted'
   | 'rejected'
   | 'withdrawn'
+  | 'cancelled_by_admin'
   | 'cancelled_by_requester'
   | 'request_expired';
 

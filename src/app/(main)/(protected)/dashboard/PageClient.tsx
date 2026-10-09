@@ -212,7 +212,7 @@ export default function DashboardClient() {
             avatar={data.user?.avatar}
             trustScore={data.user?.trustScore}
           />
-          <StatsGrid trustScore={data.user?.trustScore} quota={data.user?.quota} donationsCount={data.myDonations.length} />
+          <StatsGrid trustScore={data.user?.trustScore} usage={data.usage} donationsCount={data.myDonations.length} />
         </section>
 
         {/* Work area */}

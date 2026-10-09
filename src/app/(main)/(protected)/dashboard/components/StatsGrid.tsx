@@ -1,16 +1,16 @@
+import type { MyItemsResponse } from "@/types/item.types";
+
 interface StatsGridProps {
   trustScore?: number;
-  quota?: number;
+  usage?: MyItemsResponse["usage"];
   donationsCount: number;
 }
 
 export function StatsGrid({
   trustScore = 0,
-  quota = 0,
+  usage,
   donationsCount,
 }: StatsGridProps) {
-  const availableRequests = Math.max(0, quota);
-
   const cards = [
     {
       icon: "shield",
@@ -21,14 +21,25 @@ export function StatsGrid({
     },
     {
       icon: "bookmark",
-      value: availableRequests,
-      label: "رصيد الطلبات المتاح",
-      detail: "طلبات يمكنك حجزها الآن",
+      value: usage ? `${usage.bookings.used} / ${usage.bookings.limit}` : "—",
+      label: "الحجوزات النشطة",
+      detail: !usage ? "تعذر تحميل حدود الحجز" : usage.bookings.eligible
+        ? `يمكنك حجز ${usage.bookings.remaining} أغراض إضافية` : "حسابك غير مؤهل للحجز حاليًا",
+      iconClassName: "bg-info-bg text-info",
+    },
+    {
+      icon: "calendar_month",
+      value: usage ? `${usage.requests.used} / ${usage.requests.limit}` : "—",
+      label: "طلبات الاحتياج هذا الشهر",
+      detail: !usage ? "تعذر تحميل حدود الطلبات" : !usage.requests.enabled
+        ? "قسم الطلبات متوقف مؤقتًا" : !usage.requests.eligible
+          ? "حسابك غير مؤهل لإنشاء الطلبات حاليًا"
+          : `متبقي ${usage.requests.remaining} طلب في ${usage.requests.month}`,
       iconClassName: "bg-info-bg text-info",
     },
     {
       icon: "volunteer_activism",
-      value: donationsCount,
+      value: usage?.donationsTotal ?? donationsCount,
       label: "تبرعاتك",
       detail: "إجمالي الأغراض المضافة",
       iconClassName: "bg-success-bg text-success",
@@ -36,7 +47,7 @@ export function StatsGrid({
   ];
 
   return (
-    <section aria-label="ملخص الحساب" className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1">
+    <section aria-label="ملخص الحساب" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
       {cards.map((card) => (
         <div
           key={card.label}

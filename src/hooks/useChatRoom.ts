@@ -115,6 +115,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
   useEffect(() => {
     if (!socket || !conversationId) return;
     let cancelled = false;
+    let joinAttempt = 0;
     const pendingMessages = pendingRef.current;
 
     joinedConversationRef.current = null;
@@ -128,6 +129,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
 
     const joinRoom = () => {
       if (cancelled) return;
+      const attempt = ++joinAttempt;
       clearJoinTimer();
       joinedConversationRef.current = null;
       setIsTyping(false);
@@ -147,7 +149,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
       ));
 
       socket.emit(SOCKET_EVENTS.JOIN_ROOM, { convId: conversationId }, (response: JoinRoomAck) => {
-        if (cancelled) return;
+        if (cancelled || attempt !== joinAttempt) return;
         clearJoinTimer();
 
         if (!response.ok || response.conversationId !== conversationId) {
@@ -179,7 +181,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
       });
 
       joinTimerRef.current = setTimeout(() => {
-        if (cancelled || joinedConversationRef.current === conversationId) return;
+        if (cancelled || attempt !== joinAttempt || joinedConversationRef.current === conversationId) return;
         setRoom((current) => ({
           ...current,
           conversationId,
@@ -242,6 +244,8 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
     };
 
     const onDisconnect = () => {
+      ++joinAttempt;
+      clearJoinTimer();
       joinedConversationRef.current = null;
       setIsTyping(false);
       setRoom((current) => (
@@ -251,6 +255,13 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
       ));
     };
 
+    const onConversationUpdated = (payload?: { conversationId?: string }) => {
+      if (payload?.conversationId && payload.conversationId !== conversationId) return;
+      // Refresh permissions from the server when support or booking status changes.
+      joinRoom();
+    };
+
+    socket.on(SOCKET_EVENTS.CONVERSATION_UPDATED, onConversationUpdated);
     socket.on(SOCKET_EVENTS.RECEIVE_MESSAGE, onReceiveMessage);
     socket.on(SOCKET_EVENTS.TYPING_STATUS, onTypingStatus);
     socket.on(SOCKET_EVENTS.MESSAGES_READ, onMessagesRead);
@@ -262,6 +273,7 @@ export function useChatRoom({ conversationId }: UseChatRoomOptions) {
     return () => {
       cancelled = true;
       clearJoinTimer();
+      socket.off(SOCKET_EVENTS.CONVERSATION_UPDATED, onConversationUpdated);
       socket.off(SOCKET_EVENTS.RECEIVE_MESSAGE, onReceiveMessage);
       socket.off(SOCKET_EVENTS.TYPING_STATUS, onTypingStatus);
       socket.off(SOCKET_EVENTS.MESSAGES_READ, onMessagesRead);

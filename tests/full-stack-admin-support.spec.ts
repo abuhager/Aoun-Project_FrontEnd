@@ -50,10 +50,14 @@ test.describe('@fullstack admin settings, support, privacy and demo', () => {
     await expect(page.getByRole('button', { name: /حفظ الإعدادات/ })).toBeDisabled();
   });
 
-  test('user opens private support, admin claims and replies via Socket, then resolves', async ({ page, browser }) => {
-    await login(page, 'user');
+  test('user opens private support, admin claims and replies via Socket, then resolves', async ({ page, browser }, testInfo) => {
+    // Each attempt gets a fresh ticket so a previous claim cannot mask a failure.
+    const requester = testInfo.retry ? 'outsider' : 'user';
+    const unrelatedAccount = testInfo.retry ? 'user' : 'outsider';
+    const subject = `طلب دعم اصطناعي عبر المتصفح ${testInfo.retry}`;
+    await login(page, requester);
     await page.goto('/support');
-    await page.getByLabel('عنوان المشكلة').fill('طلب دعم اصطناعي عبر المتصفح');
+    await page.getByLabel('عنوان المشكلة').fill(subject);
     await page.getByRole('button', { name: /فتح \/ إعادة فتح محادثة الدعم/ }).click();
     const composer = page.getByRole('textbox', { name: 'نص الرسالة', exact: true });
     await expect(composer).toBeEnabled();
@@ -63,7 +67,7 @@ test.describe('@fullstack admin settings, support, privacy and demo', () => {
     const adminPage = await context.newPage();
     try {
       await login(adminPage, 'admin'); await adminPage.goto('/admin/support');
-      const ticket = adminPage.getByRole('article').filter({ hasText: 'طلب دعم اصطناعي عبر المتصفح' });
+      const ticket = adminPage.getByRole('article').filter({ hasText: subject });
       await ticket.getByRole('button', { name: 'استلام الطلب', exact: true }).click();
       const reply = adminPage.getByRole('textbox', { name: 'نص الرسالة', exact: true });
       await expect(reply).toBeEnabled(); await reply.fill('رد الدعم الاصطناعي');
@@ -71,15 +75,17 @@ test.describe('@fullstack admin settings, support, privacy and demo', () => {
       await expect(page.getByText('رد الدعم الاصطناعي', { exact: true })).toBeVisible();
       await adminPage.getByRole('button', { name: 'إغلاق المحادثة', exact: true }).click();
       await ticket.getByRole('button', { name: 'تم حل المشكلة', exact: true }).click();
-      await adminPage.getByRole('button', { name: 'إغلاق المحادثة', exact: true }).click();
       await expect(ticket.getByText('تم الحل', { exact: true })).toBeVisible();
-      const outsider = await apiToken('outsider');
+      await expect(composer).toBeDisabled();
+      const outsider = await apiToken(unrelatedAccount);
       const admin = await apiToken('admin');
       const tickets = await (await adminPage.request.get(`${backend}/api/support/inbox`, { headers: { authorization: `Bearer ${admin.token}` } })).json();
-      const id = tickets.tickets.find((row: { subject: string }) => row.subject === 'طلب دعم اصطناعي عبر المتصفح')._id;
+      const id = tickets.tickets.find((row: { subject: string }) => row.subject === subject)._id;
       const denied = await adminPage.request.get(`${backend}/api/conversations/${id}/messages`, { headers: { authorization: `Bearer ${outsider.token}` } });
       expect(denied.status()).toBe(403);
-      await expect(composer).toBeDisabled();
-    } finally { await context.close(); }
+    } finally {
+      // Cleanup must preserve the original assertion if the test already timed out.
+      await context.close().catch(() => undefined);
+    }
   });
 });

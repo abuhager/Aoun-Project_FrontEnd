@@ -40,6 +40,7 @@ const EDITABLE_FIELDS: (keyof SystemSettings)[] = [
   "appealWindowHours",
   "universityEmailDomains",
   "requireHubForBooking",
+  "donationRequestsEnabled",
   "maintenanceMode",
   "platformName",
   "contactEmail",

@@ -84,6 +84,7 @@ export function TagListEditor({
 }) {
   const [input, setInput] = useState("");
   const [inputError, setInputError] = useState("");
+  const inputId = useId();
   const inputErrorId = useId();
 
   const add = () => {
@@ -105,9 +106,10 @@ export function TagListEditor({
 
   return (
     <div className="space-y-3">
-      <label className="text-xs font-black text-[#5f5953]">{label}</label>
+      <label htmlFor={inputId} className="text-xs font-black text-[#5f5953]">{label}</label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
+          id={inputId}
           value={input}
           onChange={(event) => {
             setInput(event.target.value);
@@ -173,46 +175,55 @@ export function NumberField({
   max?: number;
   hint?: string;
 }) {
-  const [local, setLocal] = useState(String(value));
+  const inputId = useId();
+  const hintId = useId();
+  const [draft, setDraft] = useState<{ value: number; text: string } | null>(null);
+  const local = draft?.value === value ? draft.text : String(value);
 
   const commit = (raw: string) => {
     const parsed = Number.parseInt(raw, 10);
     if (Number.isNaN(parsed)) {
-      setLocal(String(value));
+      setDraft(null);
       return;
     }
     const clamped = Math.min(max, Math.max(min, parsed));
     onChange(clamped);
-    setLocal(String(clamped));
+    setDraft({ value: clamped, text: String(clamped) });
   };
 
   return (
     <FieldShell>
       <div className="space-y-2">
-        <label className="text-xs font-black text-[#5f5953]">{label}</label>
+        <label htmlFor={inputId} className="text-xs font-black text-[#5f5953]">{label}</label>
         <input
+          id={inputId}
+          aria-describedby={hint ? hintId : undefined}
           type="number"
           min={min}
           max={max}
           value={local}
-          onChange={(event) => setLocal(event.target.value)}
+          onChange={(event) => setDraft({ value, text: event.target.value })}
           onBlur={(event) => commit(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") commit(event.currentTarget.value);
           }}
           className="w-full rounded-2xl border border-[#e7e1d8] bg-white px-4 py-3 text-sm text-[#24302f] outline-none transition-all focus:border-primary focus:shadow-[0_0_0_4px_rgba(1,105,111,0.08)]"
         />
-        {hint && <p className="text-[11px] leading-5 text-[#9f978e]">{hint}</p>}
+        {hint && <p id={hintId} className="text-[11px] leading-5 text-[#9f978e]">{hint}</p>}
       </div>
     </FieldShell>
   );
 }
 
 export function Toggle({
+  label,
+  describedBy,
   checked,
   onChange,
   activeColor = "bg-primary",
 }: {
+  label: string;
+  describedBy?: string;
   checked: boolean;
   onChange: () => void;
   activeColor?: string;
@@ -221,6 +232,8 @@ export function Toggle({
     <button
       type="button"
       role="switch"
+      aria-label={label}
+      aria-describedby={describedBy}
       aria-checked={checked}
       onClick={onChange}
       className={`relative h-7 w-14 rounded-full transition-all ${checked ? activeColor : "bg-[#ddd7cf]"}`}

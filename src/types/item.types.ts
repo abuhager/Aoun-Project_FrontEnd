@@ -66,6 +66,11 @@ export interface ItemsListResponse {
 }
 
 export interface MyItemsResponse {
+  usage?: {
+    bookings: { used: number; limit: number; remaining: number; eligible: boolean };
+    requests: { used: number; limit: number; remaining: number; eligible: boolean; enabled: boolean; month: string };
+    donationsTotal: number;
+  };
   user: {
     _id:               string;
     name:              string;

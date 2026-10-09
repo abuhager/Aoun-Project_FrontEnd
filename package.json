@@ -28,6 +28,7 @@
     "swr": "^2.5.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -40,7 +41,7 @@
     "typescript": "^5"
   },
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=24.0.0 <25"
   },
   "overrides": {
     "@grpc/grpc-js": "1.14.5",

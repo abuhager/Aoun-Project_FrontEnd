@@ -77,7 +77,8 @@ export default function DonationOfferClient() {
         accepted: "تم قبول عرضك وربطه بالغرض.",
         rejected: "لم يتم اختيار عرضك لهذا الطلب.",
         withdrawn: "سبق أن سحبت عرضك لهذا الطلب.",
-        cancelled_by_requester: "ألغى صاحب الطلب هذا الطلب.",
+        cancelled_by_admin: "أُلغيت عملية التبادل من الإدارة.",
+    cancelled_by_requester: "ألغى صاحب الطلب هذا الطلب.",
         request_expired: "انتهت مدة الطلب قبل اختيار العرض.",
       } as const;
       return labels[request.viewerOffer.status];

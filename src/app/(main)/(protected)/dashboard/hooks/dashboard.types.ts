@@ -4,6 +4,7 @@ export interface DashboardData {
   user: MyItemsResponse["user"];
   myDonations: MyItemsResponse["myDonations"];
   myRequests: MyItemsResponse["myRequests"];
+  usage: MyItemsResponse["usage"];
 }
 
 export interface ConfirmModalState {

@@ -16,10 +16,12 @@
 
 [![Frontend CI](https://github.com/abuhager/Aoun-Project_FrontEnd/actions/workflows/ci.yml/badge.svg)](https://github.com/abuhager/Aoun-Project_FrontEnd/actions/workflows/ci.yml)
 
+[معاينة الواجهة](#جولة-داخل-النظام) · [التشغيل المحلي](#التشغيل-المحلي) · [الاختبارات](#الاختبارات-والتحقق)
+
 ## روابط المشروع
 
-- **Live Application:** https://www.aoun.website/
-- **Backend Repository:** https://github.com/abuhager/Aoun-Project_BackEnd
+- **التطبيق المنشور:** [www.aoun.website](https://www.aoun.website/)
+- **مستودع الخادم:** [Aoun Backend](https://github.com/abuhager/Aoun-Project_BackEnd)
 
 > المشروع حاليًا MVP منشور. البيانات والحسابات ونقاط التسليم المستخدمة لأغراض العرض والاختبار لا تعني وجود شراكات مؤسسية فعلية.
 
@@ -73,6 +75,8 @@
 
 تتضمن الواجهة صفحات إدارية لإدارة أجزاء من النظام ومتابعة النشاط والبلاغات والإعدادات وفق صلاحيات المستخدم.
 
+الصور التالية لقطات عرض أصلية محفوظة في المستودع، وليست تصميمًا تخيليًا للواجهة.
+
 ## جولة داخل النظام
 
 ### الحجز
@@ -117,7 +121,7 @@
 
 ## متطلبات التشغيل
 
-- Node.js `>= 24.19.0`
+- Node.js **24**؛ النسخة المثبتة في [`.node-version`](.node-version) هي `24.19.0`، والنطاق في `package.json` هو `>=24.0.0 <25`.
 - npm
 - نسخة عاملة من Aoun Backend
 
@@ -160,8 +164,9 @@ http://localhost:3000
 
 | المتغير | الوظيفة |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | عنوان الـAPI المستخدم من المتصفح وSocket.IO |
-| `BACKEND_URL` | عنوان الـBackend المستخدم من جانب الخادم |
+| `NEXT_PUBLIC_API_URL` | عنوان الخادم العام لاتصال Socket.IO، ويستخدم أيضًا كبديل لطلبات الخادم عند غياب `BACKEND_URL` |
+| `BACKEND_URL` | عنوان Aoun Backend لطلبات الخادم ومسارات proxy في Next.js |
+| `NEXT_PUBLIC_API_TIMEOUT` | مهلة طلبات Axios في الواجهة |
 | `SERVER_API_TIMEOUT_MS` | مهلة طلبات API المنفذة من الخادم |
 | `NEXT_PUBLIC_AUTH_INIT_TIMEOUT` | مهلة تهيئة المصادقة |
 | `NEXT_PUBLIC_AUTH_SAFETY_TIMEOUT` | مهلة أمان لتهيئة حالة الجلسة |
@@ -218,6 +223,19 @@ test/             # اختبارات العقود والانحدار
 tests/            # Playwright E2E
 docs/             # وثائق المشروع ولقطات النظام
 ```
+
+## كيف تتصل الواجهة بالخادم؟
+
+طلبات HTTP من المتصفح تستخدم مسارات `/api` على أصل Next.js نفسه، وتعيد مسارات proxy توجيهها إلى الـBackend. طلبات الخادم تستخدم `BACKEND_URL`، أو `NEXT_PUBLIC_API_URL` عند غيابه. اتصال Socket.IO يستخدم عنوان الخادم العام مباشرة.
+
+| الجزء | نقطة البداية في الكود |
+| --- | --- |
+| الصفحات والتوجيه | [`src/app/`](src/app/) |
+| HTTP وعميل Axios | [`src/lib/api/`](src/lib/api/) |
+| الجلسة والصلاحيات والاتصال الفوري | [`src/context/`](src/context/) |
+| المكونات المشتركة | [`src/components/`](src/components/) |
+| عقود الواجهة | [`contracts/`](contracts/) |
+| اختبارات المتصفح | [`tests/`](tests/) |
 
 ## ملاحظات تطويرية
 

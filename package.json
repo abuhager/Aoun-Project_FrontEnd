@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node node_modules/@typescript/native/bin/tsc --noEmit",
     "test": "node --import tsx --test test/*.test.mjs",
     "e2e": "playwright test",
     "e2e:ci": "playwright test --grep @ci",
@@ -19,26 +19,28 @@
   "dependencies": {
     "axios": "^1.20.0",
     "firebase": "^12.18.0",
-    "material-symbols": "0.47.1",
+    "material-symbols": "0.47.6",
     "next": "16.4.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "server-only": "^0.0.1",
-    "socket.io-client": "^4.8.3",
+    "socket.io-client": "^4.8.4",
     "swr": "^2.5.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@eslint/compat": "^2.1.1",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.4",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^10.12.0",
+    "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
-    "tsx": "^4.23.13",
-    "typescript": "^5"
+    "tsx": "^4.23.15",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "engines": {
     "node": ">=24.0.0 <25"

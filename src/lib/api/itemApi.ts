@@ -39,7 +39,8 @@ export const getItemById = async (id: string, signal?: AbortSignal): Promise<Ite
 
 // ── إنشاء غرض ────────────────────────────────────────────────────────────────
 export const createItem = async (
-  payload: CreateItemPayload
+  payload: CreateItemPayload,
+  publishKey?: string
 ): Promise<{ success: boolean; item: Item }> => {
   const formData = new FormData();
   Object.entries(payload).forEach(([key, val]) => {
@@ -49,7 +50,8 @@ export const createItem = async (
   });
   const { data } = await axiosInstance.post<{ success: boolean; item: Item }>(
     "/api/items",
-    formData
+    formData,
+    { headers: publishKey ? { 'Idempotency-Key': publishKey } : undefined }
   );
   return data;
 };

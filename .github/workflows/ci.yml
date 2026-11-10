@@ -124,7 +124,7 @@ jobs:
           node-version-file: frontend/.node-version
       - name: Start isolated MongoDB replica set
         run: |
-          docker run --detach --name aoun-e2e-mongo --publish 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+          docker run --detach --name aoun-e2e-mongo --publish 27017:27017 mongo:7.0 --replSet rs0 --bind_ip_all
           mongo_ready=false
           for attempt in {1..30}; do
             if [ "$(docker inspect --format '{{.State.Running}}' aoun-e2e-mongo)" != true ]; then

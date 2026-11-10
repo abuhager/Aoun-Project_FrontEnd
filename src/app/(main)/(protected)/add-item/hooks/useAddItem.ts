@@ -37,6 +37,10 @@ export function useAddItem(hubRequired: boolean) {
   const [message, setMessage] = useState<Message>({ type: "", text: "" });
   const objectUrlRef = useRef<string | null>(null);
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // One key per logical publish attempt. Retries preserve it even after a network error.
+  const publishKeyRef = useRef<string | null>(null);
+  const inFlightRef = useRef(false);
+  const resetPublishKey = () => { publishKeyRef.current = null; };
 
   useEffect(() => () => {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
@@ -47,6 +51,7 @@ export function useAddItem(hubRequired: boolean) {
     event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = event.target;
+    resetPublishKey();
     setFormData((previous) => ({ ...previous, [name]: value } as AddItemForm));
   };
 
@@ -65,6 +70,7 @@ export function useAddItem(hubRequired: boolean) {
       return;
     }
 
+    resetPublishKey();
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     const objectUrl = URL.createObjectURL(file);
     objectUrlRef.current = objectUrl;
@@ -75,6 +81,7 @@ export function useAddItem(hubRequired: boolean) {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (inFlightRef.current) return;
     if (!image) {
       setMessage({ type: "error", text: "الرجاء اختيار صورة" });
       return;
@@ -84,6 +91,8 @@ export function useAddItem(hubRequired: boolean) {
       return;
     }
 
+    inFlightRef.current = true;
+    publishKeyRef.current ??= crypto.randomUUID();
     setLoading(true);
     setMessage({ type: "", text: "" });
     let succeeded = false;
@@ -96,7 +105,7 @@ export function useAddItem(hubRequired: boolean) {
         condition: formData.condition,
         safeHub: formData.hubId || undefined,
         image,
-      });
+      }, publishKeyRef.current);
       setMessage({ type: "success", text: "تم نشر التبرع بنجاح! جاري تحويلك..." });
       succeeded = true;
       redirectTimerRef.current = setTimeout(() => router.push("/browse"), 1200);
@@ -106,11 +115,13 @@ export function useAddItem(hubRequired: boolean) {
         text: extractErrorMsg(requestError, "فشل في إضافة التبرع"),
       });
     } finally {
+      inFlightRef.current = false;
       if (!succeeded) setLoading(false);
     }
   };
 
   const handleHubChange = (hubId: string) => {
+    resetPublishKey();
     setFormData((previous) => ({ ...previous, hubId }));
   };
 
